@@ -1,0 +1,33 @@
+import api from './axios'
+
+export const dialerAPI = {
+  getToken: async () => {
+    const res = await api.get('/dialer/token')
+    return res.data.data.token
+  },
+
+  startCampaign: async (campaignId: number) => {
+    const res = await api.post(`/dialer/start/${campaignId}`)
+    return res.data
+  },
+
+  stopCampaign: async (campaignId: number) => {
+    const res = await api.post(`/dialer/stop/${campaignId}`)
+    return res.data
+  },
+
+  getActiveCampaigns: async () => {
+    const res = await api.get('/dialer/active')
+    return res.data.data
+  },
+
+  makeManualCall: async (contactId: number, campaignId: number) => {
+    const res = await api.post('/dialer/call/manual', { contactId, campaignId })
+    return res.data.data
+  },
+
+  hangupCall: async (twilioCallSid: string) => {
+    const res = await api.post('/dialer/call/hangup', { twilioCallSid })
+    return res.data
+  },
+}

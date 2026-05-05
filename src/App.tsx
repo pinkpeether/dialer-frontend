@@ -1,0 +1,32 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import Layout         from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
+import Login          from './pages/Login'
+import Dashboard      from './pages/Dashboard'
+import Dialer         from './pages/Dialer'
+import Agents         from './pages/Agents'
+import Campaigns      from './pages/Campaigns'
+import Contacts       from './pages/Contacts'
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        <Route element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dialer"    element={<Dialer />}    />
+          <Route path="/agents"    element={<Agents />}    />
+          <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/contacts"  element={<Contacts />}  />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  )
+}
