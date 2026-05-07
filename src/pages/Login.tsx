@@ -17,21 +17,7 @@ export default function Login() {
 
 const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault()
-  setLoading(true)
-  setError('')
-
-  // ── Hardcoded bypass (local dev only — revert before production push) ──
-  if (email === 'admin@ptdt.taxi' && password === 'Admin@123456') {
-    setAuth(
-      { id: 1, name: 'Super Admin', email: 'admin@ptdt.taxi', role: 'ADMIN' } as any,
-    'mock-token-ptdt-2026'
-  )
-    navigate('/dashboard')
-    setLoading(false)
-    return
-  }
-  // ────────────────────────────────────────────────────────────────────────
-
+  setLoading(true); setError('')
   try {
     const data = await authAPI.login(email, password)
     setAuth(data.user, data.token)
