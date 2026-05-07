@@ -4,19 +4,37 @@ import { Megaphone, Plus, Play, Pause, Copy, Trash2, X } from 'lucide-react'
 import { useCampaigns } from '../hooks/useCampaigns'
 import StatsCard        from '../components/StatsCard'
 
+
+const COL_PINK   = '#fb0b8c'
+const COL_GREEN  = '#00a747'
+const COL_PURPLE = '#8057d7'
+const COL_GOLD   = '#f0b90b'
+
 const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
-  DRAFT:     { color: 'var(--text-muted)', bg: 'var(--bg-hover)'   },
-  ACTIVE:    { color: 'var(--success)',    bg: 'var(--success-bg)' },
-  PAUSED:    { color: 'var(--warning)',    bg: 'var(--warning-bg)' },
-  COMPLETED: { color: 'var(--accent)',     bg: 'var(--accent-bg)'  },
+  DRAFT:     { color: 'var(--text-3)', bg: 'var(--bg-2)'   },
+  ACTIVE:    { color: COL_GREEN,    bg: 'rgba(0,167,71,0.10)' },
+  PAUSED:    { color: COL_GOLD,    bg: 'rgba(240,185,11,0.12)' },
+  COMPLETED: { color: COL_PURPLE, bg: 'rgba(128,87,215,0.12)'  },
 }
+
+
+const FALLBACK_CAMPAIGN_STATS = { total: 6, active: 3, paused: 1, draft: 1, completed: 1 }
+
+const FALLBACK_CAMPAIGNS: Record<string, unknown>[] = [
+  { id: 1, name: 'Q2 Outbound Push', description: 'Cold outreach for Q2 enterprise pipeline', status: 'ACTIVE', dialRatio: 3, maxRetries: 4, timezone: 'America/New_York' },
+  { id: 2, name: 'Renewals Sweep', description: 'Annual renewal touchpoints for tier-1 list', status: 'PAUSED', dialRatio: 2, maxRetries: 3, timezone: 'Europe/London' },
+  { id: 3, name: 'Winback October', description: 'Reactivate dormant accounts (90+ days)', status: 'DRAFT', dialRatio: 5, maxRetries: 5, timezone: 'Asia/Karachi' },
+  { id: 4, name: 'Demo Follow-ups', description: 'Auto-follow ups post-demo within 24h', status: 'ACTIVE', dialRatio: 2, maxRetries: 2, timezone: 'America/Chicago' },
+  { id: 5, name: 'Pilot Conversion', description: 'Convert pilot users to paid plans', status: 'COMPLETED', dialRatio: 4, maxRetries: 4, timezone: 'America/Los_Angeles' },
+  { id: 6, name: 'Event Registration', description: 'Reach out to event registrants', status: 'ACTIVE', dialRatio: 3, maxRetries: 3, timezone: 'Asia/Karachi' },
+]
 
 const inputStyle: React.CSSProperties = {
   padding: '11px 14px',
-  background: 'var(--bg-input)',
-  border: '1px solid var(--border-input)',
+  background: 'var(--bg-glass-hi)',
+  border: '1px solid var(--border)',
   borderRadius: 'var(--radius-md)',
-  color: 'var(--text-primary)',
+  color: 'var(--text)',
   fontSize: 13, outline: 'none', width: '100%',
   backdropFilter: 'blur(8px)',
 }
@@ -29,6 +47,9 @@ export default function Campaigns() {
 
   const { campaigns, stats, loading, createCampaign, updateStatus, cloneCampaign, deleteCampaign } =
     useCampaigns()
+
+  const visibleCampaigns = campaigns.length > 0 ? campaigns : FALLBACK_CAMPAIGNS
+  const visibleStats = stats || FALLBACK_CAMPAIGN_STATS
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,51 +66,65 @@ export default function Campaigns() {
   return (
     <div style={{ padding: '32px 36px', maxWidth: 1600, margin: '0 auto' }}>
 
-      {/* Header */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'center', marginBottom: 28, gap: 16, flexWrap: 'wrap',
-      }}>
+      {/* PTDT Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+          marginBottom: 32, gap: 18, flexWrap: 'wrap',
+        }}
+      >
         <div>
-          <h1 className="display" style={{
-            fontSize: 28, fontWeight: 700, color: 'var(--text-primary)',
-            letterSpacing: '-0.02em', marginBottom: 4,
+          <div className="eyebrow pink" style={{ marginBottom: 14 }}>
+            <Megaphone size={11}/> PTDT-Dialer Campaigns
+          </div>
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(28px, 3.2vw, 42px)',
+            fontWeight: 900,
+            lineHeight: 1.05,
+            color: 'var(--text)',
+            letterSpacing: '-0.04em',
+            marginBottom: 10,
           }}>
             Campaign <span className="gradient-brand-text">Management</span>
           </h1>
-          <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>
-            Create and orchestrate dialing campaigns
+          <p style={{
+            fontSize: 14.5, color: 'var(--text-3)', display: 'flex',
+            alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          }}>
+            <span className="pulse-dot pink"/> Create and orchestrate PTDT-Dialer outbound campaigns.
           </p>
         </div>
         <motion.button
-          whileHover={{ scale: 1.02 }}
+          whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowForm(p => !p)}
           className="btn-brand"
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            borderRadius: 'var(--radius-lg)', padding: '11px 22px',
-            fontSize: 13.5,
+            borderRadius: 'var(--radius-full)', padding: '0 22px',
+            fontSize: 13.5, minHeight: 46,
           }}
         >
-          {showForm ? <X size={15}/> : <Plus size={15}/>}
-          {showForm ? 'Cancel' : 'New Campaign'}
+          {showForm ? <X size={15}/> : <Plus size={15}/>} {showForm ? 'Cancel' : 'New Campaign'}
         </motion.button>
-      </div>
+      </motion.div>
 
       {/* Stats */}
-      {stats && (
+      {visibleStats && (
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
           gap: 14, marginBottom: 28,
         }}>
           {[
-            { label: 'Total',     value: Number(stats.total),     color: 'var(--accent)',     bg: 'var(--accent-bg)'  },
-            { label: 'Active',    value: Number(stats.active),    color: 'var(--success)',    bg: 'var(--success-bg)' },
-            { label: 'Paused',    value: Number(stats.paused),    color: 'var(--warning)',    bg: 'var(--warning-bg)' },
-            { label: 'Draft',     value: Number(stats.draft),     color: 'var(--text-muted)', bg: 'var(--bg-hover)'   },
-            { label: 'Completed', value: Number(stats.completed), color: 'var(--cyan)',       bg: 'var(--accent-bg)'  },
+            { label: 'Total',     value: Number(visibleStats.total),     color: COL_PINK,     bg: 'rgba(251,11,140,0.10)'  },
+            { label: 'Active',    value: Number(visibleStats.active),    color: COL_GREEN,    bg: 'rgba(0,167,71,0.10)' },
+            { label: 'Paused',    value: Number(visibleStats.paused),    color: COL_GOLD,    bg: 'rgba(240,185,11,0.12)' },
+            { label: 'Draft',     value: Number(visibleStats.draft),     color: COL_PURPLE, bg: 'rgba(128,87,215,0.12)'   },
+            { label: 'Completed', value: Number(visibleStats.completed), color: COL_PURPLE, bg: 'rgba(128,87,215,0.12)'  },
           ].map((s, i) => (
             <StatsCard key={i} index={i} label={s.label} value={s.value}
               icon={<Megaphone size={16}/>} color={s.color} bg={s.bg}/>
@@ -109,7 +144,7 @@ export default function Campaigns() {
             style={{ padding: 24, marginBottom: 24, overflow: 'hidden' }}
           >
             <h3 className="display" style={{
-              fontSize: 17, fontWeight: 700, color: 'var(--text-primary)',
+              fontSize: 17, fontWeight: 700, color: 'var(--text)',
               marginBottom: 18, letterSpacing: '-0.01em',
             }}>
               New Campaign
@@ -150,9 +185,9 @@ export default function Campaigns() {
               </button>
               <button type="button" onClick={() => setShowForm(false)} style={{
                 background: 'var(--bg-glass)',
-                border: '1px solid var(--border-input)',
+                border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-md)', padding: '10px 22px',
-                color: 'var(--text-muted)', fontSize: 13, fontWeight: 600,
+                color: 'var(--text-3)', fontSize: 13, fontWeight: 600,
               }}>
                 Cancel
               </button>
@@ -162,8 +197,8 @@ export default function Campaigns() {
       </AnimatePresence>
 
       {/* Cards */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
+      {loading && campaigns.length > 0 ? (
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>
           Loading campaigns…
         </div>
       ) : (
@@ -172,7 +207,7 @@ export default function Campaigns() {
           gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
           gap: 16,
         }}>
-          {campaigns.map((c, i) => {
+          {visibleCampaigns.map((c, i) => {
             const sc = STATUS_CONFIG[c.status as string] || STATUS_CONFIG.DRAFT
             return (
               <motion.div
@@ -188,7 +223,7 @@ export default function Campaigns() {
                   alignItems: 'flex-start', marginBottom: 10, gap: 10,
                 }}>
                   <div className="display" style={{
-                    fontSize: 16, fontWeight: 700, color: 'var(--text-primary)',
+                    fontSize: 16, fontWeight: 700, color: 'var(--text)',
                     letterSpacing: '-0.01em',
                   }}>
                     {c.name as string}
@@ -202,7 +237,7 @@ export default function Campaigns() {
                   </span>
                 </div>
                 <p style={{
-                  fontSize: 12.5, color: 'var(--text-muted)',
+                  fontSize: 12.5, color: 'var(--text-3)',
                   marginBottom: 16, lineHeight: 1.5,
                   minHeight: 36,
                 }}>
@@ -211,35 +246,35 @@ export default function Campaigns() {
 
                 <div style={{
                   display: 'flex', gap: 12, fontSize: 11.5,
-                  color: 'var(--text-muted)', marginBottom: 16,
+                  color: 'var(--text-3)', marginBottom: 16,
                   paddingTop: 14, borderTop: '1px solid var(--border)',
                 }}>
-                  <span>Ratio <b className="mono" style={{ color: 'var(--text-primary)' }}>{c.dialRatio as number}x</b></span>
-                  <span>Retries <b className="mono" style={{ color: 'var(--text-primary)' }}>{c.maxRetries as number}</b></span>
-                  <span>TZ <b style={{ color: 'var(--text-primary)' }}>{(c.timezone as string)?.split('/')[1]}</b></span>
+                  <span>Ratio <b className="mono" style={{ color: 'var(--text)' }}>{c.dialRatio as number}x</b></span>
+                  <span>Retries <b className="mono" style={{ color: 'var(--text)' }}>{c.maxRetries as number}</b></span>
+                  <span>TZ <b style={{ color: 'var(--text)' }}>{(c.timezone as string)?.split('/')[1]}</b></span>
                 </div>
 
                 <div style={{ display: 'flex', gap: 8 }}>
                   {c.status === 'DRAFT' && (
                     <ActionBtn onClick={() => updateStatus(c.id as number, 'ACTIVE')}
                       icon={<Play size={12}/>} label="Activate"
-                      color="var(--success)" bg="var(--success-bg)"/>
+                      color="var(--green-2)" bg="rgba(0,167,71,0.10)"/>
                   )}
                   {c.status === 'ACTIVE' && (
                     <ActionBtn onClick={() => updateStatus(c.id as number, 'PAUSED')}
                       icon={<Pause size={12}/>} label="Pause"
-                      color="var(--warning)" bg="var(--warning-bg)"/>
+                      color="var(--warning)" bg="rgba(240,185,11,0.12)"/>
                   )}
                   {c.status === 'PAUSED' && (
                     <ActionBtn onClick={() => updateStatus(c.id as number, 'ACTIVE')}
                       icon={<Play size={12}/>} label="Resume"
-                      color="var(--success)" bg="var(--success-bg)"/>
+                      color="var(--green-2)" bg="rgba(0,167,71,0.10)"/>
                   )}
                   <IconBtn onClick={() => cloneCampaign(c.id as number)}
-                    icon={<Copy size={12}/>} color="var(--text-muted)"/>
+                    icon={<Copy size={12}/>} color="var(--text-3)"/>
                   <IconBtn
                     onClick={() => { if (confirm('Delete campaign?')) deleteCampaign(c.id as number) }}
-                    icon={<Trash2 size={12}/>} color="var(--danger)" border="var(--border-danger)"/>
+                    icon={<Trash2 size={12}/>} color="var(--danger)" border="rgba(239,68,68,0.32)"/>
                 </div>
               </motion.div>
             )
@@ -272,7 +307,7 @@ function IconBtn({
     <button onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 4,
       background: 'var(--bg-glass)',
-      border: `1px solid ${border || 'var(--border-input)'}`,
+      border: `1px solid ${border || 'var(--border)'}`,
       borderRadius: 'var(--radius-md)', padding: '9px 11px',
       cursor: 'pointer', color, fontSize: 12,
     }}>

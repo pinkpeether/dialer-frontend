@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Phone, LayoutDashboard, Users,
-  Megaphone, BookUser, LogOut, Zap,
+  Megaphone, BookUser, LogOut,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
@@ -30,62 +30,81 @@ export default function Sidebar() {
     <aside style={{
       width: 'var(--sidebar-width)',
       height: '100vh',
-      background: 'var(--sidebar-bg)',
-      backdropFilter: 'blur(20px) saturate(160%)',
-      WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-      borderRight: '1px solid var(--sidebar-border)',
+      background: 'var(--bg-glass-hi)',
+      backdropFilter: 'blur(22px) saturate(160%)',
+      WebkitBackdropFilter: 'blur(22px) saturate(160%)',
+      borderRight: '1px solid var(--border)',
       display: 'flex',
       flexDirection: 'column',
-      padding: '22px 14px',
+      padding: '20px 14px',
       position: 'fixed',
       top: 0, left: 0,
       zIndex: 30,
+      boxShadow: 'var(--shadow-md)',
     }}>
 
-      {/* === Logo / Brand === */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32, paddingLeft: 6 }}>
-        <motion.div
-          whileHover={{ rotate: -8, scale: 1.05 }}
-          transition={{ type: 'spring', stiffness: 300 }}
+      {/* === Brand: real PTDT logo + wordmark === */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '4px 6px',
+        marginBottom: 22,
+      }}>
+        <motion.img
+          src="ptdt-main-logo.png"
+          alt="PTDT"
+          whileHover={{ scale: 1.04 }}
+          transition={{ type: 'spring', stiffness: 280 }}
           style={{
-            position: 'relative',
-            width: 40, height: 40, borderRadius: 12,
-            background: 'var(--grad-brand)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: 'var(--glow-brand)',
+            width: 48, height: 48,
+            objectFit: 'contain',
+            borderRadius: 12,
+            background: 'transparent',
+            mixBlendMode: 'multiply',
           }}
-        >
-          <Zap size={20} color="#fff" strokeWidth={2.5} fill="#fff" />
+        />
+        <div style={{ minWidth: 0 }}>
           <div style={{
-            position: 'absolute', inset: -4,
-            borderRadius: 16,
-            background: 'var(--grad-brand)',
-            opacity: 0.25,
-            filter: 'blur(10px)',
-            zIndex: -1,
-          }} />
-        </motion.div>
-        <div>
-          <div className="display" style={{
-            fontSize: 17, fontWeight: 700, color: 'var(--text-primary)',
-            lineHeight: 1.1, letterSpacing: '-0.02em',
+            fontFamily: 'var(--font-display)',
+            fontSize: 16, fontWeight: 900,
+            color: 'var(--text)',
+            lineHeight: 1.05, letterSpacing: '-0.03em',
           }}>
-            JD <span className="gradient-brand-text">Dialer</span>
+            PTDT-<span className="gradient-brand-text">Dialer</span>
           </div>
-          <div style={{
-            fontSize: 9, color: 'var(--text-muted)',
-            textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 2,
-            fontWeight: 600,
+          <div className="mono" style={{
+            fontSize: 9, color: 'var(--text-3)',
+            textTransform: 'uppercase', letterSpacing: 1.4, marginTop: 3,
+            fontWeight: 700,
           }}>
             {user?.role || 'Operator'} Console
           </div>
         </div>
       </div>
 
+      {/* === Slogan strip === */}
+      <div style={{
+        padding: '8px 10px',
+        marginBottom: 18,
+        borderRadius: 12,
+        background: 'linear-gradient(135deg, rgba(251,11,140,0.08), rgba(128,87,215,0.08))',
+        border: '1px solid var(--border)',
+        fontSize: 10.5,
+        fontFamily: 'var(--font-mono)',
+        fontWeight: 700,
+        color: 'var(--text-3)',
+        textAlign: 'center',
+        lineHeight: 1.4,
+      }}>
+        Trust the <span style={{ color: 'var(--pink)' }}>{`{ Code }`}</span>,
+        <br />
+        <span style={{ color: 'var(--green-2)' }}>// </span>
+        Not the Cult!
+      </div>
+
       {/* === Nav === */}
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{
-          fontSize: 10, color: 'var(--text-faint)',
+      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflow: 'auto' }}>
+        <div className="mono" style={{
+          fontSize: 9.5, color: 'var(--muted)',
           textTransform: 'uppercase', letterSpacing: 1.4,
           padding: '0 12px 8px', fontWeight: 700,
         }}>
@@ -98,19 +117,23 @@ export default function Sidebar() {
             <NavLink key={item.to} to={item.to} style={{ textDecoration: 'none' }}>
               {({ isActive }) => (
                 <motion.div
-                  whileHover={{ x: 3 }}
+                  whileHover={{ x: isActive ? 0 : 3 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   style={{
                     position: 'relative',
                     display: 'flex', alignItems: 'center', gap: 12,
                     padding: '11px 14px',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: 13.5, fontWeight: 600,
-                    background: isActive ? 'var(--bg-active)' : 'transparent',
-                    color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
-                    border: `1px solid ${isActive ? 'var(--border-strong)' : 'transparent'}`,
-                    transition: 'all 0.2s ease',
-                    overflow: 'hidden',
+                    borderRadius: 999,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    background: isActive
+                      ? 'linear-gradient(135deg, #fb0b8c, #ff4bad)'
+                      : 'transparent',
+                    color: isActive ? '#fff' : 'var(--text-3)',
+                    boxShadow: isActive
+                      ? '0 12px 26px rgba(251,11,140,0.28), inset 0 1px 0 rgba(255,255,255,0.22)'
+                      : 'none',
+                    transition: 'background 0.25s, color 0.25s, box-shadow 0.25s',
                   }}
                 >
                   {isActive && (
@@ -118,12 +141,13 @@ export default function Sidebar() {
                       layoutId="nav-glow"
                       style={{
                         position: 'absolute',
-                        left: 0, top: '20%', bottom: '20%',
-                        width: 3,
-                        background: 'var(--grad-brand)',
-                        borderRadius: '0 4px 4px 0',
-                        boxShadow: '0 0 12px var(--accent-glow)',
+                        inset: 0,
+                        borderRadius: 999,
+                        background: 'linear-gradient(135deg, #fb0b8c, #ff4bad)',
+                        boxShadow: '0 12px 26px rgba(251,11,140,0.30)',
+                        zIndex: -1,
                       }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                     />
                   )}
                   <Icon size={17} strokeWidth={isActive ? 2.4 : 2} />
@@ -139,11 +163,14 @@ export default function Sidebar() {
       <div style={{
         display: 'flex', alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '12px 8px', marginBottom: 12,
+        padding: '12px 10px', marginBottom: 8,
+        borderTop: '1px solid var(--border)',
+        marginTop: 8,
       }}>
-        <span style={{
-          fontSize: 11, color: 'var(--text-muted)',
-          fontWeight: 600, letterSpacing: 0.4,
+        <span className="mono" style={{
+          fontSize: 10.5, color: 'var(--text-3)',
+          fontWeight: 700, letterSpacing: 0.4,
+          textTransform: 'uppercase',
         }}>
           Appearance
         </span>
@@ -151,39 +178,36 @@ export default function Sidebar() {
       </div>
 
       {/* === User card + Logout === */}
-      <div style={{
-        borderTop: '1px solid var(--sidebar-border)',
-        paddingTop: 14,
-      }}>
+      <div style={{ paddingTop: 6 }}>
         <div className="glass" style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 12px', marginBottom: 10,
-          borderRadius: 'var(--radius-md)',
+          padding: '10px 12px', marginBottom: 8,
+          borderRadius: 14,
         }}>
           <div style={{
             position: 'relative',
-            width: 34, height: 34, borderRadius: '50%',
-            background: 'var(--grad-brand)',
+            width: 36, height: 36, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #fb0b8c, #8057d7)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 13, fontWeight: 800, color: '#fff',
-            boxShadow: '0 0 0 2px var(--bg-card-solid), 0 0 0 3px var(--accent)',
+            boxShadow: '0 4px 12px rgba(251,11,140,0.30)',
           }}>
             {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             <span style={{
               position: 'absolute', bottom: -1, right: -1,
               width: 10, height: 10, borderRadius: '50%',
-              background: 'var(--success)',
-              border: '2px solid var(--bg-card-solid)',
+              background: '#2ae97b',
+              border: '2px solid var(--surface)',
             }} />
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{
-              fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)',
+              fontSize: 12.5, fontWeight: 700, color: 'var(--text)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
               {user?.name || 'User'}
             </div>
-            <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+            <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)' }}>
               {user?.agentCode || '—'}
             </div>
           </div>
@@ -191,16 +215,16 @@ export default function Sidebar() {
 
         <motion.button
           onClick={handleLogout}
-          whileHover={{ scale: 1.02 }}
+          whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '10px 12px',
-            borderRadius: 'var(--radius-md)',
+            borderRadius: 999,
             background: 'transparent',
-            border: '1px solid var(--border-input)',
-            color: 'var(--text-muted)',
-            fontSize: 12.5, fontWeight: 600,
+            border: '1px solid var(--border)',
+            color: 'var(--text-3)',
+            fontSize: 12.5, fontWeight: 700,
             transition: 'all 0.2s',
           }}
           onMouseEnter={e => {
@@ -208,8 +232,8 @@ export default function Sidebar() {
             e.currentTarget.style.color = 'var(--danger)'
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.borderColor = 'var(--border-input)'
-            e.currentTarget.style.color = 'var(--text-muted)'
+            e.currentTarget.style.borderColor = 'var(--border)'
+            e.currentTarget.style.color = 'var(--text-3)'
           }}
         >
           <LogOut size={14}/> Sign Out
@@ -217,4 +241,4 @@ export default function Sidebar() {
       </div>
     </aside>
   )
-}
+  };

@@ -17,6 +17,12 @@ interface Stats {
   contacts:  { total: number; pending: number; answered: number; answerRate: number }
 }
 
+// Brand color palette — pink primary, green/purple/gold secondary
+const COL_PINK   = '#fb0b8c'
+const COL_GREEN  = '#00a747'
+const COL_PURPLE = '#8057d7'
+const COL_GOLD   = '#f0b90b'
+
 export default function Dashboard() {
   const user = useAuthStore(s => s.user)
   const [stats, setStats] = useState<Stats | null>(null)
@@ -37,16 +43,16 @@ export default function Dashboard() {
   const cards = stats ? [
     { label: 'Total Agents',     value: stats.agents.total,
       sub: `${stats.agents.online} online · ${stats.agents.ready} ready`,
-      icon: <Users size={18}/>,      color: 'var(--accent)',  bg: 'var(--accent-bg)' },
+      icon: <Users size={18}/>,      color: COL_PINK,   bg: 'rgba(251,11,140,0.10)' },
     { label: 'Active Campaigns', value: stats.campaigns.active,
       sub: `${stats.campaigns.total} total campaigns`,
-      icon: <Megaphone size={18}/>,  color: 'var(--success)', bg: 'var(--success-bg)' },
+      icon: <Megaphone size={18}/>,  color: COL_GREEN,  bg: 'rgba(0,167,71,0.10)' },
     { label: 'Total Contacts',   value: stats.contacts.total,
       sub: `${stats.contacts.pending} pending`,
-      icon: <Phone size={18}/>,      color: 'var(--warning)', bg: 'var(--warning-bg)' },
+      icon: <Phone size={18}/>,      color: COL_PURPLE, bg: 'rgba(128,87,215,0.10)' },
     { label: 'Answer Rate',      value: `${stats.contacts.answerRate ?? 0}%`,
       sub: `${stats.contacts.answered} answered`,
-      icon: <TrendingUp size={18}/>, color: 'var(--pink)',    bg: 'var(--pink-bg)' },
+      icon: <TrendingUp size={18}/>, color: COL_GOLD,   bg: 'rgba(240,185,11,0.10)' },
   ] : []
 
   const greeting = (() => {
@@ -65,35 +71,27 @@ export default function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         style={{ marginBottom: 32 }}
       >
-        <div className="badge" style={{
-          background: 'var(--accent-bg)',
-          color: 'var(--accent-text)',
-          border: '1px solid var(--border-strong)',
-          marginBottom: 14,
-        }}>
+        <div className="eyebrow pink" style={{ marginBottom: 14 }}>
           <Sparkles size={11}/> Live operations
         </div>
 
-        <h1 className="display" style={{
-          fontSize: 'clamp(28px, 3.4vw, 40px)',
-          fontWeight: 700, lineHeight: 1.1,
-          letterSpacing: '-0.025em',
-          marginBottom: 8,
-          color: 'var(--text-primary)',
+        <h1 style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 'clamp(28px, 3.4vw, 42px)',
+          fontWeight: 900, lineHeight: 1.05,
+          letterSpacing: '-0.04em',
+          marginBottom: 10,
+          color: 'var(--text)',
         }}>
           {greeting},{' '}
           <span className="gradient-brand-text">{user?.name?.split(' ')[0] || 'Operator'}</span>
         </h1>
 
         <p style={{
-          fontSize: 14.5, color: 'var(--text-muted)',
+          fontSize: 14.5, color: 'var(--text-3)',
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
-          <span style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: 'var(--success)',
-            boxShadow: '0 0 12px var(--success-glow)',
-          }} className="pulse-dot"/>
+          <span className="pulse-dot"/>
           Pipeline online · monitoring {activeCalls.length} live call{activeCalls.length === 1 ? '' : 's'}
         </p>
       </motion.div>
@@ -122,37 +120,35 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="glass"
-          style={{ padding: 24 }}
+          style={{ padding: 24, borderRadius: 20 }}
         >
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18,
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 12,
-              background: 'var(--success-bg)',
-              border: '1px solid var(--success)',
+              background: 'rgba(0,167,71,0.10)',
+              border: '1px solid rgba(0,167,71,0.32)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 20px var(--success-glow)',
+              boxShadow: '0 8px 24px rgba(0,167,71,0.18)',
             }}>
-              <Radio size={16} color="var(--success)"/>
+              <Radio size={16} color={COL_GREEN}/>
             </div>
             <div style={{ flex: 1 }}>
-              <div className="display" style={{
-                fontSize: 15, fontWeight: 700, color: 'var(--text-primary)',
-                letterSpacing: '-0.01em',
+              <div style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 15, fontWeight: 800, color: 'var(--text)',
+                letterSpacing: '-0.02em',
               }}>
                 Live Calls
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+              <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>
                 Real-time pipeline
               </div>
             </div>
             {activeCalls.length > 0 && (
-              <span className="badge" style={{
-                background: 'var(--success-bg)', color: 'var(--success)',
-                border: '1px solid var(--success)',
-              }}>
-                ● {activeCalls.length} active
+              <span className="badge badge-answered">
+                <span className="pulse-dot" /> {activeCalls.length} active
               </span>
             )}
           </div>
@@ -160,7 +156,7 @@ export default function Dashboard() {
           {activeCalls.length === 0 ? (
             <div style={{
               padding: '32px 0', textAlign: 'center',
-              color: 'var(--text-muted)', fontSize: 13,
+              color: 'var(--text-3)', fontSize: 13,
             }}>
               No active calls right now
             </div>
@@ -175,21 +171,17 @@ export default function Dashboard() {
                     padding: '12px 14px',
                     background: 'var(--bg-glass)',
                     backdropFilter: 'blur(8px)',
-                    borderRadius: 'var(--radius-md)',
+                    borderRadius: 12,
                     border: '1px solid var(--border)',
                     display: 'flex', alignItems: 'center', gap: 10,
                   }}
                 >
-                  <span style={{
-                    width: 8, height: 8, borderRadius: '50%',
-                    background: 'var(--success)',
-                    boxShadow: '0 0 10px var(--success-glow)',
-                  }} className="pulse-dot"/>
+                  <span className="pulse-dot"/>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text-primary)' }}>
+                    <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text)' }}>
                       {call.name}
                     </div>
-                    <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                    <div className="mono" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
                       {call.phone} → {call.agentName}
                     </div>
                   </div>
@@ -205,27 +197,29 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.18 }}
           className="glass"
-          style={{ padding: 24 }}
+          style={{ padding: 24, borderRadius: 20 }}
         >
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18,
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 12,
-              background: 'var(--accent-bg)',
-              border: '1px solid var(--accent)',
+              background: 'rgba(251,11,140,0.10)',
+              border: '1px solid rgba(251,11,140,0.32)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 20px var(--accent-glow)',
+              boxShadow: '0 8px 24px rgba(251,11,140,0.18)',
             }}>
-              <Activity size={16} color="var(--accent)"/>
+              <Activity size={16} color={COL_PINK}/>
             </div>
             <div style={{ flex: 1 }}>
-              <div className="display" style={{
-                fontSize: 15, fontWeight: 700, color: 'var(--text-primary)',
+              <div style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 15, fontWeight: 800, color: 'var(--text)',
+                letterSpacing: '-0.02em',
               }}>
                 Recent Calls
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+              <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>
                 Last activity feed
               </div>
             </div>
@@ -234,7 +228,7 @@ export default function Dashboard() {
           {recentCalls.length === 0 ? (
             <div style={{
               padding: '32px 0', textAlign: 'center',
-              color: 'var(--text-muted)', fontSize: 13,
+              color: 'var(--text-3)', fontSize: 13,
             }}>
               No recent calls yet
             </div>
@@ -252,17 +246,13 @@ export default function Dashboard() {
                       borderBottom: i < Math.min(recentCalls.length, 8) - 1 ? '1px solid var(--border)' : 'none',
                     }}
                   >
-                    <span style={{ fontSize: 12.5, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    <span style={{ fontSize: 12.5, color: 'var(--text-2)', fontWeight: 600 }}>
                       Agent #{call.agentId}
                     </span>
-                    <span className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>
                       {call.duration ? `${call.duration}s` : '—'}
                     </span>
-                    <span className="badge" style={{
-                      color:      call.status === 'ANSWERED' ? 'var(--success)' : 'var(--warning)',
-                      background: call.status === 'ANSWERED' ? 'var(--success-bg)' : 'var(--warning-bg)',
-                      border: `1px solid ${call.status === 'ANSWERED' ? 'var(--success)' : 'var(--warning)'}`,
-                    }}>
+                    <span className={`badge ${call.status === 'ANSWERED' ? 'badge-answered' : 'badge-noanswer'}`}>
                       {call.status}
                     </span>
                   </motion.div>
@@ -278,20 +268,23 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.26 }}
           className="glass"
-          style={{ padding: 24 }}
+          style={{ padding: 24, borderRadius: 20 }}
         >
-          <div className="display" style={{
-            fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 18,
+          <div style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 15, fontWeight: 800, color: 'var(--text)',
+            letterSpacing: '-0.02em',
+            marginBottom: 18,
           }}>
             Quick Actions
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[
-              { label: 'Open Dialer',     href: '/dialer',    icon: Phone,     color: 'var(--accent)'  },
-              { label: 'New Campaign',    href: '/campaigns', icon: Megaphone, color: 'var(--success)' },
-              { label: 'Upload Contacts', href: '/contacts',  icon: BookUser,  color: 'var(--warning)' },
-              { label: 'Manage Agents',   href: '/agents',    icon: Users,     color: 'var(--pink)'    },
+              { label: 'Open Dialer',     href: '/dialer',    icon: Phone,     color: COL_PINK   },
+              { label: 'New Campaign',    href: '/campaigns', icon: Megaphone, color: COL_GREEN  },
+              { label: 'Upload Contacts', href: '/contacts',  icon: BookUser,  color: COL_PURPLE },
+              { label: 'Manage Agents',   href: '/agents',    icon: Users,     color: COL_GOLD   },
             ].map(a => {
               const Icon = a.icon
               return (
@@ -304,15 +297,15 @@ export default function Dashboard() {
                     padding: '12px 14px',
                     background: 'var(--bg-glass)',
                     backdropFilter: 'blur(8px)',
-                    borderRadius: 'var(--radius-md)',
+                    borderRadius: 12,
                     border: '1px solid var(--border)',
-                    color: 'var(--text-primary)',
-                    fontSize: 13.5, fontWeight: 600,
+                    color: 'var(--text)',
+                    fontSize: 13.5, fontWeight: 700,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.borderColor = a.color
-                    e.currentTarget.style.background = `${a.color}11`
+                    e.currentTarget.style.background = `${a.color}10`
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.borderColor = 'var(--border)'
@@ -327,7 +320,7 @@ export default function Dashboard() {
                     <Icon size={14}/>
                   </div>
                   <span style={{ flex: 1 }}>{a.label}</span>
-                  <ArrowUpRight size={14} color="var(--text-muted)"/>
+                  <ArrowUpRight size={14} color="var(--text-3)"/>
                 </motion.a>
               )
             })}

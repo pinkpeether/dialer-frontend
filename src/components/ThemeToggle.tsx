@@ -17,7 +17,6 @@ export default function ThemeToggle({ compact = false }: Props) {
       style={{
         position: 'relative',
         display: 'flex', alignItems: 'center',
-        gap: 8,
         width: compact ? 38 : 64,
         height: compact ? 38 : 32,
         padding: compact ? 0 : 3,
@@ -26,13 +25,14 @@ export default function ThemeToggle({ compact = false }: Props) {
         background: 'var(--bg-glass)',
         border: '1px solid var(--border-strong)',
         backdropFilter: 'blur(10px)',
-        color: 'var(--text-secondary)',
+        WebkitBackdropFilter: 'blur(10px)',
+        color: 'var(--text-3)',
         cursor: 'pointer',
         overflow: 'hidden',
       }}
     >
       {compact ? (
-        isDark ? <Sun size={16} /> : <Moon size={16} />
+        isDark ? <Sun size={16} color="#ffd356" /> : <Moon size={16} color="#8057d7" />
       ) : (
         <motion.div
           animate={{ x: isDark ? 0 : 32 }}
@@ -40,11 +40,13 @@ export default function ThemeToggle({ compact = false }: Props) {
           style={{
             width: 26, height: 26, borderRadius: '50%',
             background: isDark
-              ? 'linear-gradient(135deg, #1e293b, #0f172a)'
-              : 'linear-gradient(135deg, #fde68a, #f59e0b)',
+              ? 'linear-gradient(135deg, #fb0b8c 0%, #c2148a 50%, #6b21a8 100%)'
+              : 'linear-gradient(135deg, #fde68a, #f0b90b)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: isDark ? '#c4b5fd' : '#7c2d12',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            color: isDark ? '#fff' : '#7c2d12',
+            boxShadow: isDark
+              ? '0 4px 14px rgba(251,11,140,0.45)'
+              : '0 4px 14px rgba(240,185,11,0.45)',
           }}
         >
           {isDark ? <Moon size={14} /> : <Sun size={14} />}

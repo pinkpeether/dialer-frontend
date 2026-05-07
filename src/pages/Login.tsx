@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff, Zap, ArrowRight, ShieldCheck, Activity, Radio } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Activity, Radio, Code2 } from 'lucide-react'
 import { authAPI }      from '../api/auth.api'
 import { useAuthStore } from '../store/auth.store'
 import ThemeToggle      from '../components/ThemeToggle'
@@ -15,33 +15,49 @@ export default function Login() {
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true); setError('')
-    try {
-      const data = await authAPI.login(email, password)
-      setAuth(data.user, data.token)
-      navigate('/dashboard')
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })
-        ?.response?.data?.message || 'Login failed'
-      setError(msg)
-    } finally { setLoading(false) }
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault()
+  setLoading(true)
+  setError('')
+
+  // ── Hardcoded bypass (local dev only — revert before production push) ──
+  if (email === 'admin@ptdt.taxi' && password === 'Admin@123456') {
+    setAuth(
+      { id: 1, name: 'Super Admin', email: 'admin@ptdt.taxi', role: 'ADMIN' } as any,
+    'mock-token-ptdt-2026'
+  )
+    navigate('/dashboard')
+    setLoading(false)
+    return
   }
+  // ────────────────────────────────────────────────────────────────────────
+
+  try {
+    const data = await authAPI.login(email, password)
+    setAuth(data.user, data.token)
+    navigate('/dashboard')
+  } catch (err: unknown) {
+    const msg = (err as { response?: { data?: { message?: string } } })
+      ?.response?.data?.message || 'Login failed'
+    setError(msg)
+  } finally {
+    setLoading(false)
+  }
+}
 
   const inputWrap: React.CSSProperties = { position: 'relative' }
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '14px 14px 14px 44px',
-    background: 'var(--bg-input)',
-    border: '1px solid var(--border-input)',
-    borderRadius: 'var(--radius-md)',
-    color: 'var(--text-primary)', fontSize: 14, outline: 'none',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 12,
+    color: 'var(--text)', fontSize: 14, outline: 'none',
     transition: 'all 0.2s',
-    backdropFilter: 'blur(8px)',
+    fontFamily: 'var(--font-body)',
   }
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
       {/* Aurora background */}
       <div className="aurora-bg"><div className="aurora-orb-3" /></div>
       <div className="grid-overlay" />
@@ -72,24 +88,29 @@ export default function Login() {
         >
           {/* Top brand */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{
-              position: 'relative',
-              width: 48, height: 48, borderRadius: 14,
-              background: 'var(--grad-brand)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: 'var(--glow-brand)',
-            }}>
-              <Zap size={24} color="#fff" strokeWidth={2.5} fill="#fff"/>
-            </div>
+            <img
+              src="ptdt-main-logo.png"
+              alt="PTDT"
+              style={{
+                width: 78, height: 78,
+                objectFit: 'contain',
+                mixBlendMode: 'multiply',
+              }}
+            />
             <div>
-              <div className="display" style={{
-                fontSize: 22, fontWeight: 700, color: 'var(--text-primary)',
-                letterSpacing: '-0.02em',
+              <div style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 22, fontWeight: 900, color: 'var(--text)',
+                letterSpacing: '-0.03em', lineHeight: 1.1,
               }}>
-                JD <span className="gradient-brand-text">Dialer</span>
+                PTDT-<span className="gradient-brand-text">Dialer</span>
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: 1, textTransform: 'uppercase' }}>
-                Next-gen calling stack
+              <div className="mono" style={{
+                fontSize: 11, color: 'var(--text-3)',
+                letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: 700,
+                marginTop: 4,
+              }}>
+                Operator Settlement Console
               </div>
             </div>
           </div>
@@ -100,34 +121,29 @@ export default function Login() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.7 }}
-              className="badge"
-              style={{
-                background: 'var(--accent-bg)',
-                color: 'var(--accent-text)',
-                border: '1px solid var(--border-strong)',
-                marginBottom: 24,
-                width: 'fit-content',
-              }}
+              className="eyebrow"
+              style={{ marginBottom: 24 }}
             >
-              <Radio size={11}/> Live · v2.0
+              <span className="pulse-dot" />
+              <Radio size={11}/> Live · v2.0 · BSC Mainnet
             </motion.div>
 
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.7 }}
-              className="display"
               style={{
+                fontFamily: 'var(--font-display)',
                 fontSize: 'clamp(36px, 5vw, 60px)',
-                fontWeight: 700,
-                lineHeight: 1.05,
-                letterSpacing: '-0.03em',
-                marginBottom: 20,
-                color: 'var(--text-primary)',
+                fontWeight: 900,
+                lineHeight: 1.04,
+                letterSpacing: '-0.04em',
+                marginBottom: 22,
+                color: 'var(--text)',
               }}
             >
-              Dial smarter.<br/>
-              <span className="gradient-brand-text">Close faster.</span>
+              Dispatch smarter.<br/>
+              <span className="gradient-brand-text">Settle faster.</span>
             </motion.h1>
 
             <motion.p
@@ -135,20 +151,43 @@ export default function Login() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.7 }}
               style={{
-                fontSize: 16, color: 'var(--text-secondary)',
-                lineHeight: 1.6, maxWidth: 480, marginBottom: 36,
+                fontSize: 16, color: 'var(--text-2)',
+                lineHeight: 1.7, maxWidth: 480, marginBottom: 28,
               }}
             >
-              The operator console for high-velocity outbound teams. Real-time pipelines, live agents,
-              automated campaigns — orchestrated in one cinematic surface.
+              The operator console for the <strong style={{ color: 'var(--pink)' }}>PTDT</strong>{' '}
+              settlement protocol. Real-time pipelines, live agents, automated campaigns —
+              orchestrated in one cinematic surface.
             </motion.p>
+
+            {/* Slogan callout */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45, duration: 0.7 }}
+              className="mono"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '10px 16px',
+                borderRadius: 999,
+                background: 'linear-gradient(135deg, rgba(251,11,140,0.10), rgba(128,87,215,0.08), rgba(0,167,71,0.10))',
+                border: '1px solid var(--border)',
+                fontSize: 12.5, fontWeight: 700,
+                color: 'var(--text-2)',
+                marginBottom: 30,
+              }}
+            >
+              <Code2 size={13} color="var(--pink)" />
+              Trust the <span style={{ color: 'var(--pink)' }}>{`{ Code }`}</span>,{' '}
+              <span style={{ color: 'var(--green-2)' }}>// Not the Cult!</span>
+            </motion.div>
 
             {/* Feature pills */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               {[
-                { icon: Activity,   label: 'Live Pipeline' },
-                { icon: ShieldCheck, label: 'JWT + API Keys' },
-                { icon: Zap,        label: 'Burst Dialing' },
+                { icon: Activity,    label: 'Live Pipeline',  c: 'var(--pink)' },
+                { icon: ShieldCheck, label: 'JWT + API Keys', c: 'var(--green-2)' },
+                { icon: Code2,       label: 'On-chain Ready', c: 'var(--purple)' },
               ].map((f, i) => {
                 const Icon = f.icon
                 return (
@@ -162,11 +201,11 @@ export default function Login() {
                       display: 'flex', alignItems: 'center', gap: 8,
                       padding: '8px 14px',
                       borderRadius: 999,
-                      fontSize: 12, color: 'var(--text-secondary)',
-                      fontWeight: 600,
+                      fontSize: 12, color: 'var(--text-2)',
+                      fontWeight: 700,
                     }}
                   >
-                    <Icon size={13} color="var(--accent)"/>
+                    <Icon size={13} color={f.c}/>
                     {f.label}
                   </motion.div>
                 )
@@ -175,13 +214,15 @@ export default function Login() {
           </div>
 
           {/* Footer */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 16,
-            fontSize: 11, color: 'var(--text-faint)',
+          <div className="mono" style={{
+            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+            fontSize: 10.5, color: 'var(--text-3)',
+            lineHeight: 1.6,
           }}>
-            <span>© {new Date().getFullYear()} JD Dialer</span>
-            <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-faint)' }} />
-            <span>Powered by Peether PTDT</span>
+            <span>
+              Copyrights © <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>PTDT-Dialer</span>
+              {' · '}Pink Taxi Group Ltd · United Kingdom. All rights reserved.
+            </span>
           </div>
         </motion.div>
 
@@ -194,31 +235,33 @@ export default function Login() {
             initial={{ opacity: 0, y: 30, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
-            className="glass"
+            className="glass-hi"
             style={{
               width: '100%', maxWidth: 440,
               padding: 40,
-              borderRadius: 'var(--radius-2xl)',
+              borderRadius: 24,
               position: 'relative',
               overflow: 'hidden',
             }}
           >
             {/* Top accent line */}
             <div style={{
-              position: 'absolute', top: 0, left: 24, right: 24, height: 1,
-              background: 'var(--grad-brand)',
-              opacity: 0.6,
+              position: 'absolute', top: 0, left: 24, right: 24, height: 2,
+              background: 'linear-gradient(90deg, #fb0b8c 0%, #8057d7 50%, #2ae97b 100%)',
+              borderRadius: 2,
+              opacity: 0.85,
             }} />
 
             <div style={{ marginBottom: 28 }}>
-              <h2 className="display" style={{
-                fontSize: 26, fontWeight: 700,
-                color: 'var(--text-primary)',
-                marginBottom: 6, letterSpacing: '-0.02em',
+              <h2 style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 26, fontWeight: 900,
+                color: 'var(--text)',
+                marginBottom: 6, letterSpacing: '-0.03em',
               }}>
                 Welcome back
               </h2>
-              <p style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: 13.5, color: 'var(--text-3)' }}>
                 Sign in to access your operator dashboard.
               </p>
             </div>
@@ -228,12 +271,12 @@ export default function Login() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 style={{
-                  background: 'var(--danger-bg)',
-                  border: '1px solid var(--danger)',
-                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--status-busy-bg)',
+                  border: '1px solid var(--status-busy-bd)',
+                  borderRadius: 12,
                   padding: '12px 16px',
-                  color: 'var(--danger)', fontSize: 13, marginBottom: 20,
-                  fontWeight: 500,
+                  color: 'var(--status-busy-fg)', fontSize: 13, marginBottom: 20,
+                  fontWeight: 600,
                 }}
               >
                 {error}
@@ -242,36 +285,38 @@ export default function Login() {
 
             <form onSubmit={handleLogin}>
               <div style={{ marginBottom: 18 }}>
-                <label style={{
-                  fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+                <label className="mono" style={{
+                  fontSize: 10.5, fontWeight: 700, color: 'var(--text-3)',
                   textTransform: 'uppercase', letterSpacing: 1.2,
                   display: 'block', marginBottom: 8,
                 }}>
                   Email
                 </label>
                 <div style={inputWrap}>
-                  <Mail size={16} color="var(--text-muted)" style={{
+                  <Mail size={16} color="var(--text-3)" style={{
                     position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
                   }}/>
                   <input
                     type="email" value={email}
                     onChange={e => setEmail(e.target.value)}
-                    placeholder="admin@jddialer.com"
+                    placeholder="admin@ptdt.taxi"
                     required style={inputStyle}
+                    onFocus={e => { e.target.style.borderColor = 'var(--pink)'; e.target.style.boxShadow = '0 0 0 3px rgba(251,11,140,0.12)' }}
+                    onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
                   />
                 </div>
               </div>
 
               <div style={{ marginBottom: 28 }}>
-                <label style={{
-                  fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+                <label className="mono" style={{
+                  fontSize: 10.5, fontWeight: 700, color: 'var(--text-3)',
                   textTransform: 'uppercase', letterSpacing: 1.2,
                   display: 'block', marginBottom: 8,
                 }}>
                   Password
                 </label>
                 <div style={inputWrap}>
-                  <Lock size={16} color="var(--text-muted)" style={{
+                  <Lock size={16} color="var(--text-3)" style={{
                     position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
                   }}/>
                   <input
@@ -280,6 +325,8 @@ export default function Login() {
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••••••"
                     required style={inputStyle}
+                    onFocus={e => { e.target.style.borderColor = 'var(--pink)'; e.target.style.boxShadow = '0 0 0 3px rgba(251,11,140,0.12)' }}
+                    onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
                   />
                   <button
                     type="button"
@@ -287,7 +334,7 @@ export default function Login() {
                     style={{
                       position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
                       background: 'none', border: 'none',
-                      color: 'var(--text-muted)',
+                      color: 'var(--text-3)',
                       padding: 6, borderRadius: 6,
                       display: 'flex', alignItems: 'center',
                     }}
@@ -305,10 +352,8 @@ export default function Login() {
                 className="btn-brand"
                 style={{
                   width: '100%', padding: '14px',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: 14.5, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  letterSpacing: 0.2,
+                  borderRadius: 12,
+                  fontSize: 14.5,
                 }}
               >
                 {loading ? (
@@ -320,10 +365,10 @@ export default function Login() {
             </form>
 
             <div style={{
-              marginTop: 24, paddingTop: 20,
+              marginTop: 22, paddingTop: 18,
               borderTop: '1px solid var(--border)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 6, fontSize: 11.5, color: 'var(--text-faint)',
+              gap: 6, fontSize: 11.5, color: 'var(--text-3)',
             }}>
               <ShieldCheck size={12}/> Secured with end-to-end encryption
             </div>

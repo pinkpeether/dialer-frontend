@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 
 export type Theme = 'dark' | 'light'
 
-const KEY = 'jd-dialer-theme'
+const KEY = 'ptdt-dialer-theme'
 
 function getInitial(): Theme {
-  if (typeof window === 'undefined') return 'dark'
+  if (typeof window === 'undefined') return 'light'
   const stored = localStorage.getItem(KEY) as Theme | null
   if (stored === 'dark' || stored === 'light') return stored
-  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
 export function useTheme() {

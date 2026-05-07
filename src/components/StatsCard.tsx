@@ -24,21 +24,22 @@ export default function StatsCard({
       style={{
         position: 'relative',
         padding: 22,
-        borderRadius: 'var(--radius-xl)',
+        borderRadius: 20,
         overflow: 'hidden',
       }}
     >
-      {/* Top glow accent */}
+      {/* Top accent line */}
       <div style={{
-        position: 'absolute', top: 0, left: 16, right: 16, height: 1,
+        position: 'absolute', top: 0, left: 16, right: 16, height: 2,
         background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
-        opacity: 0.7,
+        opacity: 0.85,
+        borderRadius: 2,
       }}/>
 
       {/* Soft radial glow behind icon */}
       <div style={{
         position: 'absolute', top: -30, right: -30,
-        width: 140, height: 140, borderRadius: '50%',
+        width: 150, height: 150, borderRadius: '50%',
         background: `radial-gradient(circle, ${color}22 0%, transparent 70%)`,
         pointerEvents: 'none',
       }}/>
@@ -48,8 +49,8 @@ export default function StatsCard({
         justifyContent: 'space-between', marginBottom: 14,
         position: 'relative',
       }}>
-        <span style={{
-          fontSize: 11, color: 'var(--text-muted)', fontWeight: 700,
+        <span className="mono" style={{
+          fontSize: 10.5, color: 'var(--text-3)', fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: 1.2,
         }}>
           {label}
@@ -59,26 +60,25 @@ export default function StatsCard({
           padding: 9, borderRadius: 12,
           border: `1px solid ${color}33`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: `0 0 20px ${color}33`,
+          boxShadow: `0 6px 18px ${color}28`,
         }}>
           {icon}
         </div>
       </div>
 
-      <div className="display" style={{
+      <div className="mono" style={{
         fontSize: 32, fontWeight: 700,
-        color: 'var(--text-primary)',
-        letterSpacing: '-0.03em',
+        color: 'var(--text)',
+        letterSpacing: '-0.04em',
         lineHeight: 1,
         marginBottom: sub ? 8 : 0,
-        fontVariantNumeric: 'tabular-nums',
       }}>
         {value ?? '—'}
       </div>
 
       {sub && (
         <div style={{
-          fontSize: 12, color: 'var(--text-muted)',
+          fontSize: 12, color: 'var(--text-3)',
           fontWeight: 500,
         }}>
           {sub}
