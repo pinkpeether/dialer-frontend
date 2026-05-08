@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import FloatingDialer from './FloatingDialer'
 
 export default function Layout() {
   return (
@@ -59,6 +60,9 @@ export default function Layout() {
           </span>
         </footer>
       </main>
+
+      {/* Floating Manual Dialer — accessible from every page */}
+      <FloatingDialer />
     </div>
   )
 }
