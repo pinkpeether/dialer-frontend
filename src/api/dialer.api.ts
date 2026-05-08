@@ -26,6 +26,16 @@ export const dialerAPI = {
     return res.data.data
   },
 
+  makeAdhocCall: async (phone: string, note?: string) => {
+    const res = await api.post('/dialer/call/adhoc', { phone, note })
+    return res.data.data
+  },
+
+  sendDTMF: async (twilioCallSid: string, digits: string) => {
+    const res = await api.post('/dialer/call/dtmf', { twilioCallSid, digits })
+    return res.data
+  },
+
   hangupCall: async (twilioCallSid: string) => {
     const res = await api.post('/dialer/call/hangup', { twilioCallSid })
     return res.data
