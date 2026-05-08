@@ -104,15 +104,20 @@ export default function FloatingDialer() {
 
   useEffect(() => () => stopTimer(), [stopTimer])
 
-  // Safe contacts preload — never crash UI if API fails (401 redirect handled by axios interceptor)
+  // Safe contacts preload — guard for non-array shapes so UI never crashes
   useEffect(() => {
     if (state !== 'collapsed') {
       (async () => {
         try {
           const d = await contactsAPI.getAll({ limit: 200 })
-          setContacts((d || []) as Contact[])
+          const arr = Array.isArray((d as any)?.contacts)
+            ? (d as any).contacts
+            : Array.isArray(d)
+            ? d
+            : []
+          setContacts(arr as Contact[])
         } catch {
-          // ignore — errors already handled globally by axios interceptor
+          setContacts([])
         }
       })()
     }
@@ -132,12 +137,11 @@ export default function FloatingDialer() {
   const filtered = useMemo(() => {
     if (!query.trim()) return []
     const q = query.toLowerCase()
-    return contacts.filter(c => c.phone.includes(q) || c.name?.toLowerCase().includes(q)).slice(0,5)
+    return (contacts || []).filter(c => c.phone.includes(q) || c.name?.toLowerCase().includes(q)).slice(0,5)
   }, [query, contacts])
 
   // ---- Drag handlers (header only) ----
   const onHeaderPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // allow dragging even when starting from children, but track drag only if moved
     e.currentTarget.setPointerCapture(e.pointerId)
     dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y }
     isDraggingRef.current = false
@@ -156,10 +160,6 @@ export default function FloatingDialer() {
   }, [])
 
   const onHeaderPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // If user just clicked (no drag), let children handle their click normally
-    if (!isDraggingRef.current && dragRef.current) {
-      // do nothing special
-    }
     isDraggingRef.current = false
     dragRef.current = null
     try { e.currentTarget.releasePointerCapture(e.pointerId) } catch {}
