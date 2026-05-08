@@ -373,26 +373,13 @@ export default function FloatingDialer() {
     setRipple(true); setTimeout(() => setRipple(false), 600)
   }, [])
 
-  const appendDialerKey = useCallback((k: string) => {
-    setNumber(current => {
-      if (current.length >= 16) return current
-      const next = current + k
-      setQuery(next)
-      return next
-    })
-    setError(null)
-    triggerRipple()
-  }, [triggerRipple])
-
   const handleKey = (k: string) => {
-    appendDialerKey(k)
+    if (number.length >= 16) return
+    setNumber(n => n + k); setQuery(n => n + k)
+    setError(null); triggerRipple()
   }
   const handleDelete = () => {
-    setNumber(current => {
-      const next = current.slice(0, -1)
-      setQuery(next)
-      return next
-    })
+    setNumber(n => n.slice(0, -1)); setQuery(n => n.slice(0, -1))
   }
   const selectContact = (c: Contact) => {
     setNumber(c.phone); setName(c.name || '')
@@ -442,54 +429,6 @@ export default function FloatingDialer() {
     setNumber(''); setName(''); setQuery('')
     setError(null); setDtmfBuf(''); setSugg(false)
   }, [state, handleHangup])
-
-  useEffect(() => {
-    const isEditableTarget = (target: EventTarget | null) => {
-      const el = target as HTMLElement | null
-      if (!el) return false
-      const tag = el.tagName?.toLowerCase()
-      return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable
-    }
-
-    const h = (e: KeyboardEvent) => {
-      const key = e.key
-      const isDialKey = /^[0-9]$/.test(key) || key === '*' || key === '#'
-
-      if (key === 'Escape' && state !== 'collapsed') {
-        e.preventDefault()
-        handleClose()
-        return
-      }
-
-      if (isEditableTarget(e.target)) return
-
-      if ((state === 'dialpad' || state === 'calling') && isDialKey) {
-        e.preventDefault()
-        appendDialerKey(key)
-        return
-      }
-
-      if ((state === 'dialpad' || state === 'calling') && (key === 'Backspace' || key === 'Delete')) {
-        e.preventDefault()
-        handleDelete()
-        return
-      }
-
-      if (state === 'dialpad' && key === 'Enter' && !loading) {
-        e.preventDefault()
-        void handleCall()
-        return
-      }
-
-      if (state === 'active' && tab === 'dtmf' && isDialKey) {
-        e.preventDefault()
-        void handleDTMF(key)
-      }
-    }
-
-    window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [state, tab, loading, appendDialerKey, handleDelete, handleCall, handleDTMF, handleClose])
 
   const timeAgo = (ms: number) => {
     const m = Math.floor((Date.now() - ms) / 60000)
@@ -696,7 +635,7 @@ export default function FloatingDialer() {
                         marginTop: 5,
                         textTransform: 'uppercase',
                       }}>
-                        <Signal size={8} color={state === 'active' ? brand.green : brand.green} />
+                        <Signal size={8} color={state === 'active' ? brand.green : brand.pink} />
                         Voice Console · Alt+D
                       </div>
                     </div>
@@ -704,9 +643,9 @@ export default function FloatingDialer() {
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <StatusBadge
-                      label={state === 'active' ? 'LIVE' : state === 'calling' ? 'ROUTE' : 'ONLINE'}
-                      color={state === 'active' ? brand.green : state === 'calling' ? brand.cyan : brand.green}
-                      bg={state === 'active' ? brand.greenSoft : state === 'calling' ? 'rgba(34,211,238,0.13)' : brand.greenSoft}
+                      label={state === 'active' ? 'LIVE' : state === 'calling' ? 'ROUTE' : 'READY'}
+                      color={state === 'active' ? brand.green : state === 'calling' ? brand.cyan : brand.pink}
+                      bg={state === 'active' ? brand.greenSoft : state === 'calling' ? 'rgba(34,211,238,0.13)' : brand.pinkSoft}
                       pulse={state === 'active' || state === 'calling'}
                     />
                     <button
