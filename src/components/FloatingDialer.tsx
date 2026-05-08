@@ -92,7 +92,8 @@ export default function FloatingDialer() {
 
   // Position state for dragging the whole widget
   const [pos, setPos]         = useState({ x: 0, y: 0 })
-  const dragRef               = useRef<{ startX: number; startY: number; origX: number; origY: number; moved: boolean } | null>(null)
+  const dragRef               = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+  const isDraggingRef         = useRef(false)
 
   const timerRef  = useRef<ReturnType<typeof setInterval>|null>(null)
   const callStart = useRef<number>(0)
@@ -103,11 +104,17 @@ export default function FloatingDialer() {
 
   useEffect(() => () => stopTimer(), [stopTimer])
 
+  // Safe contacts preload — never crash UI if API fails (401 redirect handled by axios interceptor)
   useEffect(() => {
     if (state !== 'collapsed') {
-      contactsAPI.getAll({ limit: 200 })
-        .then((d: Contact[]) => setContacts(d || []))
-        .catch(() => {})
+      (async () => {
+        try {
+          const d = await contactsAPI.getAll({ limit: 200 })
+          setContacts((d || []) as Contact[])
+        } catch {
+          // ignore — errors already handled globally by axios interceptor
+        }
+      })()
     }
   }, [state])
 
@@ -130,22 +137,32 @@ export default function FloatingDialer() {
 
   // ---- Drag handlers (header only) ----
   const onHeaderPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // Only drag from the header div itself, not its children (buttons etc.)
-    if (e.target !== e.currentTarget) return
+    // allow dragging even when starting from children, but track drag only if moved
     e.currentTarget.setPointerCapture(e.pointerId)
-    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y, moved: false }
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y }
+    isDraggingRef.current = false
   }, [pos])
 
   const onHeaderPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return
     const dx = e.clientX - dragRef.current.startX
     const dy = e.clientY - dragRef.current.startY
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragRef.current.moved = true
-    setPos({ x: dragRef.current.origX + dx, y: dragRef.current.origY + dy })
+    if (!isDraggingRef.current && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+      isDraggingRef.current = true
+    }
+    if (isDraggingRef.current) {
+      setPos({ x: dragRef.current.origX + dx, y: dragRef.current.origY + dy })
+    }
   }, [])
 
-  const onHeaderPointerUp = useCallback(() => {
+  const onHeaderPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // If user just clicked (no drag), let children handle their click normally
+    if (!isDraggingRef.current && dragRef.current) {
+      // do nothing special
+    }
+    isDraggingRef.current = false
     dragRef.current = null
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch {}
   }, [])
 
   // ---- FAB handlers (click only, no drag) ----
