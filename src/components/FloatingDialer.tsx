@@ -130,6 +130,8 @@ export default function FloatingDialer() {
 
   // ---- Drag handlers (header only) ----
   const onHeaderPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Only drag from the header div itself, not its children (buttons etc.)
+    if (e.target !== e.currentTarget) return
     e.currentTarget.setPointerCapture(e.pointerId)
     dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y, moved: false }
   }, [pos])
@@ -390,8 +392,11 @@ export default function FloatingDialer() {
               </div>
             </div>
 
-            {/* BODY */}
-            <div style={{ padding:'14px 16px 18px' }}>
+            {/* BODY — stopPropagation prevents pointer events from bubbling up to the header drag zone */}
+            <div
+              onPointerDown={e => e.stopPropagation()}
+              style={{ padding:'14px 16px 18px' }}
+            >
 
               {/* Search */}
               {(state === 'dialpad' || state === 'calling') && (
