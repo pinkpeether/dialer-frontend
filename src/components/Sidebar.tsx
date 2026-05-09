@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
+  BarChart3, Headset,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
@@ -9,11 +10,13 @@ import { authAPI }      from '../api/auth.api'
 import ThemeToggle      from './ThemeToggle'
 
 const NAV = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/dialer',    icon: Phone,           label: 'Dialer'    },
-  { to: '/campaigns', icon: Megaphone,       label: 'Campaigns' },
-  { to: '/contacts',  icon: BookUser,        label: 'Contacts'  },
-  { to: '/agents',    icon: Users,           label: 'Agents'    },
+  { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard'       },
+  { to: '/dialer',          icon: Phone,           label: 'Dialer'          },
+  { to: '/agent/dashboard', icon: Headset,         label: 'Agent Dashboard' },
+  { to: '/campaigns',       icon: Megaphone,       label: 'Campaigns'       },
+  { to: '/contacts',        icon: BookUser,        label: 'Contacts'        },
+  { to: '/agents',          icon: Users,           label: 'Agents'          },
+  { to: '/reports',         icon: BarChart3,       label: 'Reports'         },
 ]
 
 export default function Sidebar() {

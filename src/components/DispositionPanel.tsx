@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { CheckCircle2, CalendarClock, MessageSquareText, PhoneMissed, ShieldX, XCircle } from 'lucide-react'
+import { useState, type CSSProperties } from 'react'
+import { CheckCircle2, MessageSquareText } from 'lucide-react'
 
 export type DispositionValue =
   | 'ANSWERED'
@@ -9,56 +9,51 @@ export type DispositionValue =
   | 'WRONG_NUMBER'
   | 'DO_NOT_CALL'
 
-export interface DispositionPayload {
-  callId: number
+export interface DispositionSubmitPayload {
   disposition: DispositionValue
-  notes: string
+  notes?: string
 }
 
 interface DispositionPanelProps {
-  callId: number
   disabled?: boolean
-  onSubmit: (payload: DispositionPayload) => void | Promise<void>
+  onSubmit: (payload: DispositionSubmitPayload) => void | Promise<void>
 }
 
-const DISPOSITIONS: Array<{
-  value: DispositionValue
-  label: string
-  icon: typeof CheckCircle2
-}> = [
-  { value: 'ANSWERED',     label: 'Answered',     icon: CheckCircle2 },
-  { value: 'NO_ANSWER',    label: 'No Answer',    icon: PhoneMissed },
-  { value: 'VOICEMAIL',    label: 'Voicemail',    icon: MessageSquareText },
-  { value: 'CALLBACK',     label: 'Callback',     icon: CalendarClock },
-  { value: 'WRONG_NUMBER', label: 'Wrong Number', icon: XCircle },
-  { value: 'DO_NOT_CALL',  label: 'Do Not Call',  icon: ShieldX },
+const DISPOSITIONS: { value: DispositionValue; label: string; hint: string }[] = [
+  { value: 'ANSWERED',     label: 'Answered',     hint: 'Connected' },
+  { value: 'NO_ANSWER',    label: 'No Answer',    hint: 'No pickup' },
+  { value: 'VOICEMAIL',    label: 'Voicemail',    hint: 'Machine' },
+  { value: 'CALLBACK',     label: 'Callback',     hint: 'Follow-up' },
+  { value: 'WRONG_NUMBER', label: 'Wrong Number', hint: 'Bad lead' },
+  { value: 'DO_NOT_CALL',  label: 'Do Not Call',  hint: 'DNC' },
 ]
 
-export default function DispositionPanel({
-  callId,
-  disabled = false,
-  onSubmit,
-}: DispositionPanelProps) {
-  const [disposition, setDisposition] = useState<DispositionValue | null>(null)
+const inputStyle: CSSProperties = {
+  width: '100%',
+  minHeight: 96,
+  resize: 'vertical',
+  padding: '12px 14px',
+  background: 'var(--bg-glass-hi)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-md)',
+  color: 'var(--text)',
+  outline: 'none',
+  fontSize: 13,
+  lineHeight: 1.5,
+  fontFamily: 'var(--font-body)',
+}
+
+export default function DispositionPanel({ disabled = false, onSubmit }: DispositionPanelProps) {
+  const [disposition, setDisposition] = useState<DispositionValue | ''>('')
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const canSubmit = useMemo(
-    () => Boolean(disposition) && !disabled && !submitting,
-    [disabled, disposition, submitting]
-  )
-
   const handleSubmit = async () => {
-    if (!disposition || submitting) return
-
+    if (!disposition || submitting || disabled) return
     setSubmitting(true)
     try {
-      await onSubmit({
-        callId,
-        disposition,
-        notes: notes.trim(),
-      })
-      setDisposition(null)
+      await onSubmit({ disposition, notes: notes.trim() || undefined })
+      setDisposition('')
       setNotes('')
     } finally {
       setSubmitting(false)
@@ -66,37 +61,39 @@ export default function DispositionPanel({
   }
 
   return (
-    <section style={{
-      background: 'var(--surface)',
-      border: '1px solid var(--border)',
-      borderRadius: 18,
-      padding: 18,
-      boxShadow: 'var(--shadow)',
-    }}>
-      <div style={{ marginBottom: 14 }}>
-        <h3 style={{
-          margin: 0,
-          color: 'var(--text)',
-          fontFamily: 'var(--font-display)',
-          fontSize: 16,
-          fontWeight: 900,
+    <div className="glass" style={{ padding: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <div style={{
+          width: 34,
+          height: 34,
+          borderRadius: 12,
+          background: 'rgba(251,11,140,0.10)',
+          border: '1px solid rgba(251,11,140,0.22)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--pink)',
         }}>
-          Call Disposition
-        </h3>
-        <p style={{ margin: '6px 0 0', color: 'var(--text-3)', fontSize: 12 }}>
-          Select the final outcome before closing this call.
-        </p>
+          <CheckCircle2 size={16} />
+        </div>
+        <div>
+          <div className="display" style={{ color: 'var(--text)', fontSize: 15, fontWeight: 800 }}>
+            Call Disposition
+          </div>
+          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 10.5, marginTop: 2 }}>
+            SELECT OUTCOME + NOTES
+          </div>
+        </div>
       </div>
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))',
         gap: 10,
+        marginBottom: 14,
       }}>
         {DISPOSITIONS.map(item => {
-          const Icon = item.icon
-          const selected = disposition === item.value
-
+          const active = disposition === item.value
           return (
             <button
               key={item.value}
@@ -104,67 +101,53 @@ export default function DispositionPanel({
               disabled={disabled || submitting}
               onClick={() => setDisposition(item.value)}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                justifyContent: 'center',
-                minHeight: 42,
-                borderRadius: 12,
+                textAlign: 'left',
                 cursor: disabled || submitting ? 'not-allowed' : 'pointer',
-                border: selected ? '1px solid var(--pink)' : '1px solid var(--border)',
-                background: selected
-                  ? 'linear-gradient(135deg, rgba(251,11,140,0.16), rgba(42,233,123,0.10))'
-                  : 'var(--surface-2)',
-                color: selected ? 'var(--pink)' : 'var(--text-2)',
-                fontWeight: 800,
-                opacity: disabled || submitting ? 0.55 : 1,
+                padding: '11px 12px',
+                borderRadius: 'var(--radius-md)',
+                border: active ? '1px solid var(--pink)' : '1px solid var(--border)',
+                background: active
+                  ? 'linear-gradient(135deg, rgba(251,11,140,0.16), rgba(128,87,215,0.10))'
+                  : 'var(--bg-glass)',
+                color: active ? 'var(--pink)' : 'var(--text)',
+                boxShadow: active ? 'var(--shadow-pink)' : 'none',
                 transition: 'all 0.18s ease',
               }}
             >
-              <Icon size={16} />
-              {item.label}
+              <div style={{ fontSize: 12.5, fontWeight: 800 }}>{item.label}</div>
+              <div className="mono" style={{ fontSize: 9.5, color: 'var(--text-3)', marginTop: 3 }}>
+                {item.hint}
+              </div>
             </button>
           )
         })}
       </div>
 
-      <textarea
-        value={notes}
-        disabled={disabled || submitting}
-        onChange={event => setNotes(event.target.value)}
-        placeholder="Disposition notes..."
-        rows={4}
-        style={{
-          width: '100%',
-          marginTop: 14,
-          resize: 'vertical',
-          borderRadius: 12,
-          border: '1px solid var(--border)',
-          background: 'var(--bg)',
-          color: 'var(--text)',
-          padding: 12,
-          outline: 'none',
-          fontFamily: 'var(--font-body)',
-          fontSize: 13,
-        }}
-      />
+      <div style={{ position: 'relative', marginBottom: 14 }}>
+        <MessageSquareText size={15} color="var(--text-3)" style={{ position: 'absolute', top: 13, left: 13 }} />
+        <textarea
+          value={notes}
+          onChange={event => setNotes(event.target.value)}
+          placeholder="Disposition notes…"
+          style={{ ...inputStyle, paddingLeft: 40 }}
+          disabled={disabled || submitting}
+        />
+      </div>
 
       <button
         type="button"
-        disabled={!canSubmit}
-        onClick={() => { void handleSubmit() }}
         className="btn-brand"
+        disabled={!disposition || disabled || submitting}
+        onClick={handleSubmit}
         style={{
           width: '100%',
-          marginTop: 12,
-          padding: '12px 14px',
-          borderRadius: 12,
-          opacity: canSubmit ? 1 : 0.55,
-          cursor: canSubmit ? 'pointer' : 'not-allowed',
+          minHeight: 42,
+          borderRadius: 'var(--radius-md)',
+          opacity: !disposition || disabled || submitting ? 0.6 : 1,
         }}
       >
-        {submitting ? 'Submitting...' : 'Submit Disposition'}
+        {submitting ? 'Saving…' : 'Submit Disposition'}
       </button>
-    </section>
+    </div>
   )
 }
