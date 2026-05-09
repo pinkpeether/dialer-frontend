@@ -7,6 +7,7 @@ import Dialer         from './pages/Dialer'
 import Agents         from './pages/Agents'
 import Campaigns      from './pages/Campaigns'
 import Contacts       from './pages/Contacts'
+import AgentDashboard from './pages/AgentDashboard'
 
 export default function App() {
   return (
@@ -20,11 +21,12 @@ export default function App() {
             <Layout />
           </ProtectedRoute>
         }>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dialer"    element={<Dialer />}    />
-          <Route path="/agents"    element={<Agents />}    />
-          <Route path="/campaigns" element={<Campaigns />} />
-          <Route path="/contacts"  element={<Contacts />}  />
+          <Route path="/dashboard"       element={<Dashboard />}      />
+          <Route path="/dialer"          element={<Dialer />}         />
+          <Route path="/agents"          element={<Agents />}         />
+          <Route path="/agent/dashboard" element={<AgentDashboard />} />
+          <Route path="/campaigns"       element={<Campaigns />}      />
+          <Route path="/contacts"        element={<Contacts />}       />
         </Route>
       </Routes>
     </BrowserRouter>
