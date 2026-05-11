@@ -13,7 +13,5 @@ export const authAPI = {
 
   logout: async () => {
     await api.post('/auth/logout')
-    localStorage.removeItem('jd_token')
-    localStorage.removeItem('jd_user')
   },
 }

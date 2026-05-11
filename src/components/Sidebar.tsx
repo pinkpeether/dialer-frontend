@@ -23,11 +23,15 @@ export default function Sidebar() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
 
-  const handleLogout = async () => {
-    try { await authAPI.logout() } catch { /* noop */ }
-    logout()
-    navigate('/login')
-  }
+  const handleLogout = () => {
+  // Fire backend logout in background so UI does not wait.
+  void authAPI.logout().catch(() => {
+    // Ignore logout API failure because local logout should always work.
+  })
+
+  logout()
+  navigate('/login', { replace: true })
+}
 
   return (
     <aside style={{
