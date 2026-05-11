@@ -22,15 +22,20 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Response interceptor — 401 par logout
+// Response interceptor — 401 par HashRouter-safe logout
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('jd_token')
       localStorage.removeItem('jd_user')
-      window.location.href = '/login'
+
+      // HashRouter + Electron safe redirect.
+      if (window.location.hash !== '#/login') {
+        window.location.hash = '/login'
+      }
     }
+
     return Promise.reject(error)
   }
 )
