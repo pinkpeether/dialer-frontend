@@ -10,6 +10,7 @@ import CampaignDetail from './pages/CampaignDetail'
 import Contacts       from './pages/Contacts'
 import AgentDashboard from './pages/AgentDashboard'
 import Reports        from './pages/Reports'
+import SipSettings    from './pages/SipSettings'
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/contacts"        element={<Contacts />}       />
           <Route path="/agents"          element={<Agents />}         />
           <Route path="/reports"         element={<Reports />}        />
+          <Route path="/sip-settings"    element={<SipSettings />}    />
         </Route>
       </Routes>
     </HashRouter>

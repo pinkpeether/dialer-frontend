@@ -31,13 +31,13 @@ export const dialerAPI = {
     return res.data.data
   },
 
-  sendDTMF: async (twilioCallSid: string, digits: string) => {
-    const res = await api.post('/dialer/call/dtmf', { twilioCallSid, digits })
+  sendDTMF: async (callSid: string, digits: string) => {
+    const res = await api.post('/dialer/call/dtmf', { twilioCallSid: callSid, digits })
     return res.data
   },
 
-  hangupCall: async (twilioCallSid: string) => {
-    const res = await api.post('/dialer/call/hangup', { twilioCallSid })
+  hangupCall: async (callSid: string) => {
+    const res = await api.post('/dialer/call/hangup', { twilioCallSid: callSid })
     return res.data
   },
 }

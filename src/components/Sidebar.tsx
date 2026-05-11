@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
-  BarChart3, Headset,
+  BarChart3, Headset, Settings2,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
@@ -17,6 +17,7 @@ const NAV = [
   { to: '/contacts',        icon: BookUser,        label: 'Contacts'        },
   { to: '/agents',          icon: Users,           label: 'Agents'          },
   { to: '/reports',         icon: BarChart3,       label: 'Reports'         },
+  { to: '/sip-settings',    icon: Settings2,       label: 'SIP Settings'    },
 ]
 
 export default function Sidebar() {
@@ -24,14 +25,10 @@ export default function Sidebar() {
   const navigate = useNavigate()
 
   const handleLogout = () => {
-  // Fire backend logout in background so UI does not wait.
-  void authAPI.logout().catch(() => {
-    // Ignore logout API failure because local logout should always work.
-  })
-
-  logout()
-  navigate('/login', { replace: true })
-}
+    void authAPI.logout().catch(() => undefined)
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <aside style={{
@@ -49,8 +46,6 @@ export default function Sidebar() {
       zIndex: 30,
       boxShadow: 'var(--shadow-md)',
     }}>
-
-      {/* === Brand: real PTDT logo + wordmark === */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '4px 6px',
@@ -88,7 +83,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* === Slogan strip === */}
       <div style={{
         padding: '8px 10px',
         marginBottom: 18,
@@ -108,7 +102,6 @@ export default function Sidebar() {
         Not the Cult!
       </div>
 
-      {/* === Nav === */}
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflow: 'auto' }}>
         <div className="mono" style={{
           fontSize: 9.5, color: 'var(--muted)',
@@ -166,7 +159,6 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* === Theme Toggle === */}
       <div style={{
         display: 'flex', alignItems: 'center',
         justifyContent: 'space-between',
@@ -184,7 +176,6 @@ export default function Sidebar() {
         <ThemeToggle />
       </div>
 
-      {/* === User card + Logout === */}
       <div style={{ paddingTop: 6 }}>
         <div className="glass" style={{
           display: 'flex', alignItems: 'center', gap: 10,
@@ -248,4 +239,4 @@ export default function Sidebar() {
       </div>
     </aside>
   )
-  };
+}

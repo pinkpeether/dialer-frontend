@@ -1,0 +1,245 @@
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { PhoneCall, Save, Trash2, Wifi, WifiOff, ShieldCheck, Info } from 'lucide-react'
+import SipStatusBadge from '../components/SipStatusBadge'
+import { useSipStore } from '../store/sip.store'
+import type { SipAccountConfig, SipTransport } from '../types/sip'
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '12px 14px',
+  background: 'var(--bg-glass-hi)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-md)',
+  color: 'var(--text)',
+  fontSize: 13,
+  outline: 'none',
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 10.5,
+  fontWeight: 800,
+  color: 'var(--text-3)',
+  textTransform: 'uppercase',
+  letterSpacing: 1.1,
+  marginBottom: 7,
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label>
+      <span style={labelStyle}>{label}</span>
+      {children}
+    </label>
+  )
+}
+
+export default function SipSettings() {
+  const config = useSipStore(s => s.config)
+  const status = useSipStore(s => s.status)
+  const error = useSipStore(s => s.error)
+  const saveConfig = useSipStore(s => s.saveConfig)
+  const clearConfig = useSipStore(s => s.clearConfig)
+  const register = useSipStore(s => s.register)
+  const unregister = useSipStore(s => s.unregister)
+
+  const [form, setForm] = useState<SipAccountConfig>(config)
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState('')
+
+  const update = <K extends keyof SipAccountConfig>(key: K, value: SipAccountConfig[K]) => {
+    setForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleSave = () => {
+    saveConfig(form)
+    setNotice('✓ SIP account configuration saved locally')
+  }
+
+  const handleRegister = async () => {
+    setBusy(true)
+    setNotice('')
+    try {
+      saveConfig(form)
+      await register()
+      setNotice('✓ SIP account registered successfully')
+    } catch {
+      setNotice('')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleUnregister = async () => {
+    setBusy(true)
+    try {
+      await unregister()
+      setNotice('SIP account unregistered')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div style={{ padding: '32px 36px', maxWidth: 1320, margin: '0 auto' }}>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
+        <div className="eyebrow pink" style={{ marginBottom: 14 }}>
+          <PhoneCall size={11}/> Universal SIP Provider Mode
+        </div>
+        <h1 style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 'clamp(28px, 3.2vw, 42px)',
+          fontWeight: 900,
+          lineHeight: 1.05,
+          color: 'var(--text)',
+          letterSpacing: '-0.04em',
+          marginBottom: 10,
+        }}>
+          SIP Account <span className="gradient-brand-text">Configuration</span>
+        </h1>
+        <p style={{ fontSize: 14.5, color: 'var(--text-3)', lineHeight: 1.7, maxWidth: 860 }}>
+          Configure any compatible SIP provider. PTDT Dialer will use this account for softphone calls instead of a hardcoded telecom API.
+          For browser/Electron calling, your provider must support SIP over WebSocket, normally a <strong>WSS</strong> server URL.
+        </p>
+      </motion.div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 20 }}>
+        <motion.form
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass"
+          onSubmit={e => { e.preventDefault(); handleSave() }}
+          style={{ padding: 24 }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginBottom: 22 }}>
+            <div>
+              <h2 className="display" style={{ color: 'var(--text)', fontSize: 19, fontWeight: 900, marginBottom: 5 }}>
+                Provider Credentials
+              </h2>
+              <p style={{ color: 'var(--text-3)', fontSize: 12.5 }}>
+                Works with Telnyx, VoIP.ms, FreePBX, Asterisk, 3CX, and SIP-compatible providers that expose WSS.
+              </p>
+            </div>
+            <SipStatusBadge status={status}/>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+            <Field label="Enable SIP Mode">
+              <select
+                value={form.enabled ? 'yes' : 'no'}
+                onChange={e => update('enabled', e.target.value === 'yes')}
+                style={inputStyle}
+              >
+                <option value="yes">Enabled — use SIP for manual calls</option>
+                <option value="no">Disabled — keep legacy provider fallback</option>
+              </select>
+            </Field>
+
+            <Field label="Transport">
+              <select
+                value={form.transport}
+                onChange={e => update('transport', e.target.value as SipTransport)}
+                style={inputStyle}
+              >
+                <option value="WSS">WSS — recommended for Electron/WebRTC</option>
+                <option value="WS">WS</option>
+                <option value="TLS">TLS — native SIP later</option>
+                <option value="TCP">TCP — native SIP later</option>
+                <option value="UDP">UDP — native SIP later</option>
+              </select>
+            </Field>
+
+            <Field label="SIP Username">
+              <input value={form.username} onChange={e => update('username', e.target.value)} placeholder="1001" style={inputStyle}/>
+            </Field>
+
+            <Field label="SIP Password">
+              <input value={form.password} onChange={e => update('password', e.target.value)} placeholder="••••••••" type="password" style={inputStyle}/>
+            </Field>
+
+            <Field label="SIP Domain / Host">
+              <input value={form.domain} onChange={e => update('domain', e.target.value)} placeholder="sip.provider.com" style={inputStyle}/>
+            </Field>
+
+            <Field label="SIP Port">
+              <input value={form.port || ''} onChange={e => update('port', e.target.value)} placeholder="5060 / 5061 / provider-specific" style={inputStyle}/>
+            </Field>
+
+            <Field label="SIP WebSocket Server">
+              <input value={form.webSocketServer} onChange={e => update('webSocketServer', e.target.value)} placeholder="wss://sip.provider.com:7443" style={inputStyle}/>
+            </Field>
+
+            <Field label="Outbound Proxy">
+              <input value={form.outboundProxy || ''} onChange={e => update('outboundProxy', e.target.value)} placeholder="proxy.provider.com" style={inputStyle}/>
+            </Field>
+
+            <Field label="Display Name">
+              <input value={form.displayName || ''} onChange={e => update('displayName', e.target.value)} placeholder="John Doe" style={inputStyle}/>
+            </Field>
+
+            <Field label="Caller ID">
+              <input value={form.callerId || ''} onChange={e => update('callerId', e.target.value)} placeholder="+15551234567" style={inputStyle}/>
+            </Field>
+
+            <div style={{ gridColumn: '1 / -1' }}>
+              <Field label="STUN Server">
+                <input value={form.stunServer || ''} onChange={e => update('stunServer', e.target.value)} placeholder="stun.l.google.com:19302" style={inputStyle}/>
+              </Field>
+            </div>
+          </div>
+
+          {error && (
+            <div style={{ marginTop: 16, padding: 12, borderRadius: 12, background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.35)', color: 'var(--danger)', fontSize: 13 }}>
+              {error}
+            </div>
+          )}
+
+          {notice && (
+            <div style={{ marginTop: 16, padding: 12, borderRadius: 12, background: 'rgba(0,167,71,0.10)', border: '1px solid rgba(0,167,71,0.35)', color: 'var(--green-2)', fontSize: 13 }}>
+              {notice}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 22 }}>
+            <button type="submit" className="btn-brand" style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Save size={14}/> Save SIP Account
+            </button>
+            <button type="button" onClick={handleRegister} disabled={busy} style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--green-2)', background: 'rgba(0,167,71,0.10)', color: 'var(--green-2)', fontWeight: 800 }}>
+              <Wifi size={14}/> Register
+            </button>
+            <button type="button" onClick={handleUnregister} disabled={busy} style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-3)', fontWeight: 800 }}>
+              <WifiOff size={14}/> Unregister
+            </button>
+            <button type="button" onClick={() => { clearConfig(); setForm({ ...form, enabled: false, username: '', password: '', domain: '', webSocketServer: '' }) }} style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.10)', color: 'var(--danger)', fontWeight: 800 }}>
+              <Trash2 size={14}/> Clear
+            </button>
+          </div>
+        </motion.form>
+
+        <motion.aside initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass" style={{ padding: 22, height: 'fit-content' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <ShieldCheck size={18} color="var(--green-2)"/>
+            <h3 className="display" style={{ color: 'var(--text)', fontSize: 16, fontWeight: 900 }}>Universal Dialer Mode</h3>
+          </div>
+          <p style={{ color: 'var(--text-3)', fontSize: 12.5, lineHeight: 1.7, marginBottom: 14 }}>
+            PTDT Dialer does not need to own telecom service credentials. Users can bring their own SIP provider or PBX account.
+          </p>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {[
+              'Requires provider support for SIP over WebSocket/WSS.',
+              'Credentials are stored locally in this app for now.',
+              'Twilio API mode remains as legacy fallback until SIP is fully validated.',
+              'Native UDP/TCP/TLS SIP can be added later with PJSIP/PJSUA2.',
+            ].map(item => (
+              <div key={item} style={{ display: 'flex', gap: 8, color: 'var(--text-3)', fontSize: 12.5, lineHeight: 1.5 }}>
+                <Info size={14} color="var(--pink)" style={{ flexShrink: 0, marginTop: 2 }}/>
+                {item}
+              </div>
+            ))}
+          </div>
+        </motion.aside>
+      </div>
+    </div>
+  )
+}

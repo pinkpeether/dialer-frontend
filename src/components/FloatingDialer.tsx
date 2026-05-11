@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { dialerAPI } from '../api/dialer.api'
 import { contactsAPI } from '../api/contacts.api'
+import { useSipStore } from '../store/sip.store'
 
 type WidgetState = 'collapsed' | 'dialpad' | 'calling' | 'active'
 type ActiveTab = 'controls' | 'dtmf' | 'history'
@@ -287,6 +288,14 @@ export default function FloatingDialer() {
   const [suggestions, setSugg] = useState(false)
   const [ripple, setRipple] = useState(false)
 
+  const sipConfig = useSipStore(s => s.config)
+  const sipStatus = useSipStore(s => s.status)
+  const sipCall = useSipStore(s => s.call)
+  const sipHangup = useSipStore(s => s.hangup)
+  const sipSendDTMF = useSipStore(s => s.sendDTMF)
+  const sipModeEnabled = Boolean(sipConfig.enabled)
+  const sipReady = sipModeEnabled && sipStatus === 'registered'
+
   const [pos, setPos] = useState({ x: 0, y: 0 })
   const dragRef = useRef<{
     startX: number; startY: number; origX: number; origY: number
@@ -404,15 +413,25 @@ export default function FloatingDialer() {
     if (cleaned.length < 5) { setError('Enter a valid number'); return }
     setError(null); setLoading(true); setState('calling')
     try {
-      const res = await dialerAPI.makeAdhocCall(cleaned, contactName || undefined)
-      setCallSid(res?.callSid || null)
+      if (sipModeEnabled) {
+        if (!sipReady) {
+          throw new Error('SIP mode is enabled but not registered. Open SIP Settings and register first.')
+        }
+        await sipCall(cleaned)
+        setCallSid(`sip:${Date.now()}`)
+      } else {
+        const res = await dialerAPI.makeAdhocCall(cleaned, contactName || undefined)
+        setCallSid(res?.callSid || null)
+      }
       setState('active'); setTab('controls'); setElapsed(0)
       callStart.current = Date.now()
       timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
       triggerRipple()
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { message?: string } } })
-        ?.response?.data?.message || 'Call failed'
+      const msg = e instanceof Error
+        ? e.message
+        : (e as { response?: { data?: { message?: string } } })
+          ?.response?.data?.message || 'Call failed'
       setError(msg); setState('dialpad')
     } finally { setLoading(false) }
   }
@@ -420,7 +439,12 @@ export default function FloatingDialer() {
   const handleHangup = useCallback(async () => {
     const dur = Math.round((Date.now() - callStart.current) / 1000)
     stopTimer()
-    if (callSid) { try { await dialerAPI.hangupCall(callSid) } catch { } }
+    if (callSid) {
+      try {
+        if (callSid.startsWith('sip:')) await sipHangup()
+        else await dialerAPI.hangupCall(callSid)
+      } catch { }
+    }
     const entry: RecentCall = {
       phone: number, name: contactName || undefined,
       at: Date.now(), duration: dur,
@@ -429,11 +453,16 @@ export default function FloatingDialer() {
     const updated = [entry, ...recent]
     setRecent(updated); saveRecent(updated)
     setCallSid(null); setElapsed(0); setMuted(false); setState('dialpad')
-  }, [callSid, number, contactName, recent, stopTimer])
+  }, [callSid, number, contactName, recent, stopTimer, sipHangup])
 
   const handleDTMF = async (digit: string) => {
     setDtmfBuf(d => d + digit)
-    if (callSid) { try { await dialerAPI.sendDTMF(callSid, digit) } catch { } }
+    if (callSid) {
+      try {
+        if (callSid.startsWith('sip:')) await sipSendDTMF(digit)
+        else await dialerAPI.sendDTMF(callSid, digit)
+      } catch { }
+    }
   }
 
   const handleClose = useCallback(() => {

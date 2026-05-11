@@ -8,6 +8,7 @@ import { dialerAPI }    from '../api/dialer.api'
 import { campaignsAPI } from '../api/campaigns.api'
 import { contactsAPI }  from '../api/contacts.api'
 import { useAuthStore } from '../store/auth.store'
+import { useSipStore } from '../store/sip.store'
 
 
 const FALLBACK_DIALER_CAMPAIGNS: Record<string, unknown>[] = [
@@ -42,6 +43,12 @@ export default function Dialer() {
   const [loading,      setLoading]      = useState(false)
   const [message,      setMessage]      = useState('')
   const [search,       setSearch]       = useState('')
+  const sipConfig = useSipStore(s => s.config)
+  const sipStatus = useSipStore(s => s.status)
+  const sipCall = useSipStore(s => s.call)
+  const sipHangup = useSipStore(s => s.hangup)
+  const sipModeEnabled = Boolean(sipConfig.enabled)
+  const sipReady = sipModeEnabled && sipStatus === 'registered'
   void user
 
   const campaignOptions = campaigns.length > 0 ? campaigns : FALLBACK_DIALER_CAMPAIGNS
@@ -96,19 +103,30 @@ export default function Dialer() {
     if (!selectedCamp) return
     setLoading(true)
     try {
-      const result = await dialerAPI.makeManualCall(contact.id as number, selectedCamp)
-      setActiveCall({ ...contact, callSid: result.callRecord.twilioCallSid })
+      if (sipModeEnabled) {
+        if (!sipReady) throw new Error('SIP mode is enabled but not registered')
+        await sipCall(String(contact.phone))
+        setActiveCall({ ...contact, callSid: `sip:${contact.id}` })
+      } else {
+        const result = await dialerAPI.makeManualCall(contact.id as number, selectedCamp)
+        setActiveCall({ ...contact, callSid: result.callRecord.twilioCallSid })
+      }
       setMessage(`📞 Calling ${contact.phone}…`)
-    } catch {
+    } catch (err) {
       setActiveCall({ ...contact, callSid: `preview-${contact.id}` })
-      setMessage(`📞 Calling ${contact.phone}…`)
+      const errorMessage = err instanceof Error ? err.message : `📞 Calling ${contact.phone}…`
+      setMessage(errorMessage)
     }
     finally { setLoading(false) }
   }
 
   const handleHangup = async () => {
     if (!activeCall?.callSid) return
-    try { await dialerAPI.hangupCall(activeCall.callSid as string) } catch { /* preview fallback */ }
+    try {
+      const callSid = activeCall.callSid as string
+      if (callSid.startsWith('sip:')) await sipHangup()
+      else await dialerAPI.hangupCall(callSid)
+    } catch { /* preview fallback */ }
     setActiveCall(null); setElapsed(0)
     setMessage('📵 Call ended')
   }
