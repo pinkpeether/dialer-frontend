@@ -13,14 +13,16 @@
     "electron:build": "npm run build && electron-builder"
   },
   "build": {
-    "appId": "com.jddialer.app",
-    "productName": "JD Dialer",
+    "appId": "com.ptdt.dialer",
+    "productName": "PTDT Dialer",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "public/icon.png",
+      "package.json"
     ],
     "mac": {
       "target": "dmg",
@@ -28,6 +30,10 @@
     },
     "win": {
       "target": "nsis",
+      "icon": "public/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
       "icon": "public/icon.png"
     }
   },

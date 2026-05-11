@@ -10,11 +10,11 @@ function createWindow() {
       contextIsolation: true,
     },
     icon: path.join(__dirname, '../public/icon.png'),
-    title: 'JD Dialer'
+    title: 'PTDT Dialer',
   })
 
   const isDev = process.env.NODE_ENV === 'development'
-  
+
   if (isDev) {
     win.loadURL('http://localhost:5173')
     win.webContents.openDevTools()

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout         from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login          from './pages/Login'
@@ -13,7 +13,7 @@ import Reports        from './pages/Reports'
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -33,6 +33,6 @@ export default function App() {
           <Route path="/reports"         element={<Reports />}        />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
