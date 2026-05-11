@@ -1,7 +1,15 @@
 import axios from 'axios'
 
+const apiBaseURL =
+  import.meta.env.VITE_API_URL ||
+  (
+    import.meta.env.PROD
+      ? 'https://dialer-backend-production-2a23.up.railway.app/api'
+      : 'http://localhost:3001/api'
+  )
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: apiBaseURL,
   timeout: 15000,
 })
 
