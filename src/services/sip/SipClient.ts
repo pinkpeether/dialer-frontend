@@ -40,24 +40,25 @@ type SipHandlers = {
 
 // ---------------------------------------------------------------------------
 // Normalise a STUN server string into a valid RTCIceServer object.
-// RTCPeerConnection requires the URL in the form "stun:host" (no port) OR
-// "stun:host:port". The colon-separated port is fine in the URL string but
-// the browser rejects a bare "host:port" without the "stun:" scheme prefix,
-// and also rejects scheme + host:port when the port is duplicated.
-// We always normalise to: stun:<host>:<port> or stun:<host>
+// Handles: missing scheme, trailing slashes, extra whitespace.
+// Valid output format: "stun:host" or "stun:host:port"
 // ---------------------------------------------------------------------------
 function buildIceServers(stunServer?: string): RTCIceServer[] {
   if (!stunServer || stunServer.trim() === '') {
     return [{ urls: 'stun:stun.l.google.com:19302' }]
   }
 
-  // Strip any existing scheme so we can rebuild cleanly
-  const stripped = stunServer.replace(/^stun:/i, '').trim()
+  // Strip scheme, trailing slashes, and whitespace
+  const stripped = stunServer
+    .replace(/^stun:/i, '')
+    .replace(/\/+$/, '')
+    .trim()
 
-  // stripped is now either "host" or "host:port"
-  const urls = `stun:${stripped}`
+  if (!stripped) {
+    return [{ urls: 'stun:stun.l.google.com:19302' }]
+  }
 
-  return [{ urls }]
+  return [{ urls: `stun:${stripped}` }]
 }
 
 class SipClient {
@@ -309,7 +310,6 @@ class SipClient {
     const attachTracks = (event?: RTCTrackEvent) => {
       const stream = new MediaStream()
 
-      // Prefer tracks provided by the WebRTC ontrack event.
       event?.streams?.forEach((eventStream) => {
         eventStream.getAudioTracks().forEach((track) => stream.addTrack(track))
       })
@@ -318,7 +318,6 @@ class SipClient {
         stream.addTrack(event.track)
       }
 
-      // Fallback for cases where Electron/SIP.js attaches receivers after Established.
       pc.getReceivers().forEach(receiver => {
         if (receiver.track?.kind === 'audio' && !stream.getTracks().includes(receiver.track)) {
           stream.addTrack(receiver.track)
@@ -340,8 +339,6 @@ class SipClient {
 
     pc.addEventListener('track', attachTracks)
 
-    // Run a few delayed attempts because SIP.js/Electron can expose receivers slightly later
-    // than the Established state transition.
     attachTracks()
     window.setTimeout(() => attachTracks(), 250)
     window.setTimeout(() => attachTracks(), 750)
@@ -380,6 +377,5 @@ class SipClient {
     await audioWithSink.setSinkId(sinkId)
   }
 }
-
 
 export const sipClient = new SipClient()
