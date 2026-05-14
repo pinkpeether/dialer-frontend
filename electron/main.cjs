@@ -1,15 +1,18 @@
 const { app, BrowserWindow } = require('electron')
 const path = require('path')
 
+// ---------------------------------------------------------------------------
+// DEV: Local FreePBX host — trust ALL ports on this IP.
+// Asterisk's self-signed cert causes code:1006 WebSocket drops during
+// outgoing call ICE/re-INVITE if only port 8089 is trusted.
+// ---------------------------------------------------------------------------
 const DEV_FREEPBX_HOST = '192.168.0.111'
 
 app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
   try {
     const parsed = new URL(url)
 
-    const isLocalFreePBX =
-      parsed.hostname === DEV_FREEPBX_HOST &&
-      parsed.port === '8089'
+    const isLocalFreePBX = parsed.hostname === DEV_FREEPBX_HOST
 
     if (isLocalFreePBX) {
       console.log('[DEV] Trusting local FreePBX certificate:', url, error)
@@ -18,7 +21,7 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
       return
     }
   } catch {
-    // fall through
+    // fall through to default rejection
   }
 
   callback(false)
