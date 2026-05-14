@@ -38,6 +38,28 @@ type SipHandlers = {
   onCallEnded?: () => void
 }
 
+// ---------------------------------------------------------------------------
+// Normalise a STUN server string into a valid RTCIceServer object.
+// RTCPeerConnection requires the URL in the form "stun:host" (no port) OR
+// "stun:host:port". The colon-separated port is fine in the URL string but
+// the browser rejects a bare "host:port" without the "stun:" scheme prefix,
+// and also rejects scheme + host:port when the port is duplicated.
+// We always normalise to: stun:<host>:<port> or stun:<host>
+// ---------------------------------------------------------------------------
+function buildIceServers(stunServer?: string): RTCIceServer[] {
+  if (!stunServer || stunServer.trim() === '') {
+    return [{ urls: 'stun:stun.l.google.com:19302' }]
+  }
+
+  // Strip any existing scheme so we can rebuild cleanly
+  const stripped = stunServer.replace(/^stun:/i, '').trim()
+
+  // stripped is now either "host" or "host:port"
+  const urls = `stun:${stripped}`
+
+  return [{ urls }]
+}
+
 class SipClient {
   private sip: SipModule | null = null
   private userAgent: unknown = null
@@ -73,9 +95,7 @@ class SipClient {
       const uri = this.sip.UserAgent.makeURI(`sip:${config.username}@${config.domain}`)
       if (!uri) throw new Error('Invalid SIP URI')
 
-      const iceServers = config.stunServer
-        ? [{ urls: config.stunServer.startsWith('stun:') ? config.stunServer : `stun:${config.stunServer}` }]
-        : [{ urls: 'stun:stun.l.google.com:19302' }]
+      const iceServers = buildIceServers(config.stunServer)
 
       const userAgent = new this.sip.UserAgent({
         uri,
