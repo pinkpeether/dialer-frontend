@@ -45,6 +45,8 @@ class SipClient {
   private currentSession: SipSession | null = null
   private config: SipAccountConfig | null = null
   private handlers: SipHandlers = {}
+  private audioOutputDeviceId = 'default'
+  private audioInputDeviceId = 'default'
 
   isRegistered() {
     return Boolean(this.userAgent && this.registerer)
@@ -153,7 +155,7 @@ class SipClient {
 
     const inviter = new this.sip.Inviter(this.userAgent as never, targetUri, {
       sessionDescriptionHandlerOptions: {
-        constraints: { audio: true, video: false },
+        constraints: { audio: this.getAudioConstraints(), video: false },
       },
       extraHeaders: this.config.callerId
         ? [`P-Preferred-Identity: <sip:${this.config.callerId}@${this.config.domain}>`]
@@ -168,7 +170,11 @@ class SipClient {
 
   async answer() {
     if (!this.currentSession?.accept) return
-    await this.currentSession.accept()
+    await this.currentSession.accept({
+      sessionDescriptionHandlerOptions: {
+        constraints: { audio: this.getAudioConstraints(), video: false },
+      },
+    })
   }
 
   async reject() {
@@ -205,6 +211,53 @@ class SipClient {
     })
   }
 
+  async setAudioOutputDevice(deviceId: string) {
+    this.audioOutputDeviceId = deviceId || 'default'
+
+    const audio = document.getElementById('ptdt-sip-remote-audio') as HTMLAudioElement | null
+    if (!audio) return
+
+    await this.applyAudioOutputDevice(audio)
+  }
+
+  async setAudioInputDevice(deviceId: string) {
+    this.audioInputDeviceId = deviceId || 'default'
+
+    const pc = this.currentSession?.sessionDescriptionHandler?.peerConnection
+    if (!pc) return
+
+    const audioSender = pc.getSenders().find(sender => sender.track?.kind === 'audio')
+    if (!audioSender) return
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: this.getAudioConstraints(),
+      video: false,
+    })
+
+    const [newTrack] = stream.getAudioTracks()
+    if (!newTrack) {
+      stream.getTracks().forEach(track => track.stop())
+      throw new Error('Selected microphone did not provide an audio track.')
+    }
+
+    const oldTrack = audioSender.track
+    await audioSender.replaceTrack(newTrack)
+    oldTrack?.stop()
+  }
+
+  private getAudioConstraints(): boolean | MediaTrackConstraints {
+    if (!this.audioInputDeviceId || this.audioInputDeviceId === 'default') {
+      return true
+    }
+
+    return {
+      deviceId: { exact: this.audioInputDeviceId },
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    }
+  }
+
   private attachSessionListeners(session: SipSession) {
     session.stateChange?.addListener((state: unknown) => {
       const stateName = String(state)
@@ -231,24 +284,82 @@ class SipClient {
     const pc = session.sessionDescriptionHandler?.peerConnection
     if (!pc) return
 
+    const audio = this.ensureRemoteAudioElement()
+
+    const attachTracks = (event?: RTCTrackEvent) => {
+      const stream = new MediaStream()
+
+      // Prefer tracks provided by the WebRTC ontrack event.
+      event?.streams?.forEach((eventStream) => {
+        eventStream.getAudioTracks().forEach((track) => stream.addTrack(track))
+      })
+
+      if (event?.track?.kind === 'audio' && !stream.getTracks().includes(event.track)) {
+        stream.addTrack(event.track)
+      }
+
+      // Fallback for cases where Electron/SIP.js attaches receivers after Established.
+      pc.getReceivers().forEach(receiver => {
+        if (receiver.track?.kind === 'audio' && !stream.getTracks().includes(receiver.track)) {
+          stream.addTrack(receiver.track)
+        }
+      })
+
+      if (stream.getAudioTracks().length === 0) return
+
+      audio.srcObject = stream
+      audio.muted = false
+      audio.volume = 1
+
+      void this.applyAudioOutputDevice(audio).catch((err) => {
+        const message = err instanceof Error ? err.message : 'Audio output switch failed'
+        this.handlers.onError?.(message)
+      })
+      void audio.play().catch(() => undefined)
+    }
+
+    pc.addEventListener('track', attachTracks)
+
+    // Run a few delayed attempts because SIP.js/Electron can expose receivers slightly later
+    // than the Established state transition.
+    attachTracks()
+    window.setTimeout(() => attachTracks(), 250)
+    window.setTimeout(() => attachTracks(), 750)
+    window.setTimeout(() => attachTracks(), 1500)
+  }
+
+  private ensureRemoteAudioElement() {
     let audio = document.getElementById('ptdt-sip-remote-audio') as HTMLAudioElement | null
     if (!audio) {
       audio = document.createElement('audio')
       audio.id = 'ptdt-sip-remote-audio'
       audio.autoplay = true
+      audio.controls = false
+      audio.muted = false
+      audio.volume = 1
       ;(audio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true
       audio.style.display = 'none'
       document.body.appendChild(audio)
     }
+    return audio
+  }
 
-    const stream = new MediaStream()
-    pc.getReceivers().forEach(receiver => {
-      if (receiver.track?.kind === 'audio') stream.addTrack(receiver.track)
-    })
+  private async applyAudioOutputDevice(audio: HTMLAudioElement) {
+    const audioWithSink = audio as HTMLAudioElement & {
+      setSinkId?: (sinkId: string) => Promise<void>
+    }
 
-    audio.srcObject = stream
-    void audio.play().catch(() => undefined)
+    if (typeof audioWithSink.setSinkId !== 'function') {
+      if (this.audioOutputDeviceId !== 'default') {
+        throw new Error('Speaker selection is not supported in this Electron/Chromium runtime.')
+      }
+      return
+    }
+
+    const sinkId = this.audioOutputDeviceId === 'default' ? '' : this.audioOutputDeviceId
+    await audioWithSink.setSinkId(sinkId)
   }
 }
+
 
 export const sipClient = new SipClient()
