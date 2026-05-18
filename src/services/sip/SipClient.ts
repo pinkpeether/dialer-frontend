@@ -9,8 +9,10 @@ type SipSession = {
   bye?: (...args: unknown[]) => Promise<unknown>
   cancel?: (...args: unknown[]) => Promise<unknown>
   reject?: (...args: unknown[]) => Promise<unknown>
-  accept?: (...args: unknown[]) => Promise<unknown>
-  invite?: (...args: unknown[]) => Promise<unknown>
+  accept?: (options?: {
+    sessionDescriptionHandlerOptions?: SipMediaOptions
+  }) => Promise<unknown>
+  invite?: (options?: unknown) => Promise<unknown>
   dtmf?: (digits: string) => Promise<unknown> | unknown
   sessionDescriptionHandler?: {
     peerConnection?: RTCPeerConnection
@@ -27,7 +29,7 @@ type SipRegisterer = {
 }
 
 type StoppableUserAgent = {
-  stop?: () => Promise<void>
+  stop?: () => Promise<unknown>
 }
 
 type SipHandlers = {
@@ -38,27 +40,19 @@ type SipHandlers = {
   onCallEnded?: () => void
 }
 
-// ---------------------------------------------------------------------------
-// Normalise a STUN server string into a valid RTCIceServer object.
-// Handles: missing scheme, trailing slashes, extra whitespace.
-// Valid output format: "stun:host" or "stun:host:port"
-// ---------------------------------------------------------------------------
-function buildIceServers(stunServer?: string): RTCIceServer[] {
-  if (!stunServer || stunServer.trim() === '') {
-    return [{ urls: 'stun:stun.l.google.com:19302' }]
+type SipMediaOptions = {
+  constraints: {
+    audio: boolean | MediaTrackConstraints
+    video: boolean
   }
+  peerConnectionConfiguration: RTCConfiguration
+}
 
-  // Strip scheme, trailing slashes, and whitespace
-  const stripped = stunServer
-    .replace(/^stun:/i, '')
-    .replace(/\/+$/, '')
-    .trim()
-
-  if (!stripped) {
-    return [{ urls: 'stun:stun.l.google.com:19302' }]
+declare global {
+  interface Window {
+    __ptdtSipPeerConnection?: RTCPeerConnection
+    __ptdtSipSession?: SipSession
   }
-
-  return [{ urls: `stun:${stripped}` }]
 }
 
 class SipClient {
@@ -70,6 +64,9 @@ class SipClient {
   private handlers: SipHandlers = {}
   private audioOutputDeviceId = 'default'
   private audioInputDeviceId = 'default'
+  private iceServers: RTCIceServer[] = []
+  private localAudioStream: MediaStream | null = null
+  private remoteTrackListener: ((event: RTCTrackEvent) => void) | null = null
 
   isRegistered() {
     return Boolean(this.userAgent && this.registerer)
@@ -96,7 +93,12 @@ class SipClient {
       const uri = this.sip.UserAgent.makeURI(`sip:${config.username}@${config.domain}`)
       if (!uri) throw new Error('Invalid SIP URI')
 
-      const iceServers = buildIceServers(config.stunServer)
+      const stunServer = config.stunServer?.trim()
+      this.iceServers = stunServer
+        ? [{ urls: stunServer.startsWith('stun:') || stunServer.startsWith('turn:') ? stunServer : `stun:${stunServer}` }]
+        : []
+
+      console.info('[SIP] ICE servers:', this.iceServers)
 
       const userAgent = new this.sip.UserAgent({
         uri,
@@ -108,8 +110,12 @@ class SipClient {
         },
         sessionDescriptionHandlerFactoryOptions: {
           peerConnectionConfiguration: {
-            iceServers,
+            iceServers: [],
+            iceTransportPolicy: 'all',
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require'
           },
+          iceGatheringTimeout: 2000
         },
       })
 
@@ -117,6 +123,7 @@ class SipClient {
         onInvite: (invitation) => {
           const session = invitation as unknown as SipSession
           this.currentSession = session
+          this.exposeSession(session)
           this.attachSessionListeners(session)
 
           const from = session.remoteIdentity?.uri?.toString?.() || 'Unknown SIP caller'
@@ -136,6 +143,7 @@ class SipClient {
       this.userAgent = userAgent
       this.registerer = registerer
       this.handlers.onStatusChange?.('registered')
+
     } catch (err) {
       const message = err instanceof Error ? err.message : 'SIP registration failed'
       this.handlers.onStatusChange?.('registration_failed')
@@ -153,14 +161,27 @@ class SipClient {
       if (typeof userAgent?.stop === 'function') {
         await userAgent.stop()
       }
+    } catch {
+      // ignore cleanup errors
     } finally {
+      this.stopLocalAudioStream()
       this.userAgent = null
       this.registerer = null
       this.currentSession = null
+      this.iceServers = []
+      this.remoteTrackListener = null
+      window.__ptdtSipPeerConnection = undefined
+      window.__ptdtSipSession = undefined
       this.handlers.onStatusChange?.(this.config?.enabled ? 'configured' : 'idle')
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // OUTGOING CALL
+  // Key fix: mic track ko invite() ke baad seedha nahi lagana kyunki
+  // sessionDescriptionHandler us waqt ready nahi hota.
+  // Sahi jagah hai SessionState.Established — tab PC fully ready hoti hai.
+  // ---------------------------------------------------------------------------
   async call(destination: string) {
     if (!this.sip || !this.userAgent || !this.config) {
       throw new Error('SIP account is not registered')
@@ -174,28 +195,78 @@ class SipClient {
     const targetUri = this.sip.UserAgent.makeURI(`sip:${target}`)
     if (!targetUri) throw new Error('Invalid destination SIP URI')
 
-    const inviter = new this.sip.Inviter(this.userAgent as never, targetUri, {
+    // Pre-acquire mic stream before invite — ensures track is ready
+    const localStream = await this.getOrCreateLocalAudioStream(false)
+
+    const inviterOptions: Record<string, unknown> = {
       sessionDescriptionHandlerOptions: {
-        constraints: { audio: this.getAudioConstraints(), video: false },
+        constraints: {
+          audio: true,
+          video: false,
+        },
       },
-      extraHeaders: this.config.callerId
-        ? [`P-Preferred-Identity: <sip:${this.config.callerId}@${this.config.domain}>`]
-        : [],
-    }) as unknown as SipSession
+    }
+
+    if (this.config.callerId) {
+      inviterOptions.extraHeaders = [
+        `P-Preferred-Identity: <sip:${this.config.callerId}@${this.config.domain}>`,
+      ]
+    }
+
+    const inviter = new this.sip.Inviter(
+      this.userAgent as never,
+      targetUri,
+      inviterOptions,
+    ) as unknown as SipSession
 
     this.currentSession = inviter
-    this.attachSessionListeners(inviter)
+    this.exposeSession(inviter)
+
+    // Attach state listener BEFORE invite() — catches Established event
+    this.attachSessionListeners(inviter, localStream)
+
     this.handlers.onStatusChange?.('calling')
-    await inviter.invite?.()
+
+    try {
+      await inviter.invite?.(inviterOptions)
+
+      window.setTimeout(() => {
+        this.exposeSession(inviter)
+        this.logPeerConnectionState(inviter, 'outgoing-after-invite')
+      }, 500)
+    } catch (err) {
+      this.currentSession = null
+      this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
+      this.handlers.onCallEnded?.()
+      this.handlers.onError?.(err instanceof Error ? err.message : 'SIP call failed')
+      throw err
+    }
   }
 
   async answer() {
-    if (!this.currentSession?.accept) return
-    await this.currentSession.accept({
-      sessionDescriptionHandlerOptions: {
-        constraints: { audio: this.getAudioConstraints(), video: false },
-      },
-    })
+    const session = this.currentSession
+    const accept = session?.accept
+
+    if (!session || typeof accept !== 'function') return
+
+    this.exposeSession(session)
+
+    try {
+      await accept.call(session, {
+        sessionDescriptionHandlerOptions: this.createAudioMediaOptions(),
+      })
+
+      window.setTimeout(() => {
+        this.exposeSession(session)
+        this.logPeerConnectionState(session, 'incoming-after-accept')
+      }, 500)
+    } catch (err) {
+      this.currentSession = null
+      this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
+      this.handlers.onCallEnded?.()
+      this.handlers.onError?.(err instanceof Error ? err.message : 'SIP answer failed')
+      throw err
+    }
   }
 
   async reject() {
@@ -214,6 +285,10 @@ class SipClient {
     else if (session.reject) await session.reject()
 
     this.currentSession = null
+    this.stopLocalAudioStream()
+    this.remoteTrackListener = null
+    window.__ptdtSipPeerConnection = undefined
+    window.__ptdtSipSession = undefined
     this.handlers.onCallEnded?.()
     this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
   }
@@ -234,7 +309,6 @@ class SipClient {
 
   async setAudioOutputDevice(deviceId: string) {
     this.audioOutputDeviceId = deviceId || 'default'
-
     const audio = document.getElementById('ptdt-sip-remote-audio') as HTMLAudioElement | null
     if (!audio) return
 
@@ -250,26 +324,32 @@ class SipClient {
     const audioSender = pc.getSenders().find(sender => sender.track?.kind === 'audio')
     if (!audioSender) return
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: this.getAudioConstraints(),
-      video: false,
-    })
-
+    const stream = await this.getOrCreateLocalAudioStream(true)
     const [newTrack] = stream.getAudioTracks()
+
     if (!newTrack) {
-      stream.getTracks().forEach(track => track.stop())
       throw new Error('Selected microphone did not provide an audio track.')
     }
 
     const oldTrack = audioSender.track
     await audioSender.replaceTrack(newTrack)
-    oldTrack?.stop()
+    if (oldTrack && oldTrack !== newTrack) oldTrack.stop()
+  }
+
+  private createAudioMediaOptions(): SipMediaOptions {
+    return {
+      constraints: {
+        audio: this.getAudioConstraints(),
+        video: false,
+      },
+      peerConnectionConfiguration: {
+        iceServers: this.iceServers,
+      },
+    }
   }
 
   private getAudioConstraints(): boolean | MediaTrackConstraints {
-    if (!this.audioInputDeviceId || this.audioInputDeviceId === 'default') {
-      return true
-    }
+    if (!this.audioInputDeviceId || this.audioInputDeviceId === 'default') return true
 
     return {
       deviceId: { exact: this.audioInputDeviceId },
@@ -279,12 +359,66 @@ class SipClient {
     }
   }
 
-  private attachSessionListeners(session: SipSession) {
+  private async getOrCreateLocalAudioStream(forceNew = false) {
+    if (!forceNew && this.localAudioStream) {
+      const [track] = this.localAudioStream.getAudioTracks()
+      if (track && track.readyState === 'live') return this.localAudioStream
+    }
+
+    this.stopLocalAudioStream()
+
+    this.localAudioStream = await navigator.mediaDevices.getUserMedia({
+      audio: this.getAudioConstraints(),
+      video: false,
+    })
+
+    const [track] = this.localAudioStream.getAudioTracks()
+    if (!track) {
+      this.stopLocalAudioStream()
+      throw new Error('Microphone did not provide an audio track.')
+    }
+
+    track.enabled = true
+    console.info('[SIP] Local microphone track ready:', {
+      label: track.label,
+      enabled: track.enabled,
+      muted: track.muted,
+      readyState: track.readyState,
+    })
+
+    return this.localAudioStream
+  }
+
+  private stopLocalAudioStream() {
+    this.localAudioStream?.getTracks().forEach(track => track.stop())
+    this.localAudioStream = null
+  }
+
+  // ---------------------------------------------------------------------------
+  // attachSessionListeners — outgoing calls ko localStream bhi pass hoti hai
+  // taake Established state mein mic track force-inject ki ja sake.
+  // ---------------------------------------------------------------------------
+  private attachSessionListeners(session: SipSession, localStream?: MediaStream | null) {
     session.stateChange?.addListener((state: unknown) => {
       const stateName = String(state)
+      console.info('[SIP] Session state:', stateName)
+
+      this.exposeSession(session)
 
       if (stateName.includes('Established')) {
+        // Remote audio attach karo
         this.attachRemoteMedia(session)
+
+        // Outgoing call ke liye mic track force-inject karo
+        // Ye wahi jagah hai jahan PeerConnection 100% ready hoti hai
+        if (localStream) {
+          this.forceAttachMicTrack(session, localStream)
+        }
+
+        window.setTimeout(() => {
+          this.logPeerConnectionState(session, 'established')
+        }, 1000)
+
         this.handlers.onStatusChange?.('in_call')
         this.handlers.onCallStarted?.({
           id: session.id || `sip-${Date.now()}`,
@@ -295,54 +429,172 @@ class SipClient {
 
       if (stateName.includes('Terminated')) {
         this.currentSession = null
+        this.stopLocalAudioStream()
+        this.remoteTrackListener = null
+        window.__ptdtSipPeerConnection = undefined
+        window.__ptdtSipSession = undefined
         this.handlers.onCallEnded?.()
         this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
       }
     })
   }
 
+  // ---------------------------------------------------------------------------
+  // forceAttachMicTrack
+  // Outgoing call direction mein SIP.js Inviter ka PeerConnection mic track
+  // reliably attach nahi karta. Ye function Established state mein call hota
+  // hai jab PC ready hoti hai aur sender ya tou replace ya add kiya jata hai.
+  // ---------------------------------------------------------------------------
+  private forceAttachMicTrack(session: SipSession, localStream: MediaStream) {
+    const pc = session.sessionDescriptionHandler?.peerConnection
+    if (!pc) {
+      console.warn('[SIP] forceAttachMicTrack: no PeerConnection available')
+      return
+    }
+
+    const audioTrack = localStream.getAudioTracks()[0]
+    if (!audioTrack) {
+      console.warn('[SIP] forceAttachMicTrack: no audio track in localStream')
+      return
+    }
+
+    audioTrack.enabled = true
+
+    const senders = pc.getSenders()
+    const audioSender = senders.find(s => s.track?.kind === 'audio' || s.track === null)
+
+    if (audioSender) {
+      // Existing sender ko replace karo
+      audioSender.replaceTrack(audioTrack).then(() => {
+        console.info('[SIP] forceAttachMicTrack: replaceTrack done', {
+          label: audioTrack.label,
+          enabled: audioTrack.enabled,
+          readyState: audioTrack.readyState,
+        })
+      }).catch(err => {
+        console.warn('[SIP] forceAttachMicTrack: replaceTrack failed:', err)
+      })
+    } else {
+      // Koi sender nahi — naya add karo
+      try {
+        pc.addTrack(audioTrack, localStream)
+        console.info('[SIP] forceAttachMicTrack: addTrack done', {
+          label: audioTrack.label,
+          enabled: audioTrack.enabled,
+          readyState: audioTrack.readyState,
+        })
+      } catch (err) {
+        console.warn('[SIP] forceAttachMicTrack: addTrack failed:', err)
+      }
+    }
+  }
+
+  private exposeSession(session: SipSession) {
+    window.__ptdtSipSession = session
+    const pc = session.sessionDescriptionHandler?.peerConnection
+    if (!pc) return
+    window.__ptdtSipPeerConnection = pc
+  }
+
+  private logPeerConnectionState(session: SipSession, reason: string) {
+    const pc = session.sessionDescriptionHandler?.peerConnection
+    if (!pc) {
+      console.warn('[SIP] logPeerConnectionState: no PC yet for', reason)
+      return
+    }
+
+    window.__ptdtSipPeerConnection = pc
+
+    console.info('[SIP] PeerConnection state [' + reason + ']:', {
+      connectionState: pc.connectionState,
+      iceConnectionState: pc.iceConnectionState,
+      iceGatheringState: pc.iceGatheringState,
+      signalingState: pc.signalingState,
+      senders: pc.getSenders().map(sender => ({
+        kind: sender.track?.kind,
+        label: sender.track?.label,
+        enabled: sender.track?.enabled,
+        muted: sender.track?.muted,
+        readyState: sender.track?.readyState,
+      })),
+      receivers: pc.getReceivers().map(receiver => ({
+        kind: receiver.track?.kind,
+        muted: receiver.track?.muted,
+        readyState: receiver.track?.readyState,
+      })),
+    })
+  }
+
+  // ---------------------------------------------------------------------------
+  // attachRemoteMedia — incoming audio ko play karo.
+  // audio.muted = true + play() + unmute trick:
+  // Chromium autoplay policy ko bypass karta hai even if commandLine switch
+  // kisi wajah se kaam na kare. Double safety.
+  // ---------------------------------------------------------------------------
   private attachRemoteMedia(session: SipSession) {
     const pc = session.sessionDescriptionHandler?.peerConnection
     if (!pc) return
 
+    window.__ptdtSipPeerConnection = pc
+
     const audio = this.ensureRemoteAudioElement()
 
-    const attachTracks = (event?: RTCTrackEvent) => {
+    if (this.remoteTrackListener) {
+      pc.removeEventListener('track', this.remoteTrackListener as EventListener)
+    }
+
+    const applyStream = () => {
       const stream = new MediaStream()
 
-      event?.streams?.forEach((eventStream) => {
-        eventStream.getAudioTracks().forEach((track) => stream.addTrack(track))
-      })
-
-      if (event?.track?.kind === 'audio' && !stream.getTracks().includes(event.track)) {
-        stream.addTrack(event.track)
-      }
-
       pc.getReceivers().forEach(receiver => {
-        if (receiver.track?.kind === 'audio' && !stream.getTracks().includes(receiver.track)) {
+        if (receiver.track?.kind === 'audio') {
           stream.addTrack(receiver.track)
         }
       })
 
-      if (stream.getAudioTracks().length === 0) return
+      if (stream.getAudioTracks().length === 0) {
+        console.info('[SIP] attachRemoteMedia: no audio tracks yet')
+        return
+      }
+
+      console.info('[SIP] attachRemoteMedia: attaching', stream.getAudioTracks().length, 'audio track(s)')
 
       audio.srcObject = stream
-      audio.muted = false
       audio.volume = 1
+
+      // Autoplay bypass: muted se start karo, play() ke baad unmute karo.
+      // Ye trick Chromium policy ko fool karti hai even without commandLine flag.
+      audio.muted = true
+      void audio.play().then(() => {
+        audio.muted = false
+        console.info('[SIP] attachRemoteMedia: audio playing (unmuted)')
+      }).catch((err) => {
+        console.warn('[SIP] audio.play() failed:', err)
+        // Last resort: user gesture ke baad try karo
+        const resume = () => {
+          void audio.play().then(() => { audio.muted = false })
+          document.removeEventListener('click', resume)
+          document.removeEventListener('keydown', resume)
+        }
+        document.addEventListener('click', resume, { once: true })
+        document.addEventListener('keydown', resume, { once: true })
+      })
 
       void this.applyAudioOutputDevice(audio).catch((err) => {
         const message = err instanceof Error ? err.message : 'Audio output switch failed'
         this.handlers.onError?.(message)
       })
-      void audio.play().catch(() => undefined)
     }
 
-    pc.addEventListener('track', attachTracks)
+    this.remoteTrackListener = (event: RTCTrackEvent) => {
+      console.info('[SIP] track event received:', event.track?.kind)
+      applyStream()
+    }
 
-    attachTracks()
-    window.setTimeout(() => attachTracks(), 250)
-    window.setTimeout(() => attachTracks(), 750)
-    window.setTimeout(() => attachTracks(), 1500)
+    pc.addEventListener('track', this.remoteTrackListener as EventListener)
+
+    applyStream()
+    window.setTimeout(() => applyStream(), 1000)
   }
 
   private ensureRemoteAudioElement() {
@@ -358,6 +610,7 @@ class SipClient {
       audio.style.display = 'none'
       document.body.appendChild(audio)
     }
+
     return audio
   }
 
