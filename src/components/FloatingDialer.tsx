@@ -422,7 +422,6 @@ export default function FloatingDialer() {
   const {
     audioOutputs,
     audioInputs,
-    loading: audioDevicesLoading,
     error: audioDevicesError,
     refresh: refreshAudioDevices,
     requestAudioPermission,
@@ -715,13 +714,13 @@ export default function FloatingDialer() {
     playDtmfTone(k);
     appendDialerKey(k);
   };
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     setNumber((current) => {
       const next = current.slice(0, -1);
       setQuery(next);
       return next;
     });
-  };
+  }, []);
   const selectContact = (c: Contact) => {
     setNumber(c.phone);
     setName(c.name || "");
@@ -749,7 +748,7 @@ export default function FloatingDialer() {
     setState("dialpad");
   }, []);
 
-  const handleCall = async () => {
+  const handleCall = useCallback(async () => {
     const cleaned = number.replace(/\s/g, "");
     const isSipExtension = sipModeEnabled && /^[0-9]{2,8}$/.test(cleaned);
     const isPublicNumber = /^\+?[0-9]{7,16}$/.test(cleaned);
@@ -815,7 +814,18 @@ export default function FloatingDialer() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    number,
+    contactName,
+    sipModeEnabled,
+    sipReady,
+    sipCall,
+    stopTimer,
+    startRingback,
+    triggerRipple,
+    stopRingback,
+    playFailedTone,
+  ]);
 
   const handleHangup = useCallback(async () => {
     const dur = Math.round((Date.now() - callStart.current) / 1000);
@@ -854,7 +864,7 @@ export default function FloatingDialer() {
     playHangupTone,
   ]);
 
-  const handleDTMF = async (digit: string) => {
+  const handleDTMF = useCallback(async (digit: string) => {
     playDtmfTone(digit);
     setDtmfBuf((d) => d + digit);
     if (callSid) {
@@ -863,7 +873,7 @@ export default function FloatingDialer() {
         else await dialerAPI.sendDTMF(callSid, digit);
       } catch {}
     }
-  };
+  }, [playDtmfTone, callSid, sipSendDTMF]);
 
   const handleClose = useCallback(() => {
     if (state === "active" || state === "calling") handleHangup();
@@ -2186,7 +2196,6 @@ export default function FloatingDialer() {
                           <AudioDeviceSelect
                             value={sipAudioInputDeviceId}
                             devices={audioInputs}
-                            disabled={audioDevicesLoading}
                             placeholder="Select microphone input"
                             onChange={(deviceId) => {
                               void setSipAudioInputDevice(deviceId).catch(
@@ -2350,7 +2359,7 @@ export default function FloatingDialer() {
                           <AudioDeviceSelect
                             value={sipAudioOutputDeviceId}
                             devices={audioOutputs}
-                            disabled={!canSelectOutput || audioDevicesLoading}
+                            disabled={!canSelectOutput}
                             placeholder="Select speaker output"
                             onChange={(deviceId) => {
                               void setSipAudioOutputDevice(deviceId).catch(

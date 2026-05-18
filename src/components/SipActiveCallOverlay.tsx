@@ -60,7 +60,6 @@ export default function SipActiveCallOverlay() {
   const {
     audioOutputs,
     audioInputs,
-    loading: audioDevicesLoading,
     error: audioDevicesError,
     refresh: refreshAudioDevices,
     requestAudioPermission,
@@ -305,11 +304,10 @@ export default function SipActiveCallOverlay() {
         </div>
 
         <AudioDeviceSelect
-          value={sipAudioInputDeviceId}
           devices={audioInputs}
-          disabled={audioDevicesLoading}
-          placeholder="Select microphone input"
+          value={sipAudioInputDeviceId}
           onChange={handleAudioInputChange}
+          placeholder="Select microphone input"
         />
 
         <div
@@ -377,11 +375,11 @@ export default function SipActiveCallOverlay() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'start' }}>
           <AudioDeviceSelect
-            value={sipAudioOutputDeviceId}
             devices={audioOutputs}
-            disabled={audioDevicesLoading || !canSelectOutput}
-            placeholder="Select speaker output"
+            value={sipAudioOutputDeviceId}
             onChange={handleAudioOutputChange}
+            disabled={!canSelectOutput}
+            placeholder="Select speaker output"
           />
 
           <button

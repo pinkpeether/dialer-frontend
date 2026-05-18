@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Phone, PhoneOff, BellRing, UserRound, Radio, ShieldCheck } from 'lucide-react'
 import { useSipStore } from '../store/sip.store'
@@ -129,6 +129,28 @@ export default function IncomingCallModal() {
     }
   }, [incomingCall?.id])
 
+  const handleAnswer = useCallback(async () => {
+    if (!incomingCall || busy) return
+    try {
+      setBusy('answer')
+      ringerRef.current?.stop()
+      await answer()
+    } finally {
+      setBusy(null)
+    }
+  }, [incomingCall, busy, answer])
+
+  const handleReject = useCallback(async () => {
+    if (!incomingCall || busy) return
+    try {
+      setBusy('reject')
+      ringerRef.current?.stop()
+      await reject()
+    } finally {
+      setBusy(null)
+    }
+  }, [incomingCall, busy, reject])
+
   useEffect(() => {
     if (!incomingCall) return
 
@@ -145,29 +167,7 @@ export default function IncomingCallModal() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [incomingCall])
-
-  const handleAnswer = async () => {
-    if (!incomingCall || busy) return
-    try {
-      setBusy('answer')
-      ringerRef.current?.stop()
-      await answer()
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  const handleReject = async () => {
-    if (!incomingCall || busy) return
-    try {
-      setBusy('reject')
-      ringerRef.current?.stop()
-      await reject()
-    } finally {
-      setBusy(null)
-    }
-  }
+  }, [incomingCall, handleAnswer, handleReject])
 
   return (
     <AnimatePresence>
@@ -253,7 +253,7 @@ export default function IncomingCallModal() {
                       Incoming SIP Call
                     </div>
                     <div style={{ fontSize: 13, color: brand.muted, marginTop: 4 }}>
-                      Press Enter to answer · Esc to reject
+                      Press Enter to answer Â· Esc to reject
                     </div>
                   </div>
                 </div>
