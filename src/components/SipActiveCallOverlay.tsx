@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Activity, Clock, Mic, MicOff, PhoneOff, Volume2 } from 'lucide-react'
+import { Activity, Clock, Mic, MicOff, PauseCircle, PhoneOff, PlayCircle, Volume2 } from 'lucide-react'
 import AudioDeviceSelect from './AudioDeviceSelect'
 import { useAudioDevices, useMicrophoneMeter } from '../hooks/useAudioDevices'
 import { useSipStore } from '../store/sip.store'
@@ -35,6 +35,9 @@ export default function SipActiveCallOverlay() {
   const muted = useSipStore(s => s.muted)
   const setMuted = useSipStore(s => s.setMuted)
   const hangup = useSipStore(s => s.hangup)
+  const onHold = useSipStore(s => s.onHold)
+  const hold = useSipStore(s => s.hold)
+  const resume = useSipStore(s => s.resume)
 
   const sipAudioOutputDeviceId = useSipStore(s => s.audioOutputDeviceId)
   const sipAudioOutputError = useSipStore(s => s.audioOutputError)
@@ -69,7 +72,7 @@ export default function SipActiveCallOverlay() {
   const {
     level: microphoneLevel,
     error: microphoneMeterError,
-  } = useMicrophoneMeter(sipAudioInputDeviceId, visible && !muted)
+  } = useMicrophoneMeter(sipAudioInputDeviceId, visible && !muted && !onHold)
 
   useEffect(() => {
     if (!activeCall) {
@@ -96,6 +99,19 @@ export default function SipActiveCallOverlay() {
   const handleMuteToggle = useCallback(() => {
     setMuted(!muted)
   }, [muted, setMuted])
+
+  const handleHoldToggle = useCallback(() => {
+    setMessage(null)
+    const action = onHold ? resume : hold
+    void action().catch((err) => {
+      const msg = err instanceof Error
+        ? err.message
+        : onHold
+          ? 'Could not resume call'
+          : 'Could not place call on hold'
+      setMessage(msg)
+    })
+  }, [onHold, hold, resume])
 
   const handleAudioInputChange = useCallback((deviceId: string) => {
     setMessage(null)
@@ -209,7 +225,7 @@ export default function SipActiveCallOverlay() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: 'repeat(3, 1fr)',
           gap: 10,
           marginTop: 18,
         }}
@@ -233,6 +249,27 @@ export default function SipActiveCallOverlay() {
         >
           {muted ? <MicOff size={18} /> : <Mic size={18} />}
           {muted ? 'Unmute' : 'Mute'}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleHoldToggle}
+          style={{
+            height: 48,
+            borderRadius: 18,
+            border: onHold ? `1px solid ${brand.cyan}aa` : '1px solid rgba(255,255,255,0.13)',
+            background: onHold ? 'rgba(34,211,238,0.16)' : 'rgba(255,255,255,0.07)',
+            color: onHold ? brand.cyan : brand.ink,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            fontWeight: 900,
+            cursor: 'pointer',
+          }}
+        >
+          {onHold ? <PlayCircle size={18} /> : <PauseCircle size={18} />}
+          {onHold ? 'Resume' : 'Hold'}
         </button>
 
         <button
@@ -343,7 +380,7 @@ export default function SipActiveCallOverlay() {
             letterSpacing: 0.45,
           }}
         >
-          <span>{muted ? 'Muted' : 'Live mic level'}</span>
+          <span>{onHold ? 'On hold (audio paused)' : muted ? 'Muted' : 'Live mic level'}</span>
           <span>{Math.round(microphoneLevel * 100)}%</span>
         </div>
       </div>

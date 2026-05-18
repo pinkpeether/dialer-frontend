@@ -307,6 +307,66 @@ class SipClient {
     })
   }
 
+  async hold() {
+    const session = this.currentSession
+    const pc = session?.sessionDescriptionHandler?.peerConnection
+    if (!pc) return
+
+    pc.getSenders().forEach(sender => {
+      if (sender.track?.kind === 'audio') {
+        sender.track.enabled = false
+      }
+    })
+
+    pc.getReceivers().forEach(receiver => {
+      if (receiver.track?.kind === 'audio') {
+        receiver.track.enabled = false
+      }
+    })
+
+    const audio = document.getElementById('ptdt-sip-remote-audio') as HTMLAudioElement | null
+    if (audio) {
+      audio.muted = true
+      try {
+        audio.pause()
+      } catch {
+        // ignore
+      }
+    }
+
+    console.info('[SIP] Call locally held (media paused)')
+  }
+
+  async resume() {
+    const session = this.currentSession
+    const pc = session?.sessionDescriptionHandler?.peerConnection
+    if (!pc) return
+
+    pc.getSenders().forEach(sender => {
+      if (sender.track?.kind === 'audio') {
+        sender.track.enabled = true
+      }
+    })
+
+    pc.getReceivers().forEach(receiver => {
+      if (receiver.track?.kind === 'audio') {
+        receiver.track.enabled = true
+      }
+    })
+
+    const audio = document.getElementById('ptdt-sip-remote-audio') as HTMLAudioElement | null
+    if (audio) {
+      audio.muted = false
+      try {
+        void audio.play()
+      } catch {
+        // autoplay recovery already handled in attachRemoteMedia
+      }
+    }
+
+    console.info('[SIP] Call resumed (media unpaused)')
+  }
+
   async setAudioOutputDevice(deviceId: string) {
     this.audioOutputDeviceId = deviceId || 'default'
     const audio = document.getElementById('ptdt-sip-remote-audio') as HTMLAudioElement | null

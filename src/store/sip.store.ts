@@ -57,6 +57,7 @@ interface SipStore {
   incomingCall: SipIncomingCall | null
   activeCall: SipCallState | null
   muted: boolean
+  onHold: boolean
   audioOutputDeviceId: string
   audioOutputError: string | null
   audioInputDeviceId: string
@@ -71,6 +72,8 @@ interface SipStore {
   reject: () => Promise<void>
   hangup: () => Promise<void>
   sendDTMF: (digits: string) => Promise<void>
+  hold: () => Promise<void>
+  resume: () => Promise<void>
   setMuted: (muted: boolean) => void
   setAudioOutputDevice: (deviceId: string) => Promise<void>
   testAudioOutputDevice: () => Promise<void>
@@ -87,6 +90,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   incomingCall: null,
   activeCall: null,
   muted: false,
+  onHold: false,
   audioOutputDeviceId: loadAudioOutputDeviceId(),
   audioOutputError: null,
   audioInputDeviceId: loadAudioInputDeviceId(),
@@ -113,6 +117,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       incomingCall: null,
       activeCall: null,
       muted: false,
+      onHold: false,
       audioOutputDeviceId: 'default',
       audioOutputError: null,
       audioInputDeviceId: 'default',
@@ -130,8 +135,8 @@ export const useSipStore = create<SipStore>((set, get) => ({
         onStatusChange: (status) => set({ status }),
         onError: (error) => set({ error }),
         onIncomingCall: (incomingCall) => set({ incomingCall, status: 'incoming' }),
-        onCallStarted: (activeCall) => set({ activeCall, incomingCall: null, status: 'in_call' }),
-        onCallEnded: () => set({ activeCall: null, incomingCall: null, muted: false }),
+        onCallStarted: (activeCall) => set({ activeCall, incomingCall: null, status: 'in_call', onHold: false }),
+        onCallEnded: () => set({ activeCall: null, incomingCall: null, muted: false, onHold: false }),
       })
     } catch (err) {
       const error = err instanceof Error ? err.message : 'SIP registration failed'
@@ -142,7 +147,13 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   unregister: async () => {
     await sipClient.unregister()
-    set({ status: get().isConfigured ? 'configured' : 'idle', activeCall: null, incomingCall: null, muted: false })
+    set({
+      status: get().isConfigured ? 'configured' : 'idle',
+      activeCall: null,
+      incomingCall: null,
+      muted: false,
+      onHold: false,
+    })
   },
 
   call: async (destination) => {
@@ -173,6 +184,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       },
       incomingCall: null,
       status: 'in_call',
+      onHold: false,
       error: null,
     })
   }
@@ -180,19 +192,41 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   reject: async () => {
     await sipClient.reject()
-    set({ incomingCall: null, status: get().isConfigured ? 'registered' : 'idle' })
+    set({ incomingCall: null, onHold: false, status: get().isConfigured ? 'registered' : 'idle' })
   },
 
   hangup: async () => {
     await sipClient.hangup()
-    set({ activeCall: null, incomingCall: null, muted: false, status: get().isConfigured ? 'registered' : 'idle' })
+    set({
+      activeCall: null,
+      incomingCall: null,
+      muted: false,
+      onHold: false,
+      status: get().isConfigured ? 'registered' : 'idle',
+    })
   },
 
   sendDTMF: async (digits) => {
     await sipClient.sendDTMF(digits)
   },
 
+  hold: async () => {
+    await sipClient.hold()
+    set({ onHold: true })
+  },
+
+  resume: async () => {
+    await sipClient.resume()
+    if (get().muted) sipClient.mute(true)
+    set({ onHold: false })
+  },
+
   setMuted: (muted) => {
+    if (get().onHold) {
+      set({ muted })
+      return
+    }
+
     sipClient.mute(muted)
     set({ muted })
   },
