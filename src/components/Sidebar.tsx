@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
-  BarChart3, Headset, Settings2,
+  BarChart3, Headset, Settings2, History,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
@@ -16,6 +16,7 @@ const NAV = [
   { to: '/campaigns',       icon: Megaphone,       label: 'Campaigns'       },
   { to: '/contacts',        icon: BookUser,        label: 'Contacts'        },
   { to: '/agents',          icon: Users,           label: 'Agents'          },
+  { to: '/calls',           icon: History,         label: 'Call History'    },
   { to: '/reports',         icon: BarChart3,       label: 'Reports'         },
   { to: '/sip-settings',    icon: Settings2,       label: 'SIP Settings'    },
 ]

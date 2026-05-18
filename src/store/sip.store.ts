@@ -182,6 +182,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
         id: incomingCall.id,
         remoteIdentity: incomingCall.displayName || incomingCall.from || 'Incoming SIP Call',
         startedAt: Date.now(),
+        direction: 'incoming',
       },
       incomingCall: null,
       status: 'in_call',

@@ -524,6 +524,7 @@ class SipClient {
           id: session.id || `sip-${Date.now()}`,
           remoteIdentity: session.remoteIdentity?.uri?.toString?.() || 'SIP call',
           startedAt: Date.now(),
+          direction: localStream ? 'outgoing' : 'incoming',
         })
       }
 

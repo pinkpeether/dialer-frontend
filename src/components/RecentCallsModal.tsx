@@ -1,14 +1,18 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, PhoneCall, PhoneOutgoing, X, Trash2, RotateCcw } from 'lucide-react'
+import { Clock, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOutgoing, X, Trash2, RotateCcw } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 export interface RecentCallItem {
   phone: string
   name?: string
   at: number
   duration: number
+  direction: 'outgoing' | 'incoming'
   outcome: 'answered' | 'missed' | 'failed'
 }
+
+type RecentFilter = 'all' | 'dialled' | 'received' | 'missed' | 'failed'
 
 interface RecentCallsModalProps {
   open: boolean
@@ -50,11 +54,36 @@ function outcomeStyle(outcome: RecentCallItem['outcome']) {
   return { color: brand.red, label: 'FAILED' }
 }
 
+function directionStyle(call: RecentCallItem) {
+  const direction = call.direction
+  if (direction === 'incoming') {
+    return { label: 'RECEIVED', icon: <PhoneIncoming size={12} />, color: brand.cyan }
+  }
+  return { label: 'DIALLED', icon: <PhoneOutgoing size={12} />, color: brand.green }
+}
+
 export default function RecentCallsModal({ open, calls, onClose, onClear, onRedial }: RecentCallsModalProps) {
+  const navigate = useNavigate()
+  const [filter, setFilter] = useState<RecentFilter>('all')
   const sortedCalls = useMemo(
     () => [...calls].sort((a, b) => b.at - a.at),
     [calls]
   )
+  const filteredCalls = useMemo(() => {
+    if (filter === 'all') return sortedCalls
+    if (filter === 'dialled') return sortedCalls.filter(call => call.direction === 'outgoing')
+    if (filter === 'received') return sortedCalls.filter(call => call.direction === 'incoming')
+    if (filter === 'missed') return sortedCalls.filter(call => call.outcome === 'missed')
+    return sortedCalls.filter(call => call.outcome === 'failed')
+  }, [filter, sortedCalls])
+
+  const filterItems: Array<{ key: RecentFilter; label: string; count: number }> = [
+    { key: 'all', label: 'All', count: sortedCalls.length },
+    { key: 'dialled', label: 'Dialled', count: sortedCalls.filter(call => call.direction === 'outgoing').length },
+    { key: 'received', label: 'Received', count: sortedCalls.filter(call => call.direction === 'incoming').length },
+    { key: 'missed', label: 'Missed', count: sortedCalls.filter(call => call.outcome === 'missed').length },
+    { key: 'failed', label: 'Failed', count: sortedCalls.filter(call => call.outcome === 'failed').length },
+  ]
 
   return (
     <AnimatePresence>
@@ -131,7 +160,7 @@ export default function RecentCallsModal({ open, calls, onClose, onClear, onRedi
                     Recent Calls / Signals
                   </div>
                   <div style={{ fontSize: 11, color: brand.muted, marginTop: 2 }}>
-                    {sortedCalls.length} saved call{sortedCalls.length === 1 ? '' : 's'}
+                    {filteredCalls.length} of {sortedCalls.length} saved calls
                   </div>
                 </div>
               </div>
@@ -175,11 +204,47 @@ export default function RecentCallsModal({ open, calls, onClose, onClear, onRedi
               </div>
             </div>
 
+            {sortedCalls.length > 0 && (
+              <div
+                style={{
+                  padding: '10px 14px 0',
+                  display: 'flex',
+                  gap: 7,
+                  overflowX: 'auto',
+                }}
+              >
+                {filterItems.map(item => {
+                  const active = filter === item.key
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setFilter(item.key)}
+                      style={{
+                        border: active ? `1px solid ${brand.pink}` : '1px solid rgba(255,255,255,0.10)',
+                        background: active ? 'rgba(251,11,140,0.18)' : 'rgba(255,255,255,0.045)',
+                        color: active ? brand.ink : brand.muted,
+                        borderRadius: 999,
+                        padding: '6px 9px',
+                        fontSize: 10,
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        letterSpacing: 0.4,
+                      }}
+                    >
+                      {item.label} · {item.count}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
             <div
               className="ptdt-recent-scroll"
               style={{
                 padding: 14,
-                maxHeight: 'calc(min(680px, 88vh) - 76px)',
+                maxHeight: 'calc(min(680px, 88vh) - 126px)',
                 overflowY: 'auto',
               }}
             >
@@ -200,10 +265,28 @@ export default function RecentCallsModal({ open, calls, onClose, onClear, onRedi
                     Calls made or received from the Floating Dialer will appear here.
                   </div>
                 </div>
+              ) : filteredCalls.length === 0 ? (
+                <div style={{
+                  minHeight: 180,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 12,
+                  textAlign: 'center',
+                  color: brand.muted,
+                }}>
+                  <PhoneCall size={30} color={brand.faint} />
+                  <div style={{ fontWeight: 850, color: brand.ink }}>No calls in this filter</div>
+                  <div style={{ fontSize: 12, lineHeight: 1.45, maxWidth: 280 }}>
+                    Try another recent-history filter.
+                  </div>
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {sortedCalls.map((call, index) => {
+                  {filteredCalls.map((call, index) => {
                     const outcome = outcomeStyle(call.outcome)
+                    const direction = directionStyle(call)
                     return (
                       <motion.div
                         key={`${call.phone}-${call.at}-${index}`}
@@ -271,8 +354,24 @@ export default function RecentCallsModal({ open, calls, onClose, onClear, onRedi
                             borderRadius: 999,
                             padding: '5px 8px',
                           }}>
-                            <PhoneOutgoing size={12} />
+                            {call.outcome === 'missed' ? <PhoneMissed size={12} /> : direction.icon}
                             {outcome.label}
+                          </span>
+
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            fontSize: 10,
+                            fontWeight: 900,
+                            color: direction.color,
+                            background: `${direction.color}14`,
+                            border: `1px solid ${direction.color}30`,
+                            borderRadius: 999,
+                            padding: '5px 8px',
+                          }}>
+                            {direction.icon}
+                            {direction.label}
                           </span>
 
                           <span style={{ fontSize: 11, color: brand.muted }}>
@@ -285,6 +384,43 @@ export default function RecentCallsModal({ open, calls, onClose, onClear, onRedi
                 </div>
               )}
             </div>
+
+            {sortedCalls.length > 0 && (
+              <div
+                style={{
+                  padding: '10px 14px 14px',
+                  borderTop: '1px solid rgba(255,255,255,0.06)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 12,
+                  fontSize: 11,
+                  color: brand.muted,
+                }}
+              >
+                <span>Local recent calls only.</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose()
+                    navigate('/calls')
+                  }}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: brand.cyan,
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.6,
+                    padding: 0,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  View full history
+                </button>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}

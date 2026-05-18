@@ -11,6 +11,7 @@ import Contacts       from './pages/Contacts'
 import AgentDashboard from './pages/AgentDashboard'
 import Reports        from './pages/Reports'
 import SipSettings    from './pages/SipSettings'
+import Calls          from './pages/Calls'
 import IncomingCallModal from './components/IncomingCallModal'
 import SipActiveCallOverlay from './components/SipActiveCallOverlay'
 
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/agents"          element={<Agents />}         />
           <Route path="/reports"         element={<Reports />}        />
           <Route path="/sip-settings"    element={<SipSettings />}    />
+          <Route path="/calls"           element={<Calls />}          />
         </Route>
       </Routes>
       <IncomingCallModal />

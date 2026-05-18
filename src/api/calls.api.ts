@@ -1,13 +1,17 @@
 import api from './axios'
 
+type CallsRequestOptions = {
+  timeout?: number
+}
+
 // API wrapper for call log endpoints
 export const callsAPI = {
   /**
    * Retrieve call logs with optional filters. Accepts the same query params
    * supported by the backend — campaignId, agentId, status, page, limit, startDate, endDate.
    */
-  getAll: async (params?: Record<string, unknown>) => {
-    const res = await api.get('/calls', { params })
+  getAll: async (params?: Record<string, unknown>, options?: CallsRequestOptions) => {
+    const res = await api.get('/calls', { params, timeout: options?.timeout })
     return res.data.data
   },
 

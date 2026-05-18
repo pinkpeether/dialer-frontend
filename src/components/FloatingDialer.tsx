@@ -33,6 +33,7 @@ interface RecentCall {
   name?: string;
   at: number;
   duration: number;
+  direction: "outgoing" | "incoming";
   outcome: "answered" | "missed" | "failed";
 }
 
@@ -67,13 +68,33 @@ const SUB: Record<string, string> = {
 const STORAGE_KEY = "ptdt_recent_calls_v5";
 function loadRecent(): RecentCall[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    if (!Array.isArray(raw)) return [];
+    return raw.map((item) => ({
+      phone: String(item?.phone || ""),
+      name: item?.name || undefined,
+      at: typeof item?.at === "number" ? item.at : Date.now(),
+      duration: typeof item?.duration === "number" ? item.duration : 0,
+      direction: item?.direction === "incoming" ? "incoming" : "outgoing",
+      outcome:
+        item?.outcome === "missed" || item?.outcome === "failed"
+          ? item.outcome
+          : "answered",
+    }));
   } catch {
     return [];
   }
 }
 function saveRecent(c: RecentCall[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(c.slice(0, 20)));
+}
+
+function cleanRecentIdentity(value: string) {
+  return value
+    .replace(/^sip:/i, "")
+    .replace(/;.*$/, "")
+    .replace(/@.*$/, "")
+    .replace(/^<|>$/g, "");
 }
 
 function fmt(s: number) {
@@ -418,6 +439,11 @@ export default function FloatingDialer() {
   const callStart = useRef<number>(0);
   const stopRingbackRef = useRef<(() => void) | null>(null);
   const sipCallEstablishedRef = useRef(false);
+  const incomingRecentRef = useRef<{
+    id: string;
+    remoteIdentity: string;
+    startedAt: number;
+  } | null>(null);
 
   const {
     audioOutputs,
@@ -550,6 +576,7 @@ export default function FloatingDialer() {
             name: contactName || undefined,
             at: Date.now(),
             duration: dur,
+            direction: "outgoing",
             outcome: dur > 3 ? "answered" : "missed",
           };
           const updated = [entry, ...current];
@@ -590,6 +617,48 @@ export default function FloatingDialer() {
     playFailedTone,
     playHangupTone,
   ]);
+
+  useEffect(() => {
+    if (sipActiveCall?.direction === "incoming" && sipStatus === "in_call") {
+      if (incomingRecentRef.current?.id !== sipActiveCall.id) {
+        incomingRecentRef.current = {
+          id: sipActiveCall.id,
+          remoteIdentity: sipActiveCall.remoteIdentity,
+          startedAt: sipActiveCall.startedAt || Date.now(),
+        };
+      }
+      return;
+    }
+
+    const incomingReturnedToIdle =
+      incomingRecentRef.current &&
+      !sipActiveCall &&
+      ["registered", "configured", "idle", "ended"].includes(sipStatus);
+
+    if (incomingReturnedToIdle && incomingRecentRef.current) {
+      const call = incomingRecentRef.current;
+      incomingRecentRef.current = null;
+      const dur = Math.max(0, Math.round((Date.now() - call.startedAt) / 1000));
+      const phone = cleanRecentIdentity(call.remoteIdentity) || call.remoteIdentity;
+
+      setRecent((current) => {
+        const entry: RecentCall = {
+          phone,
+          at: Date.now(),
+          duration: dur,
+          direction: "incoming",
+          outcome: dur > 3 ? "answered" : "missed",
+        };
+        const updated = [entry, ...current];
+        saveRecent(updated);
+        return updated;
+      });
+    }
+
+    if (sipStatus === "error" || sipStatus === "registration_failed") {
+      incomingRecentRef.current = null;
+    }
+  }, [sipActiveCall, sipStatus]);
 
   useEffect(() => {
     if (state !== "collapsed") {
@@ -842,6 +911,7 @@ export default function FloatingDialer() {
       name: contactName || undefined,
       at: Date.now(),
       duration: dur,
+      direction: "outgoing",
       outcome: dur > 3 ? "answered" : "missed",
     };
     const updated = [entry, ...recent];
@@ -2466,6 +2536,42 @@ export default function FloatingDialer() {
                         }}
                         className="ptdt-panel"
                       >
+                        {recent.length > 0 && (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 8,
+                              padding: "0 7px 7px",
+                              color: "rgba(249,247,255,0.36)",
+                              fontSize: 9,
+                              fontWeight: 900,
+                              letterSpacing: 0.7,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            <span>Latest 5</span>
+                            <button
+                              type="button"
+                              onClick={handleOpenRecentCalls}
+                              style={{
+                                border: "1px solid rgba(251,11,140,0.22)",
+                                background: "rgba(251,11,140,0.08)",
+                                color: "#ff8cc8",
+                                borderRadius: 999,
+                                padding: "4px 7px",
+                                fontSize: 8,
+                                fontWeight: 900,
+                                cursor: "pointer",
+                                letterSpacing: 0.5,
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              View all
+                            </button>
+                          </div>
+                        )}
                         {recent.length === 0 ? (
                           <div
                             style={{
