@@ -14,6 +14,7 @@ type SipSession = {
   }) => Promise<unknown>
   invite?: (options?: unknown) => Promise<unknown>
   dtmf?: (digits: string) => Promise<unknown> | unknown
+  refer?: (target: unknown, options?: unknown) => Promise<unknown> | unknown
   sessionDescriptionHandler?: {
     peerConnection?: RTCPeerConnection
   }
@@ -296,6 +297,45 @@ class SipClient {
   async sendDTMF(digits: string) {
     if (!this.currentSession) return
     await this.currentSession.dtmf?.(digits)
+  }
+
+  async transfer(destination: string) {
+    const session = this.currentSession
+    if (!session) {
+      throw new Error('No active SIP call to transfer')
+    }
+
+    if (!this.sip || !this.config) {
+      throw new Error('SIP configuration not available for transfer')
+    }
+
+    const referFn = session.refer
+    if (typeof referFn !== 'function') {
+      throw new Error('SIP transfer is not supported for this session')
+    }
+
+    const cleanDestination = destination.trim()
+    if (!cleanDestination) {
+      throw new Error('Transfer destination is required')
+    }
+
+    const targetUserAtHost = cleanDestination.includes('@')
+      ? cleanDestination.replace(/^sip:/i, '')
+      : `${cleanDestination}@${this.config.domain}`
+
+    const targetUri = this.sip.UserAgent.makeURI(`sip:${targetUserAtHost}`)
+    if (!targetUri) {
+      throw new Error('Invalid transfer destination SIP URI')
+    }
+
+    try {
+      console.info('[SIP] Sending blind transfer REFER to', targetUri.toString())
+      await referFn.call(session, targetUri)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'SIP transfer failed'
+      this.handlers.onError?.(message)
+      throw err
+    }
   }
 
   mute(muted: boolean) {

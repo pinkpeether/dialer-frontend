@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Activity, Clock, Mic, MicOff, PauseCircle, PhoneOff, PlayCircle, Volume2 } from 'lucide-react'
+import { Activity, Clock, Mic, MicOff, PauseCircle, PhoneForwarded, PhoneOff, PlayCircle, Volume2 } from 'lucide-react'
 import AudioDeviceSelect from './AudioDeviceSelect'
 import { useAudioDevices, useMicrophoneMeter } from '../hooks/useAudioDevices'
 import { useSipStore } from '../store/sip.store'
@@ -38,6 +38,7 @@ export default function SipActiveCallOverlay() {
   const onHold = useSipStore(s => s.onHold)
   const hold = useSipStore(s => s.hold)
   const resume = useSipStore(s => s.resume)
+  const transfer = useSipStore(s => s.transfer)
 
   const sipAudioOutputDeviceId = useSipStore(s => s.audioOutputDeviceId)
   const sipAudioOutputError = useSipStore(s => s.audioOutputError)
@@ -50,6 +51,8 @@ export default function SipActiveCallOverlay() {
 
   const [elapsed, setElapsed] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
+  const [transferTarget, setTransferTarget] = useState('')
+  const [isTransferring, setIsTransferring] = useState(false)
 
   // Keep overlay visible whenever the SIP store has an active call.
   // This avoids losing controls after an incoming call is answered.
@@ -112,6 +115,25 @@ export default function SipActiveCallOverlay() {
       setMessage(msg)
     })
   }, [onHold, hold, resume])
+
+  const handleTransfer = useCallback(() => {
+    const dest = transferTarget.trim()
+    if (!dest) return
+
+    setMessage(null)
+    setIsTransferring(true)
+
+    void transfer(dest)
+      .then(() => {
+        setIsTransferring(false)
+        setTransferTarget('')
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : 'Could not transfer call'
+        setMessage(msg)
+        setIsTransferring(false)
+      })
+  }, [transferTarget, transfer])
 
   const handleAudioInputChange = useCallback((deviceId: string) => {
     setMessage(null)
@@ -292,6 +314,87 @@ export default function SipActiveCallOverlay() {
         >
           <PhoneOff size={18} /> Hang Up
         </button>
+      </div>
+
+      <div
+        style={{
+          ...glassCard(),
+          borderRadius: 22,
+          padding: '10px 12px',
+          marginTop: 12,
+          display: 'grid',
+          gap: 8,
+        }}
+      >
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 10,
+            color: brand.muted,
+            fontWeight: 900,
+            letterSpacing: 1,
+            textTransform: 'uppercase',
+          }}
+        >
+          <PhoneForwarded size={14} /> Blind Transfer
+        </label>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) auto',
+            gap: 8,
+            alignItems: 'center',
+          }}
+        >
+          <input
+            type="text"
+            value={transferTarget}
+            onChange={(e) => setTransferTarget(e.target.value)}
+            placeholder="Extension or SIP URI"
+            style={{
+              height: 38,
+              minWidth: 0,
+              borderRadius: 14,
+              border: '1px solid rgba(255,255,255,0.14)',
+              background: 'rgba(7,5,16,0.75)',
+              color: brand.ink,
+              fontSize: 12,
+              padding: '0 11px',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+
+          <button
+            type="button"
+            onClick={handleTransfer}
+            disabled={!transferTarget.trim() || isTransferring}
+            style={{
+              height: 38,
+              borderRadius: 14,
+              border: `1px solid ${brand.pink}88`,
+              background: isTransferring
+                ? 'rgba(251,11,140,0.26)'
+                : 'linear-gradient(135deg,rgba(251,11,140,0.92),rgba(255,59,95,0.88))',
+              color: '#fff',
+              fontWeight: 900,
+              cursor: !transferTarget.trim() || isTransferring ? 'default' : 'pointer',
+              padding: '0 13px',
+              opacity: !transferTarget.trim() || isTransferring ? 0.65 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <PhoneForwarded size={16} />
+            {isTransferring ? 'Transferring...' : 'Transfer'}
+          </button>
+        </div>
       </div>
 
       <div

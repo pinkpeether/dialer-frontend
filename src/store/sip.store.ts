@@ -74,6 +74,7 @@ interface SipStore {
   sendDTMF: (digits: string) => Promise<void>
   hold: () => Promise<void>
   resume: () => Promise<void>
+  transfer: (destination: string) => Promise<void>
   setMuted: (muted: boolean) => void
   setAudioOutputDevice: (deviceId: string) => Promise<void>
   testAudioOutputDevice: () => Promise<void>
@@ -208,6 +209,20 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   sendDTMF: async (digits) => {
     await sipClient.sendDTMF(digits)
+  },
+
+  transfer: async (destination) => {
+    const dest = destination.trim()
+    if (!dest) return
+
+    try {
+      await sipClient.transfer(dest)
+      set({ error: null })
+    } catch (err) {
+      const error = err instanceof Error ? err.message : 'SIP transfer failed'
+      set({ error })
+      throw err
+    }
   },
 
   hold: async () => {
