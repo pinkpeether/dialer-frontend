@@ -12,6 +12,22 @@ export type SipRuntimeStatus =
   | 'ended'
   | 'error'
 
+export type SipCallLifecycleState =
+  | 'idle'
+  | 'configured'
+  | 'registering'
+  | 'ready'
+  | 'incoming'
+  | 'dialing'
+  | 'ringing'
+  | 'connected'
+  | 'remote_ended'
+  | 'ended'
+  | 'failed'
+  | 'reconnecting'
+
+export type SipCallDirection = 'incoming' | 'outgoing' | null
+
 export interface SipAccountConfig {
   enabled: boolean
   username: string
@@ -36,4 +52,26 @@ export interface SipCallState {
   id: string
   remoteIdentity: string
   startedAt: number
+  direction?: Exclude<SipCallDirection, null>
+}
+
+export interface SipDiagnostics {
+  lastUpdated: number
+  runtimeStatus: SipRuntimeStatus
+  lifecycle: SipCallLifecycleState
+  registered: boolean
+  webSocketConnected: boolean
+  userAgentReady: boolean
+  username: string
+  domain: string
+  webSocketServer: string
+  transport: SipTransport | ''
+  activeCallId: string | null
+  activeRemote: string | null
+  callDirection: SipCallDirection
+  selectedAudioInputDeviceId: string
+  selectedAudioOutputDeviceId: string
+  lastSipEvent: string | null
+  lastError: string | null
+  lastEndReason: string | null
 }

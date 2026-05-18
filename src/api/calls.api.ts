@@ -1,32 +1,27 @@
 import api from './axios'
 
-export type CallFilters = {
-  campaignId?: number
-  agentId?: number
-  status?: string
-  page?: number
-  limit?: number
-  startDate?: string
-  endDate?: string
-}
-
-export type UpdateDispositionPayload = {
-  disposition: 'ANSWERED' | 'NO_ANSWER' | 'VOICEMAIL' | 'CALLBACK' | 'WRONG_NUMBER' | 'DO_NOT_CALL'
-  notes?: string
-}
-
+// API wrapper for call log endpoints
 export const callsAPI = {
-  getAll: async (params?: CallFilters) => {
+  /**
+   * Retrieve call logs with optional filters. Accepts the same query params
+   * supported by the backend — campaignId, agentId, status, page, limit, startDate, endDate.
+   */
+  getAll: async (params?: Record<string, unknown>) => {
     const res = await api.get('/calls', { params })
     return res.data.data
   },
 
+  /** Get details for a single call by ID */
   getById: async (id: number) => {
     const res = await api.get(`/calls/${id}`)
     return res.data.data
   },
 
-  updateDisposition: async (id: number, data: UpdateDispositionPayload) => {
+  /** Update the disposition and notes for a call */
+  updateDisposition: async (
+    id: number,
+    data: { disposition: string; notes?: string }
+  ) => {
     const res = await api.patch(`/calls/${id}/disposition`, data)
     return res.data.data
   },
