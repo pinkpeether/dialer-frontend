@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/auth.store'
 import { useSipStore } from '../store/sip.store'
 import FloatingDialer from '../components/FloatingDialer'
 import SipActiveCallOverlay from '../components/SipActiveCallOverlay'
+import CallDispositionModal from '../components/CallDispositionModal'
 
 
 const FALLBACK_DIALER_CAMPAIGNS: Record<string, unknown>[] = [
@@ -46,6 +47,12 @@ export default function Dialer() {
   const [message,      setMessage]      = useState('')
   const [search,       setSearch]       = useState('')
   const [voiceDeskOpen, setVoiceDeskOpen] = useState(true)
+  const [lastCallId, setLastCallId] = useState<number | null>(null)
+  const [dispositionOpen, setDispositionOpen] = useState(false)
+  const [dispositionContact, setDispositionContact] = useState<{
+    name: string | null
+    phone: string | null
+  }>({ name: null, phone: null })
   const sipConfig = useSipStore(s => s.config)
   const sipStatus = useSipStore(s => s.status)
   const liveSipCall = useSipStore(s => s.activeCall)
@@ -99,25 +106,34 @@ export default function Dialer() {
   const handleStopCampaign = async () => {
     if (!selectedCamp) return
     try { await dialerAPI.stopCampaign(selectedCamp) } catch { /* preview fallback */ }
-    setIsDialing(false); setActiveCall(null)
+    setIsDialing(false); setActiveCall(null); setLastCallId(null)
     setMessage('⏹ Campaign stopped')
   }
 
   const handleManualCall = async (contact: Record<string,unknown>) => {
     if (!selectedCamp) return
     setLoading(true)
+    setLastCallId(null)
+    setDispositionOpen(false)
+    setDispositionContact({
+      name: typeof contact.name === 'string' ? contact.name : null,
+      phone: typeof contact.phone === 'string' ? contact.phone : null,
+    })
     try {
       if (sipModeEnabled) {
         if (!sipReady) throw new Error('SIP mode is enabled but not registered')
         await sipCall(String(contact.phone))
         setActiveCall({ ...contact, callSid: `sip:${contact.id}` })
+        setLastCallId(null)
       } else {
         const result = await dialerAPI.makeManualCall(contact.id as number, selectedCamp)
         setActiveCall({ ...contact, callSid: result.callRecord.twilioCallSid })
+        setLastCallId(typeof result.callRecord?.id === 'number' ? result.callRecord.id : null)
       }
       setMessage(`📞 Calling ${contact.phone}…`)
     } catch (err) {
       setActiveCall({ ...contact, callSid: `preview-${contact.id}` })
+      setLastCallId(null)
       const errorMessage = err instanceof Error ? err.message : `📞 Calling ${contact.phone}…`
       setMessage(errorMessage)
     }
@@ -126,6 +142,7 @@ export default function Dialer() {
 
   const handleHangup = async () => {
     if (!activeCall?.callSid) return
+    const completedCall = activeCall
     try {
       const callSid = activeCall.callSid as string
       if (callSid.startsWith('sip:')) await sipHangup()
@@ -133,6 +150,17 @@ export default function Dialer() {
     } catch { /* preview fallback */ }
     setActiveCall(null); setElapsed(0)
     setMessage('📵 Call ended')
+
+    if (lastCallId) {
+      setDispositionContact({
+        name: typeof completedCall.name === 'string' ? completedCall.name : null,
+        phone: typeof completedCall.phone === 'string' ? completedCall.phone : null,
+      })
+      setDispositionOpen(true)
+    } else {
+      setLastCallId(null)
+      setDispositionContact({ name: null, phone: null })
+    }
   }
 
   const filtered = sourceContacts.filter(c =>
@@ -725,6 +753,23 @@ export default function Dialer() {
         </div>
       </motion.section>
       </div>
+
+      <CallDispositionModal
+        open={dispositionOpen}
+        callId={lastCallId}
+        contactName={dispositionContact.name}
+        contactNumber={dispositionContact.phone}
+        onClose={() => {
+          setDispositionOpen(false)
+          setLastCallId(null)
+          setDispositionContact({ name: null, phone: null })
+        }}
+        onSaved={() => {
+          setDispositionOpen(false)
+          setLastCallId(null)
+          setDispositionContact({ name: null, phone: null })
+        }}
+      />
     </div>
   )
 }
