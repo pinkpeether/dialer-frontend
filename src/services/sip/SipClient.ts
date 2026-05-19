@@ -53,7 +53,15 @@ declare global {
   interface Window {
     __ptdtSipPeerConnection?: RTCPeerConnection
     __ptdtSipSession?: SipSession
+    webkitAudioContext?: typeof AudioContext
   }
+}
+
+type HoldMusicState = {
+  context: AudioContext
+  track: MediaStreamTrack
+  oscillators: OscillatorNode[]
+  intervalId: number
 }
 
 class SipClient {
@@ -68,6 +76,8 @@ class SipClient {
   private iceServers: RTCIceServer[] = []
   private localAudioStream: MediaStream | null = null
   private remoteTrackListener: ((event: RTCTrackEvent) => void) | null = null
+  private heldAudioSenderTracks = new Map<RTCRtpSender, MediaStreamTrack | null>()
+  private holdMusicState: HoldMusicState | null = null
 
   isRegistered() {
     return Boolean(this.userAgent && this.registerer)
@@ -166,6 +176,8 @@ class SipClient {
       // ignore cleanup errors
     } finally {
       this.stopLocalAudioStream()
+      this.stopHoldMusic()
+      this.heldAudioSenderTracks.clear()
       this.userAgent = null
       this.registerer = null
       this.currentSession = null
@@ -287,6 +299,8 @@ class SipClient {
 
     this.currentSession = null
     this.stopLocalAudioStream()
+    this.stopHoldMusic()
+    this.heldAudioSenderTracks.clear()
     this.remoteTrackListener = null
     window.__ptdtSipPeerConnection = undefined
     window.__ptdtSipSession = undefined
@@ -352,9 +366,25 @@ class SipClient {
     const pc = session?.sessionDescriptionHandler?.peerConnection
     if (!pc) return
 
+    const holdMusicTrack = await this.getOrCreateHoldMusicTrack()
+    const audioSenders = pc.getSenders().filter(sender => sender.track?.kind === 'audio')
+
+    await Promise.all(audioSenders.map(async (sender) => {
+      if (!this.heldAudioSenderTracks.has(sender)) {
+        this.heldAudioSenderTracks.set(sender, sender.track)
+      }
+
+      try {
+        await sender.replaceTrack(holdMusicTrack)
+      } catch (err) {
+        console.warn('[SIP] Hold music replaceTrack failed:', err)
+        if (sender.track?.kind === 'audio') sender.track.enabled = false
+      }
+    }))
+
     pc.getSenders().forEach(sender => {
       if (sender.track?.kind === 'audio') {
-        sender.track.enabled = false
+        sender.track.enabled = true
       }
     })
 
@@ -374,7 +404,7 @@ class SipClient {
       }
     }
 
-    console.info('[SIP] Call locally held (media paused)')
+    console.info('[SIP] Call locally held (remote media paused, hold music active)')
   }
 
   async resume() {
@@ -382,11 +412,17 @@ class SipClient {
     const pc = session?.sessionDescriptionHandler?.peerConnection
     if (!pc) return
 
-    pc.getSenders().forEach(sender => {
-      if (sender.track?.kind === 'audio') {
-        sender.track.enabled = true
+    await Promise.all(Array.from(this.heldAudioSenderTracks.entries()).map(async ([sender, originalTrack]) => {
+      try {
+        await sender.replaceTrack(originalTrack)
+        if (originalTrack?.kind === 'audio') originalTrack.enabled = true
+      } catch (err) {
+        console.warn('[SIP] Hold music restore failed:', err)
       }
-    })
+    }))
+
+    this.heldAudioSenderTracks.clear()
+    this.stopHoldMusic()
 
     pc.getReceivers().forEach(receiver => {
       if (receiver.track?.kind === 'audio') {
@@ -494,6 +530,92 @@ class SipClient {
     this.localAudioStream = null
   }
 
+  private async getOrCreateHoldMusicTrack() {
+    if (this.holdMusicState?.track.readyState === 'live') return this.holdMusicState.track
+
+    this.stopHoldMusic()
+
+    const AudioContextConstructor = window.AudioContext || window.webkitAudioContext
+    if (!AudioContextConstructor) {
+      throw new Error('Hold music is not supported in this browser runtime.')
+    }
+
+    const context = new AudioContextConstructor()
+    if (context.state === 'suspended') {
+      await context.resume()
+    }
+    const destination = context.createMediaStreamDestination()
+    const masterGain = context.createGain()
+    const leadGain = context.createGain()
+    const padGain = context.createGain()
+    const lead = context.createOscillator()
+    const pad = context.createOscillator()
+
+    masterGain.gain.value = 0.08
+    leadGain.gain.value = 0.72
+    padGain.gain.value = 0.28
+
+    lead.type = 'sine'
+    pad.type = 'triangle'
+
+    lead.connect(leadGain)
+    pad.connect(padGain)
+    leadGain.connect(masterGain)
+    padGain.connect(masterGain)
+    masterGain.connect(destination)
+
+    const melody = [392, 440, 494, 523, 494, 440, 392, 330]
+    let step = 0
+    const applyStep = () => {
+      const now = context.currentTime
+      const note = melody[step % melody.length]
+      lead.frequency.setTargetAtTime(note, now, 0.03)
+      pad.frequency.setTargetAtTime(note / 2, now, 0.05)
+      step += 1
+    }
+
+    applyStep()
+    lead.start()
+    pad.start()
+
+    const intervalId = window.setInterval(applyStep, 850)
+    const [track] = destination.stream.getAudioTracks()
+    if (!track) {
+      window.clearInterval(intervalId)
+      lead.stop()
+      pad.stop()
+      void context.close()
+      throw new Error('Could not create hold music audio track.')
+    }
+
+    track.enabled = true
+    this.holdMusicState = {
+      context,
+      track,
+      oscillators: [lead, pad],
+      intervalId,
+    }
+
+    return track
+  }
+
+  private stopHoldMusic() {
+    const state = this.holdMusicState
+    if (!state) return
+
+    window.clearInterval(state.intervalId)
+    state.oscillators.forEach((oscillator) => {
+      try {
+        oscillator.stop()
+      } catch {
+        // already stopped
+      }
+    })
+    state.track.stop()
+    void state.context.close().catch(() => undefined)
+    this.holdMusicState = null
+  }
+
   // ---------------------------------------------------------------------------
   // attachSessionListeners — outgoing calls ko localStream bhi pass hoti hai
   // taake Established state mein mic track force-inject ki ja sake.
@@ -531,6 +653,8 @@ class SipClient {
       if (stateName.includes('Terminated')) {
         this.currentSession = null
         this.stopLocalAudioStream()
+        this.stopHoldMusic()
+        this.heldAudioSenderTracks.clear()
         this.remoteTrackListener = null
         window.__ptdtSipPeerConnection = undefined
         window.__ptdtSipSession = undefined

@@ -11,6 +11,7 @@ import {
   PhoneOutgoing,
 } from 'lucide-react'
 import { callsAPI } from '../api/calls.api'
+import CallDispositionModal from '../components/CallDispositionModal'
 
 type CallDirection = 'incoming' | 'outgoing'
 type CallStatus = 'answered' | 'missed' | 'failed' | 'in_progress' | 'queued' | 'completed' | 'unknown'
@@ -238,6 +239,8 @@ export default function Calls() {
   const [draftStartDate, setDraftStartDate] = useState('')
   const [draftEndDate, setDraftEndDate] = useState('')
   const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [selectedForDisposition, setSelectedForDisposition] = useState<CallRow | null>(null)
+  const [refreshNonce, setRefreshNonce] = useState(0)
 
   const page = Math.max(1, numberValue(searchParams.get('page'), 1))
   const limit = Math.max(1, numberValue(searchParams.get('limit'), 25))
@@ -295,7 +298,7 @@ export default function Calls() {
     return () => {
       cancelled = true
     }
-  }, [page, limit, statusFilter, directionFilter, startDate, endDate])
+  }, [page, limit, statusFilter, directionFilter, startDate, endDate, refreshNonce])
 
   const filteredItems = useMemo(() => {
     if (!data?.items) return []
@@ -348,6 +351,10 @@ export default function Calls() {
     setSearchParams(next)
     setDatePickerOpen(false)
   }
+
+  const selectedDispositionCallId = selectedForDisposition
+    ? numberValue(selectedForDisposition.id, Number.NaN)
+    : Number.NaN
 
   return (
     <div style={{ padding: 24, color: brand.ink }}>
@@ -545,16 +552,18 @@ export default function Calls() {
           style={{
             height: 36,
             borderRadius: 999,
-            border: `1px solid ${brand.green}55`,
-            background: 'rgba(0,245,160,0.10)',
-            color: brand.green,
-            fontSize: 10,
+            border: '1px solid rgba(0,122,77,0.92)',
+            background: '#007a4d',
+            color: '#ffffff',
+            fontSize: 11,
             fontWeight: 950,
             textTransform: 'uppercase',
-            letterSpacing: 0.7,
-            padding: '0 14px',
+            letterSpacing: 0.9,
+            padding: '0 17px',
             cursor: draftStartDate || draftEndDate ? 'pointer' : 'default',
-            opacity: draftStartDate || draftEndDate ? 1 : 0.45,
+            opacity: draftStartDate || draftEndDate ? 1 : 0.78,
+            boxShadow: '0 0 18px rgba(0,122,77,0.22), inset 0 -10px 18px rgba(0,48,31,0.20)',
+            textShadow: '0 1px 8px rgba(0,0,0,0.55)',
           }}
         >
           GO
@@ -587,8 +596,8 @@ export default function Calls() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px',
-            minWidth: 860,
+            gridTemplateColumns: '86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px 136px',
+            minWidth: 1010,
             padding: '10px 12px',
             fontSize: 10.5,
             color: brand.faint,
@@ -604,6 +613,33 @@ export default function Calls() {
           <div>Agent</div>
           <div style={{ textAlign: 'right' }}>Duration</div>
           <div style={{ textAlign: 'right' }}>Started</div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              height: '100%',
+              margin: '-10px -12px -10px 0',
+              padding: '10px 12px 10px 16px',
+              borderLeft: `1px solid ${brand.pink}44`,
+              background: 'linear-gradient(90deg,rgba(251,11,140,0.03),rgba(251,11,140,0.15))',
+              boxShadow: 'inset 12px 0 24px rgba(251,11,140,0.08)',
+            }}
+          >
+            <span
+              style={{
+                borderRadius: 999,
+                border: `1px solid ${brand.pink}aa`,
+                background: 'linear-gradient(135deg,rgba(251,11,140,0.38),rgba(0,245,160,0.15))',
+                color: brand.ink,
+                padding: '6px 11px',
+                boxShadow: '0 0 26px rgba(251,11,140,0.24)',
+                textShadow: '0 1px 8px rgba(0,0,0,0.45)',
+              }}
+            >
+              Disposition
+            </span>
+          </div>
         </div>
 
         <div>
@@ -627,8 +663,8 @@ export default function Calls() {
                 key={call.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px',
-                  minWidth: 860,
+                  gridTemplateColumns: '86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px 136px',
+                  minWidth: 1010,
                   padding: '11px 12px',
                   fontSize: 12,
                   borderTop: '1px solid var(--border)',
@@ -670,6 +706,42 @@ export default function Calls() {
 
                 <div style={{ fontSize: 11, textAlign: 'right', color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {fmtDateTime(call.startedAt)}
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    alignItems: 'center',
+                    minHeight: 42,
+                    margin: '-11px -12px -11px 0',
+                    padding: '11px 12px 11px 16px',
+                    borderLeft: `1px solid ${brand.pink}44`,
+                    background: 'linear-gradient(90deg,rgba(251,11,140,0.03),rgba(251,11,140,0.16))',
+                    boxShadow: 'inset 12px 0 24px rgba(251,11,140,0.08)',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setSelectedForDisposition(call)}
+                    style={{
+                      minWidth: 112,
+                      height: 32,
+                      borderRadius: 999,
+                      border: `1px solid ${brand.pink}cc`,
+                      background: 'linear-gradient(135deg,rgba(251,11,140,0.42),rgba(128,87,215,0.22),rgba(0,245,160,0.12))',
+                      color: brand.ink,
+                      fontSize: 10.5,
+                      fontWeight: 950,
+                      cursor: 'pointer',
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.45,
+                      boxShadow: '0 0 24px rgba(251,11,140,0.28), inset 0 0 12px rgba(255,255,255,0.06)',
+                      textShadow: '0 1px 8px rgba(0,0,0,0.5)',
+                    }}
+                  >
+                    Set disposition
+                  </button>
                 </div>
               </div>
             )
@@ -723,6 +795,15 @@ export default function Calls() {
           </button>
         </div>
       </div>
+
+      <CallDispositionModal
+        open={Boolean(selectedForDisposition) && Number.isFinite(selectedDispositionCallId)}
+        callId={Number.isFinite(selectedDispositionCallId) ? selectedDispositionCallId : null}
+        contactName={selectedForDisposition?.remoteName}
+        contactNumber={selectedForDisposition?.remoteNumber}
+        onClose={() => setSelectedForDisposition(null)}
+        onSaved={() => setRefreshNonce(value => value + 1)}
+      />
     </div>
   )
 }

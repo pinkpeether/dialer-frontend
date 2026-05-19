@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Activity, Clock, Mic, MicOff, PauseCircle, PhoneForwarded, PhoneOff, PlayCircle, Volume2 } from 'lucide-react'
 import AudioDeviceSelect from './AudioDeviceSelect'
 import { useAudioDevices, useMicrophoneMeter } from '../hooks/useAudioDevices'
@@ -29,7 +30,13 @@ function glassCard() {
   }
 }
 
-export default function SipActiveCallOverlay() {
+interface SipActiveCallOverlayProps {
+  mode?: 'floating' | 'embedded'
+}
+
+export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCallOverlayProps) {
+  const location = useLocation()
+  const embedded = mode === 'embedded'
   const activeCall = useSipStore(s => s.activeCall)
   const status = useSipStore(s => s.status)
   const muted = useSipStore(s => s.muted)
@@ -170,20 +177,23 @@ export default function SipActiveCallOverlay() {
   }, [refreshAudioDevices, requestAudioPermission])
 
   if (!visible || !activeCall) return null
+  if (!embedded && location.pathname === '/dialer') return null
 
   const combinedMessage = message || sipAudioInputError || sipAudioOutputError || microphoneMeterError || audioDevicesError
 
   return (
     <div
       style={{
-        position: 'fixed',
-        right: 28,
-        bottom: 108,
-        zIndex: 10002,
-        width: 360,
-        maxWidth: 'calc(100vw - 34px)',
-        borderRadius: 28,
-        padding: 18,
+        position: embedded ? 'relative' : 'fixed',
+        right: embedded ? undefined : 28,
+        bottom: embedded ? undefined : 108,
+        zIndex: embedded ? 1 : 10002,
+        width: embedded ? '100%' : 360,
+        height: embedded ? '100%' : undefined,
+        minHeight: embedded ? 408 : undefined,
+        maxWidth: embedded ? 'none' : 'calc(100vw - 34px)',
+        borderRadius: embedded ? 26 : 28,
+        padding: embedded ? 16 : 18,
         color: brand.ink,
         background: `
           radial-gradient(circle at 14% 0%,rgba(251,11,140,0.22),transparent 36%),
@@ -194,6 +204,7 @@ export default function SipActiveCallOverlay() {
         boxShadow: '0 28px 90px rgba(0,0,0,0.62),0 0 70px rgba(0,245,160,0.14)',
         backdropFilter: 'blur(22px)',
         WebkitBackdropFilter: 'blur(22px)',
+        overflowY: embedded ? 'auto' : undefined,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>

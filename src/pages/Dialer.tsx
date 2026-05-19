@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Phone, PhoneOff, Mic, MicOff, Play, Square,
-  Power, Sparkles, Search,
+  Power, Sparkles, Search, ChevronUp, ChevronDown, Activity,
 } from 'lucide-react'
 import { dialerAPI }    from '../api/dialer.api'
 import { campaignsAPI } from '../api/campaigns.api'
 import { contactsAPI }  from '../api/contacts.api'
 import { useAuthStore } from '../store/auth.store'
 import { useSipStore } from '../store/sip.store'
+import FloatingDialer from '../components/FloatingDialer'
+import SipActiveCallOverlay from '../components/SipActiveCallOverlay'
 
 
 const FALLBACK_DIALER_CAMPAIGNS: Record<string, unknown>[] = [
@@ -43,8 +45,10 @@ export default function Dialer() {
   const [loading,      setLoading]      = useState(false)
   const [message,      setMessage]      = useState('')
   const [search,       setSearch]       = useState('')
+  const [voiceDeskOpen, setVoiceDeskOpen] = useState(true)
   const sipConfig = useSipStore(s => s.config)
   const sipStatus = useSipStore(s => s.status)
+  const liveSipCall = useSipStore(s => s.activeCall)
   const sipCall = useSipStore(s => s.call)
   const sipHangup = useSipStore(s => s.hangup)
   const sipModeEnabled = Boolean(sipConfig.enabled)
@@ -418,12 +422,162 @@ export default function Dialer() {
         )}
       </motion.aside>
 
-      {/* ============== RIGHT — Contacts Table ============== */}
+      {/* ============== RIGHT — Embedded Voice Desk ============== */}
       <motion.section
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         className="glass"
-        style={{ padding: 24, overflow: 'hidden' }}
+        style={{
+          padding: 0,
+          overflow: 'hidden',
+          alignSelf: 'start',
+          minHeight: voiceDeskOpen ? 438 : 62,
+        }}
+      >
+        <div
+          style={{
+            minHeight: 62,
+            padding: '13px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 14,
+            borderBottom: voiceDeskOpen ? '1px solid var(--border)' : 'none',
+            background: 'linear-gradient(135deg,rgba(251,11,140,0.08),rgba(0,245,160,0.045))',
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div
+              className="mono"
+              style={{
+                fontSize: 10,
+                fontWeight: 900,
+                letterSpacing: 1.3,
+                textTransform: 'uppercase',
+                color: 'var(--pink)',
+                marginBottom: 4,
+              }}
+            >
+              Embedded voice desk
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
+              Manual dialer and live SIP controls stay anchored inside this workspace.
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setVoiceDeskOpen(open => !open)}
+            style={{
+              height: 34,
+              borderRadius: 999,
+              border: '1px solid var(--border-strong)',
+              background: voiceDeskOpen ? 'rgba(251,11,140,0.10)' : 'rgba(0,245,160,0.10)',
+              color: voiceDeskOpen ? 'var(--pink)' : 'var(--green-2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '0 12px',
+              fontSize: 10.5,
+              fontWeight: 900,
+              textTransform: 'uppercase',
+              letterSpacing: 0.7,
+              cursor: 'pointer',
+            }}
+          >
+            {voiceDeskOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {voiceDeskOpen ? 'Hide desk' : 'Open desk'}
+          </button>
+        </div>
+
+        <AnimatePresence initial={false}>
+          {voiceDeskOpen && (
+            <motion.div
+              key="embedded-voice-desk"
+              initial={{ height: 0, opacity: 0, y: -10 }}
+              animate={{ height: 'auto', opacity: 1, y: 0 }}
+              exit={{ height: 0, opacity: 0, y: -10 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(360px, 1.15fr) minmax(320px, 0.85fr)',
+                  gap: 12,
+                  padding: 12,
+                  minHeight: 376,
+                }}
+              >
+                <div style={{ minWidth: 0, minHeight: 376 }}>
+                  <FloatingDialer mode="embedded" />
+                </div>
+
+                <div
+                  style={{
+                    minWidth: 0,
+                    minHeight: 376,
+                    borderRadius: 26,
+                    border: '1px solid rgba(0,245,160,0.18)',
+                    background: liveSipCall
+                      ? 'transparent'
+                      : 'linear-gradient(145deg,rgba(5,4,11,0.92),rgba(18,13,31,0.76))',
+                    overflow: 'hidden',
+                    position: 'relative',
+                  }}
+                >
+                  {liveSipCall ? (
+                    <SipActiveCallOverlay mode="embedded" />
+                  ) : (
+                    <div
+                      style={{
+                        height: '100%',
+                        minHeight: 376,
+                        display: 'grid',
+                        placeItems: 'center',
+                        padding: 24,
+                        color: 'var(--text-3)',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            width: 54,
+                            height: 54,
+                            borderRadius: 20,
+                            margin: '0 auto 14px',
+                            display: 'grid',
+                            placeItems: 'center',
+                            background: 'linear-gradient(145deg,rgba(0,245,160,0.16),rgba(251,11,140,0.10))',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            boxShadow: '0 0 36px rgba(0,245,160,0.12)',
+                          }}
+                        >
+                          <Activity size={22} color="var(--green-2)" />
+                        </div>
+                        <div className="display" style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', marginBottom: 7 }}>
+                          Call pop-up standby
+                        </div>
+                        <div style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 300 }}>
+                          When a SIP call connects, hold, transfer, mute, device routing, and hangup controls open here.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.section>
+
+      {/* ============== CONTACTS — Full Width Table ============== */}
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass"
+        style={{ padding: 24, overflow: 'hidden', gridColumn: '1 / -1' }}
       >
         {/* Header */}
         <div style={{
@@ -574,4 +728,3 @@ export default function Dialer() {
     </div>
   )
 }
-

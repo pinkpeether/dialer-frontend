@@ -391,9 +391,14 @@ function StatusBadge({
   );
 }
 
+interface FloatingDialerProps {
+  mode?: "floating" | "embedded";
+}
+
 // ── Main Component ────────────────────────────────────────
-export default function FloatingDialer() {
-  const [state, setState] = useState<WidgetState>("collapsed");
+export default function FloatingDialer({ mode = "floating" }: FloatingDialerProps) {
+  const isEmbedded = mode === "embedded";
+  const [state, setState] = useState<WidgetState>(isEmbedded ? "dialpad" : "collapsed");
   const [tab, setTab] = useState<ActiveTab>("controls");
   const [number, setNumber] = useState("");
   const [contactName, setName] = useState("");
@@ -679,6 +684,8 @@ export default function FloatingDialer() {
   }, [state]);
 
   useEffect(() => {
+    if (isEmbedded) return
+
     const h = (e: KeyboardEvent) => {
       if (e.altKey && e.key.toLowerCase() === "d") {
         e.preventDefault();
@@ -693,7 +700,7 @@ export default function FloatingDialer() {
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, []);
+  }, [isEmbedded]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return [];
@@ -973,7 +980,7 @@ export default function FloatingDialer() {
       const key = e.key;
       const isDialKey = /^[0-9]$/.test(key) || key === "*" || key === "#";
 
-      if (key === "Escape" && state !== "collapsed") {
+      if (!isEmbedded && key === "Escape" && state !== "collapsed") {
         e.preventDefault();
         handleClose();
         return;
@@ -1021,6 +1028,7 @@ export default function FloatingDialer() {
     handleDTMF,
     handleClose,
     playDtmfTone,
+    isEmbedded,
   ]);
 
   const timeAgo = (ms: number) => {
@@ -1034,7 +1042,7 @@ export default function FloatingDialer() {
   const outcomeColor = (o: string) =>
     o === "answered" ? "#10b981" : o === "missed" ? "#f59e0b" : "#ef4444";
 
-  const isOpen = state !== "collapsed";
+  const isOpen = isEmbedded || state !== "collapsed";
 
   return (
     <>
@@ -1066,13 +1074,15 @@ export default function FloatingDialer() {
 
       <div
         style={{
-          position: "fixed",
-          bottom: 28 - pos.y,
-          right: 28 - pos.x,
-          zIndex: 9999,
+          position: isEmbedded ? "relative" : "fixed",
+          bottom: isEmbedded ? undefined : 28 - pos.y,
+          right: isEmbedded ? undefined : 28 - pos.x,
+          zIndex: isEmbedded ? 1 : 9999,
+          width: isEmbedded ? "100%" : undefined,
+          height: isEmbedded ? "100%" : undefined,
           display: "flex",
           flexDirection: "column",
-          alignItems: "flex-end",
+          alignItems: isEmbedded ? "stretch" : "flex-end",
           gap: 14,
         }}
       >
@@ -1088,8 +1098,10 @@ export default function FloatingDialer() {
               exit={{ opacity: 0, scale: 0.78, y: 54, rotateX: -8 }}
               transition={{ type: "spring", stiffness: 430, damping: 34 }}
               style={{
-                width: 372,
-                borderRadius: 34,
+                width: isEmbedded ? "100%" : 372,
+                height: isEmbedded ? "100%" : undefined,
+                minHeight: isEmbedded ? 376 : undefined,
+                borderRadius: isEmbedded ? 26 : 34,
                 background: `
                   radial-gradient(circle at 18% 0%,rgba(251,11,140,0.25),transparent 34%),
                   radial-gradient(circle at 88% 4%,rgba(0,245,160,0.18),transparent 34%),
@@ -1109,6 +1121,8 @@ export default function FloatingDialer() {
                 transition: "box-shadow 0.38s ease",
                 position: "relative",
                 color: brand.ink,
+                display: isEmbedded ? "flex" : undefined,
+                flexDirection: isEmbedded ? "column" : undefined,
               }}
             >
               {/* Luxury grid / aurora layer */}
@@ -1175,13 +1189,13 @@ export default function FloatingDialer() {
                   HEADER
               ════════════════════════════════════ */}
               <div
-                onPointerDown={onHeaderPointerDown}
-                onPointerMove={onHeaderPointerMove}
-                onPointerUp={onHeaderPointerUp}
-                onPointerCancel={onHeaderPointerUp}
+                onPointerDown={isEmbedded ? undefined : onHeaderPointerDown}
+                onPointerMove={isEmbedded ? undefined : onHeaderPointerMove}
+                onPointerUp={isEmbedded ? undefined : onHeaderPointerUp}
+                onPointerCancel={isEmbedded ? undefined : onHeaderPointerUp}
                 style={{
-                  padding: "20px 20px 15px",
-                  cursor: "grab",
+                  padding: isEmbedded ? "13px 16px 10px" : "20px 20px 15px",
+                  cursor: isEmbedded ? "default" : "grab",
                   touchAction: "none",
                   position: "relative",
                   zIndex: 2,
@@ -1340,11 +1354,11 @@ export default function FloatingDialer() {
                         background:
                           "linear-gradient(145deg,rgba(255,255,255,0.095),rgba(255,255,255,0.035))",
                         border: "1px solid rgba(255,255,255,0.12)",
-                        display: "flex",
+                        display: isEmbedded ? "none" : "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         color: "rgba(249,247,255,0.46)",
-                        cursor: "pointer",
+                        cursor: isEmbedded ? "default" : "pointer",
                         transition: "all .18s ease",
                         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
                       }}
@@ -1374,8 +1388,8 @@ export default function FloatingDialer() {
                     background:
                       "linear-gradient(145deg,rgba(2,2,8,0.92),rgba(14,9,25,0.80))",
                     borderRadius: 26,
-                    padding: "15px 17px",
-                    minHeight: 90,
+                    padding: isEmbedded ? "11px 14px" : "15px 17px",
+                    minHeight: isEmbedded ? 76 : 90,
                     display: "flex",
                     flexDirection: "column",
                     justifyContent: "space-between",
@@ -1573,14 +1587,18 @@ export default function FloatingDialer() {
               <div
                 onPointerDown={(e) => e.stopPropagation()}
                 style={{
-                  padding: "3px 20px 24px",
+                  padding: isEmbedded ? "2px 16px 14px" : "3px 20px 24px",
                   position: "relative",
                   zIndex: 2,
+                  flex: isEmbedded ? "1 1 auto" : undefined,
+                  minHeight: isEmbedded ? 0 : undefined,
+                  overflowY: isEmbedded ? "auto" : undefined,
                 }}
+                className={isEmbedded ? "ptdt-panel" : undefined}
               >
                 {/* ── Search ── */}
                 {(state === "dialpad" || state === "calling") && (
-                  <div style={{ position: "relative", marginBottom: 14 }}>
+                    <div style={{ position: "relative", marginBottom: isEmbedded ? 10 : 14 }}>
                     <div
                       style={{
                         display: "flex",
@@ -1767,8 +1785,8 @@ export default function FloatingDialer() {
                         display: "grid",
                         gridTemplateColumns: "repeat(3,1fr)",
                         justifyItems: "center",
-                        gap: 12,
-                        marginBottom: 18,
+                        gap: isEmbedded ? 9 : 12,
+                        marginBottom: isEmbedded ? 12 : 18,
                       }}
                     >
                       {KEYS.flat().map((k) => (
@@ -1777,6 +1795,7 @@ export default function FloatingDialer() {
                           label={k}
                           sub={SUB[k]}
                           onClick={() => handleKey(k)}
+                          size={isEmbedded ? "small" : "normal"}
                         />
                       ))}
                     </div>
@@ -1800,8 +1819,8 @@ export default function FloatingDialer() {
                         }}
                         style={{
                           flex: 1,
-                          height: 57,
-                          borderRadius: 24,
+                          height: isEmbedded ? 48 : 57,
+                          borderRadius: isEmbedded ? 20 : 24,
                           cursor:
                             loading || state === "calling" ? "wait" : "pointer",
                           background:
@@ -1811,7 +1830,7 @@ export default function FloatingDialer() {
                           border: "none",
                           color: "#03100b",
                           fontWeight: 950,
-                          fontSize: 15,
+                          fontSize: isEmbedded ? 13.5 : 15,
                           letterSpacing: 0.2,
                           display: "flex",
                           alignItems: "center",
@@ -2694,73 +2713,76 @@ export default function FloatingDialer() {
           )}
         </AnimatePresence>
 
-        <motion.button
-          onClick={handleOpenRecentCalls}
-          title="Recent Calls / Signals"
-          whileHover={{ scale: 1.06, y: -1 }}
-          whileTap={{ scale: 0.94 }}
-          style={{
-            height: 42,
-            borderRadius: 999,
-            padding: "0 15px",
-            cursor: "pointer",
-            border: "1px solid rgba(255,255,255,0.14)",
-            color: brand.ink,
-            background:
-              "linear-gradient(145deg,rgba(251,11,140,0.18),rgba(0,245,160,0.10))",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            boxShadow:
-              "0 14px 34px rgba(0,0,0,0.28),0 0 28px rgba(251,11,140,0.13)",
-            fontSize: 11,
-            fontWeight: 950,
-            letterSpacing: 0.7,
-            textTransform: "uppercase",
-          }}
-        >
-          <Clock size={14} color={brand.green} /> Recent Calls
-        </motion.button>
+        {!isEmbedded && (
+          <motion.button
+            onClick={handleOpenRecentCalls}
+            title="Recent Calls / Signals"
+            whileHover={{ scale: 1.06, y: -1 }}
+            whileTap={{ scale: 0.94 }}
+            style={{
+              height: 42,
+              borderRadius: 999,
+              padding: "0 15px",
+              cursor: "pointer",
+              border: "1px solid rgba(255,255,255,0.14)",
+              color: brand.ink,
+              background:
+                "linear-gradient(145deg,rgba(251,11,140,0.18),rgba(0,245,160,0.10))",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              boxShadow:
+                "0 14px 34px rgba(0,0,0,0.28),0 0 28px rgba(251,11,140,0.13)",
+              fontSize: 11,
+              fontWeight: 950,
+              letterSpacing: 0.7,
+              textTransform: "uppercase",
+            }}
+          >
+            <Clock size={14} color={brand.green} /> Recent Calls
+          </motion.button>
+        )}
 
         {/* ══════════════════════════════════════════
             FAB — PTDT Orb
         ══════════════════════════════════════════ */}
-        <motion.button
-          onClick={handleFABClick}
-          title="PTDT-Dialer (Alt+D)"
-          animate={state === "collapsed" ? { y: [0, -5, 0] } : {}}
-          transition={
-            state === "collapsed"
-              ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
-              : {}
-          }
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          style={{
-            width: 68,
-            height: 68,
-            borderRadius: "50%",
-            cursor: "pointer",
-            border: "1px solid rgba(255,255,255,0.16)",
-            color: "#fff",
-            background:
-              state === "active"
-                ? `radial-gradient(circle at 30% 20%,#fff,${brand.green} 20%,#0ea574 58%,#063426)`
-                : `radial-gradient(circle at 30% 20%,#fff,${brand.pink} 18%,${brand.purple} 55%,#211033)`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow:
-              state === "active"
-                ? "0 0 0 8px rgba(0,245,160,0.12),0 18px 46px rgba(0,245,160,0.40),0 0 54px rgba(0,245,160,0.28)"
-                : "0 0 0 8px rgba(251,11,140,0.12),0 18px 46px rgba(251,11,140,0.38),0 0 54px rgba(139,92,246,0.26)",
-            transition: "background 0.3s, box-shadow 0.3s",
-            flexShrink: 0,
-            position: "relative",
-            overflow: "visible",
-          }}
-        >
+        {!isEmbedded && (
+          <motion.button
+            onClick={handleFABClick}
+            title="PTDT-Dialer (Alt+D)"
+            animate={state === "collapsed" ? { y: [0, -5, 0] } : {}}
+            transition={
+              state === "collapsed"
+                ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
+                : {}
+            }
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            style={{
+              width: 68,
+              height: 68,
+              borderRadius: "50%",
+              cursor: "pointer",
+              border: "1px solid rgba(255,255,255,0.16)",
+              color: "#fff",
+              background:
+                state === "active"
+                  ? `radial-gradient(circle at 30% 20%,#fff,${brand.green} 20%,#0ea574 58%,#063426)`
+                  : `radial-gradient(circle at 30% 20%,#fff,${brand.pink} 18%,${brand.purple} 55%,#211033)`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow:
+                state === "active"
+                  ? "0 0 0 8px rgba(0,245,160,0.12),0 18px 46px rgba(0,245,160,0.40),0 0 54px rgba(0,245,160,0.28)"
+                  : "0 0 0 8px rgba(251,11,140,0.12),0 18px 46px rgba(251,11,140,0.38),0 0 54px rgba(139,92,246,0.26)",
+              transition: "background 0.3s, box-shadow 0.3s",
+              flexShrink: 0,
+              position: "relative",
+              overflow: "visible",
+            }}
+          >
           <motion.div
             style={{
               position: "absolute",
@@ -2832,7 +2854,8 @@ export default function FloatingDialer() {
               </motion.span>
             )}
           </AnimatePresence>
-        </motion.button>
+          </motion.button>
+        )}
       </div>
 
       <RecentCallsModal
