@@ -47,15 +47,52 @@ function FormRow({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
+function PwInput({ value, onChange, show, onToggle, placeholder }: {
+  value: string; onChange: (v: string) => void; show: boolean; onToggle: () => void; placeholder: string
+}) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{ ...inputStyle, paddingRight: 42 }}
+      />
+      <button type="button" onClick={onToggle} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
+        {show ? <EyeOff size={15} /> : <Eye size={15} />}
+      </button>
+    </div>
+  )
+}
+
+function Toggle({ checked, onChange, label }: {
+  checked: boolean; onChange: (v: boolean) => void; label: string
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+      <span style={{ fontSize: 13.5, color: 'var(--text)', fontWeight: 600 }}>{label}</span>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        style={{ width: 46, height: 26, borderRadius: 999, border: 'none', background: checked ? 'var(--pink)' : 'rgba(255,255,255,0.12)', cursor: 'pointer', position: 'relative', transition: 'background 0.22s', flexShrink: 0 }}
+      >
+        <span style={{ position: 'absolute', top: 3, left: checked ? 23 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.22s', boxShadow: '0 2px 6px rgba(0,0,0,0.30)' }} />
+      </button>
+    </div>
+  )
+}
+
 export default function Settings() {
   const user = useAuthStore(state => state.user)
+  const updateUser = useAuthStore(state => state.updateUser)
   const toast = useToast()
   const userRecord = user as unknown as Record<string, unknown> | null
 
   // Profile state
   const [profileName, setProfileName] = useState(user?.name || '')
-  const [profileEmail, setProfileEmail] = useState(userRecord?.email as string || '')
   const [profilePhone, setProfilePhone] = useState(userRecord?.phone as string || '')
+  const [profileExtension, setProfileExtension] = useState(userRecord?.extension as string || '')
   const [savingProfile, setSavingProfile] = useState(false)
 
   // Password state
@@ -80,8 +117,13 @@ export default function Settings() {
     try {
       await profileAPI.update({
         name: profileName.trim(),
-        email: profileEmail.trim() || undefined,
         phone: profilePhone.trim() || undefined,
+        extension: profileExtension.trim() || undefined,
+      })
+      updateUser({
+        name: profileName.trim(),
+        phone: profilePhone.trim() || undefined,
+        extension: profileExtension.trim() || undefined,
       })
       toast.success('Profile updated successfully')
     } catch (err) {
@@ -113,36 +155,6 @@ export default function Settings() {
     toast.success('Preferences saved')
   }
 
-  const PwInput = ({ value, onChange, show, onToggle, placeholder }: {
-    value: string; onChange: (v: string) => void; show: boolean; onToggle: () => void; placeholder: string
-  }) => (
-    <div style={{ position: 'relative' }}>
-      <input
-        type={show ? 'text' : 'password'}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={{ ...inputStyle, paddingRight: 42 }}
-      />
-      <button type="button" onClick={onToggle} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
-        {show ? <EyeOff size={15} /> : <Eye size={15} />}
-      </button>
-    </div>
-  )
-
-  const Toggle = ({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ fontSize: 13.5, color: 'var(--text)', fontWeight: 600 }}>{label}</span>
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        style={{ width: 46, height: 26, borderRadius: 999, border: 'none', background: checked ? 'var(--pink)' : 'rgba(255,255,255,0.12)', cursor: 'pointer', position: 'relative', transition: 'background 0.22s', flexShrink: 0 }}
-      >
-        <span style={{ position: 'absolute', top: 3, left: checked ? 23 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.22s', boxShadow: '0 2px 6px rgba(0,0,0,0.30)' }} />
-      </button>
-    </div>
-  )
-
   return (
     <div style={{ padding: '32px 36px', maxWidth: 900, margin: '0 auto' }}>
 
@@ -167,8 +179,8 @@ export default function Settings() {
             <FormRow label="Display Name">
               <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} style={inputStyle} placeholder="Your name" />
             </FormRow>
-            <FormRow label="Email Address">
-              <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" />
+            <FormRow label="Extension">
+              <input type="text" value={profileExtension} onChange={e => setProfileExtension(e.target.value)} style={inputStyle} placeholder="1001" />
             </FormRow>
             <FormRow label="Phone Number">
               <input type="tel" value={profilePhone} onChange={e => setProfilePhone(e.target.value)} style={inputStyle} placeholder="+1 234 567 8900" />

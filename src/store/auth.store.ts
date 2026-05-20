@@ -5,8 +5,10 @@ interface User {
   agentCode: string
   name: string
   email: string
-  role: 'ADMIN' | 'SUPERVISOR' | 'AGENT'
+  role: 'ADMIN' | 'MANAGER' | 'SUPERVISOR' | 'AGENT'
   status: string
+  phone?: string | null
+  extension?: string | null
 }
 
 interface AuthStore {
@@ -14,6 +16,7 @@ interface AuthStore {
   token:   string | null
   isAuth:  boolean
   setAuth: (user: User, token: string) => void
+  updateUser: (patch: Partial<User>) => void
   logout:  () => void
 }
 
@@ -27,6 +30,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
     localStorage.setItem('jd_user', JSON.stringify(user))
     set({ user, token, isAuth: true })
   },
+
+  updateUser: (patch) => set((state) => {
+    if (!state.user) return state
+    const user = { ...state.user, ...patch }
+    localStorage.setItem('jd_user', JSON.stringify(user))
+    return { user }
+  }),
 
   logout: () => {
     localStorage.removeItem('jd_token')

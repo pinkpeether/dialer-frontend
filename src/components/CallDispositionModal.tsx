@@ -43,7 +43,9 @@ export default function CallDispositionModal({
   const toast = useToast()
 
   useEffect(() => {
-    if (open) setError(null)
+    if (!open) return
+    const timer = window.setTimeout(() => setError(null), 0)
+    return () => window.clearTimeout(timer)
   }, [open, callId, saveMode])
 
   if (!open || callId === null) return null
@@ -88,7 +90,7 @@ export default function CallDispositionModal({
             toast.success(`Callback scheduled for ${new Date(payload.callbackAt!).toLocaleString()}`)
           }
         }).catch(() => {
-          // Silent — /callbacks endpoint may not exist yet
+          // Non-blocking: disposition save should not fail if callback scheduling fails.
         })
       }
 

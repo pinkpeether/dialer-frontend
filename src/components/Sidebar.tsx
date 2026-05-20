@@ -28,8 +28,8 @@ const NAV: NavItem[] = [
   { to: '/calls',           icon: History,         label: 'Call History'    },
   { to: '/callbacks',       icon: Calendar,        label: 'Callbacks'       },
   { to: '/supervisor',      icon: Eye,             label: 'Supervisor',     roles: ['ADMIN', 'MANAGER', 'SUPERVISOR'] },
-  { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'MANAGER'] },
-  { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'MANAGER'] },
+  { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'SUPERVISOR'] },
+  { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'] },
   { to: '/settings',        icon: Settings2,       label: 'Settings'        },
   { to: '/sip-settings',    icon: Wrench,          label: 'SIP Settings'    },
 ]

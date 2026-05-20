@@ -1,4 +1,5 @@
 import api from './axios'
+import { callbacksAPI } from './callbacks.api'
 
 type CallsRequestOptions = {
   timeout?: number
@@ -30,12 +31,6 @@ export const callsAPI = {
     scheduledAt: string   // ISO 8601
     notes?: string
   }) => {
-    try {
-      const res = await api.post('/callbacks', data)
-      return res.data.data
-    } catch {
-      // Backend may not have /callbacks yet — fail silently
-      return null
-    }
+    return callbacksAPI.create(data)
   },
 }

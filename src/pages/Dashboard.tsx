@@ -12,6 +12,7 @@ import { agentsAPI }        from '../api/agents.api'
 import { campaignsAPI }     from '../api/campaigns.api'
 import { contactsAPI }      from '../api/contacts.api'
 import { callsAPI }         from '../api/calls.api'
+import { reportsAPI, type ReportTrendRow } from '../api/reports.api'
 import { useAuthStore }     from '../store/auth.store'
 import { useLiveDashboard } from '../hooks/useLiveDashboard'
 import StatsCard            from '../components/StatsCard'
@@ -29,6 +30,8 @@ type CallLog = {
   duration: number | null
   createdAt: string
 }
+
+type TrendLog = Pick<CallLog, 'createdAt' | 'status' | 'disposition'>
 
 const COL_PINK   = '#fb0b8c'
 const COL_GREEN  = '#00a747'
@@ -60,6 +63,22 @@ function buildTrend(calls: CallLog[]) {
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-7)
     .map(([day, v]) => ({ day: day.slice(5), calls: v.calls, answered: v.answered }))
+}
+
+function trendRowsToCallLogs(rows: ReportTrendRow[]): TrendLog[] {
+  return rows.flatMap((row) => {
+    const answered = Array.from({ length: row.answered }, () => ({
+      createdAt: row.date,
+      status: 'COMPLETED',
+      disposition: 'ANSWERED',
+    }))
+    const other = Array.from({ length: Math.max(0, row.total - row.answered) }, () => ({
+      createdAt: row.date,
+      status: 'NO_ANSWER',
+      disposition: 'NO_ANSWER',
+    }))
+    return [...answered, ...other]
+  })
 }
 
 function buildDispositionPie(calls: CallLog[]) {
@@ -105,10 +124,15 @@ export default function Dashboard() {
   useEffect(() => {
     const loadCalls = async () => {
       try {
-        const res = await callsAPI.getAll({ limit: 100 })
-        setRecentCallData(extractList<CallLog>(res, ['calls', 'results', 'items', 'data']))
+        const trendRows = await reportsAPI.getCallTrend({ granularity: 'day' })
+        setRecentCallData(trendRowsToCallLogs(trendRows) as CallLog[])
       } catch {
-        // non-fatal — charts just stay empty
+        try {
+          const res = await callsAPI.getAll({ limit: 100 })
+          setRecentCallData(extractList<CallLog>(res, ['calls', 'results', 'items', 'data']))
+        } catch {
+          // non-fatal — charts just stay empty
+        }
       }
     }
     void loadCalls()

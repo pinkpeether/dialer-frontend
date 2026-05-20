@@ -2,9 +2,8 @@ import api from './axios'
 
 export type ProfileUpdate = {
   name?: string
-  email?: string
-  displayName?: string
   phone?: string
+  extension?: string
 }
 
 export type PasswordChange = {
@@ -13,8 +12,9 @@ export type PasswordChange = {
 }
 
 export const profileAPI = {
-  update: async (data: ProfileUpdate): Promise<void> => {
-    await api.patch('/auth/profile', data)
+  update: async (data: ProfileUpdate) => {
+    const res = await api.patch('/agents/me', data)
+    return res.data.data
   },
 
   changePassword: async (data: PasswordChange): Promise<void> => {

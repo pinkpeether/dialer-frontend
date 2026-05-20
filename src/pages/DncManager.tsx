@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, RefreshCw, Search, ShieldOff, Trash2, X } from 'lucide-react'
 import { dncAPI, type DncEntry } from '../api/dnc.api'
+import { useAuthStore } from '../store/auth.store'
 
 const fmtDate = (iso?: string) => {
   if (!iso) return '—'
@@ -20,6 +21,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 export default function DncManager() {
+  const user = useAuthStore(state => state.user)
   const [entries, setEntries] = useState<DncEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -31,6 +33,7 @@ export default function DncManager() {
   const [error, setError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const canRemove = user?.role === 'ADMIN'
 
   const load = useCallback(async (q?: string) => {
     setLoading(true)
@@ -45,7 +48,10 @@ export default function DncManager() {
     }
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0)
+    return () => window.clearTimeout(timer)
+  }, [load])
 
   const handleSearch = (val: string) => {
     setSearch(val)
@@ -181,14 +187,18 @@ export default function DncManager() {
                     {fmtDate(entry.createdAt)}
                   </td>
                   <td style={{ padding: '14px 16px' }}>
-                    <button
-                      type="button"
-                      disabled={removingId === entry.id}
-                      onClick={() => void handleRemove(entry)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239,68,68,0.32)', background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', fontSize: 12, fontWeight: 700, cursor: removingId === entry.id ? 'not-allowed' : 'pointer', opacity: removingId === entry.id ? 0.55 : 1 }}
-                    >
-                      <Trash2 size={12} /> Remove
-                    </button>
+                    {canRemove ? (
+                      <button
+                        type="button"
+                        disabled={removingId === entry.id}
+                        onClick={() => void handleRemove(entry)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239,68,68,0.32)', background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', fontSize: 12, fontWeight: 700, cursor: removingId === entry.id ? 'not-allowed' : 'pointer', opacity: removingId === entry.id ? 0.55 : 1 }}
+                      >
+                        <Trash2 size={12} /> Remove
+                      </button>
+                    ) : (
+                      <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)' }}>Admin only</span>
+                    )}
                   </td>
                 </motion.tr>
               ))}

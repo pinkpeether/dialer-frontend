@@ -8,14 +8,24 @@ export type DncEntry = {
   createdAt?: string
 }
 
+const normalizeDncEntry = (raw: unknown): DncEntry => {
+  const entry = raw as Record<string, unknown>
+  const addedBy = entry.addedBy as string | { id?: number; name?: string | null; agentCode?: string | null } | null | undefined
+  if (!addedBy || typeof addedBy === 'string') return entry as unknown as DncEntry
+  return {
+    ...entry,
+    addedBy: addedBy.name || addedBy.agentCode || `User #${addedBy.id ?? '—'}`,
+  } as DncEntry
+}
+
 export const dncAPI = {
   getAll: async (params?: { page?: number; limit?: number; search?: string }): Promise<DncEntry[]> => {
     try {
       const res = await api.get('/dnc', { params })
       const data = res.data?.data ?? res.data
-      if (Array.isArray(data)) return data as DncEntry[]
-      if (Array.isArray(data?.entries)) return data.entries as DncEntry[]
-      if (Array.isArray(data?.items)) return data.items as DncEntry[]
+      if (Array.isArray(data)) return data.map(normalizeDncEntry)
+      if (Array.isArray(data?.entries)) return data.entries.map(normalizeDncEntry)
+      if (Array.isArray(data?.items)) return data.items.map(normalizeDncEntry)
       return []
     } catch {
       return []
