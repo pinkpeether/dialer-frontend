@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { sipClient } from '../services/sip/SipClient'
 import { softphoneAudio } from '../services/audio/SoftphoneAudio'
+import api from '../api/axios'
 import type { SipAccountConfig, SipCallState, SipIncomingCall, SipRuntimeStatus } from '../types/sip'
 
 const STORAGE_KEY = 'ptdt_sip_account_v1'
@@ -35,19 +36,33 @@ function isConfigReady(config: SipAccountConfig) {
 }
 
 function loadAudioOutputDeviceId() {
-  try {
-    return localStorage.getItem(AUDIO_OUTPUT_STORAGE_KEY) || 'default'
-  } catch {
-    return 'default'
-  }
+  try { return localStorage.getItem(AUDIO_OUTPUT_STORAGE_KEY) || 'default' } catch { return 'default' }
 }
 
 function loadAudioInputDeviceId() {
+  try { return localStorage.getItem(AUDIO_INPUT_STORAGE_KEY) || 'default' } catch { return 'default' }
+}
+
+// Create a backend call log for a SIP call — best-effort, non-blocking
+async function logSipCallToBackend(callState: SipCallState): Promise<number | null> {
   try {
-    return localStorage.getItem(AUDIO_INPUT_STORAGE_KEY) || 'default'
+    const res = await api.post('/calls', {
+      direction: callState.direction,
+      remoteNumber: callState.remoteIdentity,
+      source: 'sip',
+      startedAt: new Date(callState.startedAt).toISOString(),
+    })
+    const id = res.data?.data?.id ?? res.data?.id ?? null
+    return typeof id === 'number' ? id : null
   } catch {
-    return 'default'
+    return null
   }
+}
+
+export type SipDispositionContext = {
+  callId: number | string
+  saveMode: 'backend' | 'preview'
+  remoteIdentity: string
 }
 
 interface SipStore {
@@ -63,6 +78,12 @@ interface SipStore {
   audioInputDeviceId: string
   audioInputError: string | null
   isConfigured: boolean
+
+  // 12A — SIP backend call ID and disposition trigger
+  sipCallId: number | null
+  showSipDisposition: boolean
+  pendingSipDisposition: SipDispositionContext | null
+
   saveConfig: (config: SipAccountConfig) => void
   clearConfig: () => void
   register: () => Promise<void>
@@ -80,6 +101,7 @@ interface SipStore {
   testAudioOutputDevice: () => Promise<void>
   setAudioInputDevice: (deviceId: string) => Promise<void>
   clearError: () => void
+  dismissSipDisposition: () => void
 }
 
 const initialConfig = loadConfig()
@@ -97,6 +119,11 @@ export const useSipStore = create<SipStore>((set, get) => ({
   audioInputDeviceId: loadAudioInputDeviceId(),
   audioInputError: null,
   isConfigured: isConfigReady(initialConfig),
+
+  // 12A
+  sipCallId: null,
+  showSipDisposition: false,
+  pendingSipDisposition: null,
 
   saveConfig: (config) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
@@ -124,6 +151,9 @@ export const useSipStore = create<SipStore>((set, get) => ({
       audioInputDeviceId: 'default',
       audioInputError: null,
       isConfigured: false,
+      sipCallId: null,
+      showSipDisposition: false,
+      pendingSipDisposition: null,
     })
   },
 
@@ -136,8 +166,40 @@ export const useSipStore = create<SipStore>((set, get) => ({
         onStatusChange: (status) => set({ status }),
         onError: (error) => set({ error }),
         onIncomingCall: (incomingCall) => set({ incomingCall, status: 'incoming' }),
-        onCallStarted: (activeCall) => set({ activeCall, incomingCall: null, status: 'in_call', onHold: false }),
-        onCallEnded: () => set({ activeCall: null, incomingCall: null, muted: false, onHold: false }),
+
+        onCallStarted: (activeCall) => {
+          set({ activeCall, incomingCall: null, status: 'in_call', onHold: false })
+
+          // 12A — log call to backend async, store the returned callId
+          void logSipCallToBackend(activeCall).then((backendCallId) => {
+            set({ sipCallId: backendCallId })
+          })
+        },
+
+        onCallEnded: () => {
+          const { activeCall, sipCallId } = get()
+
+          // 12A — open disposition modal with real callId if available
+          if (activeCall) {
+            const hasRealId = sipCallId !== null
+            set({
+              pendingSipDisposition: {
+                callId: hasRealId ? sipCallId! : `sip-${Date.now()}`,
+                saveMode: hasRealId ? 'backend' : 'preview',
+                remoteIdentity: activeCall.remoteIdentity,
+              },
+              showSipDisposition: true,
+            })
+          }
+
+          set({
+            activeCall: null,
+            incomingCall: null,
+            muted: false,
+            onHold: false,
+            sipCallId: null,
+          })
+        },
       })
     } catch (err) {
       const error = err instanceof Error ? err.message : 'SIP registration failed'
@@ -154,6 +216,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       incomingCall: null,
       muted: false,
       onHold: false,
+      sipCallId: null,
     })
   },
 
@@ -171,26 +234,23 @@ export const useSipStore = create<SipStore>((set, get) => ({
   },
 
   answer: async () => {
-  const incomingCall = get().incomingCall
-  await sipClient.answer()
-
-  // Fail-safe UI state: some WebRTC/SIP sessions establish media before
-  // SIP.js stateChange emits Established. Keep the call visible immediately.
-  if (incomingCall) {
-    set({
-      activeCall: {
-        id: incomingCall.id,
-        remoteIdentity: incomingCall.displayName || incomingCall.from || 'Incoming SIP Call',
-        startedAt: Date.now(),
-        direction: 'incoming',
-      },
-      incomingCall: null,
-      status: 'in_call',
-      onHold: false,
-      error: null,
-    })
-  }
-},
+    const incomingCall = get().incomingCall
+    await sipClient.answer()
+    if (incomingCall) {
+      set({
+        activeCall: {
+          id: incomingCall.id,
+          remoteIdentity: incomingCall.displayName || incomingCall.from || 'Incoming SIP Call',
+          startedAt: Date.now(),
+          direction: 'incoming',
+        },
+        incomingCall: null,
+        status: 'in_call',
+        onHold: false,
+        error: null,
+      })
+    }
+  },
 
   reject: async () => {
     await sipClient.reject()
@@ -215,7 +275,6 @@ export const useSipStore = create<SipStore>((set, get) => ({
   transfer: async (destination) => {
     const dest = destination.trim()
     if (!dest) return
-
     try {
       await sipClient.transfer(dest)
       set({ error: null })
@@ -238,11 +297,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   },
 
   setMuted: (muted) => {
-    if (get().onHold) {
-      set({ muted })
-      return
-    }
-
+    if (get().onHold) { set({ muted }); return }
     sipClient.mute(muted)
     set({ muted })
   },
@@ -251,13 +306,10 @@ export const useSipStore = create<SipStore>((set, get) => ({
     const normalized = deviceId || 'default'
     localStorage.setItem(AUDIO_OUTPUT_STORAGE_KEY, normalized)
     set({ audioOutputDeviceId: normalized, audioOutputError: null })
-
     try {
       await sipClient.setAudioOutputDevice(normalized)
     } catch (err) {
-      const audioOutputError = err instanceof Error
-        ? err.message
-        : 'Could not switch speaker/audio output.'
+      const audioOutputError = err instanceof Error ? err.message : 'Could not switch speaker/audio output.'
       set({ audioOutputError })
       throw err
     }
@@ -267,13 +319,10 @@ export const useSipStore = create<SipStore>((set, get) => ({
     const normalized = deviceId || 'default'
     localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, normalized)
     set({ audioInputDeviceId: normalized, audioInputError: null })
-
     try {
       await sipClient.setAudioInputDevice(normalized)
     } catch (err) {
-      const audioInputError = err instanceof Error
-        ? err.message
-        : 'Could not switch microphone/input device.'
+      const audioInputError = err instanceof Error ? err.message : 'Could not switch microphone/input device.'
       set({ audioInputError })
       throw err
     }
@@ -285,13 +334,13 @@ export const useSipStore = create<SipStore>((set, get) => ({
       await softphoneAudio.playTestTone(deviceId)
       set({ audioOutputError: null })
     } catch (err) {
-      const audioOutputError = err instanceof Error
-        ? err.message
-        : 'Could not play test speaker tone.'
+      const audioOutputError = err instanceof Error ? err.message : 'Could not play test speaker tone.'
       set({ audioOutputError })
       throw err
     }
   },
 
   clearError: () => set({ error: null, audioOutputError: null, audioInputError: null }),
+
+  dismissSipDisposition: () => set({ showSipDisposition: false, pendingSipDisposition: null }),
 }))

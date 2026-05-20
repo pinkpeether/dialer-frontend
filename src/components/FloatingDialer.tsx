@@ -1,3 +1,5 @@
+import CallDispositionModal from './CallDispositionModal';
+import { useSipStore } from '../store/sip.store';
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -19,7 +21,6 @@ import {
 } from "lucide-react";
 import { dialerAPI } from "../api/dialer.api";
 import { contactsAPI } from "../api/contacts.api";
-import { useSipStore } from "../store/sip.store";
 import { useAudioDevices, useMicrophoneMeter } from "../hooks/useAudioDevices";
 import { softphoneAudio } from "../services/audio/SoftphoneAudio";
 import { useToast } from "../hooks/useToast";
@@ -501,6 +502,9 @@ export default function FloatingDialer({
   const sipAudioInputDeviceId = useSipStore((s) => s.audioInputDeviceId);
   const sipAudioInputError = useSipStore((s) => s.audioInputError);
   const setSipAudioInputDevice = useSipStore((s) => s.setAudioInputDevice);
+  const showSipDisposition = useSipStore(s => s.showSipDisposition)
+  const pendingSipDisposition = useSipStore(s => s.pendingSipDisposition)
+  const dismissSipDisposition = useSipStore(s => s.dismissSipDisposition)
   const toast = useToast();
   const sipModeEnabled = Boolean(sipConfig.enabled);
   const sipReady = sipModeEnabled && sipStatus === "registered";
@@ -3037,6 +3041,19 @@ export default function FloatingDialer({
         onClose={() => setRecentCallsOpen(false)}
         onClear={handleClearRecentCalls}
         onRedial={handleRedialRecentCall}
+      />
+      <CallDispositionModal
+        open={showSipDisposition}
+        callId={pendingSipDisposition?.callId ?? null}
+        contactName={pendingSipDisposition?.remoteIdentity ?? null}
+        saveMode={pendingSipDisposition?.saveMode ?? 'preview'}
+        helperText={
+          pendingSipDisposition?.saveMode === 'preview'
+            ? 'This SIP call was not logged to the backend. Disposition is for your session only.'
+            : null
+        }
+        onClose={dismissSipDisposition}
+        onSaved={dismissSipDisposition}
       />
     </>
   );

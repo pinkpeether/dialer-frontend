@@ -4,29 +4,38 @@ type CallsRequestOptions = {
   timeout?: number
 }
 
-// API wrapper for call log endpoints
 export const callsAPI = {
-  /**
-   * Retrieve call logs with optional filters. Accepts the same query params
-   * supported by the backend — campaignId, agentId, status, page, limit, startDate, endDate.
-   */
   getAll: async (params?: Record<string, unknown>, options?: CallsRequestOptions) => {
     const res = await api.get('/calls', { params, timeout: options?.timeout })
     return res.data.data
   },
 
-  /** Get details for a single call by ID */
   getById: async (id: number | string) => {
     const res = await api.get(`/calls/${id}`)
     return res.data.data
   },
 
-  /** Update the disposition and notes for a call */
   updateDisposition: async (
     id: number | string,
-    data: { disposition: string; notes?: string }
+    data: { disposition: string; notes?: string; callbackAt?: string }
   ) => {
     const res = await api.patch(`/calls/${id}/disposition`, data)
     return res.data.data
+  },
+
+  /** Schedule a callback for a contact — used after CALLBACK disposition */
+  createCallback: async (data: {
+    contactId?: number
+    callId?: number | string
+    scheduledAt: string   // ISO 8601
+    notes?: string
+  }) => {
+    try {
+      const res = await api.post('/callbacks', data)
+      return res.data.data
+    } catch {
+      // Backend may not have /callbacks yet — fail silently
+      return null
+    }
   },
 }

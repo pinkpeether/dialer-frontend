@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import { CheckCircle2, MessageSquareText } from 'lucide-react'
+import { Calendar, CheckCircle2, MessageSquareText } from 'lucide-react'
 
 export type DispositionValue =
   | 'ANSWERED'
@@ -12,6 +12,7 @@ export type DispositionValue =
 export interface DispositionSubmitPayload {
   disposition: DispositionValue
   notes?: string
+  callbackAt?: string   // ISO 8601 — only when disposition === 'CALLBACK'
 }
 
 interface DispositionPanelProps {
@@ -30,9 +31,7 @@ const DISPOSITIONS: { value: DispositionValue; label: string; hint: string }[] =
 
 const inputStyle: CSSProperties = {
   width: '100%',
-  minHeight: 96,
-  resize: 'vertical',
-  padding: '12px 14px',
+  padding: '11px 14px',
   background: 'var(--bg-glass-hi)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-md)',
@@ -43,18 +42,45 @@ const inputStyle: CSSProperties = {
   fontFamily: 'var(--font-body)',
 }
 
+// Minimum datetime = now (rounded up to next minute)
+const minDatetime = () => {
+  const d = new Date()
+  d.setSeconds(0, 0)
+  d.setMinutes(d.getMinutes() + 1)
+  return d.toISOString().slice(0, 16)
+}
+
+// Default callback = +1 hour
+const defaultCallbackAt = () => {
+  const d = new Date()
+  d.setSeconds(0, 0)
+  d.setHours(d.getHours() + 1)
+  return d.toISOString().slice(0, 16)
+}
+
 export default function DispositionPanel({ disabled = false, onSubmit }: DispositionPanelProps) {
   const [disposition, setDisposition] = useState<DispositionValue | ''>('')
   const [notes, setNotes] = useState('')
+  const [callbackAt, setCallbackAt] = useState(defaultCallbackAt)
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async () => {
     if (!disposition || submitting || disabled) return
+    if (disposition === 'CALLBACK' && !callbackAt) return
+
+    const callbackDate = disposition === 'CALLBACK' ? new Date(callbackAt) : null
+    if (callbackDate && Number.isNaN(callbackDate.getTime())) return
+
     setSubmitting(true)
     try {
-      await onSubmit({ disposition, notes: notes.trim() || undefined })
+      await onSubmit({
+        disposition,
+        notes: notes.trim() || undefined,
+        callbackAt: callbackDate ? callbackDate.toISOString() : undefined,
+      })
       setDisposition('')
       setNotes('')
+      setCallbackAt(defaultCallbackAt())
     } finally {
       setSubmitting(false)
     }
@@ -62,16 +88,13 @@ export default function DispositionPanel({ disabled = false, onSubmit }: Disposi
 
   return (
     <div className="glass" style={{ padding: 18 }}>
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
         <div style={{
-          width: 34,
-          height: 34,
-          borderRadius: 12,
+          width: 34, height: 34, borderRadius: 12,
           background: 'rgba(251,11,140,0.10)',
           border: '1px solid rgba(251,11,140,0.22)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: 'var(--pink)',
         }}>
           <CheckCircle2 size={16} />
@@ -86,6 +109,7 @@ export default function DispositionPanel({ disabled = false, onSubmit }: Disposi
         </div>
       </div>
 
+      {/* Disposition buttons */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))',
@@ -123,13 +147,43 @@ export default function DispositionPanel({ disabled = false, onSubmit }: Disposi
         })}
       </div>
 
+      {/* Callback datetime — only when CALLBACK selected */}
+      {disposition === 'CALLBACK' && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <Calendar size={14} color="var(--warning)" />
+            <span className="mono" style={{ fontSize: 10, color: 'var(--warning)', fontWeight: 800, letterSpacing: 1.1 }}>
+              SCHEDULE CALLBACK
+            </span>
+          </div>
+          <input
+            type="datetime-local"
+            value={callbackAt}
+            min={minDatetime()}
+            onChange={e => setCallbackAt(e.target.value)}
+            disabled={disabled || submitting}
+            required
+            style={{
+              ...inputStyle,
+              border: '1px solid rgba(240,185,11,0.40)',
+              background: 'rgba(240,185,11,0.07)',
+              colorScheme: 'dark',
+            }}
+          />
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 5 }}>
+            Callback will be scheduled and the contact status updated to CALLBACK.
+          </div>
+        </div>
+      )}
+
+      {/* Notes */}
       <div style={{ position: 'relative', marginBottom: 14 }}>
         <MessageSquareText size={15} color="var(--text-3)" style={{ position: 'absolute', top: 13, left: 13 }} />
         <textarea
           value={notes}
           onChange={event => setNotes(event.target.value)}
           placeholder="Disposition notes…"
-          style={{ ...inputStyle, paddingLeft: 40 }}
+          style={{ ...inputStyle, minHeight: 96, resize: 'vertical', paddingLeft: 40 }}
           disabled={disabled || submitting}
         />
       </div>

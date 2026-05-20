@@ -307,12 +307,43 @@ export default function Campaigns() {
                 <p style={{
                   fontSize: 12.5,
                   color: 'var(--text-3)',
-                  marginBottom: 16,
+                  marginBottom: 14,
                   lineHeight: 1.5,
                   minHeight: 36,
                 }}>
                   {getText(campaign.description, 'No description provided')}
                 </p>
+
+                {/* Progress bar */}
+                {(() => {
+                  const total = getNumber(campaign.totalContacts ?? campaign.contactCount, 0)
+                  const answered = getNumber(campaign.answeredCount ?? campaign.contacted, 0)
+                  const failed = getNumber(campaign.failedCount ?? campaign.failed, 0)
+                  const pending = getNumber(campaign.pendingCount ?? campaign.pending, total - answered - failed)
+                  const processed = answered + failed
+                  const pct = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0
+
+                  return total > 0 ? (
+                    <div style={{ marginBottom: 14 }}>
+                      {/* Bar */}
+                      <div style={{ height: 7, borderRadius: 999, background: 'rgba(255,255,255,0.07)', overflow: 'hidden', marginBottom: 7 }}>
+                        <div style={{
+                          height: '100%', width: `${pct}%`, borderRadius: 999,
+                          background: 'linear-gradient(90deg, var(--pink), var(--green-2))',
+                          transition: 'width 0.6s ease',
+                          boxShadow: '0 0 10px rgba(251,11,140,0.28)',
+                        }} />
+                      </div>
+                      {/* Counters */}
+                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10.5, color: COL_GREEN, fontWeight: 700 }}>✓ {answered} answered</span>
+                        <span style={{ fontSize: 10.5, color: COL_GOLD, fontWeight: 700 }}>◷ {pending} pending</span>
+                        <span style={{ fontSize: 10.5, color: 'rgba(255,59,95,0.80)', fontWeight: 700 }}>✕ {failed} failed</span>
+                        <span style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 700 }}>{pct}% done</span>
+                      </div>
+                    </div>
+                  ) : null
+                })()}
 
                 <div style={{
                   display: 'flex',

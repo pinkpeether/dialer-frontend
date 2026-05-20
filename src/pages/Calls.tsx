@@ -230,6 +230,37 @@ function FieldShell({ children, flex = '0 0 auto' }: { children: ReactNode; flex
   )
 }
 
+function DetailField({
+  label,
+  value,
+  color,
+  mono,
+}: {
+  label: string
+  value: string
+  color?: string
+  mono?: boolean
+}) {
+  return (
+    <div>
+      <div style={{
+        fontSize: 9.5, fontWeight: 800, color: brand.faint,
+        textTransform: 'uppercase', letterSpacing: 1.0, marginBottom: 4,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 12.5,
+        fontWeight: 700,
+        color: color || brand.ink,
+        fontFamily: mono ? 'var(--font-mono)' : 'inherit',
+      }}>
+        {value}
+      </div>
+    </div>
+  )
+}
+
 export default function Calls() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(false)
@@ -240,6 +271,7 @@ export default function Calls() {
   const [draftEndDate, setDraftEndDate] = useState('')
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [selectedForDisposition, setSelectedForDisposition] = useState<CallRow | null>(null)
+  const [expandedId, setExpandedId] = useState<string | number | null>(null)
   const [refreshNonce, setRefreshNonce] = useState(0)
 
   const page = Math.max(1, numberValue(searchParams.get('page'), 1))
@@ -657,92 +689,115 @@ export default function Calls() {
           {!loading && !error && filteredItems.map((call) => {
             const pill = statusPill(call.status)
             const hasName = Boolean(call.remoteName)
+            const isExpanded = expandedId === call.id
 
             return (
-              <div
-                key={call.id}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px 136px',
-                  minWidth: 1010,
-                  padding: '11px 12px',
-                  fontSize: 12,
-                  borderTop: '1px solid var(--border)',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {directionIcon(call.direction)}
-                  <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.7, color: pill.color }}>
-                    {call.direction === 'incoming' ? 'IN' : 'OUT'}
-                  </span>
-                </div>
-
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {call.remoteName || call.remoteNumber}
-                  </div>
-                  {hasName && (
-                    <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {call.remoteNumber}
-                    </div>
-                  )}
-                  <div style={{ display: 'inline-flex', marginTop: 5, borderRadius: 999, border: `1px solid ${pill.color}44`, color: pill.color, padding: '3px 7px', fontSize: 9.5, fontWeight: 900 }}>
-                    {pill.label}
-                  </div>
-                </div>
-
-                <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {call.campaignName || '-'}
-                </div>
-
-                <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {call.agentName || '-'}
-                </div>
-
-                <div style={{ fontSize: 11, textAlign: 'right', color: brand.ink }}>
-                  {fmtDuration(call.durationSeconds)}
-                </div>
-
-                <div style={{ fontSize: 11, textAlign: 'right', color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {fmtDateTime(call.startedAt)}
-                </div>
-
+              <div key={call.id}>
+                {/* Main row */}
                 <div
+                  onClick={() => setExpandedId(isExpanded ? null : call.id)}
                   style={{
-                    display: 'flex',
-                    justifyContent: 'flex-end',
+                    display: 'grid',
+                    gridTemplateColumns: '86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px 136px',
+                    minWidth: 1010,
+                    padding: '11px 12px',
+                    fontSize: 12,
+                    borderTop: '1px solid var(--border)',
                     alignItems: 'center',
-                    minHeight: 42,
-                    margin: '-11px -12px -11px 0',
-                    padding: '11px 12px 11px 16px',
-                    borderLeft: `1px solid ${brand.pink}44`,
-                    background: 'linear-gradient(90deg,rgba(251,11,140,0.03),rgba(251,11,140,0.16))',
-                    boxShadow: 'inset 12px 0 24px rgba(251,11,140,0.08)',
+                    cursor: 'pointer',
+                    background: isExpanded ? 'rgba(251,11,140,0.05)' : 'transparent',
+                    transition: 'background 0.15s ease',
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setSelectedForDisposition(call)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {directionIcon(call.direction)}
+                    <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.7, color: pill.color }}>
+                      {call.direction === 'incoming' ? 'IN' : 'OUT'}
+                    </span>
+                  </div>
+
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {call.remoteName || call.remoteNumber}
+                    </div>
+                    {hasName && (
+                      <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {call.remoteNumber}
+                      </div>
+                    )}
+                    <div style={{ display: 'inline-flex', marginTop: 5, borderRadius: 999, border: `1px solid ${pill.color}44`, color: pill.color, padding: '3px 7px', fontSize: 9.5, fontWeight: 900 }}>
+                      {pill.label}
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {call.campaignName || '-'}
+                  </div>
+
+                  <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {call.agentName || '-'}
+                  </div>
+
+                  <div style={{ fontSize: 11, textAlign: 'right', color: brand.ink }}>
+                    {fmtDuration(call.durationSeconds)}
+                  </div>
+
+                  <div style={{ fontSize: 11, textAlign: 'right', color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {fmtDateTime(call.startedAt)}
+                  </div>
+
+                  <div
                     style={{
-                      minWidth: 112,
-                      height: 32,
-                      borderRadius: 999,
-                      border: `1px solid ${brand.pink}cc`,
-                      background: 'linear-gradient(135deg,rgba(251,11,140,0.42),rgba(128,87,215,0.22),rgba(0,245,160,0.12))',
-                      color: brand.ink,
-                      fontSize: 10.5,
-                      fontWeight: 950,
-                      cursor: 'pointer',
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.45,
-                      boxShadow: '0 0 24px rgba(251,11,140,0.28), inset 0 0 12px rgba(255,255,255,0.06)',
-                      textShadow: '0 1px 8px rgba(0,0,0,0.5)',
+                      display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+                      minHeight: 42,
+                      margin: '-11px -12px -11px 0',
+                      padding: '11px 12px 11px 16px',
+                      borderLeft: `1px solid ${brand.pink}44`,
+                      background: 'linear-gradient(90deg,rgba(251,11,140,0.03),rgba(251,11,140,0.16))',
+                      boxShadow: 'inset 12px 0 24px rgba(251,11,140,0.08)',
                     }}
+                    onClick={e => e.stopPropagation()}
                   >
-                    Set disposition
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedForDisposition(call)}
+                      style={{
+                        minWidth: 112, height: 32, borderRadius: 999,
+                        border: `1px solid ${brand.pink}cc`,
+                        background: 'linear-gradient(135deg,rgba(251,11,140,0.42),rgba(128,87,215,0.22),rgba(0,245,160,0.12))',
+                        color: brand.ink, fontSize: 10.5, fontWeight: 950,
+                        cursor: 'pointer', textTransform: 'uppercase', letterSpacing: 0.45,
+                        boxShadow: '0 0 24px rgba(251,11,140,0.28), inset 0 0 12px rgba(255,255,255,0.06)',
+                        textShadow: '0 1px 8px rgba(0,0,0,0.5)',
+                      }}
+                    >
+                      Set disposition
+                    </button>
+                  </div>
                 </div>
+
+                {/* Expanded drawer */}
+                {isExpanded && (
+                  <div style={{
+                    padding: '14px 20px 18px',
+                    borderTop: '1px solid rgba(251,11,140,0.18)',
+                    background: 'linear-gradient(180deg,rgba(251,11,140,0.04),transparent)',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: 14,
+                    minWidth: 1010,
+                  }}>
+                    <DetailField label="Full Number" value={call.remoteNumber} />
+                    <DetailField label="Contact Name" value={call.remoteName || '-'} />
+                    <DetailField label="Campaign" value={call.campaignName || '-'} />
+                    <DetailField label="Agent" value={call.agentName || '-'} />
+                    <DetailField label="Status" value={pill.label} color={pill.color} />
+                    <DetailField label="Direction" value={call.direction === 'incoming' ? 'Inbound' : 'Outbound'} />
+                    <DetailField label="Duration" value={fmtDuration(call.durationSeconds)} />
+                    <DetailField label="Started At" value={fmtDateTime(call.startedAt)} />
+                    <DetailField label="Call ID" value={String(call.id)} mono />
+                  </div>
+                )}
               </div>
             )
           })}
