@@ -8,6 +8,8 @@ import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
 import { authAPI }      from '../api/auth.api'
 import ThemeToggle      from './ThemeToggle'
+import { Calendar, Eye } from 'lucide-react'
+import NotificationBell from './NotificationBell'
 
 const NAV = [
   { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard'       },
@@ -17,6 +19,8 @@ const NAV = [
   { to: '/contacts',        icon: BookUser,        label: 'Contacts'        },
   { to: '/agents',          icon: Users,           label: 'Agents'          },
   { to: '/calls',           icon: History,         label: 'Call History'    },
+  { to: '/callbacks',       icon: Calendar,        label: 'Callbacks'       },
+  { to: '/supervisor',      icon: Eye,             label: 'Supervisor'      },
   { to: '/reports',         icon: BarChart3,       label: 'Reports'         },
   { to: '/sip-settings',    icon: Settings2,       label: 'SIP Settings'    },
 ]
@@ -210,6 +214,7 @@ export default function Sidebar() {
               {user?.agentCode || '—'}
             </div>
           </div>
+          <NotificationBell />
         </div>
 
         <motion.button

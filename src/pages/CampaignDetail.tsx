@@ -4,7 +4,6 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, CheckCircle2, Megaphone, Pause, Play, RefreshCw, Sparkles, Upload, Users } from 'lucide-react'
 import { campaignsAPI } from '../api/campaigns.api'
 import { contactsAPI } from '../api/contacts.api'
-import { callsAPI } from '../api/calls.api'
 import CsvImportModal from '../components/CsvImportModal'
 
 type CampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED'
@@ -38,13 +37,18 @@ type Contact = {
   createdAt: string
 }
 
-type CallLog = {
-  id: number
-  status: string
-  disposition: string | null
-  duration: number | null
-  createdAt: string
-  agent?: { id: number; name?: string | null } | null
+const CONTACT_STATUS_MAP: Record<string, { color: string; bg: string }> = {
+  PENDING:      { color: '#f0b90b',       bg: 'rgba(240,185,11,0.12)' },
+  CALLING:      { color: '#fb0b8c',       bg: 'rgba(251,11,140,0.10)' },
+  ANSWERED:     { color: '#00a747',       bg: 'rgba(0,167,71,0.10)' },
+  CONTACTED:    { color: '#00a747',       bg: 'rgba(0,167,71,0.10)' },
+  NO_ANSWER:    { color: '#f0b90b',       bg: 'rgba(240,185,11,0.12)' },
+  VOICEMAIL:    { color: '#8057d7',       bg: 'rgba(128,87,215,0.12)' },
+  CALLBACK:     { color: '#f0b90b',       bg: 'rgba(240,185,11,0.12)' },
+  WRONG_NUMBER: { color: '#ef4444',       bg: 'rgba(239,68,68,0.12)' },
+  DNC:          { color: 'var(--text-3)', bg: 'var(--bg-glass)' },
+  DONE:         { color: '#00a747',       bg: 'rgba(0,167,71,0.10)' },
+  BUSY:         { color: '#ef4444',       bg: 'rgba(239,68,68,0.12)' },
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
@@ -82,7 +86,6 @@ export default function CampaignDetail() {
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
-  const [calls, setCalls] = useState<CallLog[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [importOpen, setImportOpen] = useState(false)
@@ -95,17 +98,15 @@ export default function CampaignDetail() {
     setMessage('')
 
     try {
-      const [campaignRes, statsRes, contactsRes, callsRes] = await Promise.all([
+      const [campaignRes, statsRes, contactsRes] = await Promise.all([
         campaignsAPI.getById(campaignId),
         contactsAPI.getStats(campaignId),
         contactsAPI.getAll({ campaignId, limit: 100 }),
-        callsAPI.getAll({ campaignId, limit: 100 }),
       ])
 
       setCampaign(campaignRes as Campaign)
       setStats(statsRes as Stats)
       setContacts(extractList<Contact>(contactsRes, ['contacts', 'results']))
-      setCalls(extractList<CallLog>(callsRes, ['calls', 'results']))
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load campaign detail.'
       setMessage(errorMessage)
@@ -294,33 +295,51 @@ export default function CampaignDetail() {
             {contacts.length === 0 ? (
               <EmptyState text="No contacts yet. Import a CSV to populate this campaign." />
             ) : (
-              <DataTable
-                headers={['Name', 'Phone', 'Status', 'Added']}
-                rows={contacts.map(contact => [
-                  contact.name || 'Unknown',
-                  contact.phone,
-                  <StatusBadge key="status" value={contact.status} />,
-                  formatDate(contact.createdAt),
-                ])}
-              />
-            )}
-          </DataSection>
-
-          <DataSection title="Call Log" subtitle="Calls generated for this campaign.">
-            {calls.length === 0 ? (
-              <EmptyState text="No calls have been logged for this campaign yet." />
-            ) : (
-              <DataTable
-                headers={['ID', 'Agent', 'Status', 'Disposition', 'Duration', 'Time']}
-                rows={calls.map(call => [
-                  `#${call.id}`,
-                  call.agent?.name || (call.agent?.id ? `Agent #${call.agent.id}` : '—'),
-                  <StatusBadge key="status" value={call.status} />,
-                  call.disposition || '—',
-                  call.duration ?? '—',
-                  formatDate(call.createdAt),
-                ])}
-              />
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      {['Name', 'Phone', 'Status', 'Added', 'Action'].map(h => (
+                        <th key={h} className="mono" style={{ padding: '12px 10px', fontSize: 10.5, color: 'var(--text-3)', letterSpacing: 1.1, textTransform: 'uppercase', textAlign: 'left', fontWeight: 700 }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contacts.map((contact) => {
+                      const sc = CONTACT_STATUS_MAP[contact.status] ?? { color: 'var(--text-3)', bg: 'var(--bg-glass)' }
+                      return (
+                        <tr key={contact.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '13px 10px', color: 'var(--text)', fontWeight: 700 }}>
+                            {contact.name || 'Unknown'}
+                          </td>
+                          <td className="mono" style={{ padding: '13px 10px', color: 'var(--text-3)', fontSize: 12.5 }}>
+                            {contact.phone}
+                          </td>
+                          <td style={{ padding: '13px 10px' }}>
+                            <span className="badge" style={{ color: sc.color, background: sc.bg, border: `1px solid ${sc.color}` }}>
+                              {contact.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '13px 10px', color: 'var(--text-3)', fontSize: 12 }}>
+                            {formatDate(contact.createdAt)}
+                          </td>
+                          <td style={{ padding: '13px 10px' }}>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/contacts/${contact.id}`)}
+                              style={{ background: 'transparent', border: '1px solid rgba(251,11,140,0.32)', borderRadius: 'var(--radius-sm)', padding: '5px 10px', cursor: 'pointer', color: 'var(--pink)', fontSize: 11.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </DataSection>
         </>
@@ -401,50 +420,6 @@ function DataSection({ title, subtitle, children }: { title: string; subtitle: s
       </div>
       {children}
     </motion.section>
-  )
-}
-
-function DataTable({ headers, rows }: { headers: string[]; rows: ReactNode[][] }) {
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-            {headers.map(header => (
-              <th key={header} className="mono" style={{
-                padding: '12px 10px',
-                fontSize: 10.5,
-                color: 'var(--text-3)',
-                letterSpacing: 1.1,
-                textTransform: 'uppercase',
-              }}>
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={index} style={{ borderBottom: '1px solid var(--border)' }}>
-              {row.map((cell, cellIndex) => (
-                <td key={cellIndex} style={{ padding: '13px 10px', color: cellIndex === 0 ? 'var(--text)' : 'var(--text-3)', fontWeight: cellIndex === 0 ? 700 : 500 }}>
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function StatusBadge({ value }: { value: string }) {
-  const theme = statusStyle(value)
-  return (
-    <span className="badge" style={{ color: theme.color, background: theme.bg, border: `1px solid ${theme.color}` }}>
-      {value}
-    </span>
   )
 }
 
