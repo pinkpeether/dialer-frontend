@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Phone, PhoneOff, Mic, MicOff, Play, Square,
-  Power, Sparkles, Search, ChevronUp, ChevronDown, Activity,
+  Power, Sparkles, Search, ChevronUp, ChevronDown, Activity, AlertTriangle,
 } from 'lucide-react'
 import { dialerAPI }    from '../api/dialer.api'
+import { callsAPI }     from '../api/calls.api'
 import { campaignsAPI } from '../api/campaigns.api'
 import { contactsAPI }  from '../api/contacts.api'
 import { useAuthStore } from '../store/auth.store'
@@ -33,6 +34,203 @@ const FALLBACK_DIALER_CONTACTS: Record<string, unknown>[] = Array.from({ length:
   status: i % 5 === 0 ? 'ANSWERED' : 'PENDING',
 })).filter(contact => contact.status === 'PENDING')
 
+type DispositionRequest = {
+  callId?: number | string | null
+  name?: string | null
+  phone?: string | null
+  saveMode?: 'backend' | 'preview'
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function callIdValue(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    const parsed = Number(trimmed)
+    return Number.isFinite(parsed) ? parsed : trimmed
+  }
+  return null
+}
+
+function extractManualCallRecord(result: unknown) {
+  const payload = isRecord(result) ? result : {}
+  const record =
+    (isRecord(payload.callRecord) && payload.callRecord) ||
+    (isRecord(payload.call) && payload.call) ||
+    (isRecord(payload.record) && payload.record) ||
+    payload
+
+  return {
+    id: callIdValue(
+      record.id ??
+      record._id ??
+      record.callId ??
+      record.callID ??
+      record.callRecordId ??
+      record.recordId ??
+      payload.id ??
+      payload._id ??
+      payload.callId ??
+      payload.callRecordId,
+    ),
+    callSid: String(
+      record.twilioCallSid ||
+      record.twilioSid ||
+      record.callSid ||
+      record.sid ||
+      payload.twilioCallSid ||
+      payload.twilioSid ||
+      payload.callSid ||
+      payload.sid ||
+      '',
+    ),
+  }
+}
+
+function getItems(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) return payload
+  if (!isRecord(payload)) return []
+
+  for (const key of ['items', 'calls', 'results', 'data']) {
+    const value = payload[key]
+    if (Array.isArray(value)) return value
+  }
+
+  return []
+}
+
+function normalizePhone(value: unknown) {
+  return String(value || '').replace(/[^\d+]/g, '')
+}
+
+async function recoverCallIdFromHistory(callSid: string, phone: string | null) {
+  try {
+    const payload = await callsAPI.getAll({ page: 1, limit: 15 }, { timeout: 10000 })
+    const normalizedPhone = normalizePhone(phone)
+
+    for (const item of getItems(payload)) {
+      if (!isRecord(item)) continue
+
+      const itemSid = String(item.twilioCallSid || item.twilioSid || item.callSid || item.sid || '')
+      const itemPhone = normalizePhone(item.remoteNumber || item.phone || item.phoneNumber || item.to || item.from || item.destination)
+      const sidMatches = Boolean(callSid && itemSid && itemSid === callSid)
+      const phoneMatches = Boolean(normalizedPhone && itemPhone && itemPhone === normalizedPhone)
+
+      if (sidMatches || phoneMatches) {
+        return callIdValue(item.id ?? item._id ?? item.callId ?? item.callRecordId)
+      }
+    }
+  } catch {
+    // Call history lookup is best-effort; the live call flow should keep moving.
+  }
+
+  return null
+}
+
+function NoticeModal({
+  open,
+  title,
+  message,
+  onClose,
+}: {
+  open: boolean
+  title: string
+  message: string
+  onClose: () => void
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10040,
+            background: 'rgba(3,2,8,0.56)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            display: 'grid',
+            placeItems: 'center',
+            padding: 18,
+          }}
+        >
+          <motion.div
+            initial={{ y: 24, opacity: 0, scale: 0.96 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 18, opacity: 0, scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 32 }}
+            style={{
+              width: 'min(430px, 94vw)',
+              borderRadius: 24,
+              border: '1px solid rgba(255,255,255,0.14)',
+              background: `
+                radial-gradient(circle at 12% 0%,rgba(251,11,140,0.22),transparent 36%),
+                linear-gradient(150deg,rgba(8,5,18,0.98),rgba(16,10,30,0.97))
+              `,
+              color: '#f9f7ff',
+              boxShadow: '0 30px 90px rgba(0,0,0,0.58),0 0 60px rgba(251,11,140,0.16)',
+              padding: 18,
+            }}
+          >
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 15,
+                  display: 'grid',
+                  placeItems: 'center',
+                  flexShrink: 0,
+                  color: '#ffd27a',
+                  background: 'rgba(240,185,11,0.12)',
+                  border: '1px solid rgba(240,185,11,0.34)',
+                }}
+              >
+                <AlertTriangle size={18} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div className="display" style={{ fontSize: 16, fontWeight: 850, color: '#fff' }}>
+                  {title}
+                </div>
+                <div style={{ marginTop: 7, fontSize: 13, color: 'rgba(249,247,255,0.68)', lineHeight: 1.55 }}>
+                  {message}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: '100%',
+                height: 40,
+                marginTop: 18,
+                borderRadius: 999,
+                border: '1px solid rgba(251,11,140,0.54)',
+                background: 'linear-gradient(135deg,rgba(251,11,140,0.92),rgba(128,87,215,0.78))',
+                color: '#fff',
+                fontWeight: 900,
+                letterSpacing: 0.8,
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+              }}
+            >
+              Okay
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 export default function Dialer() {
   const user = useAuthStore(s => s.user)
   const [campaigns,    setCampaigns]    = useState<Record<string,unknown>[]>([])
@@ -47,8 +245,11 @@ export default function Dialer() {
   const [message,      setMessage]      = useState('')
   const [search,       setSearch]       = useState('')
   const [voiceDeskOpen, setVoiceDeskOpen] = useState(true)
-  const [lastCallId, setLastCallId] = useState<number | null>(null)
+  const [lastCallId, setLastCallId] = useState<number | string | null>(null)
   const [dispositionOpen, setDispositionOpen] = useState(false)
+  const [dispositionSaveMode, setDispositionSaveMode] = useState<'backend' | 'preview'>('backend')
+  const [endingCall, setEndingCall] = useState(false)
+  const [notice, setNotice] = useState<{ title: string; message: string } | null>(null)
   const [dispositionContact, setDispositionContact] = useState<{
     name: string | null
     phone: string | null
@@ -60,6 +261,7 @@ export default function Dialer() {
   const sipHangup = useSipStore(s => s.hangup)
   const sipModeEnabled = Boolean(sipConfig.enabled)
   const sipReady = sipModeEnabled && sipStatus === 'registered'
+  const lastLiveSipCallRef = useRef<typeof liveSipCall>(null)
   void user
 
   const campaignOptions = campaigns.length > 0 ? campaigns : FALLBACK_DIALER_CAMPAIGNS
@@ -89,6 +291,52 @@ export default function Dialer() {
   const fmt = (s: number) =>
     `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`
 
+  const openDispositionFromRequest = useCallback((request: DispositionRequest = {}) => {
+    const callId = request.callId ?? `preview-${Date.now()}`
+    const saveMode = request.saveMode ?? (request.callId ? 'backend' : 'preview')
+    setLastCallId(callId)
+    setDispositionSaveMode(saveMode)
+    setDispositionContact({
+      name: request.name ?? null,
+      phone: request.phone ?? null,
+    })
+    setDispositionOpen(true)
+  }, [])
+
+  useEffect(() => {
+    if (liveSipCall) {
+      lastLiveSipCallRef.current = liveSipCall
+      return
+    }
+
+    const endedSipCall = lastLiveSipCallRef.current
+    if (endedSipCall && !dispositionOpen) {
+      openDispositionFromRequest({
+        name: endedSipCall.remoteIdentity || 'SIP Call',
+        phone: endedSipCall.remoteIdentity || null,
+        saveMode: 'preview',
+      })
+    }
+
+    lastLiveSipCallRef.current = null
+  }, [dispositionOpen, liveSipCall, openDispositionFromRequest])
+
+  const handleCampaignChange = (value: string) => {
+    const nextCampaign = value ? Number(value) : null
+    if ((isDialing || activeCall) && selectedCamp && nextCampaign !== selectedCamp) {
+      setNotice({
+        title: 'Campaign already in progress',
+        message: 'Stop the current campaign before selecting another one.',
+      })
+      return
+    }
+
+    setSelectedCamp(nextCampaign)
+    setContacts([])
+    setSearch('')
+    setMessage('')
+  }
+
   const handleStartCampaign = async () => {
     if (!selectedCamp) { setMessage('Select a campaign first'); return }
     setLoading(true)
@@ -113,8 +361,10 @@ export default function Dialer() {
   const handleManualCall = async (contact: Record<string,unknown>) => {
     if (!selectedCamp) return
     setLoading(true)
+    setEndingCall(false)
     setLastCallId(null)
     setDispositionOpen(false)
+    setDispositionSaveMode('backend')
     setDispositionContact({
       name: typeof contact.name === 'string' ? contact.name : null,
       phone: typeof contact.phone === 'string' ? contact.phone : null,
@@ -127,8 +377,9 @@ export default function Dialer() {
         setLastCallId(null)
       } else {
         const result = await dialerAPI.makeManualCall(contact.id as number, selectedCamp)
-        setActiveCall({ ...contact, callSid: result.callRecord.twilioCallSid })
-        setLastCallId(typeof result.callRecord?.id === 'number' ? result.callRecord.id : null)
+        const callRecord = extractManualCallRecord(result)
+        setActiveCall({ ...contact, callSid: callRecord.callSid })
+        setLastCallId(callRecord.id)
       }
       setMessage(`📞 Calling ${contact.phone}…`)
     } catch (err) {
@@ -141,25 +392,49 @@ export default function Dialer() {
   }
 
   const handleHangup = async () => {
-    if (!activeCall?.callSid) return
+    if (!activeCall || endingCall) return
     const completedCall = activeCall
-    try {
-      const callSid = activeCall.callSid as string
-      if (callSid.startsWith('sip:')) await sipHangup()
-      else await dialerAPI.hangupCall(callSid)
-    } catch { /* preview fallback */ }
-    setActiveCall(null); setElapsed(0)
+    const callSid = String(activeCall.callSid || '')
+    const dispositionCallId = lastCallId
+    const dispositionSnapshot = {
+      name: typeof completedCall.name === 'string' ? completedCall.name : null,
+      phone: typeof completedCall.phone === 'string' ? completedCall.phone : null,
+    }
+    const openDisposition = (callId: number | string, saveMode: 'backend' | 'preview') => {
+      setLastCallId(callId)
+      setDispositionSaveMode(saveMode)
+      setDispositionContact(dispositionSnapshot)
+      setDispositionOpen(true)
+    }
+
+    setEndingCall(true)
+    setActiveCall(null)
+    setElapsed(0)
+    setMuted(false)
     setMessage('📵 Call ended')
 
-    if (lastCallId) {
-      setDispositionContact({
-        name: typeof completedCall.name === 'string' ? completedCall.name : null,
-        phone: typeof completedCall.phone === 'string' ? completedCall.phone : null,
-      })
-      setDispositionOpen(true)
+    if (dispositionCallId) {
+      openDisposition(dispositionCallId, 'backend')
     } else {
-      setLastCallId(null)
-      setDispositionContact({ name: null, phone: null })
+      openDisposition(`preview-${Date.now()}`, 'preview')
+    }
+
+    let recoveredDispositionCallId: number | string | null = null
+    try {
+      if (callSid.startsWith('sip:')) await sipHangup()
+      else if (callSid) {
+        const hangupResult = await dialerAPI.hangupCall(callSid)
+        recoveredDispositionCallId = extractManualCallRecord(hangupResult).id
+      }
+    } catch {
+      if (!dispositionCallId && callSid) {
+        recoveredDispositionCallId = await recoverCallIdFromHistory(callSid, dispositionSnapshot.phone)
+      }
+    } finally {
+      if (!dispositionCallId && recoveredDispositionCallId) {
+        openDisposition(recoveredDispositionCallId, 'backend')
+      }
+      setEndingCall(false)
     }
   }
 
@@ -284,7 +559,7 @@ export default function Dialer() {
           </div>
           <select
             value={selectedCamp ?? ''}
-            onChange={e => setSelectedCamp(e.target.value ? Number(e.target.value) : null)}
+            onChange={e => handleCampaignChange(e.target.value)}
             style={{
               width: '100%', padding: '12px 14px',
               background: 'var(--bg-glass-hi)',
@@ -376,7 +651,10 @@ export default function Dialer() {
                   {muted ? <MicOff size={14}/> : <Mic size={14}/>}
                   {muted ? 'Unmute' : 'Mute'}
                 </button>
-                <button onClick={handleHangup} style={{
+                <button
+                  onClick={handleHangup}
+                  disabled={endingCall}
+                  style={{
                   flex: 1, padding: '10px',
                   background: 'linear-gradient(135deg, #ef4444, #dc2626)',
                   border: 'none',
@@ -385,8 +663,10 @@ export default function Dialer() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   fontSize: 12.5, fontWeight: 700,
                   boxShadow: 'var(--glow-danger)',
+                  opacity: endingCall ? 0.7 : 1,
+                  cursor: endingCall ? 'wait' : 'pointer',
                 }}>
-                  <PhoneOff size={14}/> Hang Up
+                  <PhoneOff size={14}/> {endingCall ? 'Ending...' : 'Hang Up'}
                 </button>
               </div>
             </motion.div>
@@ -459,7 +739,7 @@ export default function Dialer() {
           padding: 0,
           overflow: 'hidden',
           alignSelf: 'start',
-          minHeight: voiceDeskOpen ? 438 : 62,
+          minHeight: voiceDeskOpen ? 398 : 62,
         }}
       >
         <div
@@ -534,17 +814,20 @@ export default function Dialer() {
                   gridTemplateColumns: 'minmax(360px, 1.15fr) minmax(320px, 0.85fr)',
                   gap: 12,
                   padding: 12,
-                  minHeight: 376,
+                  minHeight: 336,
                 }}
               >
-                <div style={{ minWidth: 0, minHeight: 376 }}>
-                  <FloatingDialer mode="embedded" />
+                <div style={{ minWidth: 0, minHeight: 336 }}>
+                  <FloatingDialer
+                    mode="embedded"
+                    onDispositionRequested={openDispositionFromRequest}
+                  />
                 </div>
 
                 <div
                   style={{
                     minWidth: 0,
-                    minHeight: 376,
+                    minHeight: 336,
                     borderRadius: 26,
                     border: '1px solid rgba(0,245,160,0.18)',
                     background: liveSipCall
@@ -560,7 +843,7 @@ export default function Dialer() {
                     <div
                       style={{
                         height: '100%',
-                        minHeight: 376,
+                        minHeight: 336,
                         display: 'grid',
                         placeItems: 'center',
                         padding: 24,
@@ -584,10 +867,28 @@ export default function Dialer() {
                         >
                           <Activity size={22} color="var(--green-2)" />
                         </div>
-                        <div className="display" style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', marginBottom: 7 }}>
+                        <div
+                          className="display"
+                          style={{
+                            fontSize: 17,
+                            fontWeight: 900,
+                            color: '#fff',
+                            marginBottom: 7,
+                            letterSpacing: 0.2,
+                            textShadow: '0 0 20px rgba(0,245,160,0.20)',
+                          }}
+                        >
                           Call pop-up standby
                         </div>
-                        <div style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 300 }}>
+                        <div
+                          style={{
+                            fontSize: 12.5,
+                            lineHeight: 1.55,
+                            maxWidth: 300,
+                            color: 'rgba(249,247,255,0.68)',
+                            fontWeight: 650,
+                          }}
+                        >
                           When a SIP call connects, hold, transfer, mute, device routing, and hangup controls open here.
                         </div>
                       </div>
@@ -730,17 +1031,17 @@ export default function Dialer() {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => handleManualCall(c)}
-                      disabled={!!activeCall || loading}
+                      disabled={!!activeCall || loading || endingCall}
                       style={{
-                        background: !!activeCall || loading ? 'var(--bg-glass)' : 'rgba(251,11,140,0.10)',
-                        border: `1px solid ${!!activeCall || loading ? 'var(--border)' : 'var(--pink)'}`,
+                        background: !!activeCall || loading || endingCall ? 'var(--bg-glass)' : 'rgba(251,11,140,0.10)',
+                        border: `1px solid ${!!activeCall || loading || endingCall ? 'var(--border)' : 'var(--pink)'}`,
                         borderRadius: 'var(--radius-sm)',
                         padding: '6px 12px',
-                        cursor: activeCall ? 'not-allowed' : 'pointer',
-                        color: !!activeCall || loading ? 'var(--text-3)' : 'var(--pink)',
+                        cursor: activeCall || endingCall ? 'not-allowed' : 'pointer',
+                        color: !!activeCall || loading || endingCall ? 'var(--text-3)' : 'var(--pink)',
                         display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5,
                         fontWeight: 600,
-                        opacity: (!!activeCall || loading) ? 0.5 : 1,
+                        opacity: (!!activeCall || loading || endingCall) ? 0.5 : 1,
                       }}
                     >
                       <Phone size={11}/> Call
@@ -759,16 +1060,31 @@ export default function Dialer() {
         callId={lastCallId}
         contactName={dispositionContact.name}
         contactNumber={dispositionContact.phone}
+        saveMode={dispositionSaveMode}
+        helperText={
+          dispositionSaveMode === 'preview'
+            ? 'Preview only: the backend did not return a call record ID, so this disposition screen can be viewed but will not be saved.'
+            : null
+        }
         onClose={() => {
           setDispositionOpen(false)
           setLastCallId(null)
+          setDispositionSaveMode('backend')
           setDispositionContact({ name: null, phone: null })
         }}
         onSaved={() => {
           setDispositionOpen(false)
           setLastCallId(null)
+          setDispositionSaveMode('backend')
           setDispositionContact({ name: null, phone: null })
         }}
+      />
+
+      <NoticeModal
+        open={Boolean(notice)}
+        title={notice?.title || ''}
+        message={notice?.message || ''}
+        onClose={() => setNotice(null)}
       />
     </div>
   )

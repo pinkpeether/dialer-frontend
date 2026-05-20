@@ -16,14 +16,14 @@ export const callsAPI = {
   },
 
   /** Get details for a single call by ID */
-  getById: async (id: number) => {
+  getById: async (id: number | string) => {
     const res = await api.get(`/calls/${id}`)
     return res.data.data
   },
 
   /** Update the disposition and notes for a call */
   updateDisposition: async (
-    id: number,
+    id: number | string,
     data: { disposition: string; notes?: string }
   ) => {
     const res = await api.patch(`/calls/${id}/disposition`, data)

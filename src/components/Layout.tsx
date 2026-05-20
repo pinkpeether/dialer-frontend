@@ -1,11 +1,7 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
-import FloatingDialer from './FloatingDialer'
 
 export default function Layout() {
-  const location = useLocation()
-  const showFloatingDialer = location.pathname !== '/dialer'
-
   return (
     <div style={{
       display: 'flex',
@@ -63,9 +59,6 @@ export default function Layout() {
           </span>
         </footer>
       </main>
-
-      {/* Floating Manual Dialer — embedded directly on the Dialer page */}
-      {showFloatingDialer && <FloatingDialer />}
     </div>
   )
 }

@@ -193,7 +193,7 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
         minHeight: embedded ? 408 : undefined,
         maxWidth: embedded ? 'none' : 'calc(100vw - 34px)',
         borderRadius: embedded ? 26 : 28,
-        padding: embedded ? 16 : 18,
+        padding: embedded ? '18px 22px 20px' : 18,
         color: brand.ink,
         background: `
           radial-gradient(circle at 14% 0%,rgba(251,11,140,0.22),transparent 36%),
@@ -207,8 +207,17 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
         overflowY: embedded ? 'auto' : undefined,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ minWidth: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: embedded ? 'column-reverse' : 'row',
+          alignItems: 'center',
+          justifyContent: embedded ? 'center' : 'space-between',
+          gap: embedded ? 14 : 12,
+          textAlign: embedded ? 'center' : 'left',
+        }}
+      >
+        <div style={{ minWidth: 0, width: embedded ? '100%' : undefined }}>
           <div
             style={{
               fontSize: 11,
@@ -218,6 +227,7 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
               textTransform: 'uppercase',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: embedded ? 'center' : 'flex-start',
               gap: 7,
             }}
           >
@@ -225,11 +235,12 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
           </div>
           <div
             style={{
-              marginTop: 7,
-              fontSize: 17,
+              marginTop: embedded ? 10 : 7,
+              fontSize: embedded ? 20 : 17,
               fontWeight: 900,
               wordBreak: 'break-word',
               lineHeight: 1.25,
+              color: '#fff',
             }}
           >
             {remoteLabel}
@@ -241,7 +252,7 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
             display: 'flex',
             alignItems: 'center',
             gap: 7,
-            padding: '8px 10px',
+            padding: embedded ? '10px 16px' : '8px 10px',
             borderRadius: 999,
             background: 'rgba(0,245,160,0.10)',
             border: '1px solid rgba(0,245,160,0.24)',
@@ -249,6 +260,8 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
             fontWeight: 900,
             fontFamily: 'ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace',
             flexShrink: 0,
+            fontSize: embedded ? 18 : undefined,
+            boxShadow: embedded ? '0 0 26px rgba(0,245,160,0.18),inset 0 1px 0 rgba(255,255,255,0.10)' : undefined,
           }}
         >
           <Clock size={15} /> {fmt(elapsed)}
@@ -258,29 +271,31 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 10,
-          marginTop: 18,
+          gridTemplateColumns: embedded ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, 1fr)',
+          gap: embedded ? 14 : 10,
+          marginTop: embedded ? 28 : 18,
         }}
       >
         <button
           type="button"
           onClick={handleMuteToggle}
           style={{
-            height: 48,
-            borderRadius: 18,
+            height: embedded ? 58 : 48,
+            borderRadius: embedded ? 29 : 18,
             border: muted ? `1px solid ${brand.red}88` : '1px solid rgba(255,255,255,0.13)',
             background: muted ? 'rgba(255,59,95,0.16)' : 'rgba(255,255,255,0.07)',
             color: muted ? brand.red : brand.ink,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
+            gap: embedded ? 10 : 8,
             fontWeight: 900,
+            fontSize: embedded ? 24 : undefined,
             cursor: 'pointer',
+            boxShadow: embedded ? 'inset 0 1px 0 rgba(255,255,255,0.10),0 14px 30px rgba(0,0,0,0.18)' : undefined,
           }}
         >
-          {muted ? <MicOff size={18} /> : <Mic size={18} />}
+          {muted ? <MicOff size={embedded ? 27 : 18} /> : <Mic size={embedded ? 27 : 18} />}
           {muted ? 'Unmute' : 'Mute'}
         </button>
 
@@ -288,20 +303,22 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
           type="button"
           onClick={handleHoldToggle}
           style={{
-            height: 48,
-            borderRadius: 18,
+            height: embedded ? 58 : 48,
+            borderRadius: embedded ? 29 : 18,
             border: onHold ? `1px solid ${brand.cyan}aa` : '1px solid rgba(255,255,255,0.13)',
             background: onHold ? 'rgba(34,211,238,0.16)' : 'rgba(255,255,255,0.07)',
             color: onHold ? brand.cyan : brand.ink,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
+            gap: embedded ? 10 : 8,
             fontWeight: 900,
+            fontSize: embedded ? 24 : undefined,
             cursor: 'pointer',
+            boxShadow: embedded ? 'inset 0 1px 0 rgba(255,255,255,0.10),0 14px 30px rgba(0,0,0,0.18)' : undefined,
           }}
         >
-          {onHold ? <PlayCircle size={18} /> : <PauseCircle size={18} />}
+          {onHold ? <PlayCircle size={embedded ? 27 : 18} /> : <PauseCircle size={embedded ? 27 : 18} />}
           {onHold ? 'Resume' : 'Hold'}
         </button>
 
@@ -309,21 +326,25 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
           type="button"
           onClick={() => void hangup()}
           style={{
-            height: 48,
-            borderRadius: 18,
+            height: embedded ? 68 : 48,
+            borderRadius: embedded ? 28 : 18,
             border: `1px solid ${brand.red}88`,
             background: 'linear-gradient(135deg,rgba(255,59,95,0.96),rgba(251,11,140,0.84))',
             color: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
+            gap: embedded ? 13 : 8,
             fontWeight: 900,
+            fontSize: embedded ? 32 : undefined,
             cursor: 'pointer',
-            boxShadow: '0 16px 34px rgba(255,59,95,0.24)',
+            boxShadow: embedded
+              ? '0 18px 40px rgba(255,59,95,0.32),inset 0 1px 0 rgba(255,255,255,0.18)'
+              : '0 16px 34px rgba(255,59,95,0.24)',
+            gridColumn: embedded ? '1 / -1' : undefined,
           }}
         >
-          <PhoneOff size={18} /> Hang Up
+          <PhoneOff size={embedded ? 34 : 18} /> Hang Up
         </button>
       </div>
 

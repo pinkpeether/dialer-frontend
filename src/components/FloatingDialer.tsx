@@ -43,6 +43,13 @@ interface Contact {
   phone: string;
 }
 
+interface DispositionRequest {
+  callId: number | string | null;
+  name: string | null;
+  phone: string | null;
+  saveMode: "backend" | "preview";
+}
+
 const KEYS = [
   ["1", "2", "3"],
   ["4", "5", "6"],
@@ -95,6 +102,56 @@ function cleanRecentIdentity(value: string) {
     .replace(/;.*$/, "")
     .replace(/@.*$/, "")
     .replace(/^<|>$/g, "");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function callIdValue(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : trimmed;
+  }
+  return null;
+}
+
+function extractCallRecord(result: unknown) {
+  const payload = isRecord(result) ? result : {};
+  const record =
+    (isRecord(payload.callRecord) && payload.callRecord) ||
+    (isRecord(payload.call) && payload.call) ||
+    (isRecord(payload.record) && payload.record) ||
+    payload;
+
+  return {
+    id: callIdValue(
+      record.id ??
+        record._id ??
+        record.callId ??
+        record.callID ??
+        record.callRecordId ??
+        record.recordId ??
+        payload.id ??
+        payload._id ??
+        payload.callId ??
+        payload.callRecordId,
+    ),
+    callSid: String(
+      record.twilioCallSid ||
+        record.twilioSid ||
+        record.callSid ||
+        record.sid ||
+        payload.twilioCallSid ||
+        payload.twilioSid ||
+        payload.callSid ||
+        payload.sid ||
+        "",
+    ),
+  };
 }
 
 function fmt(s: number) {
@@ -222,10 +279,11 @@ function DialKey({
   label: string;
   sub?: string;
   onClick: () => void;
-  size?: "normal" | "small";
+  size?: "normal" | "small" | "embedded";
 }) {
   const [pressed, setPressed] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const embedded = size === "embedded";
   const dim = size === "small" ? 48 : 64;
   const isPrimary = label === "0";
   const isEdge = label === "*" || label === "#";
@@ -241,9 +299,9 @@ function DialKey({
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
       style={{
-        width: dim,
-        height: dim,
-        borderRadius: size === "small" ? 18 : 22,
+        width: embedded ? "100%" : dim,
+        height: embedded ? 48 : dim,
+        borderRadius: embedded ? 15 : size === "small" ? 18 : 22,
         cursor: "pointer",
         background: hovered
           ? isPrimary
@@ -265,7 +323,7 @@ function DialKey({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 2,
+        gap: embedded ? 1 : 2,
         transform: pressed
           ? "translateY(2px) scale(0.94)"
           : hovered
@@ -279,7 +337,7 @@ function DialKey({
               ? "0 18px 36px rgba(0,245,160,0.18),0 0 0 4px rgba(0,245,160,0.06),inset 0 1px 0 rgba(255,255,255,0.18)"
               : "0 18px 36px rgba(251,11,140,0.16),0 0 0 4px rgba(251,11,140,0.055),inset 0 1px 0 rgba(255,255,255,0.16)"
             : "0 12px 22px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.10)",
-        justifySelf: "center",
+        justifySelf: embedded ? "stretch" : "center",
         color: brand.ink,
         position: "relative",
         overflow: "hidden",
@@ -296,7 +354,7 @@ function DialKey({
       />
       <span
         style={{
-          fontSize: size === "small" ? 17 : 23,
+          fontSize: embedded ? 21 : size === "small" ? 17 : 23,
           fontWeight: 900,
           color: isPrimary ? brand.green : brand.ink,
           fontFamily:
@@ -313,7 +371,7 @@ function DialKey({
       {sub && (
         <span
           style={{
-            fontSize: 6.5,
+            fontSize: embedded ? 6.2 : 6.5,
             fontWeight: 900,
             color: "rgba(249,247,255,0.45)",
             letterSpacing: 1.25,
@@ -393,16 +451,21 @@ function StatusBadge({
 
 interface FloatingDialerProps {
   mode?: "floating" | "embedded";
+  onDispositionRequested?: (request: DispositionRequest) => void;
 }
 
 // ── Main Component ────────────────────────────────────────
-export default function FloatingDialer({ mode = "floating" }: FloatingDialerProps) {
+export default function FloatingDialer({
+  mode = "floating",
+  onDispositionRequested,
+}: FloatingDialerProps) {
   const isEmbedded = mode === "embedded";
   const [state, setState] = useState<WidgetState>(isEmbedded ? "dialpad" : "collapsed");
   const [tab, setTab] = useState<ActiveTab>("controls");
   const [number, setNumber] = useState("");
   const [contactName, setName] = useState("");
   const [callSid, setCallSid] = useState<string | null>(null);
+  const [callRecordId, setCallRecordId] = useState<number | string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -590,6 +653,12 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
         });
       }
 
+      onDispositionRequested?.({
+        callId: null,
+        name: contactName || null,
+        phone: number || null,
+        saveMode: "preview",
+      });
       sipCallEstablishedRef.current = false;
       playHangupTone();
       setCallSid(null);
@@ -621,6 +690,7 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
     playConnectedTone,
     playFailedTone,
     playHangupTone,
+    onDispositionRequested,
   ]);
 
   useEffect(() => {
@@ -658,12 +728,18 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
         saveRecent(updated);
         return updated;
       });
+      onDispositionRequested?.({
+        callId: null,
+        name: null,
+        phone,
+        saveMode: "preview",
+      });
     }
 
     if (sipStatus === "error" || sipStatus === "registration_failed") {
       incomingRecentRef.current = null;
     }
-  }, [sipActiveCall, sipStatus]);
+  }, [onDispositionRequested, sipActiveCall, sipStatus]);
 
   useEffect(() => {
     if (state !== "collapsed") {
@@ -844,6 +920,7 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
     setState("calling");
     setTab("controls");
     setElapsed(0);
+    setCallRecordId(null);
     sipCallEstablishedRef.current = false;
     stopTimer();
     startRingback();
@@ -868,7 +945,9 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
         cleaned,
         contactName || undefined,
       );
-      setCallSid(res?.callSid || null);
+      const callRecord = extractCallRecord(res);
+      setCallSid(callRecord.callSid || null);
+      setCallRecordId(callRecord.id);
       setState("active");
       setTab("controls");
       setElapsed(0);
@@ -885,6 +964,7 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
       stopTimer();
       playFailedTone();
       setCallSid(null);
+      setCallRecordId(null);
       setError(msg);
       setState("dialpad");
     } finally {
@@ -924,14 +1004,22 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
     const updated = [entry, ...recent];
     setRecent(updated);
     saveRecent(updated);
+    onDispositionRequested?.({
+      callId: callRecordId,
+      name: contactName || null,
+      phone: number || null,
+      saveMode: callRecordId ? "backend" : "preview",
+    });
     sipCallEstablishedRef.current = false;
     playHangupTone();
     setCallSid(null);
+    setCallRecordId(null);
     setElapsed(0);
     setMuted(false);
     setState("dialpad");
   }, [
     callSid,
+    callRecordId,
     number,
     contactName,
     recent,
@@ -939,6 +1027,7 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
     stopTimer,
     sipHangup,
     playHangupTone,
+    onDispositionRequested,
   ]);
 
   const handleDTMF = useCallback(async (digit: string) => {
@@ -1587,7 +1676,7 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
               <div
                 onPointerDown={(e) => e.stopPropagation()}
                 style={{
-                  padding: isEmbedded ? "2px 16px 14px" : "3px 20px 24px",
+                  padding: isEmbedded ? "2px 40px 18px" : "3px 20px 24px",
                   position: "relative",
                   zIndex: 2,
                   flex: isEmbedded ? "1 1 auto" : undefined,
@@ -1598,7 +1687,7 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
               >
                 {/* ── Search ── */}
                 {(state === "dialpad" || state === "calling") && (
-                    <div style={{ position: "relative", marginBottom: isEmbedded ? 10 : 14 }}>
+                    <div style={{ position: "relative", marginBottom: isEmbedded ? 12 : 14 }}>
                     <div
                       style={{
                         display: "flex",
@@ -1607,8 +1696,8 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
                           "linear-gradient(145deg,rgba(255,255,255,0.075),rgba(255,255,255,0.026))",
                         border: "1px solid rgba(255,255,255,0.11)",
                         borderRadius: 24,
-                        padding: "10px 13px",
-                        gap: 9,
+                        padding: isEmbedded ? "11px 20px" : "10px 13px",
+                        gap: isEmbedded ? 11 : 9,
                         boxShadow:
                           "inset 0 1px 0 rgba(255,255,255,0.08),0 12px 26px rgba(0,0,0,0.18)",
                       }}
@@ -1642,8 +1731,8 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
                         <button
                           onClick={handleDelete}
                           style={{
-                            width: 27,
-                            height: 27,
+                            width: isEmbedded ? 25 : 27,
+                            height: isEmbedded ? 25 : 27,
                             borderRadius: "50%",
                             background: "rgba(255,255,255,0.08)",
                             border: "1px solid rgba(255,255,255,0.08)",
@@ -1785,8 +1874,8 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
                         display: "grid",
                         gridTemplateColumns: "repeat(3,1fr)",
                         justifyItems: "center",
-                        gap: isEmbedded ? 9 : 12,
-                        marginBottom: isEmbedded ? 12 : 18,
+                        gap: isEmbedded ? 14 : 12,
+                        marginBottom: isEmbedded ? 14 : 18,
                       }}
                     >
                       {KEYS.flat().map((k) => (
@@ -1795,7 +1884,7 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
                           label={k}
                           sub={SUB[k]}
                           onClick={() => handleKey(k)}
-                          size={isEmbedded ? "small" : "normal"}
+                          size={isEmbedded ? "embedded" : "normal"}
                         />
                       ))}
                     </div>
@@ -1819,7 +1908,7 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
                         }}
                         style={{
                           flex: 1,
-                          height: isEmbedded ? 48 : 57,
+                          height: isEmbedded ? 52 : 57,
                           borderRadius: isEmbedded ? 20 : 24,
                           cursor:
                             loading || state === "calling" ? "wait" : "pointer",
@@ -1830,7 +1919,7 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
                           border: "none",
                           color: "#03100b",
                           fontWeight: 950,
-                          fontSize: isEmbedded ? 13.5 : 15,
+                          fontSize: isEmbedded ? 14.5 : 15,
                           letterSpacing: 0.2,
                           display: "flex",
                           alignItems: "center",
@@ -1887,7 +1976,7 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
                         style={{
                           ...glassCard(false),
                           borderRadius: 22,
-                          padding: "10px 10px 7px",
+                          padding: isEmbedded ? "12px 16px" : "10px 10px 7px",
                         }}
                       >
                         <div
@@ -1895,7 +1984,7 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "space-between",
-                            padding: "0 2px 8px",
+                            padding: isEmbedded ? 0 : "0 2px 8px",
                           }}
                         >
                           <div
@@ -1917,94 +2006,104 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
                             type="button"
                             onClick={handleOpenRecentCalls}
                             style={{
-                              border: "1px solid rgba(251,11,140,0.22)",
-                              background: "rgba(251,11,140,0.08)",
-                              color: "#ff8cc8",
+                              border: isEmbedded
+                                ? "1px solid rgba(251,11,140,0.58)"
+                                : "1px solid rgba(251,11,140,0.22)",
+                              background: isEmbedded
+                                ? "linear-gradient(135deg,rgba(251,11,140,0.30),rgba(139,92,246,0.18))"
+                                : "rgba(251,11,140,0.08)",
+                              color: isEmbedded ? "#fff" : "#ff8cc8",
                               borderRadius: 999,
-                              padding: "5px 8px",
-                              fontSize: 8.5,
-                              fontWeight: 900,
+                              padding: isEmbedded ? "6px 10px" : "5px 8px",
+                              fontSize: isEmbedded ? 9 : 8.5,
+                              fontWeight: 950,
                               cursor: "pointer",
-                              letterSpacing: 0.5,
+                              letterSpacing: 0.55,
+                              boxShadow: isEmbedded
+                                ? "0 0 18px rgba(251,11,140,0.18),inset 0 1px 0 rgba(255,255,255,0.14)"
+                                : undefined,
+                              textShadow: isEmbedded ? "0 1px 10px rgba(255,255,255,0.22)" : undefined,
                             }}
                           >
                             VIEW ALL · {recent.length}
                           </button>
                         </div>
-                        <div style={{ maxHeight: 92, overflow: "hidden" }}>
-                          {recent.slice(0, 2).map((c, i) => (
-                            <div
-                              key={i}
-                              onClick={() => {
-                                setNumber(c.phone);
-                                setName(c.name || "");
-                                setQuery(c.phone);
-                              }}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 10,
-                                padding: "9px 9px",
-                                borderRadius: 16,
-                                cursor: "pointer",
-                                transition: "background .12s",
-                                marginBottom: 3,
-                              }}
-                              onMouseEnter={(e) =>
-                                (e.currentTarget.style.background =
-                                  "rgba(251,11,140,0.08)")
-                              }
-                              onMouseLeave={(e) =>
-                                (e.currentTarget.style.background =
-                                  "transparent")
-                              }
-                            >
+                        {!isEmbedded && (
+                          <div style={{ maxHeight: 92, overflow: "hidden" }}>
+                            {recent.slice(0, 2).map((c, i) => (
                               <div
+                                key={i}
+                                onClick={() => {
+                                  setNumber(c.phone);
+                                  setName(c.name || "");
+                                  setQuery(c.phone);
+                                }}
                                 style={{
-                                  width: 31,
-                                  height: 31,
-                                  borderRadius: "50%",
-                                  background: `${outcomeColor(c.outcome)}18`,
-                                  border: `1.5px solid ${outcomeColor(c.outcome)}50`,
                                   display: "flex",
                                   alignItems: "center",
-                                  justifyContent: "center",
-                                  flexShrink: 0,
-                                  boxShadow: `0 0 20px ${outcomeColor(c.outcome)}13`,
+                                  gap: 10,
+                                  padding: "9px 9px",
+                                  borderRadius: 16,
+                                  cursor: "pointer",
+                                  transition: "background .12s",
+                                  marginBottom: 3,
                                 }}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.background =
+                                    "rgba(251,11,140,0.08)")
+                                }
+                                onMouseLeave={(e) =>
+                                  (e.currentTarget.style.background =
+                                    "transparent")
+                                }
                               >
-                                <Phone
-                                  size={11}
-                                  color={outcomeColor(c.outcome)}
-                                />
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
                                 <div
                                   style={{
-                                    fontSize: 12.2,
-                                    fontWeight: 850,
-                                    color: "rgba(249,247,255,0.84)",
-                                    whiteSpace: "nowrap",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
+                                    width: 31,
+                                    height: 31,
+                                    borderRadius: "50%",
+                                    background: `${outcomeColor(c.outcome)}18`,
+                                    border: `1.5px solid ${outcomeColor(c.outcome)}50`,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    flexShrink: 0,
+                                    boxShadow: `0 0 20px ${outcomeColor(c.outcome)}13`,
                                   }}
                                 >
-                                  {c.name || c.phone}
+                                  <Phone
+                                    size={11}
+                                    color={outcomeColor(c.outcome)}
+                                  />
                                 </div>
-                                <div
-                                  style={{
-                                    fontSize: 9.5,
-                                    color: "rgba(249,247,255,0.34)",
-                                    fontFamily:
-                                      "ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace",
-                                  }}
-                                >
-                                  {fmt(c.duration)} · {timeAgo(c.at)}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div
+                                    style={{
+                                      fontSize: 12.2,
+                                      fontWeight: 850,
+                                      color: "rgba(249,247,255,0.84)",
+                                      whiteSpace: "nowrap",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                    }}
+                                  >
+                                    {c.name || c.phone}
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 9.5,
+                                      color: "rgba(249,247,255,0.34)",
+                                      fontFamily:
+                                        "ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace",
+                                    }}
+                                  >
+                                    {fmt(c.duration)} · {timeAgo(c.at)}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
@@ -2699,16 +2798,17 @@ export default function FloatingDialer({ mode = "floating" }: FloatingDialerProp
                 )}
               </div>
 
-              {/* Bottom premium beam */}
-              <div
-                style={{
-                  height: 5,
-                  background: `linear-gradient(90deg,${brand.pink},${brand.green},${brand.cyan},${brand.pink})`,
-                  backgroundSize: "220% 100%",
-                  animation: "ptdt-glow-pan 4s ease infinite",
-                  boxShadow: "0 -10px 34px rgba(251,11,140,0.20)",
-                }}
-              />
+              {!isEmbedded && (
+                <div
+                  style={{
+                    height: 5,
+                    background: `linear-gradient(90deg,${brand.pink},${brand.green},${brand.cyan},${brand.pink})`,
+                    backgroundSize: "220% 100%",
+                    animation: "ptdt-glow-pan 4s ease infinite",
+                    boxShadow: "0 -10px 34px rgba(251,11,140,0.20)",
+                  }}
+                />
+              )}
             </motion.div>
           )}
         </AnimatePresence>

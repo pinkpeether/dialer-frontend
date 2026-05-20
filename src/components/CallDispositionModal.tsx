@@ -6,9 +6,11 @@ import { callsAPI } from '../api/calls.api'
 
 interface CallDispositionModalProps {
   open: boolean
-  callId: number | null
+  callId: number | string | null
   contactName?: string | null
   contactNumber?: string | null
+  saveMode?: 'backend' | 'preview'
+  helperText?: string | null
   onClose: () => void
   onSaved?: () => void
 }
@@ -18,6 +20,8 @@ export default function CallDispositionModal({
   callId,
   contactName,
   contactNumber,
+  saveMode = 'backend',
+  helperText,
   onClose,
   onSaved,
 }: CallDispositionModalProps) {
@@ -25,12 +29,19 @@ export default function CallDispositionModal({
 
   useEffect(() => {
     if (open) setError(null)
-  }, [open, callId])
+  }, [open, callId, saveMode])
 
   if (!open || callId === null) return null
 
   const handleSubmit = async (payload: DispositionSubmitPayload) => {
     setError(null)
+    if (saveMode === 'preview') {
+      void payload
+      onSaved?.()
+      onClose()
+      return
+    }
+
     try {
       await callsAPI.updateDisposition(callId, {
         disposition: payload.disposition,
@@ -89,7 +100,7 @@ export default function CallDispositionModal({
             border: '1px solid rgba(255,255,255,0.14)',
             boxShadow: '0 34px 90px rgba(0,0,0,0.62),0 0 70px rgba(251,11,140,0.18)',
             overflow: 'hidden',
-            color: 'var(--text)',
+            color: '#f9f7ff',
           }}
         >
           <div
@@ -116,16 +127,16 @@ export default function CallDispositionModal({
                   flexShrink: 0,
                 }}
               >
-                <PhoneCall size={18} />
+                <PhoneCall size={18} color="#fff" />
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 900, letterSpacing: 0.2 }}>
+                <div style={{ fontSize: 15, fontWeight: 900, letterSpacing: 0.2, color: '#fff' }}>
                   Disposition for call
                 </div>
                 <div
                   style={{
                     fontSize: 12,
-                    color: 'var(--text-3)',
+                    color: 'rgba(249,247,255,0.68)',
                     marginTop: 2,
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
@@ -147,7 +158,7 @@ export default function CallDispositionModal({
                 borderRadius: 14,
                 border: '1px solid rgba(255,255,255,0.14)',
                 background: 'rgba(255,255,255,0.06)',
-                color: 'var(--text)',
+                color: '#fff',
                 cursor: 'pointer',
                 display: 'grid',
                 placeItems: 'center',
@@ -165,6 +176,24 @@ export default function CallDispositionModal({
               overflowY: 'auto',
             }}
           >
+            {helperText && (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: '10px 12px',
+                  borderRadius: 16,
+                  border: '1px solid rgba(34,211,238,0.34)',
+                  background: 'rgba(34,211,238,0.09)',
+                  color: '#d8fbff',
+                  fontSize: 11.5,
+                  fontWeight: 750,
+                  lineHeight: 1.45,
+                }}
+              >
+                {helperText}
+              </div>
+            )}
+
             <DispositionPanel onSubmit={handleSubmit} />
 
             {error && (
