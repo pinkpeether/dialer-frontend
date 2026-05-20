@@ -3,6 +3,7 @@ import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
   BarChart3, Headset, Settings2, History,
+  ShieldOff,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
@@ -21,7 +22,9 @@ const NAV = [
   { to: '/calls',           icon: History,         label: 'Call History'    },
   { to: '/callbacks',       icon: Calendar,        label: 'Callbacks'       },
   { to: '/supervisor',      icon: Eye,             label: 'Supervisor'      },
+  { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry'    },
   { to: '/reports',         icon: BarChart3,       label: 'Reports'         },
+  { to: '/settings',        icon: Settings2,       label: 'Settings'        },
   { to: '/sip-settings',    icon: Settings2,       label: 'SIP Settings'    },
 ]
 
@@ -50,6 +53,8 @@ export default function Sidebar() {
       top: 0, left: 0,
       zIndex: 30,
       boxShadow: 'var(--shadow-md)',
+      boxSizing: 'border-box',
+      overflowX: 'hidden',
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
@@ -107,7 +112,7 @@ export default function Sidebar() {
         Not the Cult!
       </div>
 
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflow: 'auto' }}>
+      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto', overflowX: 'hidden', paddingRight: 2 }}>
         <div className="mono" style={{
           fontSize: 9.5, color: 'var(--muted)',
           textTransform: 'uppercase', letterSpacing: 1.4,
@@ -118,6 +123,7 @@ export default function Sidebar() {
 
         {NAV.map(item => {
           const Icon = item.icon
+          const isDialer = item.to === '/dialer'
           return (
             <NavLink key={item.to} to={item.to} style={{ textDecoration: 'none' }}>
               {({ isActive }) => (
@@ -132,13 +138,18 @@ export default function Sidebar() {
                     fontSize: 13.5,
                     fontWeight: 700,
                     background: isActive
-                      ? 'linear-gradient(135deg, #fb0b8c, #ff4bad)'
+                      ? isDialer
+                        ? 'linear-gradient(135deg, rgba(0,167,71,0.98), rgba(0,245,160,0.86))'
+                        : 'linear-gradient(135deg, #fb0b8c, #ff4bad)'
                       : 'transparent',
                     color: isActive ? '#fff' : 'var(--text-3)',
+                    border: isActive && isDialer ? '1px solid rgba(0,245,160,0.48)' : '1px solid transparent',
                     boxShadow: isActive
-                      ? '0 12px 26px rgba(251,11,140,0.28), inset 0 1px 0 rgba(255,255,255,0.22)'
+                      ? isDialer
+                        ? '0 14px 30px rgba(0,167,71,0.26), 0 0 22px rgba(0,245,160,0.18), inset 0 1px 0 rgba(255,255,255,0.22)'
+                        : '0 12px 26px rgba(251,11,140,0.28), inset 0 1px 0 rgba(255,255,255,0.22)'
                       : 'none',
-                    transition: 'background 0.25s, color 0.25s, box-shadow 0.25s',
+                    transition: 'background 0.25s, color 0.25s, box-shadow 0.25s, border-color 0.25s',
                   }}
                 >
                   {isActive && (
@@ -148,8 +159,12 @@ export default function Sidebar() {
                         position: 'absolute',
                         inset: 0,
                         borderRadius: 999,
-                        background: 'linear-gradient(135deg, #fb0b8c, #ff4bad)',
-                        boxShadow: '0 12px 26px rgba(251,11,140,0.30)',
+                        background: isDialer
+                          ? 'linear-gradient(135deg, rgba(0,167,71,0.98), rgba(0,245,160,0.86))'
+                          : 'linear-gradient(135deg, #fb0b8c, #ff4bad)',
+                        boxShadow: isDialer
+                          ? '0 14px 30px rgba(0,167,71,0.26),0 0 22px rgba(0,245,160,0.18)'
+                          : '0 12px 26px rgba(251,11,140,0.30)',
                         zIndex: -1,
                       }}
                       transition={{ type: 'spring', stiffness: 400, damping: 30 }}

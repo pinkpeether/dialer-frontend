@@ -154,11 +154,11 @@ export default function NotificationBell() {
             exit={{ opacity: 0, y: 6, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 380, damping: 28 }}
             style={{
-              position: 'absolute',
-              top: 'calc(100% + 10px)',
-              right: 0,
-              width: 'min(360px, 96vw)',
-              maxHeight: 'min(480px, 80vh)',
+              position: 'fixed',
+              left: 14,
+              bottom: 92,
+              width: 'calc(var(--sidebar-width) - 28px)',
+              maxHeight: 'min(420px, calc(100vh - 130px))',
               overflowY: 'auto',
               borderRadius: 24,
               background: 'linear-gradient(150deg,rgba(8,5,18,0.98),rgba(16,10,30,0.97))',

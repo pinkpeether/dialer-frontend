@@ -16,8 +16,10 @@ import Calls             from './pages/Calls'
 import Callbacks         from './pages/Callbacks'
 import Supervisor        from './pages/Supervisor'
 import IncomingCallModal    from './components/IncomingCallModal'
-import SipActiveCallOverlay from './components/SipActiveCallOverlay'
 import ToastProvider        from './components/ToastProvider'
+import DialerActivityBeacon from './components/DialerActivityBeacon'
+import DncManager from './pages/DncManager'
+import Settings   from './pages/Settings'
 
 export default function App() {
   return (
@@ -44,10 +46,12 @@ export default function App() {
           <Route path="/supervisor"         element={<Supervisor />}     />
           <Route path="/reports"            element={<Reports />}        />
           <Route path="/sip-settings"       element={<SipSettings />}    />
+          <Route path="/dnc"      element={<DncManager />} />
+          <Route path="/settings" element={<Settings />}   />
         </Route>
       </Routes>
       <IncomingCallModal />
-      <SipActiveCallOverlay />
+      <DialerActivityBeacon />
       <ToastProvider />
     </HashRouter>
   )

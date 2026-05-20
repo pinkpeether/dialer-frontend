@@ -52,7 +52,7 @@
   --radius-xl: 1rem;     --radius-2xl: 1.5rem; --radius-full: 9999px;
 
   /* Layout */
-  --sidebar-width: 240px;
+  --sidebar-width: 256px;
   --nav-h: 76px;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 

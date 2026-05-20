@@ -7,7 +7,7 @@ const path = require('path')
 // through WSS/HTTPS and WebRTC-adjacent requests during call setup / re-INVITE.
 // Add new VM IPs here if FreePBX VM address changes again.
 // ---------------------------------------------------------------------------
-const DEV_FREEPBX_HOSTS = new Set(['192.168.0.111', '192.168.0.104'])
+const DEV_FREEPBX_HOSTS = new Set(['192.168.0.111', '192.168.0.104', '192.168.0.107'])
 
 const WEBRTC_IP_POLICY = 'default_public_and_private_interfaces'
 
