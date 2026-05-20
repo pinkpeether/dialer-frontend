@@ -22,6 +22,7 @@ import { contactsAPI } from "../api/contacts.api";
 import { useSipStore } from "../store/sip.store";
 import { useAudioDevices, useMicrophoneMeter } from "../hooks/useAudioDevices";
 import { softphoneAudio } from "../services/audio/SoftphoneAudio";
+import { useToast } from "../hooks/useToast";
 import RecentCallsModal from "./RecentCallsModal";
 import AudioDeviceSelect from "./AudioDeviceSelect";
 
@@ -48,6 +49,12 @@ interface DispositionRequest {
   name: string | null;
   phone: string | null;
   saveMode: "backend" | "preview";
+}
+
+interface DialerActivity {
+  state: WidgetState;
+  label: string;
+  active: boolean;
 }
 
 const KEYS = [
@@ -452,12 +459,14 @@ function StatusBadge({
 interface FloatingDialerProps {
   mode?: "floating" | "embedded";
   onDispositionRequested?: (request: DispositionRequest) => void;
+  onActivityChange?: (activity: DialerActivity) => void;
 }
 
 // ── Main Component ────────────────────────────────────────
 export default function FloatingDialer({
   mode = "floating",
   onDispositionRequested,
+  onActivityChange,
 }: FloatingDialerProps) {
   const isEmbedded = mode === "embedded";
   const [state, setState] = useState<WidgetState>(isEmbedded ? "dialpad" : "collapsed");
@@ -492,6 +501,7 @@ export default function FloatingDialer({
   const sipAudioInputDeviceId = useSipStore((s) => s.audioInputDeviceId);
   const sipAudioInputError = useSipStore((s) => s.audioInputError);
   const setSipAudioInputDevice = useSipStore((s) => s.setAudioInputDevice);
+  const toast = useToast();
   const sipModeEnabled = Boolean(sipConfig.enabled);
   const sipReady = sipModeEnabled && sipStatus === "registered";
 
@@ -505,6 +515,7 @@ export default function FloatingDialer({
   const isDraggingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callStart = useRef<number>(0);
+  const callCancelRequestedRef = useRef(false);
   const stopRingbackRef = useRef<(() => void) | null>(null);
   const sipCallEstablishedRef = useRef(false);
   const incomingRecentRef = useRef<{
@@ -530,12 +541,14 @@ export default function FloatingDialer({
   }, [requestAudioPermission]);
 
   const handleMuteToggle = useCallback(() => {
-    setMuted((current) => {
-      const next = !current;
-      setSipMuted(next);
-      return next;
-    });
-  }, [setSipMuted]);
+    const next = !muted;
+    setMuted(next);
+    setSipMuted(next);
+
+    if (state === "active") {
+      toast.info(next ? "Microphone muted" : "Microphone unmuted");
+    }
+  }, [muted, setSipMuted, state, toast]);
 
   const testSpeaker = useCallback(() => {
     void testSipAudioOutputDevice().catch((err) => {
@@ -599,6 +612,21 @@ export default function FloatingDialer({
     },
     [stopTimer, stopRingback],
   );
+
+  useEffect(() => {
+    const label =
+      state === "active"
+        ? "Call connected"
+        : state === "calling"
+          ? "Call routing"
+          : "Dialer idle";
+
+    onActivityChange?.({
+      state,
+      label,
+      active: state === "active" || state === "calling",
+    });
+  }, [onActivityChange, state]);
 
   useEffect(() => {
     if (!callSid?.startsWith("sip:")) return;
@@ -922,6 +950,7 @@ export default function FloatingDialer({
     setElapsed(0);
     setCallRecordId(null);
     sipCallEstablishedRef.current = false;
+    callCancelRequestedRef.current = false;
     stopTimer();
     startRingback();
 
@@ -937,6 +966,10 @@ export default function FloatingDialer({
         setCallSid(sipCallSid);
         callStart.current = Date.now();
         await sipCall(cleaned);
+        if (callCancelRequestedRef.current) {
+          await sipHangup().catch(() => undefined);
+          return;
+        }
         triggerRipple();
         return;
       }
@@ -946,6 +979,12 @@ export default function FloatingDialer({
         contactName || undefined,
       );
       const callRecord = extractCallRecord(res);
+      if (callCancelRequestedRef.current) {
+        if (callRecord.callSid) {
+          await dialerAPI.hangupCall(callRecord.callSid).catch(() => undefined);
+        }
+        return;
+      }
       setCallSid(callRecord.callSid || null);
       setCallRecordId(callRecord.id);
       setState("active");
@@ -968,6 +1007,7 @@ export default function FloatingDialer({
       setError(msg);
       setState("dialpad");
     } finally {
+      callCancelRequestedRef.current = false;
       setLoading(false);
     }
   }, [
@@ -976,6 +1016,7 @@ export default function FloatingDialer({
     sipModeEnabled,
     sipReady,
     sipCall,
+    sipHangup,
     stopTimer,
     startRingback,
     triggerRipple,
@@ -984,6 +1025,7 @@ export default function FloatingDialer({
   ]);
 
   const handleHangup = useCallback(async () => {
+    callCancelRequestedRef.current = true;
     const dur = Math.round((Date.now() - callStart.current) / 1000);
     stopRingback();
     stopTimer();
@@ -993,23 +1035,25 @@ export default function FloatingDialer({
         else await dialerAPI.hangupCall(callSid);
       } catch {}
     }
-    const entry: RecentCall = {
-      phone: number,
-      name: contactName || undefined,
-      at: Date.now(),
-      duration: dur,
-      direction: "outgoing",
-      outcome: dur > 3 ? "answered" : "missed",
-    };
-    const updated = [entry, ...recent];
-    setRecent(updated);
-    saveRecent(updated);
-    onDispositionRequested?.({
-      callId: callRecordId,
-      name: contactName || null,
-      phone: number || null,
-      saveMode: callRecordId ? "backend" : "preview",
-    });
+    if (number && state === "active") {
+      const entry: RecentCall = {
+        phone: number,
+        name: contactName || undefined,
+        at: Date.now(),
+        duration: dur,
+        direction: "outgoing",
+        outcome: dur > 3 ? "answered" : "missed",
+      };
+      const updated = [entry, ...recent];
+      setRecent(updated);
+      saveRecent(updated);
+      onDispositionRequested?.({
+        callId: callRecordId,
+        name: contactName || null,
+        phone: number || null,
+        saveMode: callRecordId ? "backend" : "preview",
+      });
+    }
     sipCallEstablishedRef.current = false;
     playHangupTone();
     setCallSid(null);
@@ -1023,6 +1067,7 @@ export default function FloatingDialer({
     number,
     contactName,
     recent,
+    state,
     stopRingback,
     stopTimer,
     sipHangup,
@@ -1968,6 +2013,34 @@ export default function FloatingDialer({
                             : "Start Call"}
                         </span>
                       </motion.button>
+
+                      {state === "calling" && (
+                        <motion.button
+                          type="button"
+                          onClick={handleHangup}
+                          whileHover={{ scale: 1.02, y: -1 }}
+                          whileTap={{ scale: 0.96 }}
+                          style={{
+                            width: isEmbedded ? 132 : 92,
+                            height: isEmbedded ? 52 : 57,
+                            borderRadius: isEmbedded ? 20 : 24,
+                            border: "1px solid rgba(255,59,95,0.42)",
+                            background: "linear-gradient(135deg,rgba(255,59,95,0.95),rgba(225,29,72,0.86))",
+                            color: "#fff",
+                            fontWeight: 950,
+                            fontSize: isEmbedded ? 13.5 : 12,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 8,
+                            boxShadow: "0 18px 38px rgba(255,59,95,0.22),inset 0 1px 0 rgba(255,255,255,0.18)",
+                          }}
+                        >
+                          <PhoneOff size={16} />
+                          Cancel
+                        </motion.button>
+                      )}
                     </div>
 
                     {/* Recent mini list */}

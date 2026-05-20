@@ -114,8 +114,19 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
   }, [visible, refreshAudioDevices])
 
   const handleMuteToggle = useCallback(() => {
-    setMuted(!muted)
-  }, [muted, setMuted])
+    const nextMuted = !muted
+
+    try {
+      setMuted(nextMuted)
+      toast.info(nextMuted ? 'Microphone muted' : 'Microphone unmuted')
+    } catch (err) {
+      const msg = err instanceof Error
+        ? err.message
+        : 'Could not update microphone mute state'
+      setMessage(msg)
+      toast.error(msg)
+    }
+  }, [muted, setMuted, toast])
 
   const handleHoldToggle = useCallback(() => {
     setMessage(null)

@@ -42,6 +42,11 @@ type DispositionRequest = {
   saveMode?: 'backend' | 'preview'
 }
 
+type VoiceDeskActivity = {
+  label: string
+  active: boolean
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -246,6 +251,10 @@ export default function Dialer() {
   const [message,      setMessage]      = useState('')
   const [search,       setSearch]       = useState('')
   const [voiceDeskOpen, setVoiceDeskOpen] = useState(true)
+  const [voiceDeskActivity, setVoiceDeskActivity] = useState<VoiceDeskActivity>({
+    label: 'Dialer idle',
+    active: false,
+  })
   const [lastCallId, setLastCallId] = useState<number | string | null>(null)
   const [dispositionOpen, setDispositionOpen] = useState(false)
   const [dispositionSaveMode, setDispositionSaveMode] = useState<'backend' | 'preview'>('backend')
@@ -260,6 +269,7 @@ export default function Dialer() {
   const liveSipCall = useSipStore(s => s.activeCall)
   const sipCall = useSipStore(s => s.call)
   const sipHangup = useSipStore(s => s.hangup)
+  const setSipMuted = useSipStore(s => s.setMuted)
   const sipModeEnabled = Boolean(sipConfig.enabled)
   const sipReady = sipModeEnabled && sipStatus === 'registered'
   const lastLiveSipCallRef = useRef<typeof liveSipCall>(null)
@@ -292,6 +302,35 @@ export default function Dialer() {
 
   const fmt = (s: number) =>
     `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`
+
+  const hiddenDeskStatus = liveSipCall
+    ? { label: 'Call connected', active: true }
+    : voiceDeskActivity.active
+      ? voiceDeskActivity
+      : activeCall
+        ? { label: 'Call connected', active: true }
+        : isDialing
+          ? { label: 'Campaign running', active: true }
+          : { label: 'Dialer idle', active: false }
+
+  const handleVoiceDeskActivityChange = useCallback((activity: VoiceDeskActivity) => {
+    setVoiceDeskActivity(current =>
+      current.label === activity.label && current.active === activity.active
+        ? current
+        : { label: activity.label, active: activity.active },
+    )
+  }, [])
+
+  const handleActiveCallMuteToggle = useCallback(() => {
+    const next = !muted
+    setMuted(next)
+
+    if (sipModeEnabled) {
+      setSipMuted(next)
+    }
+
+    toast.info(next ? 'Microphone muted' : 'Microphone unmuted')
+  }, [muted, setSipMuted, sipModeEnabled, toast])
 
   const openDispositionFromRequest = useCallback((request: DispositionRequest = {}) => {
     const callId = request.callId ?? `preview-${Date.now()}`
@@ -648,7 +687,7 @@ export default function Dialer() {
               </div>
 
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setMuted(p => !p)} style={{
+                <button onClick={handleActiveCallMuteToggle} style={{
                   flex: 1, padding: '10px',
                   background: muted ? 'rgba(239,68,68,0.12)' : 'var(--bg-glass-hi)',
                   border: `1px solid ${muted ? 'var(--danger)' : 'var(--green-2)'}`,
@@ -782,41 +821,87 @@ export default function Dialer() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setVoiceDeskOpen(open => !open)}
-            style={{
-              height: 34,
-              borderRadius: 999,
-              border: '1px solid var(--border-strong)',
-              background: voiceDeskOpen ? 'rgba(251,11,140,0.10)' : 'rgba(0,245,160,0.10)',
-              color: voiceDeskOpen ? 'var(--pink)' : 'var(--green-2)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 7,
-              padding: '0 12px',
-              fontSize: 10.5,
-              fontWeight: 900,
-              textTransform: 'uppercase',
-              letterSpacing: 0.7,
-              cursor: 'pointer',
-            }}
-          >
-            {voiceDeskOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {voiceDeskOpen ? 'Hide desk' : 'Open desk'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {!voiceDeskOpen && (
+              <div
+                style={{
+                  height: 34,
+                  borderRadius: 999,
+                  border: hiddenDeskStatus.active
+                    ? '1px solid rgba(255,59,95,0.50)'
+                    : '1px solid rgba(0,245,160,0.34)',
+                  background: hiddenDeskStatus.active
+                    ? 'rgba(255,59,95,0.12)'
+                    : 'rgba(0,245,160,0.10)',
+                  color: hiddenDeskStatus.active ? '#ff9caf' : 'var(--green-2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '0 12px',
+                  fontSize: 10.5,
+                  fontWeight: 950,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.65,
+                  boxShadow: hiddenDeskStatus.active
+                    ? '0 0 24px rgba(255,59,95,0.12)'
+                    : '0 0 22px rgba(0,245,160,0.10)',
+                }}
+              >
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: hiddenDeskStatus.active ? '#ff3b5f' : 'var(--green-2)',
+                    boxShadow: hiddenDeskStatus.active
+                      ? '0 0 12px rgba(255,59,95,0.60)'
+                      : '0 0 12px rgba(0,245,160,0.55)',
+                  }}
+                />
+                {hiddenDeskStatus.label}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setVoiceDeskOpen(open => !open)}
+              style={{
+                height: 34,
+                borderRadius: 999,
+                border: '1px solid var(--border-strong)',
+                background: voiceDeskOpen ? 'rgba(251,11,140,0.10)' : 'rgba(0,245,160,0.10)',
+                color: voiceDeskOpen ? 'var(--pink)' : 'var(--green-2)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+                padding: '0 12px',
+                fontSize: 10.5,
+                fontWeight: 900,
+                textTransform: 'uppercase',
+                letterSpacing: 0.7,
+                cursor: 'pointer',
+              }}
+            >
+              {voiceDeskOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {voiceDeskOpen ? 'Hide desk' : 'Open desk'}
+            </button>
+          </div>
         </div>
 
-        <AnimatePresence initial={false}>
-          {voiceDeskOpen && (
-            <motion.div
-              key="embedded-voice-desk"
-              initial={{ height: 0, opacity: 0, y: -10 }}
-              animate={{ height: 'auto', opacity: 1, y: 0 }}
-              exit={{ height: 0, opacity: 0, y: -10 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 30 }}
-              style={{ overflow: 'hidden' }}
-            >
+        <motion.div
+          key="embedded-voice-desk"
+          initial={false}
+          animate={{
+            height: voiceDeskOpen ? 'auto' : 0,
+            opacity: voiceDeskOpen ? 1 : 0,
+            y: voiceDeskOpen ? 0 : -10,
+          }}
+          transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+          style={{
+            overflow: 'hidden',
+            pointerEvents: voiceDeskOpen ? 'auto' : 'none',
+          }}
+        >
               <div
                 style={{
                   display: 'grid',
@@ -830,6 +915,7 @@ export default function Dialer() {
                   <FloatingDialer
                     mode="embedded"
                     onDispositionRequested={openDispositionFromRequest}
+                    onActivityChange={handleVoiceDeskActivityChange}
                   />
                 </div>
 
@@ -905,9 +991,7 @@ export default function Dialer() {
                   )}
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </motion.div>
       </motion.section>
 
       {/* ============== CONTACTS — Full Width Table ============== */}

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { PhoneCall, Save, Trash2, Wifi, WifiOff, ShieldCheck, Info } from 'lucide-react'
 import SipStatusBadge from '../components/SipStatusBadge'
 import { useSipStore } from '../store/sip.store'
+import { useToast } from '../hooks/useToast'
 import type { SipAccountConfig, SipTransport } from '../types/sip'
 
 const inputStyle: React.CSSProperties = {
@@ -43,6 +44,7 @@ export default function SipSettings() {
   const clearConfig = useSipStore(s => s.clearConfig)
   const register = useSipStore(s => s.register)
   const unregister = useSipStore(s => s.unregister)
+  const toast = useToast()
 
   const [form, setForm] = useState<SipAccountConfig>(config)
   const [busy, setBusy] = useState(false)
@@ -55,6 +57,7 @@ export default function SipSettings() {
   const handleSave = () => {
     saveConfig(form)
     setNotice('✓ SIP account configuration saved locally')
+    toast.success('SIP account saved')
   }
 
   const handleRegister = async () => {
@@ -64,8 +67,11 @@ export default function SipSettings() {
       saveConfig(form)
       await register()
       setNotice('✓ SIP account registered successfully')
-    } catch {
+      toast.success('SIP account registered')
+    } catch (err) {
       setNotice('')
+      const msg = err instanceof Error ? err.message : 'SIP registration failed'
+      toast.error(msg)
     } finally {
       setBusy(false)
     }
@@ -76,6 +82,10 @@ export default function SipSettings() {
     try {
       await unregister()
       setNotice('SIP account unregistered')
+      toast.warning('SIP account unregistered')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not unregister SIP account'
+      toast.error(msg)
     } finally {
       setBusy(false)
     }
@@ -211,7 +221,7 @@ export default function SipSettings() {
             <button type="button" onClick={handleUnregister} disabled={busy} style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-3)', fontWeight: 800 }}>
               <WifiOff size={14}/> Unregister
             </button>
-            <button type="button" onClick={() => { clearConfig(); setForm({ ...form, enabled: false, username: '', password: '', domain: '', webSocketServer: '' }) }} style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.10)', color: 'var(--danger)', fontWeight: 800 }}>
+            <button type="button" onClick={() => { clearConfig(); setForm({ ...form, enabled: false, username: '', password: '', domain: '', webSocketServer: '' }); toast.warning('SIP account cleared') }} style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.10)', color: 'var(--danger)', fontWeight: 800 }}>
               <Trash2 size={14}/> Clear
             </button>
           </div>
