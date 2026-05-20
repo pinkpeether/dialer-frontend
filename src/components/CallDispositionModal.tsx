@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { PhoneCall, X } from 'lucide-react'
 import DispositionPanel, { type DispositionSubmitPayload } from './DispositionPanel'
 import { callsAPI } from '../api/calls.api'
+import { useToast } from '../hooks/useToast'
 
 interface CallDispositionModalProps {
   open: boolean
@@ -26,6 +27,7 @@ export default function CallDispositionModal({
   onSaved,
 }: CallDispositionModalProps) {
   const [error, setError] = useState<string | null>(null)
+  const toast = useToast()
 
   useEffect(() => {
     if (open) setError(null)
@@ -37,6 +39,7 @@ export default function CallDispositionModal({
     setError(null)
     if (saveMode === 'preview') {
       void payload
+      toast.success('Disposition preview completed')
       onSaved?.()
       onClose()
       return
@@ -47,6 +50,7 @@ export default function CallDispositionModal({
         disposition: payload.disposition,
         notes: payload.notes,
       })
+      toast.success('Disposition saved')
       onSaved?.()
       onClose()
     } catch (err) {
@@ -54,6 +58,7 @@ export default function CallDispositionModal({
         ? err.message
         : 'Failed to save call disposition. Please try again.'
       setError(msg)
+      toast.error(msg)
     }
   }
 

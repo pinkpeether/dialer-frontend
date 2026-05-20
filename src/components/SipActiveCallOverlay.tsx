@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Activity, Clock, Mic, MicOff, PauseCircle, PhoneForwarded, PhoneOff, PlayCircle, Volume2 } from 'lucide-react'
+import { Activity, Clock, Hash, Mic, MicOff, PauseCircle, PhoneForwarded, PhoneOff, PlayCircle, Volume2 } from 'lucide-react'
 import AudioDeviceSelect from './AudioDeviceSelect'
 import { useAudioDevices, useMicrophoneMeter } from '../hooks/useAudioDevices'
+import { useToast } from '../hooks/useToast'
 import { useSipStore } from '../store/sip.store'
 
 const brand = {
@@ -46,6 +47,7 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
   const hold = useSipStore(s => s.hold)
   const resume = useSipStore(s => s.resume)
   const transfer = useSipStore(s => s.transfer)
+  const sendDTMF = useSipStore(s => s.sendDTMF)
 
   const sipAudioOutputDeviceId = useSipStore(s => s.audioOutputDeviceId)
   const sipAudioOutputError = useSipStore(s => s.audioOutputError)
@@ -60,6 +62,9 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
   const [message, setMessage] = useState<string | null>(null)
   const [transferTarget, setTransferTarget] = useState('')
   const [isTransferring, setIsTransferring] = useState(false)
+  const [dtmfOpen, setDtmfOpen] = useState(false)
+  const [dtmfLog, setDtmfLog] = useState('')
+  const toast = useToast()
 
   // Keep overlay visible whenever the SIP store has an active call.
   // This avoids losing controls after an incoming call is answered.
@@ -87,6 +92,8 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
   useEffect(() => {
     if (!activeCall) {
       setElapsed(0)
+      setDtmfLog('')
+      setDtmfOpen(false)
       return
     }
 
@@ -113,15 +120,20 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
   const handleHoldToggle = useCallback(() => {
     setMessage(null)
     const action = onHold ? resume : hold
-    void action().catch((err) => {
-      const msg = err instanceof Error
-        ? err.message
-        : onHold
-          ? 'Could not resume call'
-          : 'Could not place call on hold'
-      setMessage(msg)
-    })
-  }, [onHold, hold, resume])
+    void action()
+      .then(() => {
+        toast.info(onHold ? 'Call resumed' : 'Call placed on hold')
+      })
+      .catch((err) => {
+        const msg = err instanceof Error
+          ? err.message
+          : onHold
+            ? 'Could not resume call'
+            : 'Could not place call on hold'
+        setMessage(msg)
+        toast.error(msg)
+      })
+  }, [onHold, hold, resume, toast])
 
   const handleTransfer = useCallback(() => {
     const dest = transferTarget.trim()
@@ -134,13 +146,24 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
       .then(() => {
         setIsTransferring(false)
         setTransferTarget('')
+        toast.success(`Call transferred to ${dest}`)
       })
       .catch((err) => {
         const msg = err instanceof Error ? err.message : 'Could not transfer call'
         setMessage(msg)
         setIsTransferring(false)
+        toast.error(msg)
       })
-  }, [transferTarget, transfer])
+  }, [transferTarget, transfer, toast])
+
+  const handleDTMF = useCallback((digit: string) => {
+    setDtmfLog((prev) => (prev + digit).slice(-16))
+    void sendDTMF(digit).catch((err) => {
+      const msg = err instanceof Error ? err.message : `Could not send DTMF ${digit}`
+      setMessage(msg)
+      toast.error(msg)
+    })
+  }, [sendDTMF, toast])
 
   const handleAudioInputChange = useCallback((deviceId: string) => {
     setMessage(null)
@@ -346,6 +369,135 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
         >
           <PhoneOff size={embedded ? 34 : 18} /> Hang Up
         </button>
+      </div>
+
+      <div
+        style={{
+          ...glassCard(),
+          borderRadius: 22,
+          padding: '10px 12px',
+          marginTop: 12,
+          display: 'grid',
+          gap: 8,
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setDtmfOpen((open) => !open)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            color: brand.muted,
+            padding: 0,
+            width: '100%',
+          }}
+        >
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: 1,
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+            }}
+          >
+            <Hash size={14} /> DTMF Keypad
+          </label>
+          <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.5 }}>
+            {dtmfOpen ? '▲ HIDE' : '▼ SHOW'}
+          </span>
+        </button>
+
+        {dtmfOpen && (
+          <>
+            <div
+              style={{
+                height: 34,
+                borderRadius: 14,
+                border: '1px solid rgba(255,255,255,0.14)',
+                background: 'rgba(7,5,16,0.75)',
+                color: brand.ink,
+                fontSize: 14,
+                fontWeight: 900,
+                fontFamily: 'ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 12px',
+                letterSpacing: 2,
+                minHeight: 34,
+              }}
+            >
+              {dtmfLog || <span style={{ color: brand.faint, fontWeight: 400, letterSpacing: 0 }}>—</span>}
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 7,
+              }}
+            >
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((digit) => (
+                <button
+                  key={digit}
+                  type="button"
+                  onClick={() => handleDTMF(digit)}
+                  style={{
+                    height: 42,
+                    borderRadius: 14,
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    background: 'rgba(255,255,255,0.06)',
+                    color: brand.ink,
+                    fontSize: 16,
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    transition: 'background 0.12s ease, transform 0.08s ease',
+                    fontFamily: 'ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace',
+                  }}
+                  onMouseDown={(event) => {
+                    event.currentTarget.style.background = 'rgba(251,11,140,0.20)'
+                    event.currentTarget.style.transform = 'scale(0.93)'
+                  }}
+                  onMouseUp={(event) => {
+                    event.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                    event.currentTarget.style.transform = 'scale(1)'
+                  }}
+                  onMouseLeave={(event) => {
+                    event.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                    event.currentTarget.style.transform = 'scale(1)'
+                  }}
+                >
+                  {digit}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setDtmfLog('')}
+              style={{
+                height: 28,
+                borderRadius: 999,
+                border: '1px solid rgba(255,255,255,0.10)',
+                background: 'transparent',
+                color: brand.faint,
+                fontSize: 9.5,
+                fontWeight: 900,
+                cursor: 'pointer',
+                letterSpacing: 0.6,
+              }}
+            >
+              CLEAR LOG
+            </button>
+          </>
+        )}
       </div>
 
       <div

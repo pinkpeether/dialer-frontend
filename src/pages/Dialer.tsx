@@ -13,6 +13,7 @@ import { useSipStore } from '../store/sip.store'
 import FloatingDialer from '../components/FloatingDialer'
 import SipActiveCallOverlay from '../components/SipActiveCallOverlay'
 import CallDispositionModal from '../components/CallDispositionModal'
+import { useToast } from '../hooks/useToast'
 
 
 const FALLBACK_DIALER_CAMPAIGNS: Record<string, unknown>[] = [
@@ -262,6 +263,7 @@ export default function Dialer() {
   const sipModeEnabled = Boolean(sipConfig.enabled)
   const sipReady = sipModeEnabled && sipStatus === 'registered'
   const lastLiveSipCallRef = useRef<typeof liveSipCall>(null)
+  const toast = useToast()
   void user
 
   const campaignOptions = campaigns.length > 0 ? campaigns : FALLBACK_DIALER_CAMPAIGNS
@@ -348,7 +350,10 @@ export default function Dialer() {
       setIsDialing(true)
       setMessage('✓ Campaign dialing started')
     }
-    finally { setLoading(false) }
+    finally {
+      toast.success('Campaign dialing started')
+      setLoading(false)
+    }
   }
 
   const handleStopCampaign = async () => {
@@ -356,6 +361,7 @@ export default function Dialer() {
     try { await dialerAPI.stopCampaign(selectedCamp) } catch { /* preview fallback */ }
     setIsDialing(false); setActiveCall(null); setLastCallId(null)
     setMessage('⏹ Campaign stopped')
+    toast.warning('Campaign stopped')
   }
 
   const handleManualCall = async (contact: Record<string,unknown>) => {
@@ -382,11 +388,13 @@ export default function Dialer() {
         setLastCallId(callRecord.id)
       }
       setMessage(`📞 Calling ${contact.phone}…`)
+      toast.info(`Calling ${String(contact.name || contact.phone)}...`)
     } catch (err) {
       setActiveCall({ ...contact, callSid: `preview-${contact.id}` })
       setLastCallId(null)
       const errorMessage = err instanceof Error ? err.message : `📞 Calling ${contact.phone}…`
       setMessage(errorMessage)
+      toast.error(errorMessage)
     }
     finally { setLoading(false) }
   }
@@ -412,6 +420,7 @@ export default function Dialer() {
     setElapsed(0)
     setMuted(false)
     setMessage('📵 Call ended')
+    toast.info('Call ended')
 
     if (dispositionCallId) {
       openDisposition(dispositionCallId, 'backend')

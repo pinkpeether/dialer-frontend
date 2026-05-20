@@ -14,6 +14,7 @@ import SipSettings    from './pages/SipSettings'
 import Calls          from './pages/Calls'
 import IncomingCallModal from './components/IncomingCallModal'
 import SipActiveCallOverlay from './components/SipActiveCallOverlay'
+import ToastProvider from './components/ToastProvider'
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
       </Routes>
       <IncomingCallModal />
       <SipActiveCallOverlay />
+      <ToastProvider />
     </HashRouter>
   )
 }
