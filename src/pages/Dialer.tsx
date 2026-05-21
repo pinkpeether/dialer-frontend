@@ -270,6 +270,9 @@ export default function Dialer() {
   const sipCall = useSipStore(s => s.call)
   const sipHangup = useSipStore(s => s.hangup)
   const setSipMuted = useSipStore(s => s.setMuted)
+  const showSipDisposition = useSipStore(s => s.showSipDisposition)
+  const pendingSipDisposition = useSipStore(s => s.pendingSipDisposition)
+  const dismissSipDisposition = useSipStore(s => s.dismissSipDisposition)
   const sipModeEnabled = Boolean(sipConfig.enabled)
   const sipReady = sipModeEnabled && sipStatus === 'registered'
   const lastLiveSipCallRef = useRef<typeof liveSipCall>(null)
@@ -345,13 +348,25 @@ export default function Dialer() {
   }, [])
 
   useEffect(() => {
+    if (!showSipDisposition || !pendingSipDisposition) return
+
+    openDispositionFromRequest({
+      callId: pendingSipDisposition.callId,
+      name: pendingSipDisposition.remoteIdentity || 'SIP Call',
+      phone: pendingSipDisposition.remoteIdentity || null,
+      saveMode: pendingSipDisposition.saveMode,
+    })
+    dismissSipDisposition()
+  }, [dismissSipDisposition, openDispositionFromRequest, pendingSipDisposition, showSipDisposition])
+
+  useEffect(() => {
     if (liveSipCall) {
       lastLiveSipCallRef.current = liveSipCall
       return
     }
 
     const endedSipCall = lastLiveSipCallRef.current
-    if (endedSipCall && !dispositionOpen) {
+    if (endedSipCall && !dispositionOpen && !showSipDisposition) {
       openDispositionFromRequest({
         name: endedSipCall.remoteIdentity || 'SIP Call',
         phone: endedSipCall.remoteIdentity || null,
@@ -360,7 +375,7 @@ export default function Dialer() {
     }
 
     lastLiveSipCallRef.current = null
-  }, [dispositionOpen, liveSipCall, openDispositionFromRequest])
+  }, [dispositionOpen, liveSipCall, openDispositionFromRequest, showSipDisposition])
 
   const handleCampaignChange = (value: string) => {
     const nextCampaign = value ? Number(value) : null

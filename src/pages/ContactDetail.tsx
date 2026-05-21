@@ -104,9 +104,13 @@ export default function ContactDetail() {
           direction: str(c.direction, 'outbound'),
           status: str(c.status, '—'),
           disposition: nullableStr(c.disposition),
-          durationSeconds: typeof c.durationSeconds === 'number' ? c.durationSeconds : null,
+          durationSeconds: typeof c.durationSeconds === 'number'
+            ? c.durationSeconds
+            : typeof c.duration === 'number'
+              ? c.duration
+              : null,
           agentName: nullableStr(c.agentName ?? (c.agent as Record<string,unknown>|null)?.name),
-          createdAt: str(c.createdAt, new Date().toISOString()),
+          createdAt: str(c.startedAt ?? c.createdAt, new Date().toISOString()),
         }))
       )
     }).catch(() => {

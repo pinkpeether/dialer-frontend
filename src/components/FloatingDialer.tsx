@@ -685,12 +685,14 @@ export default function FloatingDialer({
         });
       }
 
-      onDispositionRequested?.({
-        callId: null,
-        name: contactName || null,
-        phone: number || null,
-        saveMode: "preview",
-      });
+      if (!isEmbedded) {
+        onDispositionRequested?.({
+          callId: null,
+          name: contactName || null,
+          phone: number || null,
+          saveMode: "preview",
+        });
+      }
       sipCallEstablishedRef.current = false;
       playHangupTone();
       setCallSid(null);
@@ -723,6 +725,7 @@ export default function FloatingDialer({
     playFailedTone,
     playHangupTone,
     onDispositionRequested,
+    isEmbedded,
   ]);
 
   useEffect(() => {
@@ -760,18 +763,20 @@ export default function FloatingDialer({
         saveRecent(updated);
         return updated;
       });
-      onDispositionRequested?.({
-        callId: null,
-        name: null,
-        phone,
-        saveMode: "preview",
-      });
+      if (!isEmbedded) {
+        onDispositionRequested?.({
+          callId: null,
+          name: null,
+          phone,
+          saveMode: "preview",
+        });
+      }
     }
 
     if (sipStatus === "error" || sipStatus === "registration_failed") {
       incomingRecentRef.current = null;
     }
-  }, [onDispositionRequested, sipActiveCall, sipStatus]);
+  }, [isEmbedded, onDispositionRequested, sipActiveCall, sipStatus]);
 
   useEffect(() => {
     if (state !== "collapsed") {
@@ -1039,6 +1044,7 @@ export default function FloatingDialer({
         else await dialerAPI.hangupCall(callSid);
       } catch {}
     }
+    const isSipCall = Boolean(callSid?.startsWith("sip:"));
     if (number && state === "active") {
       const entry: RecentCall = {
         phone: number,
@@ -1051,12 +1057,14 @@ export default function FloatingDialer({
       const updated = [entry, ...recent];
       setRecent(updated);
       saveRecent(updated);
-      onDispositionRequested?.({
-        callId: callRecordId,
-        name: contactName || null,
-        phone: number || null,
-        saveMode: callRecordId ? "backend" : "preview",
-      });
+      if (!isSipCall) {
+        onDispositionRequested?.({
+          callId: callRecordId,
+          name: contactName || null,
+          phone: number || null,
+          saveMode: callRecordId ? "backend" : "preview",
+        });
+      }
     }
     sipCallEstablishedRef.current = false;
     playHangupTone();
@@ -3043,7 +3051,7 @@ export default function FloatingDialer({
         onRedial={handleRedialRecentCall}
       />
       <CallDispositionModal
-        open={showSipDisposition}
+        open={!isEmbedded && showSipDisposition}
         callId={pendingSipDisposition?.callId ?? null}
         contactName={pendingSipDisposition?.remoteIdentity ?? null}
         saveMode={pendingSipDisposition?.saveMode ?? 'preview'}

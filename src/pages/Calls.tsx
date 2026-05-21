@@ -81,6 +81,11 @@ const nestedName = (value: unknown) => {
   return stringValue(value.name || value.title || value.fullName)
 }
 
+const nestedString = (value: unknown, key: string) => {
+  if (!isRecord(value)) return ''
+  return stringValue(value[key])
+}
+
 function getItems(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload
   if (!isRecord(payload)) return []
@@ -125,6 +130,7 @@ function normalizeCall(item: unknown, index: number): CallRow {
     stringValue(row.remoteNumber) ||
     stringValue(row.phone) ||
     stringValue(row.phoneNumber) ||
+    nestedString(contact, 'phone') ||
     stringValue(row.destination) ||
     stringValue(row.to) ||
     stringValue(row.from) ||
@@ -149,9 +155,12 @@ function normalizeResponse(payload: unknown, page: number, limit: number): Paged
 
   return {
     items,
-    page: numberValue(record.page, page),
-    limit: numberValue(record.limit, limit),
-    total: numberValue(record.total ?? record.count, items.length),
+    page: numberValue(record.page ?? (isRecord(record.pagination) ? record.pagination.page : undefined), page),
+    limit: numberValue(record.limit ?? (isRecord(record.pagination) ? record.pagination.limit : undefined), limit),
+    total: numberValue(
+      record.total ?? record.count ?? (isRecord(record.pagination) ? record.pagination.total : undefined),
+      items.length
+    ),
   }
 }
 
@@ -653,23 +662,20 @@ export default function Calls() {
               height: '100%',
               margin: '-10px -12px -10px 0',
               padding: '10px 12px 10px 16px',
-              borderLeft: `1px solid ${brand.pink}44`,
-              background: 'linear-gradient(90deg,rgba(251,11,140,0.03),rgba(251,11,140,0.15))',
-              boxShadow: 'inset 12px 0 24px rgba(251,11,140,0.08)',
             }}
           >
             <span
               style={{
                 borderRadius: 999,
-                border: `1px solid ${brand.pink}aa`,
-                background: 'linear-gradient(135deg,rgba(251,11,140,0.38),rgba(0,245,160,0.15))',
-                color: brand.ink,
-                padding: '6px 11px',
-                boxShadow: '0 0 26px rgba(251,11,140,0.24)',
-                textShadow: '0 1px 8px rgba(0,0,0,0.45)',
+                border: `1px solid ${brand.pink}88`,
+                background: 'linear-gradient(135deg,rgba(251,11,140,0.18),rgba(251,11,140,0.04))',
+                color: brand.pink,
+                padding: '6px 12px',
+                boxShadow: '0 0 26px rgba(251,11,140,0.18)',
+                textShadow: '0 0 16px rgba(251,11,140,0.28)',
               }}
             >
-              Disposition
+              DISPOSITION
             </span>
           </div>
         </div>
@@ -752,9 +758,6 @@ export default function Calls() {
                       minHeight: 42,
                       margin: '-11px -12px -11px 0',
                       padding: '11px 12px 11px 16px',
-                      borderLeft: `1px solid ${brand.pink}44`,
-                      background: 'linear-gradient(90deg,rgba(251,11,140,0.03),rgba(251,11,140,0.16))',
-                      boxShadow: 'inset 12px 0 24px rgba(251,11,140,0.08)',
                     }}
                     onClick={e => e.stopPropagation()}
                   >

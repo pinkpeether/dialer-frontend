@@ -181,15 +181,19 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
           // 12A — open disposition modal with real callId if available
           if (activeCall) {
-            const hasRealId = sipCallId !== null
-            set({
-              pendingSipDisposition: {
-                callId: hasRealId ? sipCallId! : `sip-${Date.now()}`,
-                saveMode: hasRealId ? 'backend' : 'preview',
-                remoteIdentity: activeCall.remoteIdentity,
-              },
-              showSipDisposition: true,
-            })
+            void (async () => {
+              const backendCallId = sipCallId ?? await logSipCallToBackend(activeCall)
+              const hasRealId = backendCallId !== null
+              set({
+                pendingSipDisposition: {
+                  callId: hasRealId ? backendCallId : `sip-${Date.now()}`,
+                  saveMode: hasRealId ? 'backend' : 'preview',
+                  remoteIdentity: activeCall.remoteIdentity,
+                },
+                showSipDisposition: true,
+                sipCallId: null,
+              })
+            })()
           }
 
           set({
@@ -197,7 +201,6 @@ export const useSipStore = create<SipStore>((set, get) => ({
             incomingCall: null,
             muted: false,
             onHold: false,
-            sipCallId: null,
           })
         },
       })

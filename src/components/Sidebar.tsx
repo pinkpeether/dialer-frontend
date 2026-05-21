@@ -121,13 +121,19 @@ export default function Sidebar() {
                         ? 'linear-gradient(135deg, rgba(0,167,71,0.98), rgba(0,245,160,0.86))'
                         : 'linear-gradient(135deg, #fb0b8c, #ff4bad)'
                       : 'transparent',
-                    color: isActive ? '#fff' : 'var(--text-3)',
-                    border: isActive && isDialer ? '1px solid rgba(0,245,160,0.48)' : '1px solid transparent',
+                    color: isActive ? '#fff' : isDialer ? 'var(--green-2)' : 'var(--text-3)',
+                    border: isDialer
+                      ? isActive
+                        ? '1px solid rgba(0,245,160,0.48)'
+                        : '1px solid rgba(0,167,71,0.24)'
+                      : '1px solid transparent',
                     boxShadow: isActive
                       ? isDialer
                         ? '0 14px 30px rgba(0,167,71,0.26), 0 0 22px rgba(0,245,160,0.18), inset 0 1px 0 rgba(255,255,255,0.22)'
                         : '0 12px 26px rgba(251,11,140,0.28), inset 0 1px 0 rgba(255,255,255,0.22)'
-                      : 'none',
+                      : isDialer
+                        ? '0 0 18px rgba(0,167,71,0.08)'
+                        : 'none',
                     transition: 'background 0.25s, color 0.25s, box-shadow 0.25s, border-color 0.25s',
                   }}
                 >
