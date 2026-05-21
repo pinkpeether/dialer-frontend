@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { PhoneCall, X } from 'lucide-react'
-import DispositionPanel, { type DispositionSubmitPayload } from './DispositionPanel'
+import DispositionPanel, { type DispositionSubmitPayload, type DispositionValue } from './DispositionPanel'
 import { callsAPI } from '../api/calls.api'
 import { contactsAPI } from '../api/contacts.api'
 import { useToast } from '../hooks/useToast'
@@ -12,6 +12,9 @@ interface CallDispositionModalProps {
   contactId?: number | null      // 12B — contact to update
   contactName?: string | null
   contactNumber?: string | null
+  defaultDisposition?: DispositionValue | null
+  defaultNotes?: string | null
+  defaultCallbackAt?: string | null
   saveMode?: 'backend' | 'preview'
   helperText?: string | null
   onClose: () => void
@@ -34,6 +37,9 @@ export default function CallDispositionModal({
   contactId,
   contactName,
   contactNumber,
+  defaultDisposition,
+  defaultNotes,
+  defaultCallbackAt,
   saveMode = 'backend',
   helperText,
   onClose,
@@ -210,7 +216,12 @@ export default function CallDispositionModal({
               </div>
             )}
 
-            <DispositionPanel onSubmit={handleSubmit} />
+            <DispositionPanel
+              defaultDisposition={defaultDisposition}
+              defaultNotes={defaultNotes}
+              defaultCallbackAt={defaultCallbackAt}
+              onSubmit={handleSubmit}
+            />
 
             {error && (
               <div style={{

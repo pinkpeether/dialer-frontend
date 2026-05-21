@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { callsAPI } from '../api/calls.api'
 import CallDispositionModal from '../components/CallDispositionModal'
+import type { DispositionValue } from '../components/DispositionPanel'
 
 type CallDirection = 'incoming' | 'outgoing'
 type CallStatus = 'answered' | 'missed' | 'failed' | 'in_progress' | 'queued' | 'completed' | 'unknown'
@@ -24,6 +25,9 @@ interface CallRow {
   campaignName?: string | null
   agentName?: string | null
   status: CallStatus
+  disposition?: DispositionValue | null
+  notes?: string | null
+  callbackAt?: string | null
   durationSeconds: number
   startedAt: string
 }
@@ -113,6 +117,24 @@ function normalizeDirection(value: unknown): CallDirection {
   return direction === 'incoming' || direction === 'inbound' ? 'incoming' : 'outgoing'
 }
 
+const DISPOSITION_LABELS: Record<DispositionValue, string> = {
+  ANSWERED: 'Answered',
+  NO_ANSWER: 'No Answer',
+  VOICEMAIL: 'Voicemail',
+  CALLBACK: 'Callback',
+  WRONG_NUMBER: 'Wrong Number',
+  DO_NOT_CALL: 'Do Not Call',
+}
+
+function normalizeDisposition(value: unknown): DispositionValue | null {
+  const disposition = stringValue(value).toUpperCase().replace(/\s+/g, '_') as DispositionValue
+  return disposition in DISPOSITION_LABELS ? disposition : null
+}
+
+function dispositionLabel(value?: DispositionValue | null) {
+  return value ? DISPOSITION_LABELS[value] : ''
+}
+
 function normalizeCall(item: unknown, index: number): CallRow {
   const row = isRecord(item) ? item : {}
   const campaign = row.campaign
@@ -144,6 +166,9 @@ function normalizeCall(item: unknown, index: number): CallRow {
     campaignName: stringValue(row.campaignName) || nestedName(campaign) || null,
     agentName: stringValue(row.agentName) || nestedName(agent) || null,
     status: normalizeStatus(row.status || row.disposition),
+    disposition: normalizeDisposition(row.disposition),
+    notes: stringValue(row.notes) || nestedString(contact, 'notes') || null,
+    callbackAt: stringValue(row.callbackAt) || nestedString(contact, 'callbackAt') || null,
     durationSeconds: numberValue(row.durationSeconds ?? row.duration),
     startedAt: stringValue(row.startedAt || row.createdAt || row.updatedAt),
   }
@@ -696,6 +721,7 @@ export default function Calls() {
             const pill = statusPill(call.status)
             const hasName = Boolean(call.remoteName)
             const isExpanded = expandedId === call.id
+            const currentDisposition = dispositionLabel(call.disposition)
 
             return (
               <div key={call.id}>
@@ -754,13 +780,33 @@ export default function Calls() {
 
                   <div
                     style={{
-                      display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+                      display: 'grid',
+                      justifyItems: 'end',
+                      alignItems: 'center',
+                      gap: 5,
                       minHeight: 42,
                       margin: '-11px -12px -11px 0',
                       padding: '11px 12px 11px 16px',
                     }}
                     onClick={e => e.stopPropagation()}
                   >
+                    {currentDisposition && (
+                      <span
+                        style={{
+                          borderRadius: 999,
+                          border: '1px solid rgba(0,167,71,0.28)',
+                          background: 'rgba(0,167,71,0.08)',
+                          color: brand.green,
+                          padding: '3px 8px',
+                          fontSize: 9,
+                          fontWeight: 950,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        {currentDisposition}
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => setSelectedForDisposition(call)}
@@ -774,7 +820,7 @@ export default function Calls() {
                         textShadow: '0 1px 8px rgba(0,0,0,0.5)',
                       }}
                     >
-                      Set disposition
+                      {call.disposition ? 'Edit disposition' : 'Set disposition'}
                     </button>
                   </div>
                 </div>
@@ -795,6 +841,8 @@ export default function Calls() {
                     <DetailField label="Campaign" value={call.campaignName || '-'} />
                     <DetailField label="Agent" value={call.agentName || '-'} />
                     <DetailField label="Status" value={pill.label} color={pill.color} />
+                    <DetailField label="Disposition" value={currentDisposition || '-'} color={currentDisposition ? brand.green : undefined} />
+                    <DetailField label="Notes" value={call.notes || '-'} />
                     <DetailField label="Direction" value={call.direction === 'incoming' ? 'Inbound' : 'Outbound'} />
                     <DetailField label="Duration" value={fmtDuration(call.durationSeconds)} />
                     <DetailField label="Started At" value={fmtDateTime(call.startedAt)} />
@@ -859,6 +907,9 @@ export default function Calls() {
         callId={Number.isFinite(selectedDispositionCallId) ? selectedDispositionCallId : null}
         contactName={selectedForDisposition?.remoteName}
         contactNumber={selectedForDisposition?.remoteNumber}
+        defaultDisposition={selectedForDisposition?.disposition}
+        defaultNotes={selectedForDisposition?.notes}
+        defaultCallbackAt={selectedForDisposition?.callbackAt}
         onClose={() => setSelectedForDisposition(null)}
         onSaved={() => setRefreshNonce(value => value + 1)}
       />

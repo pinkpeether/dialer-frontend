@@ -282,30 +282,72 @@ function DialKey({
   label,
   sub,
   onClick,
+  onLongPress,
   size = "normal",
 }: {
   label: string;
   sub?: string;
   onClick: () => void;
+  onLongPress?: () => void;
   size?: "normal" | "small" | "embedded";
 }) {
   const [pressed, setPressed] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const longPressTimerRef = useRef<number | null>(null);
+  const skipNextClickRef = useRef(false);
   const embedded = size === "embedded";
   const dim = size === "small" ? 48 : 64;
   const isPrimary = label === "0";
   const isEdge = label === "*" || label === "#";
 
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const startLongPressTimer = () => {
+    if (!onLongPress) return;
+    clearLongPressTimer();
+    skipNextClickRef.current = false;
+    longPressTimerRef.current = window.setTimeout(() => {
+      skipNextClickRef.current = true;
+      setPressed(false);
+      onLongPress();
+    }, 520);
+  };
+
+  useEffect(() => clearLongPressTimer, []);
+
   return (
     <button
-      onClick={onClick}
+      onClick={(event) => {
+        if (skipNextClickRef.current) {
+          event.preventDefault();
+          skipNextClickRef.current = false;
+          return;
+        }
+        onClick();
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => {
         setHovered(false);
         setPressed(false);
+        clearLongPressTimer();
       }}
-      onMouseDown={() => setPressed(true)}
-      onMouseUp={() => setPressed(false)}
+      onPointerDown={() => {
+        setPressed(true);
+        startLongPressTimer();
+      }}
+      onPointerUp={() => {
+        setPressed(false);
+        clearLongPressTimer();
+      }}
+      onPointerCancel={() => {
+        setPressed(false);
+        clearLongPressTimer();
+      }}
       style={{
         width: embedded ? "100%" : dim,
         height: embedded ? 48 : dim,
@@ -903,6 +945,12 @@ export default function FloatingDialer({
     playDtmfTone(k);
     appendDialerKey(k);
   };
+
+  const handleZeroLongPress = useCallback(() => {
+    playDtmfTone("0");
+    appendDialerKey("+");
+  }, [appendDialerKey, playDtmfTone]);
+
   const handleDelete = useCallback(() => {
     setNumber((current) => {
       const next = current.slice(0, -1);
@@ -1124,7 +1172,8 @@ export default function FloatingDialer({
 
     const h = (e: KeyboardEvent) => {
       const key = e.key;
-      const isDialKey = /^[0-9]$/.test(key) || key === "*" || key === "#";
+      const isDtmfKey = /^[0-9]$/.test(key) || key === "*" || key === "#";
+      const isDialKey = isDtmfKey || key === "+";
 
       if (!isEmbedded && key === "Escape" && state !== "collapsed") {
         e.preventDefault();
@@ -1136,7 +1185,7 @@ export default function FloatingDialer({
 
       if ((state === "dialpad" || state === "calling") && isDialKey) {
         e.preventDefault();
-        playDtmfTone(key);
+        if (key !== "+") playDtmfTone(key);
         appendDialerKey(key);
         return;
       }
@@ -1156,7 +1205,7 @@ export default function FloatingDialer({
         return;
       }
 
-      if (state === "active" && tab === "dtmf" && isDialKey) {
+      if (state === "active" && tab === "dtmf" && isDtmfKey) {
         e.preventDefault();
         void handleDTMF(key);
       }
@@ -1941,6 +1990,7 @@ export default function FloatingDialer({
                           label={k}
                           sub={SUB[k]}
                           onClick={() => handleKey(k)}
+                          onLongPress={k === "0" ? handleZeroLongPress : undefined}
                           size={isEmbedded ? "embedded" : "normal"}
                         />
                       ))}

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Calendar, CheckCircle2, MessageSquareText } from 'lucide-react'
 
 export type DispositionValue =
@@ -17,6 +17,9 @@ export interface DispositionSubmitPayload {
 
 interface DispositionPanelProps {
   disabled?: boolean
+  defaultDisposition?: DispositionValue | null
+  defaultNotes?: string | null
+  defaultCallbackAt?: string | null
   onSubmit: (payload: DispositionSubmitPayload) => void | Promise<void>
 }
 
@@ -58,11 +61,30 @@ const defaultCallbackAt = () => {
   return d.toISOString().slice(0, 16)
 }
 
-export default function DispositionPanel({ disabled = false, onSubmit }: DispositionPanelProps) {
-  const [disposition, setDisposition] = useState<DispositionValue | ''>('')
-  const [notes, setNotes] = useState('')
-  const [callbackAt, setCallbackAt] = useState(defaultCallbackAt)
+const toDatetimeLocal = (value?: string | null) => {
+  if (!value) return defaultCallbackAt()
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return defaultCallbackAt()
+  return date.toISOString().slice(0, 16)
+}
+
+export default function DispositionPanel({
+  disabled = false,
+  defaultDisposition,
+  defaultNotes,
+  defaultCallbackAt: initialCallbackAt,
+  onSubmit,
+}: DispositionPanelProps) {
+  const [disposition, setDisposition] = useState<DispositionValue | ''>(defaultDisposition ?? '')
+  const [notes, setNotes] = useState(defaultNotes ?? '')
+  const [callbackAt, setCallbackAt] = useState(() => toDatetimeLocal(initialCallbackAt))
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    setDisposition(defaultDisposition ?? '')
+    setNotes(defaultNotes ?? '')
+    setCallbackAt(toDatetimeLocal(initialCallbackAt))
+  }, [defaultDisposition, defaultNotes, initialCallbackAt])
 
   const handleSubmit = async () => {
     if (!disposition || submitting || disabled) return
