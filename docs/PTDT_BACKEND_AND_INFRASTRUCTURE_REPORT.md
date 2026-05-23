@@ -109,8 +109,34 @@ Backend contract work included:
 - Ensuring call history response fields match frontend needs.
 - Supporting disposition update flow.
 - Supporting backend-owned callback creation/update from the disposition workflow when `disposition=CALLBACK` and `callbackAt` are supplied.
+- Running call disposition update, contact status update, and callback create/update inside a single Prisma transaction.
+- Falling back to the authenticated user when old/manual call records do not have `agentId`.
+- Preventing duplicate callbacks by updating the existing pending/rescheduled callback for the same call before creating a new one.
+- Cancelling pending/rescheduled callbacks and clearing contact `callbackAt` when a call is changed from `CALLBACK` to a non-callback disposition.
+- Requiring `callbackAt` at API validation level when disposition is `CALLBACK`.
 
 This was part of the contract-sync cleanup that aligned frontend expectations with backend API behavior.
+
+### 6. Disposition and Callback Consistency Hardening
+
+The disposition workflow was hardened after QA review to avoid stale or partial CRM state.
+
+Implemented behavior:
+
+- `PATCH /api/calls/:id/disposition` is the single backend-owned write path for call disposition, contact status, and callback scheduling.
+- The backend updates the call, updates the related contact, and creates/updates/cancels callbacks inside `prisma.$transaction`.
+- If a call has no `agentId`, callback ownership falls back to the authenticated user.
+- If disposition is `CALLBACK` and callback datetime is supplied, the backend updates the latest pending/rescheduled callback for that call or creates a new one.
+- If disposition changes away from `CALLBACK`, pending/rescheduled callbacks for that call are marked `CANCELLED`.
+- The related contact's `callbackAt` is set for `CALLBACK` and cleared for non-callback dispositions.
+- API validation now requires `callbackAt` when disposition is `CALLBACK`.
+
+Why this matters:
+
+- Prevents partial saves where the call disposition changes but the callback/contact state does not.
+- Prevents duplicate active callbacks for the same call.
+- Prevents stale callbacks remaining active after an agent changes the disposition.
+- Keeps frontend/backend responsibility clean: frontend collects the data; backend owns persistence and consistency.
 
 ## Prisma and Database Work
 
@@ -497,6 +523,9 @@ Backend/API status:
 - Health endpoint responds.
 - Frontend/backend call-history/disposition/callback contracts are aligned.
 - Callback scheduling is owned by `PATCH /api/calls/:id/disposition`; the backend creates or updates a pending callback for the call when a callback disposition is saved.
+- Disposition/callback writes are transaction-safe.
+- Non-callback disposition changes cancel stale pending/rescheduled callbacks and clear contact callback dates.
+- `CALLBACK` disposition requires a callback datetime at API validation level.
 
 FreePBX/Twilio status:
 

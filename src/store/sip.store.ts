@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { sipClient } from '../services/sip/SipClient'
 import { softphoneAudio } from '../services/audio/SoftphoneAudio'
 import api from '../api/axios'
+import { callsAPI } from '../api/calls.api'
 import type { SipAccountConfig, SipCallState, SipIncomingCall, SipRuntimeStatus } from '../types/sip'
 
 const STORAGE_KEY = 'ptdt_sip_account_v1'
@@ -59,6 +60,10 @@ async function logSipCallToBackend(callState: SipCallState): Promise<number | nu
   }
 }
 
+async function endSipCallInBackend(callId: number, endedAt: Date): Promise<void> {
+  await callsAPI.end(callId, { endedAt: endedAt.toISOString() })
+}
+
 export type SipDispositionContext = {
   callId: number | string
   saveMode: 'backend' | 'preview'
@@ -81,6 +86,7 @@ interface SipStore {
 
   // 12A — SIP backend call ID and disposition trigger
   sipCallId: number | null
+  sipCallLogPromise: Promise<number | null> | null
   showSipDisposition: boolean
   pendingSipDisposition: SipDispositionContext | null
 
@@ -102,6 +108,7 @@ interface SipStore {
   setAudioInputDevice: (deviceId: string) => Promise<void>
   clearError: () => void
   dismissSipDisposition: () => void
+  resetCallState: () => void
 }
 
 const initialConfig = loadConfig()
@@ -122,6 +129,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   // 12A
   sipCallId: null,
+  sipCallLogPromise: null,
   showSipDisposition: false,
   pendingSipDisposition: null,
 
@@ -152,6 +160,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       audioInputError: null,
       isConfigured: false,
       sipCallId: null,
+      sipCallLogPromise: null,
       showSipDisposition: false,
       pendingSipDisposition: null,
     })
@@ -171,19 +180,27 @@ export const useSipStore = create<SipStore>((set, get) => ({
           set({ activeCall, incomingCall: null, status: 'in_call', onHold: false })
 
           // 12A — log call to backend async, store the returned callId
-          void logSipCallToBackend(activeCall).then((backendCallId) => {
+          const sipCallLogPromise = logSipCallToBackend(activeCall)
+          set({ sipCallLogPromise })
+          void sipCallLogPromise.then((backendCallId) => {
             set({ sipCallId: backendCallId })
           })
         },
 
-        onCallEnded: () => {
-          const { activeCall, sipCallId } = get()
+        onCallEnded: (endedAtMs) => {
+          const endedAt = new Date(endedAtMs ?? Date.now())
+          const { activeCall, sipCallId, sipCallLogPromise } = get()
 
           // 12A — open disposition modal with real callId if available
           if (activeCall) {
             void (async () => {
-              const backendCallId = sipCallId ?? await logSipCallToBackend(activeCall)
+              const loggedCallId = sipCallLogPromise ? await sipCallLogPromise : null
+              const fallbackCallId = sipCallId ?? loggedCallId
+              const backendCallId = fallbackCallId ?? await logSipCallToBackend(activeCall)
               const hasRealId = backendCallId !== null
+              if (hasRealId) {
+                await endSipCallInBackend(backendCallId, endedAt).catch(() => undefined)
+              }
               set({
                 pendingSipDisposition: {
                   callId: hasRealId ? backendCallId : `sip-${Date.now()}`,
@@ -192,6 +209,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
                 },
                 showSipDisposition: true,
                 sipCallId: null,
+                sipCallLogPromise: null,
               })
             })()
           }
@@ -220,6 +238,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       muted: false,
       onHold: false,
       sipCallId: null,
+      sipCallLogPromise: null,
     })
   },
 
@@ -267,6 +286,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       incomingCall: null,
       muted: false,
       onHold: false,
+      sipCallLogPromise: null,
       status: get().isConfigured ? 'registered' : 'idle',
     })
   },
@@ -346,4 +366,18 @@ export const useSipStore = create<SipStore>((set, get) => ({
   clearError: () => set({ error: null, audioOutputError: null, audioInputError: null }),
 
   dismissSipDisposition: () => set({ showSipDisposition: false, pendingSipDisposition: null }),
+
+  resetCallState: () => {
+    void sipClient.hangup().catch(() => undefined)
+    set({
+      activeCall: null,
+      incomingCall: null,
+      muted: false,
+      onHold: false,
+      sipCallId: null,
+      sipCallLogPromise: null,
+      status: get().isConfigured ? 'registered' : 'idle',
+      error: null,
+    })
+  },
 }))

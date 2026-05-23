@@ -132,12 +132,15 @@ Phase 12:
 - Callback scheduling was wired through the backend disposition endpoint, with the frontend passing `callbackAt` as part of the disposition save.
 - Contact status update was connected after disposition save.
 - SIP calls gained backend logging/disposition trigger support through the SIP store.
+- Frontend responsibility was narrowed to collecting disposition, notes, and callback datetime; backend now owns call update, contact status update, callback create/update, duplicate prevention, and callback cleanup.
 
 Issues solved:
 
 - Disposition modal did not appear after hangup when no backend call ID was returned.
 - Duplicate disposition modal could appear; this was later addressed.
 - Saved disposition was not displayed in call history; call history was updated to show existing disposition and prefill the modal.
+- Callback disposition edge cases were hardened on the backend: changing a call away from `CALLBACK` cancels pending/rescheduled callbacks and clears the contact callback date.
+- `CALLBACK` disposition now requires a callback datetime at the API validation layer.
 
 ### 7. Embedded Dialer Redesign
 
@@ -295,6 +298,8 @@ Verified during the implementation lifecycle:
 - Date range UI behavior.
 - Disposition modal from call history.
 - Disposition display/prefill.
+- Callback datetime handoff through disposition save.
+- Callback cleanup behavior when a saved callback disposition is changed to a non-callback disposition.
 - Dashboard and route rendering.
 - Electron UI behavior.
 - Final outbound PSTN call through FreePBX/Twilio to a verified US number.
@@ -320,3 +325,4 @@ The final outbound PSTN success confirmed that the frontend can initiate a real-
 
 - Live FreePBX, Twilio, PM2, Railway, DNS, and gateway outcomes are operationally verified from the working environment and logs; they are not fully provable from frontend source files alone.
 - Callback scheduling is now backend-owned from the disposition save path. The frontend collects the callback datetime and sends it with `PATCH /api/calls/:id/disposition`, while the backend creates or updates the callback record.
+- Recent backend hardening also makes callback transitions safe: pending/rescheduled callbacks are cancelled when a disposition changes away from `CALLBACK`, contact `callbackAt` is cleared, and duplicate callbacks for the same call are avoided.

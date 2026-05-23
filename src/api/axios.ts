@@ -26,6 +26,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const apiMessage = error.response?.data?.message || error.response?.data?.error
+    if (apiMessage && error instanceof Error) {
+      error.message = apiMessage
+    }
+
     if (error.response?.status === 401) {
       localStorage.removeItem('jd_token')
       localStorage.removeItem('jd_user')

@@ -21,33 +21,6 @@ const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
   DNC:       { color: 'var(--text-3)', bg: 'var(--bg-2)'   },
 }
 
-
-const FALLBACK_CONTACT_STATS = { total: 1284, pending: 612, answered: 524, noAnswer: 148, answerRate: 41 }
-
-const FALLBACK_CAMPAIGN_OPTIONS: Record<string, unknown>[] = [
-  { id: 1, name: 'Q2 Outbound Push' },
-  { id: 2, name: 'Renewals Sweep' },
-  { id: 3, name: 'Winback October' },
-  { id: 4, name: 'Demo Follow-ups' },
-]
-
-const FALLBACK_CONTACT_NAMES = [
-  'Liam Carter', 'Sophia Patel', 'Noah Khan', 'Emma Wright', 'Ahmed Yusuf', 'Olivia Brown',
-  'Jack Lopez', 'Mia Suzuki', 'Ethan Cohen', 'Aria Nakamura', 'Lucas Martin', 'Zara Ahmed',
-  'Henry Davis', 'Isla Tariq', 'Owen Walker', 'Chloe Rossi', 'Mason Lee', 'Layla Singh',
-  'Noah Becker', 'Iris Aoyama',
-]
-
-const FALLBACK_CONTACT_STATUSES = ['PENDING','PENDING','PENDING','PENDING','ANSWERED','NO_ANSWER','BUSY','DONE','CALLING']
-
-const FALLBACK_CONTACTS: Record<string, unknown>[] = Array.from({ length: 24 }, (_, i) => ({
-  id: i + 1,
-  name: FALLBACK_CONTACT_NAMES[i % FALLBACK_CONTACT_NAMES.length],
-  phone: `+1 (415) 555-${String(1000 + i * 37).slice(-4)}`,
-  campaignId: (i % 4) + 1,
-  status: FALLBACK_CONTACT_STATUSES[i % FALLBACK_CONTACT_STATUSES.length],
-}))
-
 const filterStyle: React.CSSProperties = {
   padding: '9px 14px',
   background: 'var(--bg-glass-hi)',
@@ -66,7 +39,7 @@ export default function Contacts() {
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const { contacts, stats, loading, pagination, uploadCSV, deleteContact } =
+  const { contacts, stats, loading, error, pagination, uploadCSV, deleteContact } =
     useContacts({
       campaignId: campId,
       status:     status || undefined,
@@ -74,8 +47,7 @@ export default function Contacts() {
       limit:      50,
     })
 
-  const sourceContacts = contacts.length > 0 ? contacts : FALLBACK_CONTACTS
-  const visibleContacts = sourceContacts.filter(contact => {
+  const visibleContacts = contacts.filter(contact => {
     const matchesCampaign = !campId || Number(contact.campaignId) === campId
     const matchesStatus = !status || String(contact.status) === status
     const q = search.toLowerCase()
@@ -84,9 +56,9 @@ export default function Contacts() {
       String(contact.phone || '').toLowerCase().includes(q)
     return matchesCampaign && matchesStatus && matchesSearch
   })
-  const visibleCampaigns = campaigns.length > 0 ? campaigns : FALLBACK_CAMPAIGN_OPTIONS
-  const visibleStats = stats || FALLBACK_CONTACT_STATS
-  const visibleTotal = Number((pagination as Record<string, number> | undefined)?.total ?? FALLBACK_CONTACTS.length)
+  const visibleCampaigns = campaigns
+  const visibleStats = stats
+  const visibleTotal = Number((pagination as Record<string, number> | undefined)?.total ?? contacts.length)
 
   useEffect(() => {
     campaignsAPI.getAll().then(d => setCampaigns(d.campaigns || [])).catch(() => setCampaigns([]))
@@ -99,7 +71,7 @@ export default function Contacts() {
     try {
       const result = await uploadCSV(campId, file)
       alert(`✓ Imported: ${result.imported} | Duplicates: ${result.duplicates} | DNC: ${result.dncSkipped}`)
-    } catch { alert('Upload failed') }
+    } catch (err) { alert(err instanceof Error ? err.message : 'Upload failed') }
     finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -139,6 +111,16 @@ export default function Contacts() {
           }}>
             <span className="pulse-dot"/> {`${visibleTotal} total PTDT-Dialer contacts`}
           </p>
+          {error && (
+            <p style={{
+              marginTop: 8,
+              fontSize: 12.5,
+              color: 'var(--danger)',
+              fontWeight: 700,
+            }}>
+              {error}
+            </p>
+          )}
         </div>
         <div>
           <input ref={fileRef} type="file" accept=".csv" onChange={handleCSV} style={{ display: 'none' }}/>

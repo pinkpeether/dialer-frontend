@@ -16,25 +16,6 @@ import CallDispositionModal from '../components/CallDispositionModal'
 import { useToast } from '../hooks/useToast'
 
 
-const FALLBACK_DIALER_CAMPAIGNS: Record<string, unknown>[] = [
-  { id: 1, name: 'Q2 Outbound Push', status: 'ACTIVE' },
-  { id: 4, name: 'Demo Follow-ups', status: 'ACTIVE' },
-  { id: 6, name: 'Event Registration', status: 'ACTIVE' },
-]
-
-const FALLBACK_DIALER_CONTACT_NAMES = [
-  'Liam Carter', 'Sophia Patel', 'Noah Khan', 'Emma Wright', 'Ahmed Yusuf', 'Olivia Brown',
-  'Jack Lopez', 'Mia Suzuki', 'Ethan Cohen', 'Aria Nakamura', 'Lucas Martin', 'Zara Ahmed',
-]
-
-const FALLBACK_DIALER_CONTACTS: Record<string, unknown>[] = Array.from({ length: 24 }, (_, i) => ({
-  id: i + 1,
-  name: FALLBACK_DIALER_CONTACT_NAMES[i % FALLBACK_DIALER_CONTACT_NAMES.length],
-  phone: `+1 (415) 555-${String(1000 + i * 37).slice(-4)}`,
-  campaignId: (i % 4) + 1,
-  status: i % 5 === 0 ? 'ANSWERED' : 'PENDING',
-})).filter(contact => contact.status === 'PENDING')
-
 type DispositionRequest = {
   callId?: number | string | null
   name?: string | null
@@ -269,6 +250,7 @@ export default function Dialer() {
   const liveSipCall = useSipStore(s => s.activeCall)
   const sipCall = useSipStore(s => s.call)
   const sipHangup = useSipStore(s => s.hangup)
+  const resetSipCallState = useSipStore(s => s.resetCallState)
   const setSipMuted = useSipStore(s => s.setMuted)
   const showSipDisposition = useSipStore(s => s.showSipDisposition)
   const pendingSipDisposition = useSipStore(s => s.pendingSipDisposition)
@@ -279,22 +261,29 @@ export default function Dialer() {
   const toast = useToast()
   void user
 
-  const campaignOptions = campaigns.length > 0 ? campaigns : FALLBACK_DIALER_CAMPAIGNS
-  const sourceContacts = contacts.length > 0
-    ? contacts
-    : selectedCamp
-      ? FALLBACK_DIALER_CONTACTS.filter(contact => Number(contact.campaignId) === selectedCamp)
-      : []
+  const campaignOptions = campaigns
+  const sourceContacts = selectedCamp ? contacts : []
 
   useEffect(() => {
-    campaignsAPI.getAll({ status:'ACTIVE' }).then(d => setCampaigns(d.campaigns || [])).catch(() => setCampaigns([]))
+    campaignsAPI.getAll({ status:'ACTIVE' })
+      .then(d => {
+        setCampaigns(d.campaigns || [])
+        setMessage('')
+      })
+      .catch(() => {
+        setCampaigns([])
+        setMessage('Could not load active campaigns. Check backend connection.')
+      })
   }, [])
 
   useEffect(() => {
     if (!selectedCamp) return
     contactsAPI.getAll({ campaignId:selectedCamp, status:'PENDING', limit:100 })
       .then(d => setContacts(d.contacts || []))
-      .catch(() => setContacts([]))
+      .catch(() => {
+        setContacts([])
+        setMessage('Could not load pending contacts for this campaign.')
+      })
   }, [selectedCamp])
 
   useEffect(() => {
@@ -400,22 +389,32 @@ export default function Dialer() {
       await dialerAPI.startCampaign(selectedCamp)
       setIsDialing(true)
       setMessage('✓ Campaign dialing started')
-    } catch {
-      setIsDialing(true)
-      setMessage('✓ Campaign dialing started')
+      toast.success('Campaign dialing started')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Could not start campaign'
+      setIsDialing(false)
+      setMessage(errorMessage)
+      toast.error(errorMessage)
     }
     finally {
-      toast.success('Campaign dialing started')
       setLoading(false)
     }
   }
 
   const handleStopCampaign = async () => {
     if (!selectedCamp) return
-    try { await dialerAPI.stopCampaign(selectedCamp) } catch { /* preview fallback */ }
-    setIsDialing(false); setActiveCall(null); setLastCallId(null)
-    setMessage('⏹ Campaign stopped')
-    toast.warning('Campaign stopped')
+    try {
+      await dialerAPI.stopCampaign(selectedCamp)
+      setIsDialing(false)
+      setActiveCall(null)
+      setLastCallId(null)
+      setMessage('⏹ Campaign stopped')
+      toast.warning('Campaign stopped')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Could not stop campaign'
+      setMessage(errorMessage)
+      toast.error(errorMessage)
+    }
   }
 
   const handleManualCall = async (contact: Record<string,unknown>) => {
@@ -444,7 +443,7 @@ export default function Dialer() {
       setMessage(`📞 Calling ${contact.phone}…`)
       toast.info(`Calling ${String(contact.name || contact.phone)}...`)
     } catch (err) {
-      setActiveCall({ ...contact, callSid: `preview-${contact.id}` })
+      setActiveCall(null)
       setLastCallId(null)
       const errorMessage = err instanceof Error ? err.message : `📞 Calling ${contact.phone}…`
       setMessage(errorMessage)
@@ -500,6 +499,16 @@ export default function Dialer() {
       setEndingCall(false)
     }
   }
+
+  const handleResetCallState = useCallback(() => {
+    resetSipCallState()
+    setActiveCall(null)
+    setElapsed(0)
+    setMuted(false)
+    setEndingCall(false)
+    setMessage('Call state reset locally')
+    toast.warning('Call state reset locally')
+  }, [resetSipCallState, toast])
 
   const filtered = sourceContacts.filter(c =>
     !search ||
@@ -759,6 +768,31 @@ export default function Dialer() {
             ? <><Square size={14} fill="#fff"/> Stop Campaign</>
             : <><Play size={14} fill="#fff"/> Start Campaign</>}
         </motion.button>
+
+        {(activeCall || liveSipCall || endingCall) && (
+          <button
+            type="button"
+            onClick={handleResetCallState}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid rgba(239,68,68,0.34)',
+              background: 'rgba(239,68,68,0.08)',
+              color: 'var(--danger)',
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            <AlertTriangle size={13} />
+            Reset Call State
+          </button>
+        )}
 
         {agentStatus === 'OFFLINE' && !isDialing && (
           <div style={{

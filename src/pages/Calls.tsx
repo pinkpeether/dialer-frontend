@@ -167,7 +167,7 @@ function normalizeCall(item: unknown, index: number): CallRow {
     agentName: stringValue(row.agentName) || nestedName(agent) || null,
     status: normalizeStatus(row.status || row.disposition),
     disposition: normalizeDisposition(row.disposition),
-    notes: stringValue(row.notes) || nestedString(contact, 'notes') || null,
+    notes: stringValue(row.notes) || null,
     callbackAt: stringValue(row.callbackAt) || nestedString(contact, 'callbackAt') || null,
     durationSeconds: numberValue(row.durationSeconds ?? row.duration),
     startedAt: stringValue(row.startedAt || row.createdAt || row.updatedAt),

@@ -127,7 +127,7 @@ export default function IncomingCallModal() {
       ringerRef.current?.stop()
       ringerRef.current = null
     }
-  }, [incomingCall?.id])
+  }, [incomingCall])
 
   const handleAnswer = useCallback(async () => {
     if (!incomingCall || busy) return

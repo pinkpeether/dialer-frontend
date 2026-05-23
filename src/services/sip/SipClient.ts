@@ -38,7 +38,7 @@ type SipHandlers = {
   onError?: (message: string) => void
   onIncomingCall?: (call: SipIncomingCall) => void
   onCallStarted?: (call: SipCallState) => void
-  onCallEnded?: () => void
+  onCallEnded?: (endedAt?: number) => void
 }
 
 type SipMediaOptions = {
@@ -62,6 +62,40 @@ type HoldMusicState = {
   track: MediaStreamTrack
   oscillators: OscillatorNode[]
   intervalId: number
+}
+
+function getErrorMessage(err: unknown, fallback: string) {
+  return err instanceof Error ? err.message : fallback
+}
+
+function friendlySipError(err: unknown, fallback: string) {
+  const message = getErrorMessage(err, fallback)
+  const lower = message.toLowerCase()
+
+  if (lower.includes('permission') || lower.includes('notallowed') || lower.includes('not allowed')) {
+    return 'Microphone permission was blocked. Allow microphone access and try again.'
+  }
+
+  if (lower.includes('unauthorized') || lower.includes('forbidden') || lower.includes('401') || lower.includes('403')) {
+    return 'SIP registration was rejected. Check the username, password, extension, and PBX permissions.'
+  }
+
+  if (
+    lower.includes('websocket') ||
+    lower.includes('transport') ||
+    lower.includes('network') ||
+    lower.includes('connection') ||
+    lower.includes('closed') ||
+    lower.includes('timeout')
+  ) {
+    return 'Could not reach the SIP WebSocket server. Confirm FreePBX is running, WSS is reachable, and the server URL is correct.'
+  }
+
+  if (lower.includes('not registered')) {
+    return 'SIP is not registered yet. Open SIP Settings and register before placing a call.'
+  }
+
+  return message
 }
 
 class SipClient {
@@ -156,7 +190,7 @@ class SipClient {
       this.handlers.onStatusChange?.('registered')
 
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'SIP registration failed'
+      const message = friendlySipError(err, 'SIP registration failed')
       this.handlers.onStatusChange?.('registration_failed')
       this.handlers.onError?.(message)
       throw err
@@ -251,7 +285,7 @@ class SipClient {
       this.currentSession = null
       this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
       this.handlers.onCallEnded?.()
-      this.handlers.onError?.(err instanceof Error ? err.message : 'SIP call failed')
+      this.handlers.onError?.(friendlySipError(err, 'SIP call failed'))
       throw err
     }
   }
@@ -277,7 +311,7 @@ class SipClient {
       this.currentSession = null
       this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
       this.handlers.onCallEnded?.()
-      this.handlers.onError?.(err instanceof Error ? err.message : 'SIP answer failed')
+      this.handlers.onError?.(friendlySipError(err, 'SIP answer failed'))
       throw err
     }
   }
@@ -292,6 +326,7 @@ class SipClient {
   async hangup() {
     const session = this.currentSession
     if (!session) return
+    const endedAt = Date.now()
 
     if (session.bye) await session.bye()
     else if (session.cancel) await session.cancel()
@@ -304,7 +339,7 @@ class SipClient {
     this.remoteTrackListener = null
     window.__ptdtSipPeerConnection = undefined
     window.__ptdtSipSession = undefined
-    this.handlers.onCallEnded?.()
+    this.handlers.onCallEnded?.(endedAt)
     this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
   }
 
@@ -651,6 +686,7 @@ class SipClient {
       }
 
       if (stateName.includes('Terminated')) {
+        const endedAt = Date.now()
         this.currentSession = null
         this.stopLocalAudioStream()
         this.stopHoldMusic()
@@ -658,7 +694,7 @@ class SipClient {
         this.remoteTrackListener = null
         window.__ptdtSipPeerConnection = undefined
         window.__ptdtSipSession = undefined
-        this.handlers.onCallEnded?.()
+        this.handlers.onCallEnded?.(endedAt)
         this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
       }
     })

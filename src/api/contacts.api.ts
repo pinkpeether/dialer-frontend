@@ -13,25 +13,17 @@ export const contactsAPI = {
     return res.data.data
   },
   getById: async (id: number | string): Promise<Record<string, unknown> | null> => {
-    try {
-      const res = await api.get(`/contacts/${id}`)
-      return (res.data?.data ?? res.data) as Record<string, unknown>
-    } catch {
-      return null
-    }
+    const res = await api.get(`/contacts/${id}`)
+    return (res.data?.data ?? res.data) as Record<string, unknown>
   },
 
   getCallHistory: async (id: number | string): Promise<Record<string, unknown>[]> => {
-    try {
-      const res = await api.get(`/contacts/${id}/calls`)
-      const data = res.data?.data ?? res.data
-      if (Array.isArray(data)) return data as Record<string, unknown>[]
-      if (Array.isArray(data?.calls)) return data.calls as Record<string, unknown>[]
-      if (Array.isArray(data?.items)) return data.items as Record<string, unknown>[]
-      return []
-    } catch {
-      return []
-    }
+    const res = await api.get(`/contacts/${id}/calls`)
+    const data = res.data?.data ?? res.data
+    if (Array.isArray(data)) return data as Record<string, unknown>[]
+    if (Array.isArray(data?.calls)) return data.calls as Record<string, unknown>[]
+    if (Array.isArray(data?.items)) return data.items as Record<string, unknown>[]
+    return []
   },
 
   create: async (data: Record<string, unknown>) => {

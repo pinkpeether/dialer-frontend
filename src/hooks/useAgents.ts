@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { agentsAPI } from '../api/agents.api'
 
 export const useAgents = (params?: {
@@ -7,6 +7,8 @@ export const useAgents = (params?: {
   search?: string
   status?: string
 }) => {
+  const paramsKey = JSON.stringify(params ?? {})
+  const stableParams = useMemo(() => JSON.parse(paramsKey) as typeof params, [paramsKey])
   const [agents,     setAgents]     = useState<Record<string,unknown>[]>([])
   const [stats,      setStats]      = useState<Record<string,unknown> | null>(null)
   const [pagination, setPagination] = useState<Record<string,unknown> | null>(null)
@@ -18,7 +20,7 @@ export const useAgents = (params?: {
     setError(null)
     try {
       const [listData, statsData] = await Promise.all([
-        agentsAPI.getAll(params),
+        agentsAPI.getAll(stableParams),
         agentsAPI.getStats(),
       ])
       setAgents(listData.agents || [])
@@ -29,7 +31,7 @@ export const useAgents = (params?: {
     } finally {
       setLoading(false)
     }
-  }, [JSON.stringify(params)])
+  }, [stableParams])
 
   useEffect(() => { fetch() }, [fetch])
 

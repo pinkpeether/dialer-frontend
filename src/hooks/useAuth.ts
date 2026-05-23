@@ -14,7 +14,11 @@ export const useAuth = () => {
   }
 
   const handleLogout = async () => {
-    try { await authAPI.logout() } catch {}
+    try {
+      await authAPI.logout()
+    } catch {
+      // Local logout must still complete if the backend session is unreachable.
+    }
     logout()
     navigate('/login')
   }

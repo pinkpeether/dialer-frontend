@@ -825,12 +825,13 @@ export default function FloatingDialer({
       (async () => {
         try {
           const d = await contactsAPI.getAll({ limit: 200 });
-          const arr = Array.isArray((d as any)?.contacts)
-            ? (d as any).contacts
-            : Array.isArray(d)
-              ? d
+          const payload = d as { contacts?: Contact[] } | Contact[];
+          const arr = Array.isArray(payload)
+            ? payload
+            : Array.isArray(payload.contacts)
+              ? payload.contacts
               : [];
-          setContacts(arr as Contact[]);
+          setContacts(arr);
         } catch {
           setContacts([]);
         }
@@ -902,7 +903,9 @@ export default function FloatingDialer({
       dragRef.current = null;
       try {
         e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch {}
+      } catch {
+        // Pointer capture can already be released by the browser.
+      }
     },
     [],
   );
@@ -1090,7 +1093,9 @@ export default function FloatingDialer({
       try {
         if (callSid.startsWith("sip:")) await sipHangup();
         else await dialerAPI.hangupCall(callSid);
-      } catch {}
+      } catch {
+        // The UI still clears local call state below.
+      }
     }
     const isSipCall = Boolean(callSid?.startsWith("sip:"));
     if (number && state === "active") {
@@ -1142,7 +1147,9 @@ export default function FloatingDialer({
       try {
         if (callSid.startsWith("sip:")) await sipSendDTMF(digit);
         else await dialerAPI.sendDTMF(callSid, digit);
-      } catch {}
+      } catch {
+        // DTMF failures should not interrupt the active call controls.
+      }
     }
   }, [playDtmfTone, callSid, sipSendDTMF]);
 

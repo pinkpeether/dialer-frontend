@@ -36,16 +36,12 @@ export const callbacksAPI = {
     page?: number
     limit?: number
   }): Promise<CallbackRecord[]> => {
-    try {
-      const res = await api.get('/callbacks', { params })
-      const data = res.data?.data ?? res.data
-      if (Array.isArray(data)) return data.map(normalizeCallback)
-      if (Array.isArray(data?.callbacks)) return data.callbacks.map(normalizeCallback)
-      if (Array.isArray(data?.items)) return data.items.map(normalizeCallback)
-      return []
-    } catch {
-      return []
-    }
+    const res = await api.get('/callbacks', { params })
+    const data = res.data?.data ?? res.data
+    if (Array.isArray(data)) return data.map(normalizeCallback)
+    if (Array.isArray(data?.callbacks)) return data.callbacks.map(normalizeCallback)
+    if (Array.isArray(data?.items)) return data.items.map(normalizeCallback)
+    return []
   },
 
   create: async (data: {

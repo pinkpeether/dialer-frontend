@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session } = require('electron')
+const { app, BrowserWindow, Menu, session } = require('electron')
 const path = require('path')
 
 // ---------------------------------------------------------------------------
@@ -103,6 +103,25 @@ function createWindow() {
     win.webContents.setWebRTCIPHandlingPolicy(WEBRTC_IP_POLICY)
     console.log('[DEV] WebRTC IP handling policy:', win.webContents.getWebRTCIPHandlingPolicy())
   }
+
+  win.webContents.on('context-menu', (_event, params) => {
+    const menu = Menu.buildFromTemplate([
+      ...(params.isEditable ? [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' },
+      ] : [
+        { role: 'copy', enabled: params.selectionText.length > 0 },
+        { role: 'selectAll' },
+      ]),
+    ])
+
+    menu.popup({ window: win })
+  })
 
   if (isDev) {
     win.loadURL('http://localhost:5173')

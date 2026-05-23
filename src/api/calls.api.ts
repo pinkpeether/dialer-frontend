@@ -24,6 +24,14 @@ export const callsAPI = {
     return res.data.data
   },
 
+  end: async (
+    id: number | string,
+    data?: { endedAt?: string }
+  ) => {
+    const res = await api.patch(`/calls/${id}/end`, data)
+    return res.data.data
+  },
+
   /** Schedule a callback for a contact — used after CALLBACK disposition */
   createCallback: async (data: {
     contactId?: number

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { contactsAPI } from '../api/contacts.api'
 
 export const useContacts = (params?: {
@@ -8,6 +8,8 @@ export const useContacts = (params?: {
   page?: number
   limit?: number
 }) => {
+  const paramsKey = JSON.stringify(params ?? {})
+  const stableParams = useMemo(() => JSON.parse(paramsKey) as typeof params, [paramsKey])
   const [contacts,   setContacts]   = useState<Record<string,unknown>[]>([])
   const [stats,      setStats]      = useState<Record<string,unknown> | null>(null)
   const [pagination, setPagination] = useState<Record<string,unknown> | null>(null)
@@ -19,8 +21,8 @@ export const useContacts = (params?: {
     setError(null)
     try {
       const [listData, statsData] = await Promise.all([
-        contactsAPI.getAll(params),
-        contactsAPI.getStats(params?.campaignId),
+        contactsAPI.getAll(stableParams),
+        contactsAPI.getStats(stableParams?.campaignId),
       ])
       setContacts(listData.contacts || [])
       setPagination(listData.pagination || null)
@@ -30,7 +32,7 @@ export const useContacts = (params?: {
     } finally {
       setLoading(false)
     }
-  }, [JSON.stringify(params)])
+  }, [stableParams])
 
   useEffect(() => { fetch() }, [fetch])
 

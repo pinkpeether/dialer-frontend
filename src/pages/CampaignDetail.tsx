@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, CheckCircle2, Megaphone, Pause, Play, RefreshCw, Sparkles, Upload, Users } from 'lucide-react'
@@ -92,7 +92,7 @@ export default function CampaignDetail() {
 
   const campaignId = Number(id)
 
-  const loadCampaign = async () => {
+  const loadCampaign = useCallback(async () => {
     if (!Number.isFinite(campaignId)) return
     setLoading(true)
     setMessage('')
@@ -113,11 +113,11 @@ export default function CampaignDetail() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [campaignId])
 
   useEffect(() => {
     void loadCampaign()
-  }, [campaignId])
+  }, [loadCampaign])
 
   const handleStatusChange = async (newStatus: CampaignStatus) => {
     if (!campaign) return

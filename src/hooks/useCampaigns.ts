@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { campaignsAPI } from '../api/campaigns.api'
 
 export const useCampaigns = (params?: Record<string,unknown>) => {
+  const paramsKey = JSON.stringify(params ?? {})
+  const stableParams = useMemo(() => JSON.parse(paramsKey) as typeof params, [paramsKey])
   const [campaigns,  setCampaigns]  = useState<Record<string,unknown>[]>([])
   const [stats,      setStats]      = useState<Record<string,unknown> | null>(null)
   const [pagination, setPagination] = useState<Record<string,unknown> | null>(null)
@@ -13,7 +15,7 @@ export const useCampaigns = (params?: Record<string,unknown>) => {
     setError(null)
     try {
       const [listData, statsData] = await Promise.all([
-        campaignsAPI.getAll(params),
+        campaignsAPI.getAll(stableParams),
         campaignsAPI.getStats(),
       ])
       setCampaigns(listData.campaigns || [])
@@ -24,7 +26,7 @@ export const useCampaigns = (params?: Record<string,unknown>) => {
     } finally {
       setLoading(false)
     }
-  }, [JSON.stringify(params)])
+  }, [stableParams])
 
   useEffect(() => { fetch() }, [fetch])
 
