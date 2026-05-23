@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { PhoneCall, X } from 'lucide-react'
 import DispositionPanel, { type DispositionSubmitPayload, type DispositionValue } from './DispositionPanel'
 import { callsAPI } from '../api/calls.api'
-import { contactsAPI } from '../api/contacts.api'
 import { useToast } from '../hooks/useToast'
 
 interface CallDispositionModalProps {
@@ -21,20 +20,9 @@ interface CallDispositionModalProps {
   onSaved?: () => void
 }
 
-// Map disposition value → contact status that backend expects
-const CONTACT_STATUS_MAP: Record<string, string> = {
-  ANSWERED:     'CONTACTED',
-  NO_ANSWER:    'NO_ANSWER',
-  VOICEMAIL:    'VOICEMAIL',
-  CALLBACK:     'CALLBACK',
-  WRONG_NUMBER: 'WRONG_NUMBER',
-  DO_NOT_CALL:  'DNC',
-}
-
 export default function CallDispositionModal({
   open,
   callId,
-  contactId,
   contactName,
   contactNumber,
   defaultDisposition,
@@ -67,40 +55,18 @@ export default function CallDispositionModal({
     }
 
     try {
-      // 1. Save call disposition
+      // Backend owns contact status updates and callback scheduling for CALLBACK dispositions.
       await callsAPI.updateDisposition(callId, {
         disposition: payload.disposition,
         notes: payload.notes,
         callbackAt: payload.callbackAt,
       })
 
-      // 12B — 2. Update contact status in parallel (best-effort)
-      if (contactId) {
-        const contactStatus = CONTACT_STATUS_MAP[payload.disposition]
-        if (contactStatus) {
-          void contactsAPI.update(contactId, { status: contactStatus }).catch(() => {
-            // Non-blocking — don't fail the whole disposition if contact update fails
-          })
-        }
-      }
-
-      // 12C — 3. Create callback record if disposition is CALLBACK
-      if (payload.disposition === 'CALLBACK' && payload.callbackAt) {
-        void callsAPI.createCallback({
-          contactId: contactId ?? undefined,
-          callId,
-          scheduledAt: payload.callbackAt,
-          notes: payload.notes,
-        }).then((result) => {
-          if (result) {
-            toast.success(`Callback scheduled for ${new Date(payload.callbackAt!).toLocaleString()}`)
-          }
-        }).catch(() => {
-          // Non-blocking: disposition save should not fail if callback scheduling fails.
-        })
-      }
-
-      toast.success('Disposition saved')
+      toast.success(
+        payload.disposition === 'CALLBACK' && payload.callbackAt
+          ? `Disposition saved and callback scheduled for ${new Date(payload.callbackAt).toLocaleString()}`
+          : 'Disposition saved'
+      )
       onSaved?.()
       onClose()
     } catch (err) {
