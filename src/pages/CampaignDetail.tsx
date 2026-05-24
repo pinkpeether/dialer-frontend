@@ -5,6 +5,9 @@ import { ArrowLeft, CheckCircle2, Megaphone, Pause, Play, RefreshCw, Sparkles, U
 import { campaignsAPI } from '../api/campaigns.api'
 import { contactsAPI } from '../api/contacts.api'
 import CsvImportModal from '../components/CsvImportModal'
+import CampaignRuntimeBanner from '../components/dialing/CampaignRuntimeBanner'
+import PreviewDialingPanel from '../components/dialing/PreviewDialingPanel'
+import PredictiveGuardrailPanel from '../components/dialing/PredictiveGuardrailPanel'
 
 type CampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED'
 
@@ -22,6 +25,8 @@ type Campaign = {
   name: string
   description?: string | null
   status: CampaignStatus | string
+  mode?: string | null
+  waitingReason?: string | null
   dialingRatio?: number
   maxRetries?: number
   timezone?: string
@@ -67,6 +72,24 @@ const extractList = <T,>(payload: unknown, keys: string[]): T[] => {
   return []
 }
 
+const buildStatsFromContacts = (items: Contact[]): Stats => {
+  const total = items.length
+  const pending = items.filter(contact => contact.status === 'PENDING').length
+  const active = items.filter(contact => contact.status === 'CALLING').length
+  const answered = items.filter(contact => ['ANSWERED', 'CONTACTED', 'DONE'].includes(contact.status)).length
+  const missed = items.filter(contact => ['NO_ANSWER', 'BUSY', 'VOICEMAIL'].includes(contact.status)).length
+  const dialed = total - pending
+
+  return {
+    total,
+    pending,
+    answered,
+    missed,
+    active,
+    answerRate: dialed > 0 ? Math.round((answered / dialed) * 100) : 0,
+  }
+}
+
 const statusStyle = (status: string) => {
   if (status === 'ACTIVE') return { color: 'var(--green-2)', bg: 'rgba(0,167,71,0.10)' }
   if (status === 'PAUSED') return { color: 'var(--warning)', bg: 'rgba(240,185,11,0.12)' }
@@ -98,15 +121,17 @@ export default function CampaignDetail() {
     setMessage('')
 
     try {
-      const [campaignRes, statsRes, contactsRes] = await Promise.all([
+      const [campaignRes, statsResult, contactsRes] = await Promise.all([
         campaignsAPI.getById(campaignId),
-        contactsAPI.getStats(campaignId),
+        contactsAPI.getStats(campaignId).catch(() => null),
         contactsAPI.getAll({ campaignId, limit: 100 }),
       ])
 
+      const contactList = extractList<Contact>(contactsRes, ['contacts', 'results'])
+
       setCampaign(campaignRes as Campaign)
-      setStats(statsRes as Stats)
-      setContacts(extractList<Contact>(contactsRes, ['contacts', 'results']))
+      setContacts(contactList)
+      setStats((statsResult as Stats | null) ?? buildStatsFromContacts(contactList))
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load campaign detail.'
       setMessage(errorMessage)
@@ -231,6 +256,24 @@ export default function CampaignDetail() {
         </div>
       ) : campaign ? (
         <>
+          <CampaignRuntimeBanner
+            mode={campaign.mode}
+            waitingReason={campaign.waitingReason}
+            timezone={campaign.timezone}
+          />
+
+          {String(campaign.mode || '').toUpperCase() === 'PREVIEW' && (
+            <PreviewDialingPanel campaignId={campaign.id} />
+          )}
+
+          {String(campaign.mode || '').toUpperCase() === 'PREDICTIVE' && (
+            <PredictiveGuardrailPanel
+              dialingRatio={Number(campaign.dialingRatio ?? 1)}
+              readyAgents={0}
+              activeCalls={0}
+            />
+          )}
+
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',

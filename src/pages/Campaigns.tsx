@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Copy, Eye, Megaphone, Pause, Play, Plus, Trash2, X } from 'lucide-react'
 import { useCampaigns } from '../hooks/useCampaigns'
 import StatsCard from '../components/StatsCard'
+import DialingModeSelector from '../components/dialing/DialingModeSelector'
+import DialingModeBadge from '../components/dialing/DialingModeBadge'
 
 const COL_PINK = '#fb0b8c'
 const COL_GREEN = '#00a747'
@@ -55,6 +57,7 @@ export default function Campaigns() {
   const [form, setForm] = useState({
     name: '',
     description: '',
+    mode: 'PROGRESSIVE',
     dialingRatio: 3,
     script: '',
     timezone: 'Asia/Karachi',
@@ -68,11 +71,19 @@ export default function Campaigns() {
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault()
     try {
-      await createCampaign(form)
+      const dialingRatio = Number.isFinite(Number(form.dialingRatio))
+        ? Number(form.dialingRatio)
+        : 3
+      await createCampaign({
+        ...form,
+        dialingRatio,
+        dialRatio: dialingRatio,
+      })
       setShowForm(false)
-      setForm({ name: '', description: '', dialingRatio: 3, script: '', timezone: 'Asia/Karachi' })
+      setForm({ name: '', description: '', mode: 'PROGRESSIVE', dialingRatio: 3, script: '', timezone: 'Asia/Karachi' })
     } catch (err: unknown) {
-      alert((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error')
+      const data = (err as { response?: { data?: { message?: string; errors?: string[] } } })?.response?.data
+      alert(data?.errors?.join('\n') || data?.message || 'Error')
     }
   }
 
@@ -200,14 +211,29 @@ export default function Campaigns() {
                 onChange={event => setForm(previous => ({ ...previous, description: event.target.value }))}
                 style={inputStyle}
               />
-              <input
-                type="number"
-                placeholder="Dialing Ratio"
-                value={form.dialingRatio}
-                onChange={event => setForm(previous => ({ ...previous, dialingRatio: Number(event.target.value) }))}
-                style={inputStyle}
-                min={1}
-                max={10}
+              <label style={{ display: 'grid', gap: 8 }}>
+                <span className="mono" style={{
+                  color: 'var(--text-3)',
+                  fontSize: 10.5,
+                  fontWeight: 900,
+                  letterSpacing: 1.1,
+                  textTransform: 'uppercase',
+                }}>
+                  Dialing Ratio
+                </span>
+                <input
+                  type="number"
+                  placeholder="Dialing Ratio"
+                  value={form.dialingRatio}
+                  onChange={event => setForm(previous => ({ ...previous, dialingRatio: Number(event.target.value) }))}
+                  style={inputStyle}
+                  min={1}
+                  max={10}
+                />
+              </label>
+              <DialingModeSelector
+                value={form.mode}
+                onChange={mode => setForm(previous => ({ ...previous, mode }))}
               />
               <select
                 value={form.timezone}
@@ -266,6 +292,7 @@ export default function Campaigns() {
           {visibleCampaigns.map((campaign, index) => {
             const campaignId = getNumber(campaign.id)
             const campaignStatus = getText(campaign.status, 'DRAFT')
+            const campaignMode = getText(campaign.mode, 'PROGRESSIVE')
             const style = STATUS_CONFIG[campaignStatus] || STATUS_CONFIG.DRAFT
             const dialingRatio = getNumber(campaign.dialingRatio ?? campaign.dialRatio, 1)
             const maxRetries = getNumber(campaign.maxRetries, 3)
@@ -295,14 +322,17 @@ export default function Campaigns() {
                   }}>
                     {getText(campaign.name, 'Untitled Campaign')}
                   </div>
-                  <span className="badge" style={{
-                    color: style.color,
-                    background: style.bg,
-                    border: `1px solid ${style.color}`,
-                    flexShrink: 0,
-                  }}>
-                    {campaignStatus}
-                  </span>
+                  <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <DialingModeBadge mode={campaignMode} />
+                    <span className="badge" style={{
+                      color: style.color,
+                      background: style.bg,
+                      border: `1px solid ${style.color}`,
+                      flexShrink: 0,
+                    }}>
+                      {campaignStatus}
+                    </span>
+                  </div>
                 </div>
                 <p style={{
                   fontSize: 12.5,

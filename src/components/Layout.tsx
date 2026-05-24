@@ -1,7 +1,38 @@
+import { useEffect, useRef } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import { useSipStore } from '../store/sip.store'
 
 export default function Layout() {
+  const sipConfig = useSipStore(s => s.config)
+  const sipStatus = useSipStore(s => s.status)
+  const registerSip = useSipStore(s => s.register)
+  const autoRegisterKeyRef = useRef('')
+
+  useEffect(() => {
+    const ready = Boolean(
+      sipConfig.enabled &&
+      sipConfig.username &&
+      sipConfig.password &&
+      sipConfig.domain &&
+      sipConfig.webSocketServer,
+    )
+    const key = ready
+      ? `${sipConfig.username}|${sipConfig.domain}|${sipConfig.webSocketServer}`
+      : ''
+
+    if (!ready) {
+      autoRegisterKeyRef.current = ''
+      return
+    }
+
+    if (!['idle', 'configured'].includes(sipStatus)) return
+    if (autoRegisterKeyRef.current === key) return
+
+    autoRegisterKeyRef.current = key
+    void registerSip().catch(() => undefined)
+  }, [registerSip, sipConfig, sipStatus])
+
   return (
     <div style={{
       display: 'flex',

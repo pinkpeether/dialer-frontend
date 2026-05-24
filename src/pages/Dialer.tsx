@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { io, type Socket } from 'socket.io-client'
 import {
   Phone, PhoneOff, Mic, MicOff, Play, Square,
   Power, Sparkles, Search, ChevronUp, ChevronDown, Activity, AlertTriangle,
+  RefreshCw,
 } from 'lucide-react'
 import { dialerAPI }    from '../api/dialer.api'
 import { callsAPI }     from '../api/calls.api'
@@ -76,6 +78,13 @@ function extractManualCallRecord(result: unknown) {
       '',
     ),
   }
+}
+
+const getSocketUrl = () => {
+  const explicit = import.meta.env.VITE_SOCKET_URL as string | undefined
+  if (explicit) return explicit
+  const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:3000/api'
+  return apiUrl.replace(/\/api\/?$/, '')
 }
 
 function getItems(payload: unknown): unknown[] {
@@ -230,6 +239,7 @@ export default function Dialer() {
   const [agentStatus,  setAgentStatus]  = useState<'OFFLINE'|'READY'>('OFFLINE')
   const [loading,      setLoading]      = useState(false)
   const [message,      setMessage]      = useState('')
+  const [socketConnected, setSocketConnected] = useState(false)
   const [search,       setSearch]       = useState('')
   const [voiceDeskOpen, setVoiceDeskOpen] = useState(true)
   const [voiceDeskActivity, setVoiceDeskActivity] = useState<VoiceDeskActivity>({
@@ -259,33 +269,66 @@ export default function Dialer() {
   const sipReady = sipModeEnabled && sipStatus === 'registered'
   const lastLiveSipCallRef = useRef<typeof liveSipCall>(null)
   const sipManualRoutingSeenRef = useRef(false)
+  const socketRef = useRef<Socket | null>(null)
   const toast = useToast()
   void user
 
   const campaignOptions = campaigns
   const sourceContacts = selectedCamp ? contacts : []
 
-  useEffect(() => {
-    campaignsAPI.getAll({ status:'ACTIVE' })
-      .then(d => {
-        setCampaigns(d.campaigns || [])
-        setMessage('')
-      })
-      .catch(() => {
-        setCampaigns([])
-        setMessage('Could not load active campaigns. Check backend connection.')
-      })
+  const fetchActiveCampaigns = useCallback(async () => {
+    try {
+      const d = await campaignsAPI.getAll({ status:'ACTIVE' })
+      setCampaigns(d.campaigns || [])
+      setMessage('')
+    } catch {
+      setCampaigns([])
+      setMessage('Could not load active campaigns. Check backend connection.')
+    }
+  }, [])
+
+  const fetchPendingContacts = useCallback(async (campaignId: number) => {
+    try {
+      const d = await contactsAPI.getAll({ campaignId, status:'PENDING', limit:100 })
+      setContacts(d.contacts || [])
+    } catch {
+      setContacts([])
+      setMessage('Could not load pending contacts for this campaign.')
+    }
   }, [])
 
   useEffect(() => {
+    void fetchActiveCampaigns()
+  }, [fetchActiveCampaigns])
+
+  useEffect(() => {
     if (!selectedCamp) return
-    contactsAPI.getAll({ campaignId:selectedCamp, status:'PENDING', limit:100 })
-      .then(d => setContacts(d.contacts || []))
-      .catch(() => {
-        setContacts([])
-        setMessage('Could not load pending contacts for this campaign.')
-      })
-  }, [selectedCamp])
+    void fetchPendingContacts(selectedCamp)
+  }, [fetchPendingContacts, selectedCamp])
+
+  useEffect(() => {
+    const token = localStorage.getItem('jd_token')
+    if (!token) return
+
+    const socket = io(getSocketUrl(), {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+    })
+    socketRef.current = socket
+
+    socket.on('connect', () => setSocketConnected(true))
+    socket.on('disconnect', () => setSocketConnected(false))
+
+    return () => {
+      socket.disconnect()
+      socketRef.current = null
+    }
+  }, [])
+
+  const handleManualRefresh = useCallback(() => {
+    void fetchActiveCampaigns()
+    if (selectedCamp) void fetchPendingContacts(selectedCamp)
+  }, [fetchActiveCampaigns, fetchPendingContacts, selectedCamp])
 
   useEffect(() => {
     if (!activeCall) { setElapsed(0); return }
@@ -340,6 +383,19 @@ export default function Dialer() {
         : isDialing
           ? { label: 'Campaign running', active: true }
           : { label: 'Dialer idle', active: false }
+
+  const sipLabel = sipConfig.enabled
+    ? sipStatus === 'registered'
+      ? 'SIP Registered'
+      : sipStatus === 'in_call'
+        ? 'SIP In Call'
+        : sipStatus === 'calling'
+          ? 'SIP Calling'
+          : 'SIP Offline'
+    : 'SIP Disabled'
+  const sipColor = sipStatus === 'registered' || sipStatus === 'in_call' || sipStatus === 'calling'
+    ? 'var(--green-2)'
+    : 'var(--text-3)'
 
   const handleVoiceDeskActivityChange = useCallback((activity: VoiceDeskActivity) => {
     setVoiceDeskActivity(current =>
@@ -560,28 +616,76 @@ export default function Dialer() {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ marginBottom: 32 }}
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: 18,
+          flexWrap: 'wrap',
+          marginBottom: 32,
+        }}
       >
-        <div className="eyebrow pink" style={{ marginBottom: 14 }}>
-          <Sparkles size={11}/> PTDT-Dialer Live Desk
+        <div>
+          <div className="eyebrow pink" style={{ marginBottom: 14 }}>
+            <Sparkles size={11}/> PTDT-Dialer Live Desk
+          </div>
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(28px, 3.2vw, 42px)',
+            fontWeight: 900,
+            lineHeight: 1.05,
+            color: 'var(--text)',
+            letterSpacing: '-0.04em',
+            marginBottom: 10,
+          }}>
+            Dialer <span className="gradient-brand-text">Control</span>
+          </h1>
+          <p style={{
+            fontSize: 14.5, color: 'var(--text-3)', display: 'flex',
+            alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          }}>
+            <span className="pulse-dot pink"/> PTDT-Dialer operator console for campaign dialing and manual calls.
+          </p>
         </div>
-        <h1 style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 'clamp(28px, 3.2vw, 42px)',
-          fontWeight: 900,
-          lineHeight: 1.05,
-          color: 'var(--text)',
-          letterSpacing: '-0.04em',
-          marginBottom: 10,
-        }}>
-          Dialer <span className="gradient-brand-text">Control</span>
-        </h1>
-        <p style={{
-          fontSize: 14.5, color: 'var(--text-3)', display: 'flex',
-          alignItems: 'center', gap: 10, flexWrap: 'wrap',
-        }}>
-          <span className="pulse-dot pink"/> PTDT-Dialer operator console for campaign dialing and manual calls.
-        </p>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="glass" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="pulse-dot" style={{ background: sipColor }} />
+            <div>
+              <div className="mono" style={{ fontSize: 9, color: 'var(--text-3)', fontWeight: 800, letterSpacing: 1.1 }}>SIP</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: sipColor }}>{sipLabel}</div>
+            </div>
+          </div>
+
+          <div className="glass" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className={socketConnected ? 'pulse-dot' : 'pulse-dot pink'} />
+            <div>
+              <div className="mono" style={{ fontSize: 9, color: 'var(--text-3)', fontWeight: 800, letterSpacing: 1.1 }}>REALTIME</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: socketConnected ? 'var(--green-2)' : 'var(--pink)' }}>
+                {socketConnected ? 'Online' : 'Offline'}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            title="Refresh dialer data"
+            style={{
+              height: 42,
+              width: 42,
+              borderRadius: 14,
+              border: '1px solid var(--border)',
+              background: 'var(--bg-glass)',
+              color: 'var(--text-3)',
+              display: 'grid',
+              placeItems: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <RefreshCw size={16} />
+          </button>
+        </div>
       </motion.div>
 
       <div style={{

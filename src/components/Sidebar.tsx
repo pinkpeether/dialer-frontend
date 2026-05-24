@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/auth.store'
 import { authAPI }      from '../api/auth.api'
 import ThemeToggle      from './ThemeToggle'
 import NotificationBell from './NotificationBell'
+import { useSipStore } from '../store/sip.store'
 
 type NavItem = {
   to: string
@@ -40,6 +41,7 @@ const NAV: NavItem[] = [
 
 export default function Sidebar() {
   const { user, logout } = useAuthStore()
+  const unregisterSip = useSipStore(s => s.unregister)
   const navigate = useNavigate()
 
   const userRole = (user as Record<string, unknown> | null)?.role as string | undefined
@@ -52,6 +54,7 @@ export default function Sidebar() {
 
   const handleLogout = () => {
     void authAPI.logout().catch(() => undefined)
+    void unregisterSip().catch(() => undefined)
     logout()
     navigate('/login', { replace: true })
   }
@@ -108,6 +111,22 @@ export default function Sidebar() {
         {visibleNav.map(item => {
           const Icon = item.icon
           const isDialer = item.to === '/dialer'
+          const isSipSettings = item.to === '/sip-settings'
+          const specialActiveBg = isDialer
+            ? 'linear-gradient(135deg, rgba(0,167,71,0.98), rgba(0,245,160,0.86))'
+            : isSipSettings
+              ? 'linear-gradient(135deg, #b87900, #d99a16)'
+              : 'linear-gradient(135deg, #fb0b8c, #ff4bad)'
+          const specialInactiveColor = isDialer
+            ? 'var(--green-2)'
+            : isSipSettings
+              ? '#b87900'
+              : 'var(--text-3)'
+          const specialInactiveBorder = isDialer
+            ? 'rgba(0,167,71,0.24)'
+            : isSipSettings
+              ? 'rgba(184,121,0,0.28)'
+              : 'transparent'
           return (
             <NavLink key={item.to} to={item.to} end={item.to === '/settings'} style={{ textDecoration: 'none' }}>
               {({ isActive }) => (
@@ -120,23 +139,23 @@ export default function Sidebar() {
                     padding: '11px 14px',
                     borderRadius: 999,
                     fontSize: 13.5, fontWeight: 700,
-                    background: isActive
-                      ? isDialer
-                        ? 'linear-gradient(135deg, rgba(0,167,71,0.98), rgba(0,245,160,0.86))'
-                        : 'linear-gradient(135deg, #fb0b8c, #ff4bad)'
-                      : 'transparent',
-                    color: isActive ? '#fff' : isDialer ? 'var(--green-2)' : 'var(--text-3)',
-                    border: isDialer
+                    background: isActive ? specialActiveBg : 'transparent',
+                    color: isActive ? '#fff' : specialInactiveColor,
+                    border: isDialer || isSipSettings
                       ? isActive
-                        ? '1px solid rgba(0,245,160,0.48)'
-                        : '1px solid rgba(0,167,71,0.24)'
+                        ? `1px solid ${isDialer ? 'rgba(0,245,160,0.48)' : 'rgba(217,154,22,0.50)'}`
+                        : `1px solid ${specialInactiveBorder}`
                       : '1px solid transparent',
                     boxShadow: isActive
                       ? isDialer
                         ? '0 14px 30px rgba(0,167,71,0.26), 0 0 22px rgba(0,245,160,0.18), inset 0 1px 0 rgba(255,255,255,0.22)'
+                        : isSipSettings
+                          ? '0 14px 30px rgba(184,121,0,0.24), 0 0 22px rgba(217,154,22,0.16), inset 0 1px 0 rgba(255,255,255,0.20)'
                         : '0 12px 26px rgba(251,11,140,0.28), inset 0 1px 0 rgba(255,255,255,0.22)'
                       : isDialer
                         ? '0 0 18px rgba(0,167,71,0.08)'
+                        : isSipSettings
+                          ? '0 0 18px rgba(184,121,0,0.08)'
                         : 'none',
                     transition: 'background 0.25s, color 0.25s, box-shadow 0.25s, border-color 0.25s',
                   }}
@@ -146,11 +165,11 @@ export default function Sidebar() {
                       layoutId="nav-glow"
                       style={{
                         position: 'absolute', inset: 0, borderRadius: 999,
-                        background: isDialer
-                          ? 'linear-gradient(135deg, rgba(0,167,71,0.98), rgba(0,245,160,0.86))'
-                          : 'linear-gradient(135deg, #fb0b8c, #ff4bad)',
+                        background: specialActiveBg,
                         boxShadow: isDialer
                           ? '0 14px 30px rgba(0,167,71,0.26),0 0 22px rgba(0,245,160,0.18)'
+                          : isSipSettings
+                            ? '0 14px 30px rgba(184,121,0,0.24),0 0 22px rgba(217,154,22,0.16)'
                           : '0 12px 26px rgba(251,11,140,0.30)',
                         zIndex: -1,
                       }}
