@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ArrowLeft, CheckCircle2, Megaphone, Pause, Play, RefreshCw, Sparkles, Upload, Users } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Megaphone, Pause, Play, RefreshCw, Upload, Users } from 'lucide-react'
 import { campaignsAPI } from '../api/campaigns.api'
 import { contactsAPI } from '../api/contacts.api'
 import CsvImportModal from '../components/CsvImportModal'
@@ -10,15 +9,6 @@ import PreviewDialingPanel from '../components/dialing/PreviewDialingPanel'
 import PredictiveGuardrailPanel from '../components/dialing/PredictiveGuardrailPanel'
 
 type CampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED'
-
-type Stats = {
-  total: number
-  pending: number
-  answered: number
-  missed?: number
-  active?: number
-  answerRate: number
-}
 
 type Campaign = {
   id: number
@@ -30,8 +20,7 @@ type Campaign = {
   dialingRatio?: number
   maxRetries?: number
   timezone?: string
-  createdAt?: string
-  updatedAt?: string
+  stats?: Record<string, unknown>
 }
 
 type Contact = {
@@ -42,59 +31,21 @@ type Contact = {
   createdAt: string
 }
 
-const CONTACT_STATUS_MAP: Record<string, { color: string; bg: string }> = {
-  PENDING:      { color: '#f0b90b',       bg: 'rgba(240,185,11,0.12)' },
-  CALLING:      { color: '#fb0b8c',       bg: 'rgba(251,11,140,0.10)' },
-  ANSWERED:     { color: '#00a747',       bg: 'rgba(0,167,71,0.10)' },
-  CONTACTED:    { color: '#00a747',       bg: 'rgba(0,167,71,0.10)' },
-  NO_ANSWER:    { color: '#f0b90b',       bg: 'rgba(240,185,11,0.12)' },
-  VOICEMAIL:    { color: '#8057d7',       bg: 'rgba(128,87,215,0.12)' },
-  CALLBACK:     { color: '#f0b90b',       bg: 'rgba(240,185,11,0.12)' },
-  WRONG_NUMBER: { color: '#ef4444',       bg: 'rgba(239,68,68,0.12)' },
-  DNC:          { color: 'var(--text-3)', bg: 'var(--bg-glass)' },
-  DONE:         { color: '#00a747',       bg: 'rgba(0,167,71,0.10)' },
-  BUSY:         { color: '#ef4444',       bg: 'rgba(239,68,68,0.12)' },
-}
-
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null
-}
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
 const extractList = <T,>(payload: unknown, keys: string[]): T[] => {
   if (Array.isArray(payload)) return payload as T[]
   if (!isRecord(payload)) return []
-
   for (const key of keys) {
     const value = payload[key]
     if (Array.isArray(value)) return value as T[]
   }
-
   return []
 }
 
-const buildStatsFromContacts = (items: Contact[]): Stats => {
-  const total = items.length
-  const pending = items.filter(contact => contact.status === 'PENDING').length
-  const active = items.filter(contact => contact.status === 'CALLING').length
-  const answered = items.filter(contact => ['ANSWERED', 'CONTACTED', 'DONE'].includes(contact.status)).length
-  const missed = items.filter(contact => ['NO_ANSWER', 'BUSY', 'VOICEMAIL'].includes(contact.status)).length
-  const dialed = total - pending
-
-  return {
-    total,
-    pending,
-    answered,
-    missed,
-    active,
-    answerRate: dialed > 0 ? Math.round((answered / dialed) * 100) : 0,
-  }
-}
-
-const statusStyle = (status: string) => {
-  if (status === 'ACTIVE') return { color: 'var(--green-2)', bg: 'rgba(0,167,71,0.10)' }
-  if (status === 'PAUSED') return { color: 'var(--warning)', bg: 'rgba(240,185,11,0.12)' }
-  if (status === 'COMPLETED') return { color: 'var(--purple)', bg: 'rgba(128,87,215,0.12)' }
-  return { color: 'var(--text-3)', bg: 'var(--bg-glass)' }
+const getNumber = (value: unknown, fallback = 0) => {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : fallback
 }
 
 const formatDate = (value?: string) => {
@@ -103,15 +54,22 @@ const formatDate = (value?: string) => {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString()
 }
 
+const statusColor = (status: string) => {
+  if (status === 'ACTIVE') return '#00a747'
+  if (status === 'PAUSED') return '#f0b90b'
+  if (status === 'COMPLETED') return '#8057d7'
+  return 'var(--text-3)'
+}
+
 export default function CampaignDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [campaign, setCampaign] = useState<Campaign | null>(null)
-  const [stats, setStats] = useState<Stats | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [importOpen, setImportOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   const campaignId = Number(id)
 
@@ -121,199 +79,134 @@ export default function CampaignDetail() {
     setMessage('')
 
     try {
-      const [campaignRes, statsResult, contactsRes] = await Promise.all([
-        campaignsAPI.getById(campaignId),
-        contactsAPI.getStats(campaignId).catch(() => null),
-        contactsAPI.getAll({ campaignId, limit: 100 }),
-      ])
-
-      const contactList = extractList<Contact>(contactsRes, ['contacts', 'results'])
-
+      const campaignRes = await campaignsAPI.getById(campaignId)
       setCampaign(campaignRes as Campaign)
-      setContacts(contactList)
-      setStats((statsResult as Stats | null) ?? buildStatsFromContacts(contactList))
+
+      try {
+        const contactsRes = await contactsAPI.getAll({ campaignId, limit: 100 })
+        setContacts(extractList<Contact>(contactsRes, ['contacts', 'results']))
+      } catch {
+        setContacts([])
+      }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load campaign detail.'
-      setMessage(errorMessage)
+      setMessage(err instanceof Error ? err.message : 'Failed to load campaign detail.')
     } finally {
       setLoading(false)
     }
   }, [campaignId])
 
-  useEffect(() => {
-    void loadCampaign()
-  }, [loadCampaign])
+  useEffect(() => { void loadCampaign() }, [loadCampaign])
 
   const handleStatusChange = async (newStatus: CampaignStatus) => {
     if (!campaign) return
-    await campaignsAPI.updateStatus(campaign.id, newStatus)
-    setCampaign({ ...campaign, status: newStatus })
-    setMessage(`✓ Campaign status changed to ${newStatus}`)
+    setBusy(true)
+    setMessage('')
+    try {
+      const updated = await campaignsAPI.updateStatus(campaign.id, newStatus)
+      setCampaign({ ...campaign, ...(updated || {}), status: newStatus })
+      setMessage(`✓ Campaign status changed to ${newStatus}`)
+      void loadCampaign()
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Failed to update campaign status.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const handleImport = async (file: File) => {
     if (!campaign) return
-    await contactsAPI.uploadCSV(campaign.id, file)
-    setImportOpen(false)
-    await loadCampaign()
-    setMessage('✓ Contacts imported')
+    setBusy(true)
+    setMessage('')
+    try {
+      await contactsAPI.uploadCSV(campaign.id, file)
+      setImportOpen(false)
+      await loadCampaign()
+      setMessage('✓ Contacts imported')
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Failed to import contacts.')
+    } finally {
+      setBusy(false)
+    }
   }
 
-  const progress = useMemo(() => {
-    if (!stats || stats.total <= 0) return 0
-    return Math.min(100, Math.round(((stats.answered || 0) / stats.total) * 100))
-  }, [stats])
+  const stats = useMemo(() => {
+    const backendStats = campaign?.stats || {}
+    const total = getNumber(backendStats.total, contacts.length)
+    const pending = getNumber(backendStats.pending, contacts.filter(c => c.status === 'PENDING').length)
+    const answered = getNumber(backendStats.answered, contacts.filter(c => ['ANSWERED', 'CONTACTED', 'DONE'].includes(c.status)).length)
+    const missed = getNumber(backendStats.missed, contacts.filter(c => ['NO_ANSWER', 'BUSY', 'VOICEMAIL'].includes(c.status)).length)
+    const active = getNumber(backendStats.active, contacts.filter(c => ['CALLING', 'IN_QUEUE'].includes(c.status)).length)
+    const dialed = Math.max(0, total - pending)
+    const answerRate = getNumber(backendStats.answerRate, dialed > 0 ? Math.round((answered / dialed) * 100) : 0)
+    return { total, pending, answered, missed, active, answerRate }
+  }, [campaign, contacts])
 
-  const theme = statusStyle(campaign?.status || 'DRAFT')
+  const progress = stats.total > 0 ? Math.min(100, Math.round((stats.answered / stats.total) * 100)) : 0
 
   return (
     <div style={{ padding: '32px 36px', maxWidth: 1600, margin: '0 auto' }}>
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{ marginBottom: 28 }}
+      <button
+        type="button"
+        onClick={() => navigate('/campaigns')}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 18, padding: '9px 14px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-3)', fontWeight: 800, cursor: 'pointer' }}
       >
-        <button
-          type="button"
-          onClick={() => navigate('/campaigns')}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            marginBottom: 18,
-            padding: '9px 14px',
-            borderRadius: 'var(--radius-full)',
-            border: '1px solid var(--border)',
-            background: 'var(--bg-glass)',
-            color: 'var(--text-3)',
-            fontWeight: 800,
-            cursor: 'pointer',
-          }}
-        >
-          <ArrowLeft size={14} /> Back to Campaigns
-        </button>
-
-        <div className="eyebrow pink" style={{ marginBottom: 14 }}>
-          <Sparkles size={11} /> PTDT-Dialer Campaign Detail
-        </div>
-
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          gap: 18,
-          flexWrap: 'wrap',
-        }}>
-          <div>
-            <h1 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(28px, 3.2vw, 42px)',
-              fontWeight: 900,
-              lineHeight: 1.05,
-              color: 'var(--text)',
-              letterSpacing: '-0.04em',
-              marginBottom: 10,
-            }}>
-              {campaign?.name || 'Campaign'} <span className="gradient-brand-text">Overview</span>
-            </h1>
-            <p style={{
-              fontSize: 14.5,
-              color: 'var(--text-3)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              flexWrap: 'wrap',
-            }}>
-              <span className="pulse-dot pink" /> {campaign?.description || 'Inspect contacts, call logs, progress, and campaign controls.'}
-            </p>
-          </div>
-
-          {campaign && (
-            <span className="badge" style={{ color: theme.color, background: theme.bg, border: `1px solid ${theme.color}` }}>
-              {campaign.status}
-            </span>
-          )}
-        </div>
-      </motion.div>
+        <ArrowLeft size={14} /> Back to Campaigns
+      </button>
 
       {message && (
-        <div style={{
-          marginBottom: 18,
-          padding: '12px 16px',
-          borderRadius: 'var(--radius-md)',
-          border: message.startsWith('✓') ? '1px solid rgba(0,167,71,0.28)' : '1px solid rgba(239,68,68,0.28)',
-          background: message.startsWith('✓') ? 'rgba(0,167,71,0.10)' : 'rgba(239,68,68,0.10)',
-          color: message.startsWith('✓') ? 'var(--green-2)' : 'var(--danger)',
-          fontWeight: 700,
-        }}>
+        <div style={{ marginBottom: 18, padding: '12px 16px', borderRadius: 'var(--radius-md)', border: message.startsWith('✓') ? '1px solid rgba(0,167,71,0.28)' : '1px solid rgba(239,68,68,0.28)', background: message.startsWith('✓') ? 'rgba(0,167,71,0.10)' : 'rgba(239,68,68,0.10)', color: message.startsWith('✓') ? 'var(--green-2)' : 'var(--danger)', fontWeight: 700 }}>
           {message}
         </div>
       )}
 
       {loading ? (
-        <div className="glass" style={{ minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}>
-          Loading campaign…
-        </div>
-      ) : campaign ? (
+        <div className="glass" style={{ minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}>Loading campaign…</div>
+      ) : !campaign ? (
+        <div className="glass" style={{ padding: 40, color: 'var(--text-3)', textAlign: 'center' }}>Campaign not found.</div>
+      ) : (
         <>
-          <CampaignRuntimeBanner
-            mode={campaign.mode}
-            waitingReason={campaign.waitingReason}
-            timezone={campaign.timezone}
-          />
-
-          {String(campaign.mode || '').toUpperCase() === 'PREVIEW' && (
-            <PreviewDialingPanel campaignId={campaign.id} />
-          )}
-
-          {String(campaign.mode || '').toUpperCase() === 'PREDICTIVE' && (
-            <PredictiveGuardrailPanel
-              dialingRatio={Number(campaign.dialingRatio ?? 1)}
-              readyAgents={0}
-              activeCalls={0}
-            />
-          )}
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-            gap: 14,
-            marginBottom: 24,
-          }}>
-            <MetricCard label="Contacts" value={stats?.total ?? contacts.length} icon={<Users size={16} />} color="var(--pink)" bg="rgba(251,11,140,0.10)" />
-            <MetricCard label="Pending" value={stats?.pending ?? 0} icon={<Megaphone size={16} />} color="var(--warning)" bg="rgba(240,185,11,0.12)" />
-            <MetricCard label="Answered" value={stats?.answered ?? 0} icon={<CheckCircle2 size={16} />} color="var(--green-2)" bg="rgba(0,167,71,0.10)" />
-            <MetricCard label="Answer Rate" value={`${stats?.answerRate ?? progress}%`} icon={<CheckCircle2 size={16} />} color="var(--purple)" bg="rgba(128,87,215,0.12)" />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap', marginBottom: 20 }}>
+            <div>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 3.2vw, 42px)', fontWeight: 900, lineHeight: 1.05, color: 'var(--text)', letterSpacing: '-0.04em', marginBottom: 10 }}>
+                {campaign.name || 'Campaign'} <span className="gradient-brand-text">Overview</span>
+              </h1>
+              <p style={{ fontSize: 14.5, color: 'var(--text-3)' }}>{campaign.description || 'Inspect contacts, call logs, progress, and campaign controls.'}</p>
+            </div>
+            <span className="badge" style={{ color: statusColor(String(campaign.status)), border: `1px solid ${statusColor(String(campaign.status))}` }}>{campaign.status}</span>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass"
-            style={{ padding: 22, marginBottom: 24 }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
+          <div style={{ display: 'grid', gap: 16, marginBottom: 24 }}>
+            <CampaignRuntimeBanner mode={campaign.mode} waitingReason={campaign.waitingReason} timezone={campaign.timezone} />
+
+            {String(campaign.mode || '').toUpperCase() === 'PREVIEW' && <PreviewDialingPanel campaignId={campaign.id} />}
+
+            {String(campaign.mode || '').toUpperCase() === 'PREDICTIVE' && (
+              <PredictiveGuardrailPanel dialingRatio={Number(campaign.dialingRatio ?? 1)} readyAgents={0} activeCalls={0} />
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 24 }}>
+            <MetricCard label="Contacts" value={stats.total} icon={<Users size={16} />} color="var(--pink)" />
+            <MetricCard label="Pending" value={stats.pending} icon={<Megaphone size={16} />} color="var(--warning)" />
+            <MetricCard label="Answered" value={stats.answered} icon={<CheckCircle2 size={16} />} color="var(--green-2)" />
+            <MetricCard label="Answer Rate" value={`${stats.answerRate}%`} icon={<CheckCircle2 size={16} />} color="var(--purple)" />
+          </div>
+
+          <div className="glass" style={{ padding: 22, marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
               <div>
-                <div className="display" style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>
-                  Campaign Controls
-                </div>
+                <div className="display" style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Campaign Controls</div>
                 <div style={{ color: 'var(--text-3)', fontSize: 12.5, marginTop: 4 }}>
-                  Dialing ratio {campaign.dialingRatio ?? 1}x · Retries {campaign.maxRetries ?? 3} · {campaign.timezone || 'UTC'}
+                  Mode {campaign.mode || 'PROGRESSIVE'} · Ratio {campaign.dialingRatio ?? 1}x · Retries {campaign.maxRetries ?? 3} · {campaign.timezone || 'UTC'}
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {(campaign.status === 'DRAFT' || campaign.status === 'PAUSED') && (
-                  <ControlButton onClick={() => handleStatusChange('ACTIVE')} icon={<Play size={14} />} label="Start" color="var(--green-2)" bg="rgba(0,167,71,0.10)" />
-                )}
-                {campaign.status === 'ACTIVE' && (
-                  <ControlButton onClick={() => handleStatusChange('PAUSED')} icon={<Pause size={14} />} label="Pause" color="var(--warning)" bg="rgba(240,185,11,0.12)" />
-                )}
-                {campaign.status !== 'COMPLETED' && (
-                  <ControlButton onClick={() => handleStatusChange('COMPLETED')} icon={<CheckCircle2 size={14} />} label="Complete" color="var(--purple)" bg="rgba(128,87,215,0.12)" />
-                )}
-                <ControlButton onClick={() => setImportOpen(true)} icon={<Upload size={14} />} label="Import CSV" color="var(--pink)" bg="rgba(251,11,140,0.10)" />
-                <ControlButton onClick={() => void loadCampaign()} icon={<RefreshCw size={14} />} label="Refresh" color="var(--text-3)" bg="var(--bg-glass)" />
+                {(campaign.status === 'DRAFT' || campaign.status === 'PAUSED') && <button disabled={busy} className="btn-brand" onClick={() => void handleStatusChange('ACTIVE')}><Play size={14} /> Start</button>}
+                {campaign.status === 'ACTIVE' && <button disabled={busy} onClick={() => void handleStatusChange('PAUSED')}><Pause size={14} /> Pause</button>}
+                {campaign.status !== 'COMPLETED' && <button disabled={busy} onClick={() => void handleStatusChange('COMPLETED')}><CheckCircle2 size={14} /> Complete</button>}
+                <button disabled={busy} onClick={() => setImportOpen(true)}><Upload size={14} /> Import CSV</button>
+                <button disabled={busy} onClick={() => void loadCampaign()}><RefreshCw size={14} /> Refresh</button>
               </div>
             </div>
 
@@ -323,153 +216,59 @@ export default function CampaignDetail() {
                 <span className="mono">{progress}%</span>
               </div>
               <div style={{ height: 11, background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{
-                  width: `${progress}%`,
-                  height: '100%',
-                  background: 'var(--grad-brand)',
-                  boxShadow: 'var(--shadow-pink)',
-                  transition: 'width 0.25s ease',
-                }} />
+                <div style={{ width: `${progress}%`, height: '100%', background: 'var(--grad-brand)', transition: 'width 0.25s ease' }} />
               </div>
             </div>
-          </motion.div>
+          </div>
 
-          <DataSection title="Contacts" subtitle="Campaign contact queue and latest imported leads.">
+          <section className="glass" style={{ padding: 22 }}>
+            <div style={{ marginBottom: 16 }}>
+              <h2 className="display" style={{ fontSize: 20, marginBottom: 4 }}>Contacts</h2>
+              <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Campaign contact queue and latest imported leads.</p>
+            </div>
+
             {contacts.length === 0 ? (
-              <EmptyState text="No contacts yet. Import a CSV to populate this campaign." />
+              <div style={{ padding: 32, color: 'var(--text-3)', textAlign: 'center' }}>No contacts yet. Import a CSV to populate this campaign.</div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                      {['Name', 'Phone', 'Status', 'Added', 'Action'].map(h => (
-                        <th key={h} className="mono" style={{ padding: '12px 10px', fontSize: 10.5, color: 'var(--text-3)', letterSpacing: 1.1, textTransform: 'uppercase', textAlign: 'left', fontWeight: 700 }}>
-                          {h}
-                        </th>
-                      ))}
+                      {['Name', 'Phone', 'Status', 'Added'].map(h => <th key={h} className="mono" style={{ padding: '12px 10px', fontSize: 10.5, color: 'var(--text-3)', letterSpacing: 1.1, textTransform: 'uppercase', textAlign: 'left', fontWeight: 700 }}>{h}</th>)}
                     </tr>
                   </thead>
                   <tbody>
-                    {contacts.map((contact) => {
-                      const sc = CONTACT_STATUS_MAP[contact.status] ?? { color: 'var(--text-3)', bg: 'var(--bg-glass)' }
-                      return (
-                        <tr key={contact.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '13px 10px', color: 'var(--text)', fontWeight: 700 }}>
-                            {contact.name || 'Unknown'}
-                          </td>
-                          <td className="mono" style={{ padding: '13px 10px', color: 'var(--text-3)', fontSize: 12.5 }}>
-                            {contact.phone}
-                          </td>
-                          <td style={{ padding: '13px 10px' }}>
-                            <span className="badge" style={{ color: sc.color, background: sc.bg, border: `1px solid ${sc.color}` }}>
-                              {contact.status}
-                            </span>
-                          </td>
-                          <td style={{ padding: '13px 10px', color: 'var(--text-3)', fontSize: 12 }}>
-                            {formatDate(contact.createdAt)}
-                          </td>
-                          <td style={{ padding: '13px 10px' }}>
-                            <button
-                              type="button"
-                              onClick={() => navigate(`/contacts/${contact.id}`)}
-                              style={{ background: 'transparent', border: '1px solid rgba(251,11,140,0.32)', borderRadius: 'var(--radius-sm)', padding: '5px 10px', cursor: 'pointer', color: 'var(--pink)', fontSize: 11.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                            >
-                              View
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
+                    {contacts.map(contact => (
+                      <tr key={contact.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '13px 10px', color: 'var(--text)', fontWeight: 700 }}>{contact.name || 'Unknown'}</td>
+                        <td className="mono" style={{ padding: '13px 10px', color: 'var(--text-3)', fontSize: 12.5 }}>{contact.phone}</td>
+                        <td style={{ padding: '13px 10px' }}>{contact.status}</td>
+                        <td style={{ padding: '13px 10px', color: 'var(--text-3)', fontSize: 12.5 }}>{formatDate(contact.createdAt)}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             )}
-          </DataSection>
+          </section>
+
+          <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} onSubmit={handleImport} />
         </>
-      ) : (
-        <div className="glass" style={{ padding: 40, color: 'var(--text-3)', textAlign: 'center' }}>
-          Campaign not found.
-        </div>
-      )}
-
-      {importOpen && (
-        <CsvImportModal
-          open={importOpen}
-          onClose={() => setImportOpen(false)}
-          onSubmit={handleImport}
-        />
       )}
     </div>
   )
 }
 
-function MetricCard({ label, value, icon, color, bg }: { label: string; value: string | number; icon: ReactNode; color: string; bg: string }) {
+function MetricCard({ label, value, icon, color }: { label: string; value: string | number; icon: React.ReactNode; color: string }) {
   return (
-    <div className="glass lift" style={{ padding: 18 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{
-          width: 38,
-          height: 38,
-          borderRadius: 13,
-          background: bg,
-          border: `1px solid ${color}`,
-          color,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          {icon}
-        </div>
+    <div className="glass" style={{ padding: 18 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
         <div>
-          <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: 1.1, fontWeight: 800 }}>{label}</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)', marginTop: 3 }}>{value}</div>
+          <div style={{ color: 'var(--text-3)', fontSize: 12, marginBottom: 4 }}>{label}</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{value}</div>
         </div>
+        <div style={{ color }}>{icon}</div>
       </div>
-    </div>
-  )
-}
-
-function ControlButton({ onClick, icon, label, color, bg }: { onClick: () => void; icon: ReactNode; label: string; color: string; bg: string }) {
-  return (
-    <motion.button
-      whileHover={{ scale: 1.02, y: -1 }}
-      whileTap={{ scale: 0.98 }}
-      type="button"
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 7,
-        padding: '10px 14px',
-        borderRadius: 'var(--radius-full)',
-        border: `1px solid ${color}`,
-        background: bg,
-        color,
-        fontWeight: 800,
-        cursor: 'pointer',
-      }}
-    >
-      {icon} {label}
-    </motion.button>
-  )
-}
-
-function DataSection({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
-  return (
-    <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass" style={{ padding: 22, marginBottom: 24 }}>
-      <div style={{ marginBottom: 16 }}>
-        <div className="display" style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{title}</div>
-        <div style={{ color: 'var(--text-3)', fontSize: 12.5, marginTop: 4 }}>{subtitle}</div>
-      </div>
-      {children}
-    </motion.section>
-  )
-}
-
-function EmptyState({ text }: { text: string }) {
-  return (
-    <div style={{ minHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', textAlign: 'center' }}>
-      {text}
     </div>
   )
 }
