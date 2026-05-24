@@ -18,6 +18,9 @@ import Callbacks              from './pages/Callbacks'
 import Supervisor             from './pages/Supervisor'
 import DncManager             from './pages/DncManager'
 import Settings               from './pages/Settings'
+import AuditLogs              from './pages/AuditLogs'
+import SystemSettings         from './pages/SystemSettings'
+import Recordings             from './pages/Recordings'
 import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
 import ToastProvider           from './components/ToastProvider'
@@ -51,6 +54,9 @@ export default function App() {
             <Route path="/sip-settings"       element={<SipSettings />}    />
             <Route path="/dnc"               element={<DncManager />}     />
             <Route path="/settings"          element={<Settings />}       />
+            <Route path="/audit-logs"        element={<AuditLogs />}      />
+            <Route path="/settings/system"   element={<SystemSettings />} />
+            <Route path="/recordings"        element={<Recordings />}     />
             <Route path="*"                  element={<NotFound />}       />
           </Route>
 

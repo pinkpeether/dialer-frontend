@@ -1,9 +1,10 @@
+import type { ElementType } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
   BarChart3, Headset, Settings2, History,
-  ShieldOff, Calendar, Eye, Wrench,
+  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
@@ -13,7 +14,7 @@ import NotificationBell from './NotificationBell'
 
 type NavItem = {
   to: string
-  icon: React.ElementType
+  icon: ElementType
   label: string
   roles?: string[]
 }
@@ -30,8 +31,11 @@ const NAV: NavItem[] = [
   { to: '/supervisor',      icon: Eye,             label: 'Supervisor',     roles: ['ADMIN', 'MANAGER', 'SUPERVISOR'] },
   { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'SUPERVISOR'] },
   { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'] },
-  { to: '/settings',        icon: Settings2,       label: 'Settings'        },
+  { to: '/recordings',      icon: Radio,           label: 'Recordings',     roles: ['ADMIN', 'SUPERVISOR'] },
+  { to: '/audit-logs',      icon: ClipboardList,   label: 'Audit Logs',     roles: ['ADMIN'] },
   { to: '/sip-settings',    icon: Wrench,          label: 'SIP Settings'    },
+  { to: '/settings',        icon: Settings2,       label: 'Account Settings' },
+  { to: '/settings/system', icon: SlidersHorizontal, label: 'System Settings', roles: ['ADMIN'] },
 ]
 
 export default function Sidebar() {
@@ -105,7 +109,7 @@ export default function Sidebar() {
           const Icon = item.icon
           const isDialer = item.to === '/dialer'
           return (
-            <NavLink key={item.to} to={item.to} style={{ textDecoration: 'none' }}>
+            <NavLink key={item.to} to={item.to} end={item.to === '/settings'} style={{ textDecoration: 'none' }}>
               {({ isActive }) => (
                 <motion.div
                   whileHover={{ x: isActive ? 0 : 3 }}
