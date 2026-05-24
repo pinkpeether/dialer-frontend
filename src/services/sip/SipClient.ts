@@ -72,6 +72,10 @@ function friendlySipError(err: unknown, fallback: string) {
   const message = getErrorMessage(err, fallback)
   const lower = message.toLowerCase()
 
+  if (lower.includes('overconstrained') || lower.includes('constraint')) {
+    return 'Selected microphone is unavailable. Switch microphone input to Default and try again.'
+  }
+
   if (lower.includes('permission') || lower.includes('notallowed') || lower.includes('not allowed')) {
     return 'Microphone permission was blocked. Allow microphone access and try again.'
   }
@@ -246,12 +250,7 @@ class SipClient {
     const localStream = await this.getOrCreateLocalAudioStream(false)
 
     const inviterOptions: Record<string, unknown> = {
-      sessionDescriptionHandlerOptions: {
-        constraints: {
-          audio: true,
-          video: false,
-        },
-      },
+      sessionDescriptionHandlerOptions: this.createAudioMediaOptions(),
     }
 
     if (this.config.callerId) {
@@ -299,6 +298,8 @@ class SipClient {
     this.exposeSession(session)
 
     try {
+      await this.getOrCreateLocalAudioStream(false)
+
       await accept.call(session, {
         sessionDescriptionHandlerOptions: this.createAudioMediaOptions(),
       })
@@ -538,10 +539,21 @@ class SipClient {
 
     this.stopLocalAudioStream()
 
-    this.localAudioStream = await navigator.mediaDevices.getUserMedia({
-      audio: this.getAudioConstraints(),
-      video: false,
-    })
+    try {
+      this.localAudioStream = await navigator.mediaDevices.getUserMedia({
+        audio: this.getAudioConstraints(),
+        video: false,
+      })
+    } catch (err) {
+      if (!this.shouldFallbackToDefaultAudioInput(err)) throw err
+
+      console.warn('[SIP] Selected microphone unavailable, falling back to default input:', err)
+      this.audioInputDeviceId = 'default'
+      this.localAudioStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      })
+    }
 
     const [track] = this.localAudioStream.getAudioTracks()
     if (!track) {
@@ -558,6 +570,21 @@ class SipClient {
     })
 
     return this.localAudioStream
+  }
+
+  private shouldFallbackToDefaultAudioInput(err: unknown) {
+    if (!this.audioInputDeviceId || this.audioInputDeviceId === 'default') return false
+    const error = err as { name?: string; message?: string; constraint?: string }
+    const name = error.name?.toLowerCase() || ''
+    const message = error.message?.toLowerCase() || ''
+    return (
+      name.includes('overconstrained') ||
+      name.includes('notfound') ||
+      name.includes('notreadable') ||
+      message.includes('overconstrained') ||
+      message.includes('constraint') ||
+      message.includes('device')
+    )
   }
 
   private stopLocalAudioStream() {
