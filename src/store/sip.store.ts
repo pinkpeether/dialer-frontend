@@ -244,13 +244,25 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   call: async (destination) => {
     try {
+      set({ error: null })
       await sipClient.setAudioInputDevice(get().audioInputDeviceId)
       await sipClient.setAudioOutputDevice(get().audioOutputDeviceId)
       await sipClient.call(destination)
       set({ error: null })
     } catch (err) {
       const error = err instanceof Error ? err.message : 'SIP call failed'
-      set({ error, status: 'error' })
+      set({
+        error,
+        status: sipClient.isRegistered()
+          ? 'registered'
+          : get().isConfigured
+            ? 'configured'
+            : 'idle',
+        activeCall: null,
+        incomingCall: null,
+        muted: false,
+        onHold: false,
+      })
       throw err
     }
   },

@@ -258,6 +258,7 @@ export default function Dialer() {
   const sipModeEnabled = Boolean(sipConfig.enabled)
   const sipReady = sipModeEnabled && sipStatus === 'registered'
   const lastLiveSipCallRef = useRef<typeof liveSipCall>(null)
+  const sipManualRoutingSeenRef = useRef(false)
   const toast = useToast()
   void user
 
@@ -291,6 +292,41 @@ export default function Dialer() {
     const t = setInterval(() => setElapsed(s => s + 1), 1000)
     return () => clearInterval(t)
   }, [activeCall])
+
+  useEffect(() => {
+    const callSid = String(activeCall?.callSid || '')
+    if (!callSid.startsWith('sip:')) {
+      sipManualRoutingSeenRef.current = false
+      return
+    }
+
+    if (sipStatus === 'calling') {
+      sipManualRoutingSeenRef.current = true
+    }
+
+    if (liveSipCall) {
+      sipManualRoutingSeenRef.current = false
+      return
+    }
+
+    const sipCallReturnedIdle =
+      sipManualRoutingSeenRef.current &&
+      callSid.startsWith('sip:') &&
+      !liveSipCall &&
+      !endingCall &&
+      ['registered', 'configured', 'idle', 'ended'].includes(sipStatus)
+
+    if (!sipCallReturnedIdle) return
+
+    setActiveCall(null)
+    sipManualRoutingSeenRef.current = false
+    setElapsed(0)
+    setMuted(false)
+    setLoading(false)
+    setEndingCall(false)
+    setMessage('SIP call declined or ended')
+    toast.info('SIP call declined or ended')
+  }, [activeCall, endingCall, liveSipCall, sipStatus, toast])
 
   const fmt = (s: number) =>
     `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`
@@ -431,6 +467,7 @@ export default function Dialer() {
     try {
       if (sipModeEnabled) {
         if (!sipReady) throw new Error('SIP mode is enabled but not registered')
+        sipManualRoutingSeenRef.current = false
         await sipCall(String(contact.phone))
         setActiveCall({ ...contact, callSid: `sip:${contact.id}` })
         setLastCallId(null)
@@ -502,6 +539,7 @@ export default function Dialer() {
 
   const handleResetCallState = useCallback(() => {
     resetSipCallState()
+    sipManualRoutingSeenRef.current = false
     setActiveCall(null)
     setElapsed(0)
     setMuted(false)

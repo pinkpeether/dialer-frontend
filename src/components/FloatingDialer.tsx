@@ -564,6 +564,9 @@ export default function FloatingDialer({
   const callCancelRequestedRef = useRef(false);
   const stopRingbackRef = useRef<(() => void) | null>(null);
   const sipCallEstablishedRef = useRef(false);
+  const sipOutboundRoutingSeenRef = useRef(false);
+  const sipPublicNumberCallRef = useRef(false);
+  const sipPublicAnswerConfirmRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const incomingRecentRef = useRef<{
     id: string;
     remoteIdentity: string;
@@ -638,6 +641,13 @@ export default function FloatingDialer({
     }
   }, []);
 
+  const clearSipPublicAnswerConfirm = useCallback(() => {
+    if (sipPublicAnswerConfirmRef.current) {
+      clearTimeout(sipPublicAnswerConfirmRef.current);
+      sipPublicAnswerConfirmRef.current = null;
+    }
+  }, []);
+
   const startRingback = useCallback(() => {
     stopRingback();
     stopRingbackRef.current = softphoneAudio.startRingback(
@@ -655,8 +665,9 @@ export default function FloatingDialer({
     () => () => {
       stopTimer();
       stopRingback();
+      clearSipPublicAnswerConfirm();
     },
-    [stopTimer, stopRingback],
+    [stopTimer, stopRingback, clearSipPublicAnswerConfirm],
   );
 
   useEffect(() => {
@@ -675,28 +686,58 @@ export default function FloatingDialer({
   }, [onActivityChange, state]);
 
   useEffect(() => {
-    if (!callSid?.startsWith("sip:")) return;
-
-    if (sipStatus === "in_call" && sipActiveCall) {
-      const wasAlreadyActive = sipCallEstablishedRef.current;
-      sipCallEstablishedRef.current = true;
+    const activateSipCall = (startedAtInput?: number) => {
       stopRingback();
       setError(null);
       setLoading(false);
       setState("active");
       setTab("controls");
 
-      if (!wasAlreadyActive) {
-        playConnectedTone();
-      }
-
       if (!timerRef.current) {
-        const startedAt = sipActiveCall.startedAt || Date.now();
+        const startedAt = startedAtInput || Date.now();
         callStart.current = startedAt;
         setElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
         timerRef.current = setInterval(() => {
           setElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
         }, 1000);
+      }
+    };
+
+    if (!callSid?.startsWith("sip:")) {
+      sipOutboundRoutingSeenRef.current = false;
+      sipPublicNumberCallRef.current = false;
+      clearSipPublicAnswerConfirm();
+      return;
+    }
+
+    if (sipStatus === "calling") {
+      sipOutboundRoutingSeenRef.current = true;
+    }
+
+    if (sipStatus === "in_call" && sipActiveCall) {
+      const wasAlreadyActive = sipCallEstablishedRef.current;
+      sipCallEstablishedRef.current = true;
+
+      if (!wasAlreadyActive) {
+        if (sipPublicNumberCallRef.current) {
+          if (!sipPublicAnswerConfirmRef.current) {
+            sipPublicAnswerConfirmRef.current = setTimeout(() => {
+              sipPublicAnswerConfirmRef.current = null;
+              if (!sipPublicNumberCallRef.current) return;
+              activateSipCall(Date.now());
+              playConnectedTone();
+            }, 4500);
+          }
+          return;
+        }
+
+        activateSipCall(sipActiveCall.startedAt || Date.now());
+        playConnectedTone();
+        return;
+      }
+
+      if (!sipPublicNumberCallRef.current) {
+        activateSipCall(sipActiveCall.startedAt || Date.now());
       }
       return;
     }
@@ -708,6 +749,7 @@ export default function FloatingDialer({
 
     if (sipReturnedToIdle) {
       const dur = Math.max(0, Math.round((Date.now() - callStart.current) / 1000));
+      clearSipPublicAnswerConfirm();
       stopRingback();
       stopTimer();
 
@@ -736,6 +778,8 @@ export default function FloatingDialer({
         });
       }
       sipCallEstablishedRef.current = false;
+      sipOutboundRoutingSeenRef.current = false;
+      sipPublicNumberCallRef.current = false;
       playHangupTone();
       setCallSid(null);
       setElapsed(0);
@@ -745,11 +789,38 @@ export default function FloatingDialer({
       return;
     }
 
+    const sipEndedBeforeAnswer =
+      sipOutboundRoutingSeenRef.current &&
+      !sipCallEstablishedRef.current &&
+      state === "calling" &&
+      !sipActiveCall &&
+      ["registered", "configured", "idle", "ended"].includes(sipStatus);
+
+    if (sipEndedBeforeAnswer) {
+      clearSipPublicAnswerConfirm();
+      stopRingback();
+      stopTimer();
+      playFailedTone();
+      sipOutboundRoutingSeenRef.current = false;
+      sipPublicNumberCallRef.current = false;
+      setCallSid(null);
+      setCallRecordId(null);
+      setElapsed(0);
+      setMuted(false);
+      setLoading(false);
+      setState("dialpad");
+      setError("Call declined or ended before answer");
+      return;
+    }
+
     if (sipStatus === "error" || sipStatus === "registration_failed") {
+      clearSipPublicAnswerConfirm();
       stopRingback();
       stopTimer();
       playFailedTone();
       sipCallEstablishedRef.current = false;
+      sipOutboundRoutingSeenRef.current = false;
+      sipPublicNumberCallRef.current = false;
       setLoading(false);
       setCallSid(null);
       setState("dialpad");
@@ -768,6 +839,8 @@ export default function FloatingDialer({
     playHangupTone,
     onDispositionRequested,
     isEmbedded,
+    state,
+    clearSipPublicAnswerConfirm,
   ]);
 
   useEffect(() => {
@@ -1011,6 +1084,8 @@ export default function FloatingDialer({
     setCallRecordId(null);
     sipCallEstablishedRef.current = false;
     callCancelRequestedRef.current = false;
+    sipPublicNumberCallRef.current = sipModeEnabled && isPublicNumber && !isSipExtension;
+    clearSipPublicAnswerConfirm();
     stopTimer();
     startRingback();
 
@@ -1023,6 +1098,7 @@ export default function FloatingDialer({
         }
 
         const sipCallSid = `sip:${Date.now()}`;
+        sipOutboundRoutingSeenRef.current = false;
         setCallSid(sipCallSid);
         callStart.current = Date.now();
         await sipCall(cleaned);
@@ -1061,7 +1137,9 @@ export default function FloatingDialer({
               ?.data?.message || "Call failed";
       stopRingback();
       stopTimer();
+      clearSipPublicAnswerConfirm();
       playFailedTone();
+      sipPublicNumberCallRef.current = false;
       setCallSid(null);
       setCallRecordId(null);
       setError(msg);
@@ -1082,11 +1160,13 @@ export default function FloatingDialer({
     triggerRipple,
     stopRingback,
     playFailedTone,
+    clearSipPublicAnswerConfirm,
   ]);
 
   const handleHangup = useCallback(async () => {
     callCancelRequestedRef.current = true;
     const dur = Math.round((Date.now() - callStart.current) / 1000);
+    clearSipPublicAnswerConfirm();
     stopRingback();
     stopTimer();
     if (callSid) {
@@ -1120,6 +1200,8 @@ export default function FloatingDialer({
       }
     }
     sipCallEstablishedRef.current = false;
+    sipOutboundRoutingSeenRef.current = false;
+    sipPublicNumberCallRef.current = false;
     playHangupTone();
     setCallSid(null);
     setCallRecordId(null);
@@ -1138,6 +1220,7 @@ export default function FloatingDialer({
     sipHangup,
     playHangupTone,
     onDispositionRequested,
+    clearSipPublicAnswerConfirm,
   ]);
 
   const handleDTMF = useCallback(async (digit: string) => {

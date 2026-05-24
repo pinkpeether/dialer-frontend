@@ -99,6 +99,10 @@ function friendlySipError(err: unknown, fallback: string) {
     return 'SIP is not registered yet. Open SIP Settings and register before placing a call.'
   }
 
+  if (lower.includes('abort')) {
+    return 'The SIP call attempt was aborted before it connected. Please try again.'
+  }
+
   return message
 }
 
@@ -238,6 +242,10 @@ class SipClient {
       throw new Error('SIP account is not registered')
     }
 
+    if (this.currentSession) {
+      await this.endCurrentSessionForNewCall()
+    }
+
     const cleanDestination = destination.trim()
     const target = cleanDestination.includes('@')
       ? cleanDestination.replace(/^sip:/, '')
@@ -281,11 +289,12 @@ class SipClient {
         this.logPeerConnectionState(inviter, 'outgoing-after-invite')
       }, 500)
     } catch (err) {
-      this.currentSession = null
+      const message = friendlySipError(err, 'SIP call failed')
+      this.cleanupCurrentCallState()
       this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
       this.handlers.onCallEnded?.()
-      this.handlers.onError?.(friendlySipError(err, 'SIP call failed'))
-      throw err
+      this.handlers.onError?.(message)
+      throw new Error(message)
     }
   }
 
@@ -309,11 +318,12 @@ class SipClient {
         this.logPeerConnectionState(session, 'incoming-after-accept')
       }, 500)
     } catch (err) {
-      this.currentSession = null
+      const message = friendlySipError(err, 'SIP answer failed')
+      this.cleanupCurrentCallState()
       this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
       this.handlers.onCallEnded?.()
-      this.handlers.onError?.(friendlySipError(err, 'SIP answer failed'))
-      throw err
+      this.handlers.onError?.(message)
+      throw new Error(message)
     }
   }
 
@@ -329,17 +339,14 @@ class SipClient {
     if (!session) return
     const endedAt = Date.now()
 
-    if (session.bye) await session.bye()
-    else if (session.cancel) await session.cancel()
-    else if (session.reject) await session.reject()
+    try {
+      await this.terminateSession(session)
+    } catch (err) {
+      console.warn('[SIP] Hangup signaling failed; clearing local call state:', err)
+    } finally {
+      this.cleanupCurrentCallState()
+    }
 
-    this.currentSession = null
-    this.stopLocalAudioStream()
-    this.stopHoldMusic()
-    this.heldAudioSenderTracks.clear()
-    this.remoteTrackListener = null
-    window.__ptdtSipPeerConnection = undefined
-    window.__ptdtSipSession = undefined
     this.handlers.onCallEnded?.(endedAt)
     this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
   }
@@ -592,6 +599,55 @@ class SipClient {
     this.localAudioStream = null
   }
 
+  private cleanupCurrentCallState() {
+    this.currentSession = null
+    this.stopLocalAudioStream()
+    this.stopHoldMusic()
+    this.heldAudioSenderTracks.clear()
+    this.remoteTrackListener = null
+    window.__ptdtSipPeerConnection = undefined
+    window.__ptdtSipSession = undefined
+  }
+
+  private isSessionEstablished(session: SipSession) {
+    return String(session.state || '').includes('Established')
+  }
+
+  private async terminateSession(session: SipSession) {
+    if (this.isSessionEstablished(session) && session.bye) {
+      await session.bye()
+      return
+    }
+
+    if (session.cancel) {
+      await session.cancel()
+      return
+    }
+
+    if (session.reject) {
+      await session.reject()
+      return
+    }
+
+    if (session.bye) {
+      await session.bye()
+    }
+  }
+
+  private async endCurrentSessionForNewCall() {
+    const session = this.currentSession
+    if (!session) return
+
+    try {
+      await this.terminateSession(session)
+    } catch (err) {
+      console.warn('[SIP] Previous session cleanup before new call failed:', err)
+    } finally {
+      this.cleanupCurrentCallState()
+      this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
+    }
+  }
+
   private async getOrCreateHoldMusicTrack() {
     if (this.holdMusicState?.track.readyState === 'live') return this.holdMusicState.track
 
@@ -714,13 +770,7 @@ class SipClient {
 
       if (stateName.includes('Terminated')) {
         const endedAt = Date.now()
-        this.currentSession = null
-        this.stopLocalAudioStream()
-        this.stopHoldMusic()
-        this.heldAudioSenderTracks.clear()
-        this.remoteTrackListener = null
-        window.__ptdtSipPeerConnection = undefined
-        window.__ptdtSipSession = undefined
+        this.cleanupCurrentCallState()
         this.handlers.onCallEnded?.(endedAt)
         this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
       }

@@ -51,8 +51,10 @@ export default function Recordings() {
   const [recordings, setRecordings] = useState<RecordingRow[]>([])
   const [search, setSearch] = useState('')
   const [activeUrl, setActiveUrl] = useState('')
+  const [activeTitle, setActiveTitle] = useState('')
   const [activeCallId, setActiveCallId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const [accessingId, setAccessingId] = useState<number | null>(null)
   const [error, setError] = useState('')
 
   const load = async (query = search) => {
@@ -95,14 +97,19 @@ export default function Recordings() {
     }
   }, [])
 
-  const play = async (callId: number) => {
+  const play = async (row: RecordingRow) => {
     setError('')
+    setAccessingId(row.id)
     try {
-      const data = await recordingsAPI.getAccess(callId)
+      const data = await recordingsAPI.getAccess(row.id)
+      if (!data?.recordingUrl) throw new Error('Recording URL is not available yet.')
       setActiveUrl(data.recordingUrl)
-      setActiveCallId(callId)
+      setActiveCallId(row.id)
+      setActiveTitle(`${row.contact?.name || 'Unknown'} · ${row.contact?.phone || 'No phone'}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to access recording')
+    } finally {
+      setAccessingId(null)
     }
   }
 
@@ -165,7 +172,7 @@ export default function Recordings() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 900, color: 'var(--text)' }}>
               <Mic2 size={17} color="var(--pink)" />
-              Playing recording {activeCallId ? `#${activeCallId}` : ''}
+              {activeTitle || `Playing recording ${activeCallId ? `#${activeCallId}` : ''}`}
             </div>
             <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>Secure recording access</span>
           </div>
@@ -184,7 +191,7 @@ export default function Recordings() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
-                {['Time', 'Contact', 'Phone', 'Agent', 'Campaign', 'Duration', 'Action'].map(h => (
+                {['Time', 'Contact', 'Phone', 'Agent', 'Campaign', 'Duration', 'Recording SID', 'Action'].map(h => (
                   <th key={h} style={{ padding: '13px 16px', textAlign: 'left', fontSize: 10.5, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
@@ -193,9 +200,9 @@ export default function Recordings() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7}><EmptyState>Loading recordings...</EmptyState></td></tr>
+                <tr><td colSpan={8}><EmptyState>Loading recordings...</EmptyState></td></tr>
               ) : recordings.length === 0 ? (
-                <tr><td colSpan={7}><EmptyState>No recordings found.</EmptyState></td></tr>
+                <tr><td colSpan={8}><EmptyState>No recordings found.</EmptyState></td></tr>
               ) : recordings.map((row, index) => (
                 <motion.tr
                   key={row.id}
@@ -225,10 +232,14 @@ export default function Recordings() {
                   </td>
                   <td style={{ padding: '14px 16px', color: 'var(--text-3)', fontSize: 12.5 }}>{row.campaign?.name || '—'}</td>
                   <td className="mono" style={{ padding: '14px 16px', color: 'var(--text)', fontWeight: 800 }}>{fmtDuration(row.duration)}</td>
+                  <td className="mono" style={{ padding: '14px 16px', color: 'var(--text-3)', fontSize: 12, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {row.recordingSid || '—'}
+                  </td>
                   <td style={{ padding: '14px 16px' }}>
                     <button
                       type="button"
-                      onClick={() => void play(row.id)}
+                      disabled={accessingId === row.id}
+                      onClick={() => void play(row)}
                       style={{
                         height: 34,
                         borderRadius: 999,
@@ -241,12 +252,13 @@ export default function Recordings() {
                         color: 'var(--pink)',
                         fontSize: 11,
                         fontWeight: 900,
-                        cursor: 'pointer',
+                        cursor: accessingId === row.id ? 'default' : 'pointer',
                         textTransform: 'uppercase',
                         letterSpacing: 0.6,
+                        opacity: accessingId === row.id ? 0.68 : 1,
                       }}
                     >
-                      <Play size={13} /> Play
+                      <Play size={13} /> {accessingId === row.id ? 'Opening...' : 'Play'}
                     </button>
                   </td>
                 </motion.tr>
