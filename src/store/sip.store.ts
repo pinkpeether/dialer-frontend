@@ -105,7 +105,7 @@ interface SipStore {
   setMuted: (muted: boolean) => void
   setAudioOutputDevice: (deviceId: string) => Promise<void>
   testAudioOutputDevice: () => Promise<void>
-  setAudioInputDevice: (deviceId: string) => Promise<void>
+  setAudioInputDevice: (deviceId: string) => Promise<string>
   clearError: () => void
   dismissSipDisposition: () => void
   resetCallState: () => void
@@ -169,7 +169,11 @@ export const useSipStore = create<SipStore>((set, get) => ({
   register: async () => {
     const config = get().config
     try {
-      await sipClient.setAudioInputDevice(get().audioInputDeviceId)
+      const resolvedInputDeviceId = await sipClient.setAudioInputDevice(get().audioInputDeviceId)
+      if (resolvedInputDeviceId !== get().audioInputDeviceId) {
+        localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, resolvedInputDeviceId)
+        set({ audioInputDeviceId: resolvedInputDeviceId, audioInputError: null })
+      }
       await sipClient.setAudioOutputDevice(get().audioOutputDeviceId)
       await sipClient.register(config, {
         onStatusChange: (status) => set({ status }),
@@ -245,14 +249,34 @@ export const useSipStore = create<SipStore>((set, get) => ({
   call: async (destination) => {
     try {
       set({ error: null })
-      await sipClient.setAudioInputDevice(get().audioInputDeviceId)
+      const resolvedInputDeviceId = await sipClient.setAudioInputDevice(get().audioInputDeviceId)
+      if (resolvedInputDeviceId !== get().audioInputDeviceId) {
+        localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, resolvedInputDeviceId)
+        set({ audioInputDeviceId: resolvedInputDeviceId, audioInputError: null })
+      }
       await sipClient.setAudioOutputDevice(get().audioOutputDeviceId)
       await sipClient.call(destination)
+      const activeInputDeviceId = sipClient.getAudioInputDeviceId()
+      if (activeInputDeviceId !== get().audioInputDeviceId) {
+        localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, activeInputDeviceId)
+        set({ audioInputDeviceId: activeInputDeviceId, audioInputError: null })
+      }
       set({ error: null })
     } catch (err) {
       const error = err instanceof Error ? err.message : 'SIP call failed'
+      const lower = error.toLowerCase()
+      const shouldResetInput = lower.includes('microphone') ||
+        lower.includes('device not found') ||
+        lower.includes('requested device not found') ||
+        lower.includes('notfound') ||
+        lower.includes('constraint')
+      if (shouldResetInput) {
+        localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, 'default')
+      }
       set({
         error,
+        audioInputDeviceId: shouldResetInput ? 'default' : get().audioInputDeviceId,
+        audioInputError: shouldResetInput ? error : get().audioInputError,
         status: sipClient.isRegistered()
           ? 'registered'
           : get().isConfigured
@@ -355,7 +379,12 @@ export const useSipStore = create<SipStore>((set, get) => ({
     localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, normalized)
     set({ audioInputDeviceId: normalized, audioInputError: null })
     try {
-      await sipClient.setAudioInputDevice(normalized)
+      const resolved = await sipClient.setAudioInputDevice(normalized)
+      if (resolved !== normalized) {
+        localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, resolved)
+        set({ audioInputDeviceId: resolved })
+      }
+      return resolved
     } catch (err) {
       const audioInputError = err instanceof Error ? err.message : 'Could not switch microphone/input device.'
       set({ audioInputError })

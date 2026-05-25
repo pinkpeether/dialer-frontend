@@ -68,12 +68,22 @@ function getErrorMessage(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback
 }
 
+const SIP_DEBUG = import.meta.env.VITE_SIP_DEBUG === 'true'
+
+function sipDebugInfo(...args: unknown[]) {
+  if (SIP_DEBUG) console.info(...args)
+}
+
 function friendlySipError(err: unknown, fallback: string) {
   const message = getErrorMessage(err, fallback)
   const lower = message.toLowerCase()
 
   if (lower.includes('overconstrained') || lower.includes('constraint')) {
     return 'Selected microphone is unavailable. Switch microphone input to Default and try again.'
+  }
+
+  if (lower.includes('notfound') || lower.includes('requested device not found')) {
+    return 'Selected microphone was not found. Switched to Default microphone; try the call again.'
   }
 
   if (lower.includes('permission') || lower.includes('notallowed') || lower.includes('not allowed')) {
@@ -125,6 +135,10 @@ class SipClient {
     return Boolean(this.userAgent && this.registerer)
   }
 
+  getAudioInputDeviceId() {
+    return this.audioInputDeviceId || 'default'
+  }
+
   async register(config: SipAccountConfig, handlers: SipHandlers = {}) {
     this.handlers = handlers
     this.config = config
@@ -151,7 +165,7 @@ class SipClient {
         ? [{ urls: stunServer.startsWith('stun:') || stunServer.startsWith('turn:') ? stunServer : `stun:${stunServer}` }]
         : []
 
-      console.info('[SIP] ICE servers:', this.iceServers)
+      sipDebugInfo('[SIP] ICE servers:', this.iceServers)
 
       const userAgent = new this.sip.UserAgent({
         uri,
@@ -386,7 +400,7 @@ class SipClient {
     }
 
     try {
-      console.info('[SIP] Sending blind transfer REFER to', targetUri.toString())
+      sipDebugInfo('[SIP] Sending blind transfer REFER to', targetUri.toString())
       await referFn.call(session, targetUri)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'SIP transfer failed'
@@ -447,7 +461,7 @@ class SipClient {
       }
     }
 
-    console.info('[SIP] Call locally held (remote media paused, hold music active)')
+    sipDebugInfo('[SIP] Call locally held (remote media paused, hold music active)')
   }
 
   async resume() {
@@ -483,7 +497,7 @@ class SipClient {
       }
     }
 
-    console.info('[SIP] Call resumed (media unpaused)')
+    sipDebugInfo('[SIP] Call resumed (media unpaused)')
   }
 
   async setAudioOutputDevice(deviceId: string) {
@@ -498,10 +512,10 @@ class SipClient {
     this.audioInputDeviceId = deviceId || 'default'
 
     const pc = this.currentSession?.sessionDescriptionHandler?.peerConnection
-    if (!pc) return
+    if (!pc) return this.audioInputDeviceId
 
     const audioSender = pc.getSenders().find(sender => sender.track?.kind === 'audio')
-    if (!audioSender) return
+    if (!audioSender) return this.audioInputDeviceId
 
     const stream = await this.getOrCreateLocalAudioStream(true)
     const [newTrack] = stream.getAudioTracks()
@@ -513,6 +527,8 @@ class SipClient {
     const oldTrack = audioSender.track
     await audioSender.replaceTrack(newTrack)
     if (oldTrack && oldTrack !== newTrack) oldTrack.stop()
+
+    return this.audioInputDeviceId
   }
 
   private createAudioMediaOptions(): SipMediaOptions {
@@ -569,7 +585,7 @@ class SipClient {
     }
 
     track.enabled = true
-    console.info('[SIP] Local microphone track ready:', {
+    sipDebugInfo('[SIP] Local microphone track ready:', {
       label: track.label,
       enabled: track.enabled,
       muted: track.muted,
@@ -590,6 +606,7 @@ class SipClient {
       name.includes('notreadable') ||
       message.includes('overconstrained') ||
       message.includes('constraint') ||
+      message.includes('requested device not found') ||
       message.includes('device')
     )
   }
@@ -741,7 +758,7 @@ class SipClient {
   private attachSessionListeners(session: SipSession, localStream?: MediaStream | null) {
     session.stateChange?.addListener((state: unknown) => {
       const stateName = String(state)
-      console.info('[SIP] Session state:', stateName)
+      sipDebugInfo('[SIP] Session state:', stateName)
 
       this.exposeSession(session)
 
@@ -804,7 +821,7 @@ class SipClient {
     if (audioSender) {
       // Existing sender ko replace karo
       audioSender.replaceTrack(audioTrack).then(() => {
-        console.info('[SIP] forceAttachMicTrack: replaceTrack done', {
+        sipDebugInfo('[SIP] forceAttachMicTrack: replaceTrack done', {
           label: audioTrack.label,
           enabled: audioTrack.enabled,
           readyState: audioTrack.readyState,
@@ -816,7 +833,7 @@ class SipClient {
       // Koi sender nahi — naya add karo
       try {
         pc.addTrack(audioTrack, localStream)
-        console.info('[SIP] forceAttachMicTrack: addTrack done', {
+        sipDebugInfo('[SIP] forceAttachMicTrack: addTrack done', {
           label: audioTrack.label,
           enabled: audioTrack.enabled,
           readyState: audioTrack.readyState,
@@ -843,7 +860,7 @@ class SipClient {
 
     window.__ptdtSipPeerConnection = pc
 
-    console.info('[SIP] PeerConnection state [' + reason + ']:', {
+    sipDebugInfo('[SIP] PeerConnection state [' + reason + ']:', {
       connectionState: pc.connectionState,
       iceConnectionState: pc.iceConnectionState,
       iceGatheringState: pc.iceGatheringState,
@@ -891,11 +908,11 @@ class SipClient {
       })
 
       if (stream.getAudioTracks().length === 0) {
-        console.info('[SIP] attachRemoteMedia: no audio tracks yet')
+        sipDebugInfo('[SIP] attachRemoteMedia: no audio tracks yet')
         return
       }
 
-      console.info('[SIP] attachRemoteMedia: attaching', stream.getAudioTracks().length, 'audio track(s)')
+      sipDebugInfo('[SIP] attachRemoteMedia: attaching', stream.getAudioTracks().length, 'audio track(s)')
 
       audio.srcObject = stream
       audio.volume = 1
@@ -905,7 +922,7 @@ class SipClient {
       audio.muted = true
       void audio.play().then(() => {
         audio.muted = false
-        console.info('[SIP] attachRemoteMedia: audio playing (unmuted)')
+        sipDebugInfo('[SIP] attachRemoteMedia: audio playing (unmuted)')
       }).catch((err) => {
         console.warn('[SIP] audio.play() failed:', err)
         // Last resort: user gesture ke baad try karo
@@ -925,7 +942,7 @@ class SipClient {
     }
 
     this.remoteTrackListener = (event: RTCTrackEvent) => {
-      console.info('[SIP] track event received:', event.track?.kind)
+      sipDebugInfo('[SIP] track event received:', event.track?.kind)
       applyStream()
     }
 

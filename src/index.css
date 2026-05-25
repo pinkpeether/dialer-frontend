@@ -309,6 +309,31 @@ html { scrollbar-width: thin; }
 [data-theme="dark"] .grid-overlay { opacity: 1; }
 
 /* ============================================================
+   PERFORMANCE MODE — opt-in rendering relief for Electron
+   Keeps app behavior intact while disabling expensive paint work.
+   ============================================================ */
+html[data-performance-mode="on"] {
+  scroll-behavior: auto;
+}
+html[data-performance-mode="on"] .aurora-bg,
+html[data-performance-mode="on"] .grid-overlay {
+  display: none !important;
+}
+html[data-performance-mode="on"] .glass,
+html[data-performance-mode="on"] .glass-hi {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+html[data-performance-mode="on"] *,
+html[data-performance-mode="on"] *::before,
+html[data-performance-mode="on"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* ============================================================
    GLASS / CARD UTILITIES
    ============================================================ */
 .glass {

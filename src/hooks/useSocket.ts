@@ -3,8 +3,10 @@ import { io, Socket } from 'socket.io-client'
 import { useAuthStore } from '../store/auth.store'
 
 const BACKEND_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'
+const SOCKET_DEBUG = import.meta.env.VITE_SOCKET_DEBUG === 'true'
 
 let socketInstance: Socket | null = null
+let socketListenersAttached = false
 
 export const useSocket = () => {
   const { token } = useAuthStore()
@@ -25,17 +27,21 @@ export const useSocket = () => {
 
     socketRef.current = socketInstance
 
-    socketInstance.on('connect', () => {
-      console.log('🔌 Socket connected:', socketInstance?.id)
-    })
+    if (!socketListenersAttached) {
+      socketListenersAttached = true
 
-    socketInstance.on('disconnect', (reason) => {
-      console.log('🔌 Socket disconnected:', reason)
-    })
+      socketInstance.on('connect', () => {
+        if (SOCKET_DEBUG) console.info('Socket connected:', socketInstance?.id)
+      })
 
-    socketInstance.on('connect_error', (err) => {
-      console.error('🔌 Socket error:', err.message)
-    })
+      socketInstance.on('disconnect', (reason) => {
+        if (SOCKET_DEBUG) console.info('Socket disconnected:', reason)
+      })
+
+      socketInstance.on('connect_error', (err) => {
+        if (SOCKET_DEBUG) console.warn('Socket error:', err.message)
+      })
+    }
 
     return () => {
       // Component unmount par disconnect nahi karte — singleton rakhte hain
@@ -74,4 +80,5 @@ export const useSocket = () => {
 export const disconnectSocket = () => {
   socketInstance?.disconnect()
   socketInstance = null
+  socketListenersAttached = false
 }

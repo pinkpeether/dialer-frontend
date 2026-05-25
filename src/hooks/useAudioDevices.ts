@@ -169,7 +169,23 @@ export function useMicrophoneMeter(deviceId: string, enabled = false) {
           ? { deviceId: { exact: deviceId } }
           : true
 
-        const stream = await navigator.mediaDevices.getUserMedia({ audio, video: false })
+        let stream: MediaStream
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio, video: false })
+        } catch (err) {
+          const message = err instanceof Error ? err.message.toLowerCase() : ''
+          const name = err instanceof DOMException ? err.name.toLowerCase() : ''
+          const canFallback = deviceId && deviceId !== 'default' && (
+            name.includes('notfound') ||
+            name.includes('overconstrained') ||
+            message.includes('requested device not found') ||
+            message.includes('constraint') ||
+            message.includes('device')
+          )
+          if (!canFallback) throw err
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        }
+
         if (cancelled) {
           stream.getTracks().forEach(track => track.stop())
           return

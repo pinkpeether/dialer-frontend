@@ -1,4 +1,4 @@
-import type { ElementType } from 'react'
+import { useEffect, useState, type ElementType } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Phone, LayoutDashboard, Users,
@@ -44,6 +44,10 @@ export default function Sidebar() {
   const { user, logout } = useAuthStore()
   const unregisterSip = useSipStore(s => s.unregister)
   const navigate = useNavigate()
+  const [performanceMode, setPerformanceMode] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem('ptdt-performance-mode') === 'on'
+  })
 
   const userRole = (user as Record<string, unknown> | null)?.role as string | undefined
 
@@ -59,6 +63,12 @@ export default function Sidebar() {
     logout()
     navigate('/login', { replace: true })
   }
+
+  useEffect(() => {
+    const next = performanceMode ? 'on' : 'off'
+    document.documentElement.dataset.performanceMode = next
+    window.localStorage.setItem('ptdt-performance-mode', next)
+  }, [performanceMode])
 
   return (
     <aside style={{
@@ -191,6 +201,40 @@ export default function Sidebar() {
         <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase' }}>Appearance</span>
         <ThemeToggle/>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setPerformanceMode(value => !value)}
+        style={{
+          margin: '0 4px 10px',
+          minHeight: 34,
+          borderRadius: 999,
+          border: performanceMode ? '1px solid rgba(0,167,71,0.36)' : '1px solid var(--border)',
+          background: performanceMode ? 'rgba(0,167,71,0.10)' : 'rgba(255,255,255,0.36)',
+          color: performanceMode ? 'var(--green-2)' : 'var(--text-3)',
+          fontSize: 10.5,
+          fontWeight: 900,
+          letterSpacing: 0.7,
+          textTransform: 'uppercase',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 7,
+          cursor: 'pointer',
+        }}
+        title="Reduce animations, blur, and background effects for smoother Electron performance"
+      >
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 999,
+            background: performanceMode ? 'var(--green-2)' : 'var(--muted)',
+            boxShadow: performanceMode ? '0 0 12px rgba(0,167,71,0.35)' : 'none',
+          }}
+        />
+        Performance {performanceMode ? 'On' : 'Off'}
+      </button>
 
       {/* User profile + bell + logout */}
       <div style={{ paddingTop: 6 }}>

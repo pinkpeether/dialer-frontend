@@ -125,7 +125,9 @@ function createWindow() {
 
   if (isDev) {
     win.loadURL('http://localhost:5173')
-    win.webContents.openDevTools()
+    if (process.env.OPEN_DEVTOOLS === 'true') {
+      win.webContents.openDevTools({ mode: 'detach' })
+    }
   } else {
     win.loadFile(path.join(__dirname, '../dist/index.html'))
   }

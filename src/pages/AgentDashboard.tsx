@@ -9,6 +9,7 @@ import {
 import DispositionPanel, { type DispositionSubmitPayload } from '../components/DispositionPanel'
 import { callsAPI } from '../api/calls.api'
 import { campaignsAPI } from '../api/campaigns.api'
+import { agentsAPI } from '../api/agents.api'
 import { useAuthStore } from '../store/auth.store'
 import { useSipStore } from '../store/sip.store'
 
@@ -192,10 +193,14 @@ const normalizeDirection = (value: unknown): RecentCallRow['direction'] => {
 
 export default function AgentDashboard() {
   const user = useAuthStore(state => state.user)
+  const updateUser = useAuthStore(state => state.updateUser)
   const sipStatus = useSipStore(s => s.status)
   const sipConfig = useSipStore(s => s.config)
 
-  const [agentStatus, setAgentStatus] = useState<AgentStatus>('OFFLINE')
+  const [agentStatus, setAgentStatus] = useState<AgentStatus>(() => {
+    const savedStatus = user?.status as AgentStatus | undefined
+    return savedStatus && statusTheme[savedStatus] ? savedStatus : 'OFFLINE'
+  })
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [muted, setMuted] = useState(false)
@@ -390,9 +395,19 @@ export default function AgentDashboard() {
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   const updateStatus = (next: AgentStatus) => {
+    const previous = agentStatus
     setAgentStatus(next)
-    socketRef.current?.emit('agent:status', next)
     setMessage(`Status changed to ${statusTheme[next].label}`)
+    void agentsAPI.updateMyStatus(next)
+      .then(() => {
+        updateUser({ status: next })
+        socketRef.current?.emit('agent:status', next)
+      })
+      .catch((err) => {
+        setAgentStatus(previous)
+        const msg = err instanceof Error ? err.message : 'Could not update agent status'
+        setMessage(msg)
+      })
   }
 
   const handleHangup = () => {
@@ -415,6 +430,8 @@ export default function AgentDashboard() {
     setActiveCall(null)
     setMuted(false)
     setAgentStatus('READY')
+    updateUser({ status: 'READY' })
+    void agentsAPI.updateMyStatus('READY').catch(() => undefined)
     setMessage('✓ Disposition saved')
     void fetchLiveStats()
     void fetchRecentCalls()

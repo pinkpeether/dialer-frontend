@@ -43,6 +43,11 @@ export const agentsAPI = {
     return res.data.data
   },
 
+  updateMyStatus: async (status: string) => {
+    const res = await api.patch('/agents/me/status', { status })
+    return res.data.data
+  },
+
   delete: async (id: number) => {
     await api.delete(`/agents/${id}`)
   },
