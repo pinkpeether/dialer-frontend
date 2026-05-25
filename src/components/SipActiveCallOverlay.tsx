@@ -25,9 +25,9 @@ function fmt(seconds: number) {
 
 function glassCard() {
   return {
-    background: 'linear-gradient(145deg,rgba(255,255,255,0.075),rgba(255,255,255,0.030))',
+    background: 'rgba(255,255,255,0.045)',
     border: '1px solid rgba(255,255,255,0.105)',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08),0 14px 34px rgba(0,0,0,0.22)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06),0 8px 18px rgba(0,0,0,0.18)',
   }
 }
 
@@ -229,15 +229,13 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
         borderRadius: embedded ? 26 : 28,
         padding: embedded ? '18px 22px 20px' : 18,
         color: brand.ink,
-        background: `
-          radial-gradient(circle at 14% 0%,rgba(251,11,140,0.22),transparent 36%),
-          radial-gradient(circle at 88% 10%,rgba(0,245,160,0.18),transparent 34%),
-          linear-gradient(145deg,rgba(7,5,16,0.97),rgba(18,10,32,0.95))
-        `,
+        background: 'linear-gradient(145deg,rgba(7,5,16,0.985),rgba(17,10,30,0.965))',
         border: '1px solid rgba(255,255,255,0.13)',
-        boxShadow: '0 28px 90px rgba(0,0,0,0.62),0 0 70px rgba(0,245,160,0.14)',
-        backdropFilter: 'blur(22px)',
-        WebkitBackdropFilter: 'blur(22px)',
+        boxShadow: embedded
+          ? '0 16px 36px rgba(0,0,0,0.34)'
+          : '0 18px 46px rgba(0,0,0,0.46)',
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
         overflowY: embedded ? 'auto' : undefined,
       }}
     >
@@ -295,7 +293,7 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
             fontFamily: 'ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace',
             flexShrink: 0,
             fontSize: embedded ? 18 : undefined,
-            boxShadow: embedded ? '0 0 26px rgba(0,245,160,0.18),inset 0 1px 0 rgba(255,255,255,0.10)' : undefined,
+            boxShadow: embedded ? 'inset 0 1px 0 rgba(255,255,255,0.08)' : undefined,
           }}
         >
           <Clock size={15} /> {fmt(elapsed)}
@@ -326,7 +324,7 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
             fontWeight: 900,
             fontSize: embedded ? 24 : undefined,
             cursor: 'pointer',
-            boxShadow: embedded ? 'inset 0 1px 0 rgba(255,255,255,0.10),0 14px 30px rgba(0,0,0,0.18)' : undefined,
+            boxShadow: embedded ? 'inset 0 1px 0 rgba(255,255,255,0.08),0 7px 16px rgba(0,0,0,0.15)' : undefined,
           }}
         >
           {muted ? <MicOff size={embedded ? 27 : 18} /> : <Mic size={embedded ? 27 : 18} />}
@@ -349,7 +347,7 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
             fontWeight: 900,
             fontSize: embedded ? 24 : undefined,
             cursor: 'pointer',
-            boxShadow: embedded ? 'inset 0 1px 0 rgba(255,255,255,0.10),0 14px 30px rgba(0,0,0,0.18)' : undefined,
+            boxShadow: embedded ? 'inset 0 1px 0 rgba(255,255,255,0.08),0 7px 16px rgba(0,0,0,0.15)' : undefined,
           }}
         >
           {onHold ? <PlayCircle size={embedded ? 27 : 18} /> : <PauseCircle size={embedded ? 27 : 18} />}
@@ -363,7 +361,7 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
             height: embedded ? 68 : 48,
             borderRadius: embedded ? 28 : 18,
             border: `1px solid ${brand.red}88`,
-            background: 'linear-gradient(135deg,rgba(255,59,95,0.96),rgba(251,11,140,0.84))',
+            background: 'rgba(255,59,95,0.92)',
             color: '#fff',
             display: 'flex',
             alignItems: 'center',
@@ -373,8 +371,8 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
             fontSize: embedded ? 32 : undefined,
             cursor: 'pointer',
             boxShadow: embedded
-              ? '0 18px 40px rgba(255,59,95,0.32),inset 0 1px 0 rgba(255,255,255,0.18)'
-              : '0 16px 34px rgba(255,59,95,0.24)',
+              ? '0 10px 22px rgba(255,59,95,0.20),inset 0 1px 0 rgba(255,255,255,0.12)'
+              : '0 9px 20px rgba(255,59,95,0.18)',
             gridColumn: embedded ? '1 / -1' : undefined,
           }}
         >
@@ -573,7 +571,7 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
               border: `1px solid ${brand.pink}88`,
               background: isTransferring
                 ? 'rgba(251,11,140,0.26)'
-                : 'linear-gradient(135deg,rgba(251,11,140,0.92),rgba(255,59,95,0.88))',
+                : 'rgba(251,11,140,0.82)',
               color: '#fff',
               fontWeight: 900,
               cursor: !transferTarget.trim() || isTransferring ? 'default' : 'pointer',
@@ -661,8 +659,8 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
               borderRadius: 999,
               background: muted
                 ? 'linear-gradient(90deg,rgba(255,59,95,0.35),rgba(255,59,95,0.50))'
-                : 'linear-gradient(90deg,#22d3ee,#00f5a0,#fb0b8c)',
-              boxShadow: muted ? 'none' : '0 0 16px rgba(0,245,160,0.35)',
+                : 'linear-gradient(90deg,#22d3ee,#00f5a0)',
+              boxShadow: muted ? 'none' : '0 0 8px rgba(0,245,160,0.22)',
               transition: 'width 0.12s ease',
             }}
           />

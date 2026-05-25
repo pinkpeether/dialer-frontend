@@ -150,8 +150,8 @@ function NoticeModal({
             inset: 0,
             zIndex: 10040,
             background: 'rgba(3,2,8,0.56)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
             display: 'grid',
             placeItems: 'center',
             padding: 18,
@@ -166,12 +166,9 @@ function NoticeModal({
               width: 'min(430px, 94vw)',
               borderRadius: 24,
               border: '1px solid rgba(255,255,255,0.14)',
-              background: `
-                radial-gradient(circle at 12% 0%,rgba(251,11,140,0.22),transparent 36%),
-                linear-gradient(150deg,rgba(8,5,18,0.98),rgba(16,10,30,0.97))
-              `,
+              background: 'linear-gradient(150deg,rgba(8,5,18,0.985),rgba(16,10,30,0.97))',
               color: '#f9f7ff',
-              boxShadow: '0 30px 90px rgba(0,0,0,0.58),0 0 60px rgba(251,11,140,0.16)',
+              boxShadow: '0 18px 48px rgba(0,0,0,0.46)',
               padding: 18,
             }}
           >
@@ -210,7 +207,7 @@ function NoticeModal({
                 marginTop: 18,
                 borderRadius: 999,
                 border: '1px solid rgba(251,11,140,0.54)',
-                background: 'linear-gradient(135deg,rgba(251,11,140,0.92),rgba(128,87,215,0.78))',
+                background: 'rgba(251,11,140,0.88)',
                 color: '#fff',
                 fontWeight: 900,
                 letterSpacing: 0.8,
@@ -644,13 +641,29 @@ export default function Dialer() {
             fontSize: 14.5, color: 'var(--text-3)', display: 'flex',
             alignItems: 'center', gap: 10, flexWrap: 'wrap',
           }}>
-            <span className="pulse-dot pink"/> PTDT-Dialer operator console for campaign dialing and manual calls.
+            <span
+              style={{
+                width: 9,
+                height: 9,
+                borderRadius: '50%',
+                background: 'var(--pink)',
+                display: 'inline-block',
+              }}
+            /> PTDT-Dialer operator console for campaign dialing and manual calls.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="glass" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="pulse-dot" style={{ background: sipColor }} />
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: sipColor,
+                display: 'inline-block',
+              }}
+            />
             <div>
               <div className="mono" style={{ fontSize: 9, color: 'var(--text-3)', fontWeight: 800, letterSpacing: 1.1 }}>SIP</div>
               <div style={{ fontSize: 12, fontWeight: 800, color: sipColor }}>{sipLabel}</div>
@@ -658,7 +671,15 @@ export default function Dialer() {
           </div>
 
           <div className="glass" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className={socketConnected ? 'pulse-dot' : 'pulse-dot pink'} />
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: socketConnected ? 'var(--green-2)' : 'var(--pink)',
+                display: 'inline-block',
+              }}
+            />
             <div>
               <div className="mono" style={{ fontSize: 9, color: 'var(--text-3)', fontWeight: 800, letterSpacing: 1.1 }}>REALTIME</div>
               <div style={{ fontSize: 12, fontWeight: 800, color: socketConnected ? 'var(--green-2)' : 'var(--pink)' }}>
@@ -713,7 +734,7 @@ export default function Dialer() {
             width: 38, height: 38, borderRadius: 12,
             background: 'var(--grad-brand)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: 'var(--shadow-pink)',
+            boxShadow: '0 8px 18px rgba(251,11,140,0.16)',
           }}>
             <Phone size={18} color="#fff"/>
           </div>
@@ -749,16 +770,16 @@ export default function Dialer() {
               color: agentStatus === 'READY' ? 'var(--green-2)' : 'var(--text-3)',
               fontWeight: 700, fontSize: 13,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              boxShadow: agentStatus === 'READY' ? '0 0 20px rgba(0,167,71,0.30)' : 'none',
-              transition: 'all 0.25s',
+              boxShadow: agentStatus === 'READY' ? '0 0 10px rgba(0,167,71,0.14)' : 'none',
+              transition: 'background 0.16s ease,border-color 0.16s ease,color 0.16s ease',
               letterSpacing: 0.4,
             }}
           >
             <span style={{
               width: 8, height: 8, borderRadius: '50%',
               background: agentStatus === 'READY' ? 'var(--green-2)' : 'var(--muted)',
-              boxShadow: agentStatus === 'READY' ? '0 0 10px rgba(0,167,71,0.30)' : 'none',
-            }} className={agentStatus === 'READY' ? 'pulse-dot' : ''}/>
+              boxShadow: agentStatus === 'READY' ? '0 0 6px rgba(0,167,71,0.22)' : 'none',
+            }} />
             {agentStatus === 'READY' ? 'READY' : 'OFFLINE'}
           </motion.button>
         </div>
@@ -781,7 +802,7 @@ export default function Dialer() {
               borderRadius: 'var(--radius-md)',
               color: 'var(--text)',
               fontSize: 13, outline: 'none',
-              backdropFilter: 'blur(8px)',
+              backdropFilter: 'none',
             }}
           >
             <option value="">— Select a campaign —</option>
@@ -802,11 +823,11 @@ export default function Dialer() {
               exit={{ opacity: 0, y: -10, scale: 0.96 }}
               style={{
                 position: 'relative',
-                background: 'linear-gradient(135deg, rgba(0,167,71,0.10), transparent)',
+                background: 'rgba(0,167,71,0.08)',
                 border: '1px solid var(--green-2)',
                 borderRadius: 'var(--radius-lg)',
                 padding: 18,
-                boxShadow: '0 0 30px rgba(0,167,71,0.30)',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.10)',
                 overflow: 'hidden',
               }}
             >
@@ -814,7 +835,7 @@ export default function Dialer() {
               <div style={{
                 position: 'absolute', top: -40, right: -40,
                 width: 140, height: 140, borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(0,167,71,0.30) 0%, transparent 60%)',
+                background: 'rgba(0,167,71,0.08)',
                 pointerEvents: 'none',
               }}/>
 
@@ -827,8 +848,8 @@ export default function Dialer() {
                 <span style={{
                   width: 8, height: 8, borderRadius: '50%',
                   background: 'var(--green-2)',
-                  boxShadow: '0 0 10px rgba(0,167,71,0.30)',
-                }} className="pulse-dot"/>
+                  boxShadow: '0 0 6px rgba(0,167,71,0.22)',
+                }} />
                 Live Call
               </div>
 
@@ -847,7 +868,7 @@ export default function Dialer() {
                 color: 'var(--green-2)',
                 textAlign: 'center', marginBottom: 14,
                 fontVariantNumeric: 'tabular-nums',
-                textShadow: '0 0 20px rgba(0,167,71,0.30)',
+                textShadow: 'none',
               }}>
                 {fmt(elapsed)}
               </div>
@@ -870,13 +891,13 @@ export default function Dialer() {
                   disabled={endingCall}
                   style={{
                   flex: 1, padding: '10px',
-                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                  background: '#ef4444',
                   border: 'none',
                   borderRadius: 'var(--radius-md)',
                   color: '#fff',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   fontSize: 12.5, fontWeight: 700,
-                  boxShadow: 'var(--glow-danger)',
+                  boxShadow: '0 8px 18px rgba(239,68,68,0.16)',
                   opacity: endingCall ? 0.7 : 1,
                   cursor: endingCall ? 'wait' : 'pointer',
                 }}>
@@ -895,14 +916,14 @@ export default function Dialer() {
           disabled={loading || agentStatus === 'OFFLINE'}
           style={{
             width: '100%', padding: '13px',
-            background: isDialing ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'var(--grad-brand)',
+            background: isDialing ? '#ef4444' : 'var(--grad-brand)',
             border: 'none',
             borderRadius: 'var(--radius-md)',
             color: '#fff', fontWeight: 700, fontSize: 14,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             opacity: (loading || agentStatus === 'OFFLINE') ? 0.5 : 1,
             cursor: (loading || agentStatus === 'OFFLINE') ? 'not-allowed' : 'pointer',
-            boxShadow: isDialing ? 'var(--glow-danger)' : 'var(--shadow-pink)',
+            boxShadow: isDialing ? '0 8px 18px rgba(239,68,68,0.16)' : '0 8px 18px rgba(251,11,140,0.16)',
             letterSpacing: 0.3,
           }}
         >
@@ -959,7 +980,7 @@ export default function Dialer() {
               fontSize: 12, color: 'var(--text-2)',
               textAlign: 'center', padding: '10px 12px',
               background: 'var(--bg-glass)',
-              backdropFilter: 'blur(8px)',
+              backdropFilter: 'none',
               border: '1px solid var(--border)',
               borderRadius: 'var(--radius-md)',
             }}
@@ -990,7 +1011,7 @@ export default function Dialer() {
             justifyContent: 'space-between',
             gap: 14,
             borderBottom: voiceDeskOpen ? '1px solid var(--border)' : 'none',
-            background: 'linear-gradient(135deg,rgba(251,11,140,0.08),rgba(0,245,160,0.045))',
+            background: 'rgba(255,255,255,0.035)',
           }}
         >
           <div style={{ minWidth: 0 }}>
@@ -1033,9 +1054,7 @@ export default function Dialer() {
                   fontWeight: 950,
                   textTransform: 'uppercase',
                   letterSpacing: 0.65,
-                  boxShadow: hiddenDeskStatus.active
-                    ? '0 0 24px rgba(255,59,95,0.12)'
-                    : '0 0 22px rgba(0,245,160,0.10)',
+                  boxShadow: 'none',
                 }}
               >
                 <span
@@ -1045,8 +1064,8 @@ export default function Dialer() {
                     borderRadius: '50%',
                     background: hiddenDeskStatus.active ? '#ff3b5f' : 'var(--green-2)',
                     boxShadow: hiddenDeskStatus.active
-                      ? '0 0 12px rgba(255,59,95,0.60)'
-                      : '0 0 12px rgba(0,245,160,0.55)',
+                      ? '0 0 6px rgba(255,59,95,0.30)'
+                      : '0 0 6px rgba(0,245,160,0.26)',
                   }}
                 />
                 {hiddenDeskStatus.label}
@@ -1118,7 +1137,7 @@ export default function Dialer() {
                     border: '1px solid rgba(0,245,160,0.18)',
                     background: liveSipCall
                       ? 'transparent'
-                      : 'linear-gradient(145deg,rgba(5,4,11,0.92),rgba(18,13,31,0.76))',
+                      : 'rgba(8,5,18,0.90)',
                     overflow: 'hidden',
                     position: 'relative',
                   }}
@@ -1146,9 +1165,9 @@ export default function Dialer() {
                             margin: '0 auto 14px',
                             display: 'grid',
                             placeItems: 'center',
-                            background: 'linear-gradient(145deg,rgba(0,245,160,0.16),rgba(251,11,140,0.10))',
+                            background: 'rgba(0,245,160,0.10)',
                             border: '1px solid rgba(255,255,255,0.12)',
-                            boxShadow: '0 0 36px rgba(0,245,160,0.12)',
+                            boxShadow: 'none',
                           }}
                         >
                           <Activity size={22} color="var(--green-2)" />
@@ -1161,7 +1180,7 @@ export default function Dialer() {
                             color: '#fff',
                             marginBottom: 7,
                             letterSpacing: 0.2,
-                            textShadow: '0 0 20px rgba(0,245,160,0.20)',
+                            textShadow: 'none',
                           }}
                         >
                           Call pop-up standby
@@ -1229,7 +1248,7 @@ export default function Dialer() {
                 border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-md)',
                 color: 'var(--text)', fontSize: 13, outline: 'none',
-                backdropFilter: 'blur(8px)',
+                backdropFilter: 'none',
               }}
             />
           </div>
@@ -1247,7 +1266,7 @@ export default function Dialer() {
                     color: 'var(--text-3)',
                     textTransform: 'uppercase', letterSpacing: 1,
                     borderBottom: '1px solid var(--border)',
-                    backdropFilter: 'blur(8px)',
+                    backdropFilter: 'none',
                   }}>
                     {h}
                   </th>

@@ -187,14 +187,14 @@ const brand = {
 function glassCard(active = false) {
   return {
     background: active
-      ? "linear-gradient(145deg,rgba(0,245,160,0.12),rgba(251,11,140,0.07)),rgba(255,255,255,0.045)"
+      ? "linear-gradient(145deg,rgba(0,245,160,0.10),rgba(251,11,140,0.045)),rgba(255,255,255,0.040)"
       : "linear-gradient(145deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))",
     border: active
       ? "1px solid rgba(0,245,160,0.32)"
       : "1px solid rgba(255,255,255,0.105)",
     boxShadow: active
-      ? "inset 0 1px 0 rgba(255,255,255,0.10),0 18px 44px rgba(0,245,160,0.10)"
-      : "inset 0 1px 0 rgba(255,255,255,0.085),0 14px 38px rgba(0,0,0,0.26)",
+      ? "inset 0 1px 0 rgba(255,255,255,0.08),0 10px 24px rgba(0,245,160,0.07)"
+      : "inset 0 1px 0 rgba(255,255,255,0.075),0 8px 20px rgba(0,0,0,0.20)",
   };
 }
 
@@ -218,61 +218,34 @@ function Waveform({ active }: { active: boolean }) {
           "linear-gradient(135deg,rgba(0,245,160,0.10),rgba(251,11,140,0.07),rgba(139,92,246,0.10))",
         border: "1px solid rgba(255,255,255,0.11)",
         boxShadow:
-          "inset 0 1px 0 rgba(255,255,255,0.08),0 18px 36px rgba(0,0,0,0.22)",
+          "inset 0 1px 0 rgba(255,255,255,0.07),0 8px 18px rgba(0,0,0,0.18)",
         overflow: "hidden",
         position: "relative",
       }}
     >
-      <motion.div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "linear-gradient(90deg,transparent,rgba(0,245,160,0.10),transparent)",
-          pointerEvents: "none",
-        }}
-        animate={active ? { x: ["-100%", "100%"] } : { x: "-100%" }}
-        transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
-      />
-      {bars.map((h, i) =>
-        active ? (
-          <motion.div
-            key={i}
-            style={{
-              width: 4,
-              borderRadius: 999,
-              background:
-                i % 3 === 0
-                  ? `linear-gradient(180deg,${brand.green},${brand.cyan})`
-                  : i % 3 === 1
-                    ? `linear-gradient(180deg,${brand.pink},${brand.purple})`
-                    : `linear-gradient(180deg,#fff,${brand.green})`,
-              boxShadow:
-                i % 3 === 0
-                  ? "0 0 14px rgba(0,245,160,0.78)"
-                  : "0 0 14px rgba(251,11,140,0.58)",
-              position: "relative",
-            }}
-            animate={{ height: [h * 7, h * 28, h * 7] }}
-            transition={{
-              duration: 0.62 + i * 0.035,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: i * 0.035,
-            }}
-          />
-        ) : (
-          <div
-            key={i}
-            style={{
-              width: 4,
-              height: 6,
-              borderRadius: 999,
-              background: "rgba(255,255,255,0.16)",
-            }}
-          />
-        ),
-      )}
+      {bars.map((h, i) => (
+        <div
+          key={i}
+          style={{
+            width: 4,
+            height: active ? Math.max(8, h * 18) : 6,
+            borderRadius: 999,
+            background: active
+              ? i % 3 === 0
+                ? `linear-gradient(180deg,${brand.green},${brand.cyan})`
+                : i % 3 === 1
+                  ? `linear-gradient(180deg,${brand.pink},${brand.purple})`
+                  : `linear-gradient(180deg,#fff,${brand.green})`
+              : "rgba(255,255,255,0.16)",
+            boxShadow: active && i % 3 === 0
+              ? "0 0 8px rgba(0,245,160,0.38)"
+              : active
+                ? "0 0 8px rgba(251,11,140,0.28)"
+                : "none",
+            position: "relative",
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -377,16 +350,16 @@ function DialKey({
         transform: pressed
           ? "translateY(2px) scale(0.94)"
           : hovered
-            ? "translateY(-2px) scale(1.035)"
+            ? "translateY(-1px) scale(1.01)"
             : "translateY(0) scale(1)",
-        transition: "all 0.16s cubic-bezier(0.34,1.56,0.64,1)",
+        transition: "background 0.12s ease,border-color 0.12s ease,transform 0.08s ease",
         boxShadow: pressed
-          ? "inset 0 5px 16px rgba(0,0,0,0.44)"
+          ? "inset 0 4px 12px rgba(0,0,0,0.34)"
           : hovered
             ? isPrimary
-              ? "0 18px 36px rgba(0,245,160,0.18),0 0 0 4px rgba(0,245,160,0.06),inset 0 1px 0 rgba(255,255,255,0.18)"
-              : "0 18px 36px rgba(251,11,140,0.16),0 0 0 4px rgba(251,11,140,0.055),inset 0 1px 0 rgba(255,255,255,0.16)"
-            : "0 12px 22px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.10)",
+              ? "0 10px 20px rgba(0,245,160,0.10),inset 0 1px 0 rgba(255,255,255,0.16)"
+              : "0 10px 20px rgba(251,11,140,0.09),inset 0 1px 0 rgba(255,255,255,0.14)"
+            : "0 7px 14px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.09)",
         justifySelf: embedded ? "stretch" : "center",
         color: brand.ink,
         position: "relative",
@@ -457,7 +430,7 @@ function StatusBadge({
         borderRadius: 999,
         padding: "5px 11px 5px 9px",
         border: `1px solid ${color}55`,
-        boxShadow: `0 0 22px ${color}18,inset 0 1px 0 rgba(255,255,255,0.10)`,
+        boxShadow: `0 0 10px ${color}12,inset 0 1px 0 rgba(255,255,255,0.08)`,
       }}
     >
       <div style={{ position: "relative", width: 8, height: 8 }}>
@@ -471,15 +444,13 @@ function StatusBadge({
           }}
         />
         {pulse && (
-          <motion.div
+          <div
             style={{
               position: "absolute",
-              inset: -4,
+              inset: -3,
               borderRadius: "50%",
-              border: `1.5px solid ${color}`,
+              border: `1px solid ${color}55`,
             }}
-            animate={{ scale: [1, 2.1], opacity: [0.85, 0] }}
-            transition={{ duration: 1.15, repeat: Infinity, ease: "easeOut" }}
           />
         )}
       </div>
@@ -1332,23 +1303,6 @@ export default function FloatingDialer({
   return (
     <>
       <style>{`
-        @keyframes ptdt-spin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-        @keyframes ptdt-float {
-          0%,100% { transform: translateY(0px); }
-          50%      { transform: translateY(-4px); }
-        }
-        @keyframes ptdt-glow-pan {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        @keyframes ptdt-grid-drift {
-          from { background-position: 0 0; }
-          to { background-position: 44px 44px; }
-        }
         .ptdt-panel::-webkit-scrollbar { width: 4px; }
         .ptdt-panel::-webkit-scrollbar-track { background: transparent; }
         .ptdt-panel::-webkit-scrollbar-thumb {
@@ -1387,23 +1341,19 @@ export default function FloatingDialer({
                 height: isEmbedded ? "100%" : undefined,
                 minHeight: isEmbedded ? 376 : undefined,
                 borderRadius: isEmbedded ? 26 : 34,
-                background: `
-                  radial-gradient(circle at 18% 0%,rgba(251,11,140,0.25),transparent 34%),
-                  radial-gradient(circle at 88% 4%,rgba(0,245,160,0.18),transparent 34%),
-                  radial-gradient(circle at 50% 102%,rgba(139,92,246,0.26),transparent 38%),
-                  linear-gradient(152deg,rgba(8,5,18,0.98),rgba(14,9,27,0.965) 48%,rgba(6,5,14,0.985))
-                `,
-                backdropFilter: "blur(26px) saturate(1.18)",
-                WebkitBackdropFilter: "blur(26px) saturate(1.18)",
+                background:
+                  "linear-gradient(152deg,rgba(8,5,18,0.985),rgba(14,9,27,0.965) 52%,rgba(6,5,14,0.985))",
+                backdropFilter: "none",
+                WebkitBackdropFilter: "none",
                 border: "1px solid rgba(255,255,255,0.13)",
                 boxShadow: ripple
-                  ? "0 0 0 4px rgba(251,11,140,0.18),0 0 95px rgba(251,11,140,0.42),0 34px 92px rgba(0,0,0,0.62)"
+                  ? "0 0 0 3px rgba(251,11,140,0.12),0 20px 48px rgba(0,0,0,0.46)"
                   : state === "active"
-                    ? "0 0 0 1px rgba(0,245,160,0.34),0 0 80px rgba(0,245,160,0.24),0 34px 92px rgba(0,0,0,0.62)"
-                    : "0 0 0 1px rgba(251,11,140,0.18),0 30px 84px rgba(0,0,0,0.62),0 0 72px rgba(139,92,246,0.20)",
+                    ? "0 0 0 1px rgba(0,245,160,0.24),0 20px 48px rgba(0,0,0,0.46)"
+                    : "0 0 0 1px rgba(251,11,140,0.14),0 18px 44px rgba(0,0,0,0.46)",
                 overflow: "hidden",
                 userSelect: "none",
-                transition: "box-shadow 0.38s ease",
+                transition: "box-shadow 0.18s ease",
                 position: "relative",
                 color: brand.ink,
                 display: isEmbedded ? "flex" : undefined,
@@ -1424,11 +1374,11 @@ export default function FloatingDialer({
                     "linear-gradient(to bottom,rgba(0,0,0,0.72),transparent 74%)",
                   WebkitMaskImage:
                     "linear-gradient(to bottom,rgba(0,0,0,0.72),transparent 74%)",
-                  animation: "ptdt-grid-drift 16s linear infinite",
+                  opacity: 0.34,
                   pointerEvents: "none",
                 }}
               />
-              <motion.div
+              <div
                 style={{
                   position: "absolute",
                   top: -120,
@@ -1437,18 +1387,12 @@ export default function FloatingDialer({
                   height: 260,
                   borderRadius: "50%",
                   background:
-                    "radial-gradient(circle,rgba(251,11,140,0.25),transparent 66%)",
-                  filter: "blur(8px)",
+                    "radial-gradient(circle,rgba(251,11,140,0.12),transparent 66%)",
+                  opacity: 0.72,
                   pointerEvents: "none",
                 }}
-                animate={{ scale: [1, 1.18, 1], opacity: [0.52, 0.82, 0.52] }}
-                transition={{
-                  duration: 5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
               />
-              <motion.div
+              <div
                 style={{
                   position: "absolute",
                   right: -130,
@@ -1457,16 +1401,9 @@ export default function FloatingDialer({
                   height: 280,
                   borderRadius: "50%",
                   background:
-                    "radial-gradient(circle,rgba(0,245,160,0.19),transparent 68%)",
-                  filter: "blur(8px)",
+                    "radial-gradient(circle,rgba(0,245,160,0.10),transparent 68%)",
+                  opacity: 0.72,
                   pointerEvents: "none",
-                }}
-                animate={{ scale: [1, 1.14, 1], opacity: [0.5, 0.78, 0.5] }}
-                transition={{
-                  duration: 4.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 0.6,
                 }}
               />
 
@@ -1506,22 +1443,15 @@ export default function FloatingDialer({
                         flexShrink: 0,
                       }}
                     >
-                      <motion.div
+                      <div
                         style={{
                           position: "absolute",
                           inset: -4,
                           borderRadius: "50%",
                           background:
                             state === "active"
-                              ? `conic-gradient(from 0deg,transparent,${brand.green},transparent,${brand.cyan},transparent)`
-                              : `conic-gradient(from 0deg,transparent,${brand.pink},transparent,${brand.green},transparent,${brand.purple},transparent)`,
-                          filter: "drop-shadow(0 0 14px rgba(251,11,140,0.45))",
-                        }}
-                        animate={{ rotate: 360 }}
-                        transition={{
-                          duration: state === "active" ? 2.2 : 4.4,
-                          repeat: Infinity,
-                          ease: "linear",
+                              ? "rgba(0,245,160,0.18)"
+                              : "rgba(251,11,140,0.16)",
                         }}
                       />
                       <div
@@ -1536,8 +1466,8 @@ export default function FloatingDialer({
                           justifyContent: "center",
                           boxShadow:
                             state === "active"
-                              ? "0 0 28px rgba(0,245,160,0.38),inset 0 1px 0 rgba(255,255,255,0.16)"
-                              : "0 0 28px rgba(251,11,140,0.30),inset 0 1px 0 rgba(255,255,255,0.16)",
+                              ? "0 0 7px rgba(0,245,160,0.14),inset 0 1px 0 rgba(255,255,255,0.12)"
+                              : "0 0 7px rgba(251,11,140,0.12),inset 0 1px 0 rgba(255,255,255,0.12)",
                         }}
                       >
                         <div
@@ -1554,8 +1484,8 @@ export default function FloatingDialer({
                             justifyContent: "center",
                             boxShadow:
                               state === "active"
-                                ? "0 0 20px rgba(0,245,160,0.60)"
-                                : "0 0 20px rgba(251,11,140,0.48)",
+                                ? "0 0 6px rgba(0,245,160,0.18)"
+                                : "0 0 6px rgba(251,11,140,0.16)",
                           }}
                         >
                           <Phone size={16} color="#fff" />
@@ -1575,7 +1505,6 @@ export default function FloatingDialer({
                           WebkitBackgroundClip: "text",
                           WebkitTextFillColor: "transparent",
                           backgroundClip: "text",
-                          animation: "ptdt-glow-pan 5s ease infinite",
                         }}
                       >
                         PTDT-DIALER
@@ -1701,27 +1630,6 @@ export default function FloatingDialer({
                       pointerEvents: "none",
                     }}
                   />
-                  <motion.div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: "-72%",
-                      width: "48%",
-                      height: "100%",
-                      background:
-                        "linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent)",
-                      pointerEvents: "none",
-                      transform: "skewX(-16deg)",
-                    }}
-                    animate={{ left: ["-72%", "124%"] }}
-                    transition={{
-                      duration: 3.6,
-                      repeat: Infinity,
-                      repeatDelay: 2.2,
-                      ease: "easeInOut",
-                    }}
-                  />
-
                   {state === "active" ? (
                     <>
                       <div
@@ -2097,8 +2005,8 @@ export default function FloatingDialer({
                         onClick={handleCall}
                         disabled={loading || state === "calling"}
                         whileHover={{
-                          scale: loading || state === "calling" ? 1 : 1.025,
-                          y: loading || state === "calling" ? 0 : -1,
+                          scale: loading || state === "calling" ? 1 : 1.006,
+                          y: 0,
                         }}
                         whileTap={{
                           scale: loading || state === "calling" ? 1 : 0.965,
@@ -2111,7 +2019,7 @@ export default function FloatingDialer({
                             loading || state === "calling" ? "wait" : "pointer",
                           background:
                             loading || state === "calling"
-                              ? "linear-gradient(135deg,rgba(34,211,238,0.26),rgba(139,92,246,0.20))"
+                              ? "rgba(34,211,238,0.20)"
                               : `linear-gradient(135deg,${brand.green},#09c990 40%,${brand.pink})`,
                           border: "none",
                           color: "#03100b",
@@ -2124,29 +2032,13 @@ export default function FloatingDialer({
                           gap: 9,
                           boxShadow:
                             loading || state === "calling"
-                              ? "0 16px 36px rgba(34,211,238,0.18),inset 0 1px 0 rgba(255,255,255,0.22)"
-                              : "0 18px 42px rgba(0,245,160,0.24),0 0 35px rgba(251,11,140,0.17),inset 0 1px 0 rgba(255,255,255,0.34)",
+                              ? "0 6px 14px rgba(34,211,238,0.08),inset 0 1px 0 rgba(255,255,255,0.14)"
+                              : "0 7px 16px rgba(0,245,160,0.10),inset 0 1px 0 rgba(255,255,255,0.18)",
                           opacity: loading || state === "calling" ? 0.82 : 1,
                           position: "relative",
                           overflow: "hidden",
                         }}
                       >
-                        <motion.div
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            background:
-                              "linear-gradient(90deg,transparent,rgba(255,255,255,0.30),transparent)",
-                            transform: "skewX(-18deg)",
-                          }}
-                          animate={{ x: ["-130%", "130%"] }}
-                          transition={{
-                            duration: 2.8,
-                            repeat: Infinity,
-                            repeatDelay: 2.5,
-                            ease: "easeInOut",
-                          }}
-                        />
                         <span
                           style={{
                             position: "relative",
@@ -2177,7 +2069,7 @@ export default function FloatingDialer({
                             height: isEmbedded ? 52 : 57,
                             borderRadius: isEmbedded ? 20 : 24,
                             border: "1px solid rgba(255,59,95,0.42)",
-                            background: "linear-gradient(135deg,rgba(255,59,95,0.95),rgba(225,29,72,0.86))",
+                            background: "rgba(255,59,95,0.90)",
                             color: "#fff",
                             fontWeight: 950,
                             fontSize: isEmbedded ? 13.5 : 12,
@@ -2186,7 +2078,7 @@ export default function FloatingDialer({
                             alignItems: "center",
                             justifyContent: "center",
                             gap: 8,
-                            boxShadow: "0 18px 38px rgba(255,59,95,0.22),inset 0 1px 0 rgba(255,255,255,0.18)",
+                            boxShadow: "0 7px 16px rgba(255,59,95,0.11),inset 0 1px 0 rgba(255,255,255,0.12)",
                           }}
                         >
                           <PhoneOff size={16} />
@@ -2347,33 +2239,12 @@ export default function FloatingDialer({
                           display: "inline-block",
                         }}
                       >
-                        <motion.div
-                          style={{
-                            position: "absolute",
-                            inset: -14,
-                            borderRadius: "50%",
-                            background:
-                              "radial-gradient(circle,rgba(0,245,160,0.16),transparent 64%)",
-                          }}
-                          animate={{ scale: [1, 1.32], opacity: [0.78, 0] }}
-                          transition={{
-                            duration: 1.45,
-                            repeat: Infinity,
-                            ease: "easeOut",
-                          }}
-                        />
-                        <motion.div
+                        <div
                           style={{
                             position: "absolute",
                             inset: -7,
                             borderRadius: "50%",
-                            border: "2px solid rgba(0,245,160,0.34)",
-                          }}
-                          animate={{ rotate: 360 }}
-                          transition={{
-                            duration: 8,
-                            repeat: Infinity,
-                            ease: "linear",
+                            border: "1px solid rgba(0,245,160,0.26)",
                           }}
                         />
                         <div
@@ -2504,8 +2375,8 @@ export default function FloatingDialer({
                             height: 50,
                             borderRadius: 23,
                             background: muted
-                              ? "linear-gradient(145deg,rgba(255,59,95,0.22),rgba(255,59,95,0.10))"
-                              : "linear-gradient(145deg,rgba(255,255,255,0.075),rgba(255,255,255,0.030))",
+                              ? "rgba(255,59,95,0.13)"
+                              : "rgba(255,255,255,0.045)",
                             border: muted
                               ? "1px solid rgba(255,59,95,0.36)"
                               : "1px solid rgba(255,255,255,0.105)",
@@ -2518,9 +2389,9 @@ export default function FloatingDialer({
                             fontSize: 13,
                             cursor: "pointer",
                             marginBottom: 10,
-                            transition: "all .2s",
+                            transition: "background .14s ease,border-color .14s ease,color .14s ease",
                             boxShadow: muted
-                              ? "0 14px 30px rgba(255,59,95,0.12),inset 0 1px 0 rgba(255,255,255,0.10)"
+                              ? "0 7px 16px rgba(255,59,95,0.09),inset 0 1px 0 rgba(255,255,255,0.08)"
                               : "inset 0 1px 0 rgba(255,255,255,0.08)",
                           }}
                         >
@@ -2632,24 +2503,17 @@ export default function FloatingDialer({
                               border: "1px solid rgba(255,255,255,0.08)",
                             }}
                           >
-                            <motion.div
-                              animate={{
-                                width: `${Math.round(microphoneLevel * 100)}%`,
-                              }}
-                              transition={{
-                                type: "spring",
-                                stiffness: 220,
-                                damping: 24,
-                              }}
+                            <div
                               style={{
+                                width: `${Math.round(microphoneLevel * 100)}%`,
                                 height: "100%",
                                 borderRadius: 999,
                                 background: muted
                                   ? "linear-gradient(90deg,rgba(255,59,95,0.35),rgba(255,59,95,0.50))"
-                                  : "linear-gradient(90deg,#22d3ee,#00f5a0,#fb0b8c)",
+                                  : "linear-gradient(90deg,#22d3ee,#00f5a0)",
                                 boxShadow: muted
                                   ? "none"
-                                  : "0 0 16px rgba(0,245,160,0.35)",
+                                  : "0 0 8px rgba(0,245,160,0.20)",
                               }}
                             />
                           </div>
@@ -2994,7 +2858,7 @@ export default function FloatingDialer({
                     {/* Hang Up */}
                     <motion.button
                       onClick={handleHangup}
-                      whileHover={{ scale: 1.025, y: -2 }}
+                      whileHover={{ scale: 1.01, y: 0 }}
                       whileTap={{ scale: 0.955 }}
                       style={{
                         width: "100%",
@@ -3002,7 +2866,7 @@ export default function FloatingDialer({
                         borderRadius: 25,
                         cursor: "pointer",
                         background:
-                          "linear-gradient(135deg,#ff3b5f,#e11d48,#9f1239)",
+                          "rgba(255,59,95,0.94)",
                         border: "1px solid rgba(255,255,255,0.10)",
                         color: "#fff",
                         fontWeight: 950,
@@ -3012,8 +2876,8 @@ export default function FloatingDialer({
                         justifyContent: "center",
                         gap: 10,
                         boxShadow:
-                          "0 18px 42px rgba(255,59,95,0.30),inset 0 1px 0 rgba(255,255,255,0.18)",
-                        transition: "all .18s",
+                          "0 9px 20px rgba(255,59,95,0.18),inset 0 1px 0 rgba(255,255,255,0.14)",
+                        transition: "background .14s ease,transform .08s ease",
                         letterSpacing: 0.15,
                       }}
                     >
@@ -3027,10 +2891,8 @@ export default function FloatingDialer({
                 <div
                   style={{
                     height: 5,
-                    background: `linear-gradient(90deg,${brand.pink},${brand.green},${brand.cyan},${brand.pink})`,
-                    backgroundSize: "220% 100%",
-                    animation: "ptdt-glow-pan 4s ease infinite",
-                    boxShadow: "0 -10px 34px rgba(251,11,140,0.20)",
+                    background: "rgba(0,245,160,0.36)",
+                    boxShadow: "none",
                   }}
                 />
               )}
@@ -3051,14 +2913,12 @@ export default function FloatingDialer({
               cursor: "pointer",
               border: "1px solid rgba(255,255,255,0.14)",
               color: brand.ink,
-              background:
-                "linear-gradient(145deg,rgba(251,11,140,0.18),rgba(0,245,160,0.10))",
+              background: "rgba(16,10,30,0.94)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
-              boxShadow:
-                "0 14px 34px rgba(0,0,0,0.28),0 0 28px rgba(251,11,140,0.13)",
+              boxShadow: "0 8px 18px rgba(0,0,0,0.20)",
               fontSize: 11,
               fontWeight: 950,
               letterSpacing: 0.7,
@@ -3076,13 +2936,7 @@ export default function FloatingDialer({
           <motion.button
             onClick={handleFABClick}
             title="PTDT-Dialer (Alt+D)"
-            animate={state === "collapsed" ? { y: [0, -5, 0] } : {}}
-            transition={
-              state === "collapsed"
-                ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
-                : {}
-            }
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.9 }}
             style={{
               width: 68,
@@ -3100,50 +2954,25 @@ export default function FloatingDialer({
               justifyContent: "center",
               boxShadow:
                 state === "active"
-                  ? "0 0 0 8px rgba(0,245,160,0.12),0 18px 46px rgba(0,245,160,0.40),0 0 54px rgba(0,245,160,0.28)"
-                  : "0 0 0 8px rgba(251,11,140,0.12),0 18px 46px rgba(251,11,140,0.38),0 0 54px rgba(139,92,246,0.26)",
-              transition: "background 0.3s, box-shadow 0.3s",
+                  ? "0 0 0 4px rgba(0,245,160,0.06),0 8px 20px rgba(0,245,160,0.14)"
+                  : "0 0 0 4px rgba(251,11,140,0.06),0 8px 20px rgba(251,11,140,0.13)",
+              transition: "background 0.18s, box-shadow 0.18s",
               flexShrink: 0,
               position: "relative",
               overflow: "visible",
             }}
           >
-          <motion.div
+          <div
             style={{
               position: "absolute",
               inset: -8,
               borderRadius: "50%",
               background:
                 state === "active"
-                  ? `conic-gradient(from 0deg,transparent,${brand.green},transparent,${brand.cyan},transparent)`
-                  : `conic-gradient(from 0deg,transparent,${brand.pink},transparent,${brand.green},transparent)`,
-              opacity: 0.9,
+                  ? `linear-gradient(145deg,rgba(0,245,160,0.34),rgba(34,211,238,0.14))`
+                  : `linear-gradient(145deg,rgba(251,11,140,0.32),rgba(139,92,246,0.16))`,
+              opacity: 0.78,
               zIndex: -1,
-              filter: "blur(0.2px)",
-            }}
-            animate={{ rotate: 360 }}
-            transition={{
-              duration: state === "active" ? 2.5 : 5,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-          />
-          <motion.div
-            style={{
-              position: "absolute",
-              inset: -16,
-              borderRadius: "50%",
-              border:
-                state === "active"
-                  ? "1.5px solid rgba(0,245,160,0.38)"
-                  : "1.5px solid rgba(251,11,140,0.34)",
-              pointerEvents: "none",
-            }}
-            animate={{ scale: [1, 1.22], opacity: [0.62, 0] }}
-            transition={{
-              duration: state === "active" ? 1.25 : 1.8,
-              repeat: Infinity,
-              ease: "easeOut",
             }}
           />
           <AnimatePresence mode="wait">
