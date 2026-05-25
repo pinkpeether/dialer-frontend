@@ -22,6 +22,7 @@ import AuditLogs              from './pages/AuditLogs'
 import SystemSettings         from './pages/SystemSettings'
 import Recordings             from './pages/Recordings'
 import OpsCenter              from './pages/OpsCenter'
+import ProductionMonitoring   from './pages/ProductionMonitoring'
 import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
 import ToastProvider           from './components/ToastProvider'
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="/settings/system"   element={<SystemSettings />} />
             <Route path="/recordings"        element={<Recordings />}     />
             <Route path="/ops"               element={<OpsCenter />}      />
+            <Route path="/monitoring"        element={<ProductionMonitoring />} />
             <Route path="*"                  element={<NotFound />}       />
           </Route>
 

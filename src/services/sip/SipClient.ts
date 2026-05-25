@@ -308,7 +308,7 @@ class SipClient {
       this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
       this.handlers.onCallEnded?.()
       this.handlers.onError?.(message)
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }
 
@@ -337,7 +337,7 @@ class SipClient {
       this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
       this.handlers.onCallEnded?.()
       this.handlers.onError?.(message)
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }
 
