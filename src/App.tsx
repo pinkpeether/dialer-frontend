@@ -25,6 +25,7 @@ import SystemSettings         from './pages/SystemSettings'
 import Recordings             from './pages/Recordings'
 import OpsCenter              from './pages/OpsCenter'
 import ProductionMonitoring   from './pages/ProductionMonitoring'
+import SupportDiagnostics     from './pages/SupportDiagnostics'
 import Unauthorized           from './pages/Unauthorized'
 import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
@@ -78,6 +79,7 @@ export default function App() {
             <Route path="/recordings"         element={<RoleRoute roles={adminSupervisorRoles}><Recordings /></RoleRoute>}     />
             <Route path="/ops"                element={<RoleRoute roles={adminSupervisorRoles}><OpsCenter /></RoleRoute>}      />
             <Route path="/monitoring"         element={<RoleRoute roles={adminSupervisorRoles}><ProductionMonitoring /></RoleRoute>} />
+            <Route path="/support/diagnostics" element={<RoleRoute roles={adminSupervisorRoles}><SupportDiagnostics /></RoleRoute>} />
             <Route path="/unauthorized"       element={<Unauthorized />} />
             <Route path="*"                  element={<NotFound />}       />
           </Route>
