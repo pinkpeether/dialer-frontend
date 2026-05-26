@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/auth.store'
 import { authAPI }      from '../api/auth.api'
 import ThemeToggle      from './ThemeToggle'
 import NotificationBell from './NotificationBell'
+import DesktopUpdateControl from './DesktopUpdateControl'
 import { useSipStore } from '../store/sip.store'
 
 type NavItem = {
@@ -49,6 +50,7 @@ export default function Sidebar() {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem('ptdt-performance-mode') === 'on'
   })
+  const [desktopVersion, setDesktopVersion] = useState('')
 
   const userRole = (user as Record<string, unknown> | null)?.role as string | undefined
 
@@ -70,6 +72,21 @@ export default function Sidebar() {
     document.documentElement.dataset.performanceMode = next
     window.localStorage.setItem('ptdt-performance-mode', next)
   }, [performanceMode])
+
+  useEffect(() => {
+    let mounted = true
+    void window.ptdtDesktop?.getAppVersion()
+      .then(version => {
+        if (mounted) setDesktopVersion(version)
+      })
+      .catch(() => {
+        if (mounted) setDesktopVersion('')
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   return (
     <aside style={{
@@ -236,6 +253,24 @@ export default function Sidebar() {
         />
         Performance {performanceMode ? 'On' : 'Off'}
       </button>
+
+      {desktopVersion && (
+        <div
+          className="mono"
+          style={{
+            margin: '0 8px 10px',
+            fontSize: 9.5,
+            color: 'var(--muted)',
+            textAlign: 'center',
+            letterSpacing: 0.7,
+            textTransform: 'uppercase',
+          }}
+        >
+          Desktop v{desktopVersion}
+        </div>
+      )}
+
+      <DesktopUpdateControl />
 
       {/* User profile + bell + logout */}
       <div style={{ paddingTop: 6 }}>

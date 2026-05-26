@@ -2,6 +2,8 @@
   "name": "dialer-frontend",
   "private": true,
   "version": "1.0.0",
+  "description": "PTDT Dialer desktop client",
+  "author": "PTDT",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -10,11 +12,16 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
-    "electron:build": "npm run build && electron-builder"
+    "electron:dev:tools": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && OPEN_DEVTOOLS=true NODE_ENV=development electron .\"",
+    "electron:build": "npm run build && electron-builder",
+    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:win": "npm run build && electron-builder --win",
+    "electron:build:linux": "npm run build && electron-builder --linux"
   },
   "build": {
     "appId": "com.ptdt.dialer",
     "productName": "PTDT Dialer",
+    "afterSign": "electron/notarize.cjs",
     "directories": {
       "output": "release"
     },
@@ -24,9 +31,22 @@
       "public/icon.png",
       "package.json"
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "pinkpeether",
+        "repo": "dialer-frontend",
+        "releaseType": "release"
+      }
+    ],
     "mac": {
       "target": "dmg",
-      "icon": "public/icon.png"
+      "icon": "public/icon.png",
+      "category": "public.app-category.business",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "electron/entitlements.mac.plist",
+      "entitlementsInherit": "electron/entitlements.mac.inherit.plist"
     },
     "win": {
       "target": "nsis",
@@ -40,6 +60,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.100.9",
     "axios": "^1.16.0",
+    "electron-updater": "^6.8.3",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
     "react": "^19.2.5",

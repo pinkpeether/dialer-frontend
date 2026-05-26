@@ -12,6 +12,7 @@ import { campaignsAPI } from '../api/campaigns.api'
 import { agentsAPI } from '../api/agents.api'
 import { useAuthStore } from '../store/auth.store'
 import { useSipStore } from '../store/sip.store'
+import { SOCKET_EVENTS } from '../constants/socketEvents'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -196,6 +197,7 @@ export default function AgentDashboard() {
   const updateUser = useAuthStore(state => state.updateUser)
   const sipStatus = useSipStore(s => s.status)
   const sipConfig = useSipStore(s => s.config)
+  const setSipMuted = useSipStore(s => s.setMuted)
 
   const [agentStatus, setAgentStatus] = useState<AgentStatus>(() => {
     const savedStatus = user?.status as AgentStatus | undefined
@@ -206,6 +208,7 @@ export default function AgentDashboard() {
   const [muted, setMuted] = useState(false)
   const [socketConnected, setSocketConnected] = useState(false)
   const [message, setMessage] = useState('')
+  const [actionPending, setActionPending] = useState(false)
   const socketRef = useRef<Socket | null>(null)
 
   // Live stats from API
@@ -252,7 +255,9 @@ export default function AgentDashboard() {
         avgDurationSeconds: avgDuration,
         loading: false,
       })
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not load live stats'
+      setMessage(msg)
       setLiveStats(prev => ({ ...prev, loading: false }))
     }
   }, [])
@@ -291,8 +296,9 @@ export default function AgentDashboard() {
           createdAt: stringValue(c.createdAt || c.startedAt || c.updatedAt, new Date().toISOString()),
         }))
       )
-    } catch {
-      // keep empty
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not load recent calls'
+      setMessage(msg)
     } finally {
       setRecentLoading(false)
     }
@@ -317,8 +323,9 @@ export default function AgentDashboard() {
           failed: numberValue(c.failedCount ?? c.failed),
         }))
       )
-    } catch {
-      // keep empty
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not load campaigns'
+      setMessage(msg)
     } finally {
       setCampaignLoading(false)
     }
@@ -334,6 +341,7 @@ export default function AgentDashboard() {
     const interval = window.setInterval(() => {
       void fetchLiveStats()
       void fetchRecentCalls()
+      void fetchCampaigns()
     }, 60_000)
 
     return () => window.clearInterval(interval)
@@ -359,7 +367,7 @@ export default function AgentDashboard() {
       setSocketConnected(false)
       setMessage('Realtime channel disconnected')
     })
-    socket.on('call:incoming', (payload: SocketIncomingPayload) => {
+    socket.on(SOCKET_EVENTS.CALL_INCOMING, (payload: SocketIncomingPayload) => {
       const incoming = normalizeIncomingCall(payload)
       if (!incoming) return
       setActiveCall(incoming)
@@ -368,7 +376,7 @@ export default function AgentDashboard() {
       setAgentStatus('BUSY')
       setMessage(`📞 Incoming call from ${incoming.phone}`)
     })
-    socket.on('call:ended', () => {
+    socket.on(SOCKET_EVENTS.CALL_ENDED, () => {
       setActiveCall(null)
       setMuted(false)
       setAgentStatus('READY')
@@ -401,7 +409,7 @@ export default function AgentDashboard() {
     void agentsAPI.updateMyStatus(next)
       .then(() => {
         updateUser({ status: next })
-        socketRef.current?.emit('agent:status', next)
+        socketRef.current?.emit(SOCKET_EVENTS.AGENT_STATUS, next)
       })
       .catch((err) => {
         setAgentStatus(previous)
@@ -410,31 +418,59 @@ export default function AgentDashboard() {
       })
   }
 
-  const handleHangup = () => {
+  const handleMuteToggle = () => {
+    const nextMuted = !muted
+    try {
+      setSipMuted(nextMuted)
+      setMuted(nextMuted)
+      setMessage(nextMuted ? 'Microphone muted' : 'Microphone unmuted')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not update microphone mute state'
+      setMessage(msg)
+    }
+  }
+
+  const handleHangup = async () => {
     if (!activeCall) return
-    socketRef.current?.emit('call:hangup', { callId: activeCall.callId })
-    setMessage('Hangup sent')
+    setActionPending(true)
+    try {
+      await callsAPI.end(activeCall.callId, { endedAt: new Date().toISOString() })
+      socketRef.current?.emit(SOCKET_EVENTS.CALL_HANGUP, { callId: activeCall.callId })
+      setActiveCall(null)
+      setMuted(false)
+      setAgentStatus('READY')
+      updateUser({ status: 'READY' })
+      void agentsAPI.updateMyStatus('READY').catch(() => undefined)
+      setMessage('Call ended')
+      void fetchLiveStats()
+      void fetchRecentCalls()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not hang up call'
+      socketRef.current?.emit(SOCKET_EVENTS.CALL_HANGUP, { callId: activeCall.callId })
+      setMessage(`${msg}. Hangup signal sent over realtime channel.`)
+    } finally {
+      setActionPending(false)
+    }
   }
 
   const handleDisposition = async (payload: DispositionSubmitPayload) => {
     if (!activeCall) return
+    setActionPending(true)
     try {
       await callsAPI.updateDisposition(activeCall.callId, payload)
+      setActiveCall(null)
+      setMuted(false)
+      setAgentStatus('READY')
+      updateUser({ status: 'READY' })
+      await agentsAPI.updateMyStatus('READY')
+      setMessage('✓ Disposition saved')
+      void fetchLiveStats()
+      void fetchRecentCalls()
     } catch {
-      socketRef.current?.emit('call:ended', {
-        callId: activeCall.callId,
-        disposition: payload.disposition,
-        notes: payload.notes,
-      })
+      setMessage('Disposition could not be saved. Please retry before clearing this call.')
+    } finally {
+      setActionPending(false)
     }
-    setActiveCall(null)
-    setMuted(false)
-    setAgentStatus('READY')
-    updateUser({ status: 'READY' })
-    void agentsAPI.updateMyStatus('READY').catch(() => undefined)
-    setMessage('✓ Disposition saved')
-    void fetchLiveStats()
-    void fetchRecentCalls()
   }
 
   const handleManualRefresh = () => {
@@ -655,12 +691,12 @@ export default function AgentDashboard() {
                   </div>
 
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-                    <button type="button" onClick={() => setMuted(m => !m)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border)', background: muted ? 'rgba(240,185,11,0.12)' : 'var(--bg-glass)', color: muted ? 'var(--warning)' : 'var(--text)', fontWeight: 800 }}>
+                    <button type="button" onClick={handleMuteToggle} disabled={actionPending} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border)', background: muted ? 'rgba(240,185,11,0.12)' : 'var(--bg-glass)', color: muted ? 'var(--warning)' : 'var(--text)', fontWeight: 800, opacity: actionPending ? 0.7 : 1, cursor: actionPending ? 'default' : 'pointer' }}>
                       {muted ? <MicOff size={15} /> : <Mic size={15} />}
                       {muted ? 'Muted' : 'Mute'}
                     </button>
-                    <button type="button" onClick={handleHangup} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', borderRadius: 'var(--radius-full)', border: '1px solid rgba(239,68,68,0.32)', background: 'rgba(239,68,68,0.10)', color: 'var(--danger)', fontWeight: 800 }}>
-                      <PhoneOff size={15} /> Hang Up
+                    <button type="button" onClick={() => void handleHangup()} disabled={actionPending} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', borderRadius: 'var(--radius-full)', border: '1px solid rgba(239,68,68,0.32)', background: 'rgba(239,68,68,0.10)', color: 'var(--danger)', fontWeight: 800, opacity: actionPending ? 0.7 : 1, cursor: actionPending ? 'default' : 'pointer' }}>
+                      <PhoneOff size={15} /> {actionPending ? 'Working...' : 'Hang Up'}
                     </button>
                   </div>
 

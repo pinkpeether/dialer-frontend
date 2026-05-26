@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Activity, Headset, Phone, RefreshCw, Shield } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
 import { agentsAPI } from '../api/agents.api'
+import { AGENT_STATUS_EVENTS } from '../constants/socketEvents'
 
 type AgentStatus = 'OFFLINE' | 'READY' | 'BUSY' | 'WRAP_UP'
 
@@ -37,7 +38,7 @@ const normalizeStatus = (v: unknown): AgentStatus => {
 }
 
 export default function Supervisor() {
-  const { on, off } = useSocket()
+  const { on } = useSocket()
   const [agents, setAgents] = useState<AgentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [elapsed, setElapsed] = useState<Record<string | number, number>>({})
@@ -48,16 +49,26 @@ export default function Supervisor() {
     try {
       const data = await agentsAPI.getAll()
       const list: unknown[] = Array.isArray(data) ? data : Array.isArray(data?.agents) ? data.agents : []
-      setAgents(list.map((a: unknown) => {
+      const rows = list.map((a: unknown) => {
         const agent = a as Record<string, unknown>
+        const status = normalizeStatus(agent.status)
+        const id = agent.id as number | string
         return {
-          id: agent.id as number | string,
+          id,
           name: str(agent.name || agent.fullName, 'Agent'),
           agentCode: str(agent.agentCode || agent.code, '—'),
-          status: normalizeStatus(agent.status),
+          status,
           callsToday: num(agent.callsToday ?? agent.todayCalls),
-          activeSince: agent.status === 'BUSY' ? Date.now() : undefined,
+          activeSince: status === 'BUSY' ? Date.now() : undefined,
         }
+      })
+
+      setAgents(prev => rows.map(row => {
+        const existing = prev.find(agent => String(agent.id) === String(row.id))
+        if (row.status === 'BUSY' && existing?.status === 'BUSY' && existing.activeSince) {
+          return { ...row, activeSince: existing.activeSince }
+        }
+        return row
       }))
       setLastRefresh(new Date())
     } catch {
@@ -92,9 +103,9 @@ export default function Supervisor() {
       }))
     }
 
-    const cleanup = on('agent:status:broadcast', handler)
-    return () => { cleanup?.(); off('agent:status:broadcast', handler) }
-  }, [on, off])
+    const cleanups = AGENT_STATUS_EVENTS.map(event => on(event, handler))
+    return () => { cleanups.forEach(cleanup => cleanup()) }
+  }, [on])
 
   // Call duration ticker — update every second for BUSY agents
   useEffect(() => {
@@ -114,13 +125,13 @@ export default function Supervisor() {
     return () => window.clearInterval(t)
   }, [agents])
 
-  const counts = {
+  const counts = useMemo(() => ({
     total: agents.length,
     ready: agents.filter(a => a.status === 'READY').length,
     busy: agents.filter(a => a.status === 'BUSY').length,
     wrapUp: agents.filter(a => a.status === 'WRAP_UP').length,
     offline: agents.filter(a => a.status === 'OFFLINE').length,
-  }
+  }), [agents])
 
   return (
     <div style={{ padding: '32px 36px', maxWidth: 1600, margin: '0 auto' }}>

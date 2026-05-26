@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useAuthStore } from '../store/auth.store'
+import { SOCKET_EVENTS, type SocketEventName } from '../constants/socketEvents'
 
 const BACKEND_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'
 const SOCKET_DEBUG = import.meta.env.VITE_SOCKET_DEBUG === 'true'
@@ -48,23 +49,23 @@ export const useSocket = () => {
     }
   }, [token])
 
-  const emit = useCallback((event: string, data?: unknown) => {
+  const emit = useCallback((event: SocketEventName | string, data?: unknown) => {
     socketInstance?.emit(event, data)
   }, [])
 
-  const on = useCallback((event: string, handler: (...args: unknown[]) => void) => {
+  const on = useCallback((event: SocketEventName | string, handler: (...args: unknown[]) => void) => {
     socketInstance?.on(event, handler)
     return () => {
       socketInstance?.off(event, handler)
     }
   }, [])
 
-  const off = useCallback((event: string, handler?: (...args: unknown[]) => void) => {
+  const off = useCallback((event: SocketEventName | string, handler?: (...args: unknown[]) => void) => {
     socketInstance?.off(event, handler)
   }, [])
 
   const updateStatus = useCallback((status: string) => {
-    socketInstance?.emit('agent:status', status)
+    socketInstance?.emit(SOCKET_EVENTS.AGENT_STATUS, status)
   }, [])
 
   return {

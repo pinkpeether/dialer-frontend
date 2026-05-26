@@ -1,5 +1,6 @@
-const { app, BrowserWindow, Menu, session } = require('electron')
+const { app, BrowserWindow, Menu, session, ipcMain } = require('electron')
 const path = require('path')
+const { configureAutoUpdater } = require('./updater-service.cjs')
 
 // ---------------------------------------------------------------------------
 // DEV: Local FreePBX hosts.
@@ -10,6 +11,10 @@ const path = require('path')
 const DEV_FREEPBX_HOSTS = new Set(['192.168.0.111', '192.168.0.104', '192.168.0.107'])
 
 const WEBRTC_IP_POLICY = 'default_public_and_private_interfaces'
+const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
+const allowLocalCertBypass = isDev || process.env.PTDT_ALLOW_LOCAL_CERT_BYPASS === 'true'
+const updaterEnabled = app.isPackaged && process.env.PTDT_DISABLE_AUTO_UPDATES !== 'true'
+let updaterControls = null
 
 // ---------------------------------------------------------------------------
 // Chromium autoplay policy — allow audio.play() without user gesture.
@@ -26,11 +31,15 @@ app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns')
 app.commandLine.appendSwitch('force-webrtc-ip-handling-policy', WEBRTC_IP_POLICY)
 
 // ---------------------------------------------------------------------------
-// DEV ONLY — blanket cert bypass for local FreePBX self-signed WSS cert.
-// Remove before shipping a production build against public SIP providers.
+// Local FreePBX cert bypass. Production builds keep public HTTPS certificate
+// validation intact unless explicitly opted into local cert bypass.
 // ---------------------------------------------------------------------------
-app.commandLine.appendSwitch('ignore-certificate-errors')
-app.commandLine.appendSwitch('allow-insecure-localhost', 'true')
+if (allowLocalCertBypass) {
+  app.commandLine.appendSwitch('allow-insecure-localhost', 'true')
+  if (isDev) {
+    app.commandLine.appendSwitch('ignore-certificate-errors')
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -51,7 +60,7 @@ function isTrustedFreepbxUrl(url) {
 // ---------------------------------------------------------------------------
 function installCertificateBypass() {
   session.defaultSession.setCertificateVerifyProc((request, callback) => {
-    if (DEV_FREEPBX_HOSTS.has(request.hostname)) {
+    if (allowLocalCertBypass && DEV_FREEPBX_HOSTS.has(request.hostname)) {
       console.log('[DEV] Cert bypass for local FreePBX:', request.url || request.hostname)
       callback(0) // 0 = OK
       return
@@ -67,7 +76,7 @@ function installCertificateBypass() {
 // causing the cert to be rejected even for trusted hosts.
 // ---------------------------------------------------------------------------
 app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
-  if (isTrustedFreepbxUrl(url)) {
+  if (allowLocalCertBypass && isTrustedFreepbxUrl(url)) {
     console.log('[DEV] certificate-error bypass for local FreePBX:', url, error)
     event.preventDefault()
     callback(true)
@@ -86,16 +95,15 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: true,
-      allowRunningInsecureContent: true, // needed for local HTTP/WS in dev
+      allowRunningInsecureContent: allowLocalCertBypass,
     },
     icon: path.join(__dirname, '../public/icon.png'),
     title: 'PTDT Dialer',
   })
-
-  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
   // Apply WebRTC IP policy per-window as well (belt-and-suspenders with the
   // app-level commandLine switch above).
@@ -125,13 +133,59 @@ function createWindow() {
 
   if (isDev) {
     win.loadURL('http://localhost:5173')
-    if (process.env.OPEN_DEVTOOLS === 'true') {
-      win.webContents.openDevTools({ mode: 'detach' })
-    }
   } else {
     win.loadFile(path.join(__dirname, '../dist/index.html'))
   }
+
+  if (process.env.OPEN_DEVTOOLS === 'true') {
+    win.webContents.openDevTools({ mode: 'detach' })
+  }
+
+  if (updaterEnabled) {
+    updaterControls = configureAutoUpdater(win)
+    if (process.env.PTDT_AUTO_CHECK_UPDATES === 'true') {
+      setTimeout(() => {
+        void updaterControls?.check().catch(error => {
+          win.webContents.send('updater:status', {
+            status: 'error',
+            message: error?.message || 'Could not check for updates',
+          })
+        })
+      }, 5000)
+    }
+  }
 }
+
+ipcMain.handle('app:get-version', () => app.getVersion())
+ipcMain.handle('app:get-platform', () => ({
+  platform: process.platform,
+  arch: process.arch,
+  isPackaged: app.isPackaged,
+}))
+
+ipcMain.handle('updater:check', async () => {
+  if (!updaterControls) {
+    return { status: 'disabled', reason: isDev ? 'Updates are disabled in development.' : 'Updater is not configured.' }
+  }
+  await updaterControls.check()
+  return { status: 'checking' }
+})
+
+ipcMain.handle('updater:download', async () => {
+  if (!updaterControls) {
+    return { status: 'disabled', reason: 'Updater is not configured.' }
+  }
+  await updaterControls.download()
+  return { status: 'downloading' }
+})
+
+ipcMain.handle('updater:install', () => {
+  if (!updaterControls) {
+    return { status: 'disabled', reason: 'Updater is not configured.' }
+  }
+  updaterControls.quitAndInstall()
+  return { status: 'installing' }
+})
 
 // ---------------------------------------------------------------------------
 // App lifecycle
