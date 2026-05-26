@@ -4,7 +4,7 @@ import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
   BarChart3, Headset, Settings2, History,
-  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity,
+  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
@@ -42,6 +42,14 @@ const NAV: NavItem[] = [
   { to: '/settings/system', icon: SlidersHorizontal, label: 'System Settings', roles: ['ADMIN'] },
 ]
 
+const AGENT_NAV: NavItem[] = [
+  { to: '/agent/workspace', icon: BriefcaseBusiness, label: 'Agent Workspace' },
+  { to: '/dialer',          icon: Phone,             label: 'Dialer' },
+  { to: '/calls',           icon: History,           label: 'My Calls' },
+  { to: '/callbacks',       icon: Calendar,          label: 'My Callbacks' },
+  { to: '/settings',        icon: Settings2,         label: 'Account Settings' },
+]
+
 export default function Sidebar() {
   const { user, logout } = useAuthStore()
   const unregisterSip = useSipStore(s => s.unregister)
@@ -54,10 +62,12 @@ export default function Sidebar() {
 
   const userRole = (user as Record<string, unknown> | null)?.role as string | undefined
 
-  const visibleNav = NAV.filter(item => {
+  const normalizedRole = userRole?.toUpperCase()
+  const navItems = normalizedRole === 'AGENT' ? AGENT_NAV : NAV
+  const visibleNav = navItems.filter(item => {
     if (!item.roles) return true
-    if (!userRole) return true
-    return item.roles.includes(userRole.toUpperCase())
+    if (!normalizedRole) return true
+    return item.roles.includes(normalizedRole)
   })
 
   const handleLogout = () => {

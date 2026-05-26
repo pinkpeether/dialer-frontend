@@ -5,6 +5,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Activity, Radio, Code
 import { authAPI }      from '../api/auth.api'
 import { useAuthStore } from '../store/auth.store'
 import ThemeToggle      from '../components/ThemeToggle'
+import { defaultRouteForRole } from '../utils/roleRoutes'
 
 export default function Login() {
   const navigate  = useNavigate()
@@ -21,7 +22,7 @@ const handleLogin = async (e: React.FormEvent) => {
   try {
     const data = await authAPI.login(email, password)
     setAuth(data.user, data.token)
-    navigate('/dashboard')
+    navigate(defaultRouteForRole(data.user?.role), { replace: true })
   } catch (err: unknown) {
     const msg = (err as { response?: { data?: { message?: string } } })
       ?.response?.data?.message || 'Login failed'

@@ -1,9 +1,12 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Home, ArrowLeft } from 'lucide-react'
+import { useAuthStore } from '../store/auth.store'
+import { defaultRouteForRole } from '../utils/roleRoutes'
 
 export default function NotFound() {
   const navigate = useNavigate()
+  const role = useAuthStore(s => s.user?.role)
 
   return (
     <div style={{
@@ -65,11 +68,11 @@ export default function NotFound() {
           <motion.button
             whileHover={{ scale: 1.03, y: -2 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(defaultRouteForRole(role))}
             className="btn-brand"
             style={{ display: 'flex', alignItems: 'center', gap: 8 }}
           >
-            <Home size={15}/> Go to Dashboard
+            <Home size={15}/> Go Home
           </motion.button>
 
           <motion.button

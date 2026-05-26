@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import ErrorBoundary          from './components/ErrorBoundary'
 import Layout                 from './components/Layout'
 import ProtectedRoute         from './components/ProtectedRoute'
+import RoleRoute              from './components/RoleRoute'
 import Login                  from './pages/Login'
 import Dashboard              from './pages/Dashboard'
 import Dialer                 from './pages/Dialer'
@@ -10,6 +11,7 @@ import Campaigns              from './pages/Campaigns'
 import CampaignDetail         from './pages/CampaignDetail'
 import Contacts               from './pages/Contacts'
 import ContactDetail          from './pages/ContactDetail'
+import AgentWorkspace         from './pages/AgentWorkspace'
 import AgentDashboard         from './pages/AgentDashboard'
 import Reports                from './pages/Reports'
 import SipSettings            from './pages/SipSettings'
@@ -23,10 +25,24 @@ import SystemSettings         from './pages/SystemSettings'
 import Recordings             from './pages/Recordings'
 import OpsCenter              from './pages/OpsCenter'
 import ProductionMonitoring   from './pages/ProductionMonitoring'
+import Unauthorized           from './pages/Unauthorized'
 import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
 import ToastProvider           from './components/ToastProvider'
 import DialerActivityBeacon    from './components/DialerActivityBeacon'
+import { useAuthStore, type UserRole } from './store/auth.store'
+import { defaultRouteForRole } from './utils/roleRoutes'
+
+const adminConsoleRoles: UserRole[] = ['ADMIN', 'MANAGER', 'SUPERVISOR']
+const adminManagerRoles: UserRole[] = ['ADMIN', 'MANAGER']
+const adminSupervisorRoles: UserRole[] = ['ADMIN', 'SUPERVISOR']
+
+function RoleHomeRedirect() {
+  const isAuth = useAuthStore(s => s.isAuth)
+  const role = useAuthStore(s => s.user?.role)
+
+  return <Navigate to={isAuth ? defaultRouteForRole(role) : '/login'} replace />
+}
 
 export default function App() {
   return (
@@ -34,33 +50,35 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<RoleHomeRedirect />} />
 
           <Route element={
             <ProtectedRoute>
               <Layout />
             </ProtectedRoute>
           }>
-            <Route path="/dashboard"          element={<Dashboard />}      />
-            <Route path="/dialer"             element={<Dialer />}         />
-            <Route path="/agent/dashboard"    element={<AgentDashboard />} />
-            <Route path="/campaigns"          element={<Campaigns />}      />
-            <Route path="/campaigns/:id"      element={<CampaignDetail />} />
-            <Route path="/contacts"           element={<Contacts />}       />
-            <Route path="/contacts/:id"       element={<ContactDetail />}  />
-            <Route path="/agents"             element={<Agents />}         />
-            <Route path="/calls"              element={<Calls />}          />
-            <Route path="/callbacks"          element={<Callbacks />}      />
-            <Route path="/supervisor"         element={<Supervisor />}     />
-            <Route path="/reports"            element={<Reports />}        />
-            <Route path="/sip-settings"       element={<SipSettings />}    />
-            <Route path="/dnc"               element={<DncManager />}     />
-            <Route path="/settings"          element={<Settings />}       />
-            <Route path="/audit-logs"        element={<AuditLogs />}      />
-            <Route path="/settings/system"   element={<SystemSettings />} />
-            <Route path="/recordings"        element={<Recordings />}     />
-            <Route path="/ops"               element={<OpsCenter />}      />
-            <Route path="/monitoring"        element={<ProductionMonitoring />} />
+            <Route path="/dashboard"          element={<RoleRoute roles={adminConsoleRoles}><Dashboard /></RoleRoute>}      />
+            <Route path="/agent/workspace"    element={<RoleRoute roles={['AGENT']}><AgentWorkspace /></RoleRoute>} />
+            <Route path="/dialer"             element={<RoleRoute><Dialer /></RoleRoute>}         />
+            <Route path="/agent/dashboard"    element={<RoleRoute roles={adminConsoleRoles}><AgentDashboard /></RoleRoute>} />
+            <Route path="/campaigns"          element={<RoleRoute roles={adminManagerRoles}><Campaigns /></RoleRoute>}      />
+            <Route path="/campaigns/:id"      element={<RoleRoute roles={adminManagerRoles}><CampaignDetail /></RoleRoute>} />
+            <Route path="/contacts"           element={<RoleRoute><Contacts /></RoleRoute>}       />
+            <Route path="/contacts/:id"       element={<RoleRoute><ContactDetail /></RoleRoute>}  />
+            <Route path="/agents"             element={<RoleRoute roles={adminManagerRoles}><Agents /></RoleRoute>}         />
+            <Route path="/calls"              element={<RoleRoute><Calls /></RoleRoute>}          />
+            <Route path="/callbacks"          element={<RoleRoute><Callbacks /></RoleRoute>}      />
+            <Route path="/supervisor"         element={<RoleRoute roles={adminConsoleRoles}><Supervisor /></RoleRoute>}     />
+            <Route path="/reports"            element={<RoleRoute roles={adminSupervisorRoles}><Reports /></RoleRoute>}        />
+            <Route path="/sip-settings"       element={<RoleRoute><SipSettings /></RoleRoute>}    />
+            <Route path="/dnc"                element={<RoleRoute roles={adminSupervisorRoles}><DncManager /></RoleRoute>}     />
+            <Route path="/settings"           element={<RoleRoute><Settings /></RoleRoute>}       />
+            <Route path="/audit-logs"         element={<RoleRoute roles={['ADMIN']}><AuditLogs /></RoleRoute>}      />
+            <Route path="/settings/system"    element={<RoleRoute roles={['ADMIN']}><SystemSettings /></RoleRoute>} />
+            <Route path="/recordings"         element={<RoleRoute roles={adminSupervisorRoles}><Recordings /></RoleRoute>}     />
+            <Route path="/ops"                element={<RoleRoute roles={adminSupervisorRoles}><OpsCenter /></RoleRoute>}      />
+            <Route path="/monitoring"         element={<RoleRoute roles={adminSupervisorRoles}><ProductionMonitoring /></RoleRoute>} />
+            <Route path="/unauthorized"       element={<Unauthorized />} />
             <Route path="*"                  element={<NotFound />}       />
           </Route>
 

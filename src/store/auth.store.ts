@@ -1,11 +1,13 @@
 import { create } from 'zustand'
 
-interface User {
+export type UserRole = 'ADMIN' | 'MANAGER' | 'SUPERVISOR' | 'AGENT'
+
+export interface User {
   id: number
   agentCode: string
   name: string
   email: string
-  role: 'ADMIN' | 'MANAGER' | 'SUPERVISOR' | 'AGENT'
+  role: UserRole
   status: string
   phone?: string | null
   extension?: string | null
