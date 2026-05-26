@@ -1,17 +1,33 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Mic2, Phone, Play, Radio, RefreshCw, Search, UserRound } from 'lucide-react'
+import { AlertTriangle, Clock, Database, Mic2, Phone, Play, Radio, RefreshCw, Search, ShieldCheck, UserRound } from 'lucide-react'
 import { recordingsAPI } from '../api/recordings.api'
 
 type RecordingRow = {
   id: number
   recordingUrl?: string | null
+  playbackUrl?: string | null
   recordingSid?: string | null
+  recordingProvider?: string | null
+  recordingAvailable?: boolean
+  hasRecording?: boolean
   startedAt?: string
   duration?: number
   contact?: { name?: string | null; phone?: string | null }
   agent?: { name?: string | null }
   campaign?: { name?: string | null }
+}
+
+type RecordingHealth = {
+  generatedAt: string
+  totalRecordings: number
+  recentSampleSize: number
+  missingRecordingSid: number
+  recentMissingDuration: number
+  providers: Record<string, number>
+  accessTtlSeconds: number
+  retentionDays?: number | null
+  storageStatus: 'HEALTHY' | 'DEGRADED' | 'EMPTY' | string
 }
 
 const inputStyle: CSSProperties = {
@@ -49,13 +65,24 @@ function EmptyState({ children }: { children: ReactNode }) {
 
 export default function Recordings() {
   const [recordings, setRecordings] = useState<RecordingRow[]>([])
+  const [health, setHealth] = useState<RecordingHealth | null>(null)
   const [search, setSearch] = useState('')
   const [activeUrl, setActiveUrl] = useState('')
   const [activeTitle, setActiveTitle] = useState('')
+  const [activeExpiresAt, setActiveExpiresAt] = useState('')
   const [activeCallId, setActiveCallId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [accessingId, setAccessingId] = useState<number | null>(null)
   const [error, setError] = useState('')
+
+  const loadHealth = async () => {
+    try {
+      const data = await recordingsAPI.getHealth()
+      setHealth(data)
+    } catch {
+      setHealth(null)
+    }
+  }
 
   const load = async (query = search) => {
     setLoading(true)
@@ -63,6 +90,7 @@ export default function Recordings() {
     try {
       const data = await recordingsAPI.getAll({ search: query || undefined, limit: 50 })
       setRecordings(data?.recordings || [])
+      await loadHealth()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load recordings')
       setRecordings([])
@@ -78,8 +106,12 @@ export default function Recordings() {
       setLoading(true)
       setError('')
       try {
-        const data = await recordingsAPI.getAll({ limit: 50 })
-        if (!cancelled) setRecordings(data?.recordings || [])
+        const recordingData = await recordingsAPI.getAll({ limit: 50 })
+        const healthData = await recordingsAPI.getHealth().catch(() => null)
+        if (!cancelled) {
+          setRecordings(recordingData?.recordings || [])
+          setHealth(healthData)
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load recordings')
@@ -102,9 +134,12 @@ export default function Recordings() {
     setAccessingId(row.id)
     try {
       const data = await recordingsAPI.getAccess(row.id)
-      if (!data?.recordingUrl) throw new Error('Recording URL is not available yet.')
-      setActiveUrl(data.recordingUrl)
+      const playbackUrl = data?.playbackUrl || data?.recordingUrl
+      if (!playbackUrl) throw new Error('Recording playback URL is not available yet.')
+
+      setActiveUrl(playbackUrl)
       setActiveCallId(row.id)
+      setActiveExpiresAt(data?.expiresAt || '')
       setActiveTitle(`${row.contact?.name || 'Unknown'} · ${row.contact?.phone || 'No phone'}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to access recording')
@@ -112,6 +147,12 @@ export default function Recordings() {
       setAccessingId(null)
     }
   }
+
+  const storageColor = health?.storageStatus === 'HEALTHY'
+    ? 'var(--green-2)'
+    : health?.storageStatus === 'DEGRADED'
+      ? '#f0b90b'
+      : 'var(--text-3)'
 
   return (
     <div style={{ padding: '32px 36px', maxWidth: 1500, margin: '0 auto' }}>
@@ -123,10 +164,10 @@ export default function Recordings() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
           <div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 3.2vw, 42px)', fontWeight: 900, lineHeight: 1.05, color: 'var(--text)', letterSpacing: '-0.04em', marginBottom: 10 }}>
-              Call <span className="gradient-brand-text">Recordings</span>
+              Recording <span className="gradient-brand-text">Playback</span>
             </h1>
             <p style={{ fontSize: 14.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span className="pulse-dot" /> Search, review, and play saved call audio.
+              <span className="pulse-dot" /> Signed playback access, storage health, and audit-safe recording review.
             </p>
           </div>
 
@@ -141,6 +182,13 @@ export default function Recordings() {
         </div>
       </motion.div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 18 }}>
+        <HealthCard icon={<Database size={16} />} label="Storage Status" value={health?.storageStatus || 'UNKNOWN'} color={storageColor} />
+        <HealthCard icon={<Mic2 size={16} />} label="Total Recordings" value={health?.totalRecordings ?? recordings.length} />
+        <HealthCard icon={<ShieldCheck size={16} />} label="Access TTL" value={`${health?.accessTtlSeconds ?? 300}s`} />
+        <HealthCard icon={<AlertTriangle size={16} />} label="Missing SID" value={health?.missingRecordingSid ?? 0} color={(health?.missingRecordingSid || 0) > 0 ? '#f0b90b' : 'var(--green-2)'} />
+      </div>
+
       <div className="glass" style={{ padding: 18, marginBottom: 18 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 1fr) auto', gap: 12, alignItems: 'center' }}>
           <label style={{ position: 'relative' }}>
@@ -151,7 +199,7 @@ export default function Recordings() {
               onKeyDown={e => {
                 if (e.key === 'Enter') void load()
               }}
-              placeholder="Search phone, contact, campaign, or agent..."
+              placeholder="Search phone, contact, campaign, agent, or recording SID..."
               style={{ ...inputStyle, paddingLeft: 42, borderRadius: 999 }}
             />
           </label>
@@ -174,9 +222,14 @@ export default function Recordings() {
               <Mic2 size={17} color="var(--pink)" />
               {activeTitle || `Playing recording ${activeCallId ? `#${activeCallId}` : ''}`}
             </div>
-            <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>Secure recording access</span>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>
+              {activeExpiresAt ? `Access expires ${fmtDate(activeExpiresAt)}` : 'Signed playback access'}
+            </span>
           </div>
           <audio src={activeUrl} controls style={{ width: '100%', display: 'block' }} />
+          <div style={{ marginTop: 10, color: 'var(--text-3)', fontSize: 12 }}>
+            If playback expires, click Play again to generate a fresh signed URL.
+          </div>
         </motion.div>
       )}
 
@@ -191,7 +244,7 @@ export default function Recordings() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
-                {['Time', 'Contact', 'Phone', 'Agent', 'Campaign', 'Duration', 'Recording SID', 'Action'].map(h => (
+                {['Time', 'Contact', 'Phone', 'Agent', 'Campaign', 'Duration', 'Provider', 'Recording SID', 'Action'].map(h => (
                   <th key={h} style={{ padding: '13px 16px', textAlign: 'left', fontSize: 10.5, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
@@ -200,9 +253,9 @@ export default function Recordings() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8}><EmptyState>Loading recordings...</EmptyState></td></tr>
+                <tr><td colSpan={9}><EmptyState>Loading recordings...</EmptyState></td></tr>
               ) : recordings.length === 0 ? (
-                <tr><td colSpan={8}><EmptyState>No recordings found.</EmptyState></td></tr>
+                <tr><td colSpan={9}><EmptyState>No recordings found.</EmptyState></td></tr>
               ) : recordings.map((row, index) => (
                 <motion.tr
                   key={row.id}
@@ -232,13 +285,14 @@ export default function Recordings() {
                   </td>
                   <td style={{ padding: '14px 16px', color: 'var(--text-3)', fontSize: 12.5 }}>{row.campaign?.name || '—'}</td>
                   <td className="mono" style={{ padding: '14px 16px', color: 'var(--text)', fontWeight: 800 }}>{fmtDuration(row.duration)}</td>
+                  <td style={{ padding: '14px 16px', color: 'var(--text-3)', fontSize: 12.5 }}>{row.recordingProvider || '—'}</td>
                   <td className="mono" style={{ padding: '14px 16px', color: 'var(--text-3)', fontSize: 12, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {row.recordingSid || '—'}
                   </td>
                   <td style={{ padding: '14px 16px' }}>
                     <button
                       type="button"
-                      disabled={accessingId === row.id}
+                      disabled={accessingId === row.id || row.recordingAvailable === false}
                       onClick={() => void play(row)}
                       style={{
                         height: 34,
@@ -267,6 +321,18 @@ export default function Recordings() {
           </table>
         </div>
       </div>
+    </div>
+  )
+}
+
+function HealthCard({ icon, label, value, color }: { icon: ReactNode; label: string; value: string | number; color?: string }) {
+  return (
+    <div className="glass" style={{ padding: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: color || 'var(--pink)', marginBottom: 8 }}>
+        {icon}
+        <span className="mono" style={{ fontSize: 10.5, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</span>
+      </div>
+      <div style={{ color: color || 'var(--text)', fontWeight: 950, fontSize: 22 }}>{value}</div>
     </div>
   )
 }

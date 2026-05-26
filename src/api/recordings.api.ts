@@ -5,6 +5,10 @@ export const recordingsAPI = {
     const res = await api.get('/recordings', { params })
     return res.data.data
   },
+  getHealth: async () => {
+    const res = await api.get('/recordings/health')
+    return res.data.data
+  },
   getByCallId: async (callId: number | string) => {
     const res = await api.get(`/recordings/${callId}`)
     return res.data.data
