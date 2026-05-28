@@ -34,6 +34,7 @@ import ToastProvider           from './components/ToastProvider'
 import DialerActivityBeacon    from './components/DialerActivityBeacon'
 import { useAuthStore, type UserRole } from './store/auth.store'
 import { defaultRouteForRole } from './utils/roleRoutes'
+import SpoofingManagement from './pages/SpoofingManagement'
 
 const adminConsoleRoles: UserRole[] = ['ADMIN', 'MANAGER', 'SUPERVISOR']
 const adminManagerRoles: UserRole[] = ['ADMIN', 'MANAGER']
@@ -82,6 +83,7 @@ export default function App() {
             <Route path="/monitoring"         element={<RoleRoute roles={adminSupervisorRoles}><ProductionMonitoring /></RoleRoute>} />
             <Route path="/support/diagnostics" element={<RoleRoute roles={adminSupervisorRoles}><SupportDiagnostics /></RoleRoute>} />
             <Route path="/production/review"   element={<RoleRoute roles={['ADMIN']}><ProductionReview /></RoleRoute>} />
+            <Route path="/admin/spoofing" element={<RoleRoute roles={['ADMIN']}><SpoofingManagement /></RoleRoute>} />
             <Route path="/unauthorized"       element={<Unauthorized />} />
             <Route path="*"                  element={<NotFound />}       />
           </Route>

@@ -4,7 +4,7 @@ import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
   BarChart3, Headset, Settings2, History,
-  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy,
+  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
@@ -38,6 +38,7 @@ const NAV: NavItem[] = [
   { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'] },
   { to: '/recordings',      icon: Radio,           label: 'Recordings',     roles: ['ADMIN', 'SUPERVISOR'] },
   { to: '/audit-logs',      icon: ClipboardList,   label: 'Audit Logs',     roles: ['ADMIN'] },
+  { to: '/admin/spoofing',  icon: PhoneCall,       label: 'Spoofing Mgmt',  roles: ['ADMIN'] },
   { to: '/sip-settings',    icon: Wrench,          label: 'SIP Settings'    },
   { to: '/settings',        icon: Settings2,       label: 'Account Settings' },
   { to: '/settings/system', icon: SlidersHorizontal, label: 'System Settings', roles: ['ADMIN'] },

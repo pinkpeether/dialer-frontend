@@ -275,10 +275,15 @@ class SipClient {
       sessionDescriptionHandlerOptions: this.createAudioMediaOptions(),
     }
 
-    if (this.config.callerId) {
-      inviterOptions.extraHeaders = [
-        `P-Preferred-Identity: <sip:${this.config.callerId}@${this.config.domain}>`,
-      ]
+    const outboundCallerId = (this.config.callerId || '').replace(/\s/g, '')
+
+    if (/^\+[1-9][0-9]{1,14}$/.test(outboundCallerId)) {
+      const extraHeaders: string[] = []
+
+      extraHeaders.push(`X-PTDT-Caller-ID: ${outboundCallerId}`)
+      extraHeaders.push(`P-Preferred-Identity: <sip:${outboundCallerId}@${this.config.domain}>`)
+
+      inviterOptions.extraHeaders = extraHeaders
     }
 
     const inviter = new this.sip.Inviter(
