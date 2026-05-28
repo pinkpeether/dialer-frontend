@@ -12,8 +12,21 @@ type ReviewRow = {
   note?: string
 }
 
+type ReviewData = {
+  generatedAt: string
+  status: 'MATCHED' | 'REVIEW_REQUIRED'
+  summary: {
+    totalRoutes: number
+    reviewItems: number
+    highItems: number
+  }
+  routeMatrix: ReviewRow[]
+  checks?: Record<string, boolean>
+  notes: string[]
+}
+
 export default function ProductionReview() {
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<ReviewData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
