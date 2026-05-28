@@ -37,6 +37,7 @@ const NAV: NavItem[] = [
   { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'SUPERVISOR'] },
   { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'] },
   { to: '/recordings',      icon: Radio,           label: 'Recordings',     roles: ['ADMIN', 'SUPERVISOR'] },
+  { to: '/call-intelligence', icon: Radio,           label: 'Call Intelligence', roles: ['ADMIN', 'SUPERVISOR'] },
   { to: '/audit-logs',      icon: ClipboardList,   label: 'Audit Logs',     roles: ['ADMIN'] },
   { to: '/admin/spoofing',  icon: PhoneCall,       label: 'Spoofing Mgmt',  roles: ['ADMIN'] },
   { to: '/sip-settings',    icon: Wrench,          label: 'SIP Settings'    },
