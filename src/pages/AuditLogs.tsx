@@ -363,25 +363,51 @@ export default function AuditLogs() {
       </div>
 
       {selected && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass" style={{ marginTop: 18, padding: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--text)' }}>Audit Detail</div>
-              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-                {selected.action} · {selected.entity}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10060,
+            background: 'rgba(3,2,8,0.58)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 18,
+          }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSelected(null)
+          }}
+        >
+          <motion.div
+            initial={{ y: 18, scale: 0.98, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            className="glass-hi"
+            style={{ width: 'min(760px, 96vw)', maxHeight: '86vh', overflow: 'hidden', padding: 0, borderRadius: 24 }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 950, color: 'var(--text)' }}>Audit Detail</div>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>
+                  {selected.action} · {selected.entity}
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                style={{ height: 34, borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-2)', padding: '0 14px', fontWeight: 900, cursor: 'pointer' }}
+              >
+                Close
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              style={{ height: 34, borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-3)', padding: '0 14px', fontWeight: 900, cursor: 'pointer' }}
-            >
-              Close
-            </button>
-          </div>
-          <pre style={{ margin: 0, maxHeight: 320, overflow: 'auto', whiteSpace: 'pre-wrap', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'rgba(7,5,16,0.58)', color: 'var(--text-2)', padding: 14, fontSize: 12 }}>
-            {JSON.stringify(selected, null, 2)}
-          </pre>
+            <pre style={{ margin: 0, maxHeight: 'calc(86vh - 78px)', overflow: 'auto', whiteSpace: 'pre-wrap', background: 'rgba(7,5,16,0.86)', color: 'rgba(229,231,235,0.92)', padding: 18, fontSize: 12, lineHeight: 1.65, fontWeight: 650 }}>
+              {JSON.stringify(selected, null, 2)}
+            </pre>
+          </motion.div>
         </motion.div>
       )}
     </div>

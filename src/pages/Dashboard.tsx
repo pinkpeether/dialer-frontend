@@ -14,6 +14,7 @@ import { contactsAPI }      from '../api/contacts.api'
 import { callsAPI }         from '../api/calls.api'
 import { reportsAPI, type ReportTrendRow } from '../api/reports.api'
 import { useAuthStore }     from '../store/auth.store'
+import { useSipStore }      from '../store/sip.store'
 import { useLiveDashboard } from '../hooks/useLiveDashboard'
 import StatsCard            from '../components/StatsCard'
 
@@ -29,6 +30,16 @@ type CallLog = {
   disposition: string | null
   duration: number | null
   createdAt: string
+}
+
+type DashboardRecentCall = {
+  callId: number
+  agentId?: number
+  agentName?: string
+  phone: string
+  name?: string
+  duration?: number
+  status?: string
 }
 
 type TrendLog = Pick<CallLog, 'createdAt' | 'status' | 'disposition'>
@@ -49,6 +60,52 @@ const extractList = <T,>(payload: unknown, keys: string[]): T[] => {
     if (Array.isArray(value)) return value as T[]
   }
   return []
+}
+
+const stringValue = (value: unknown, fallback = '') => {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return fallback
+}
+
+const numberValue = (value: unknown, fallback = 0) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return fallback
+}
+
+const nestedName = (value: unknown) => {
+  if (!isRecord(value)) return ''
+  return stringValue(value.name || value.fullName || value.title)
+}
+
+function normalizeRecentCall(item: unknown, index: number): DashboardRecentCall {
+  const row = isRecord(item) ? item : {}
+  const contact = row.contact
+  const agent = row.agent
+
+  return {
+    callId: numberValue(row.id, index + 1),
+    agentId: numberValue(row.agentId, 0) || undefined,
+    agentName: stringValue(row.agentName) || nestedName(agent) || undefined,
+    phone:
+      stringValue(row.remoteNumber) ||
+      stringValue(row.phone) ||
+      stringValue(row.phoneNumber) ||
+      (isRecord(contact) ? stringValue(contact.phone) : '') ||
+      stringValue(row.destination) ||
+      'Unknown number',
+    name:
+      stringValue(row.remoteName) ||
+      stringValue(row.contactName) ||
+      nestedName(contact) ||
+      undefined,
+    duration: numberValue(row.durationSeconds ?? row.duration, 0) || undefined,
+    status: stringValue(row.status || row.disposition || 'UNKNOWN').toUpperCase(),
+  }
 }
 
 function buildTrend(calls: CallLog[]) {
@@ -107,7 +164,24 @@ export default function Dashboard() {
   const user = useAuthStore(s => s.user)
   const [stats, setStats] = useState<Stats | null>(null)
   const [recentCallData, setRecentCallData] = useState<CallLog[]>([])
+  const [recentHistory, setRecentHistory] = useState<DashboardRecentCall[]>([])
   const { activeCalls, recentCalls } = useLiveDashboard()
+  const sipActiveCall = useSipStore(s => s.activeCall)
+  const sipStatus = useSipStore(s => s.status)
+
+  const dashboardActiveCalls = sipActiveCall
+    ? [
+        {
+          callId: Number(sipActiveCall.id) || -1,
+          agentId: user?.id ?? 0,
+          agentName: user?.name || 'Current agent',
+          phone: sipActiveCall.remoteIdentity,
+          name: 'SIP Call',
+          status: sipStatus,
+        },
+        ...activeCalls.filter(call => call.phone !== sipActiveCall.remoteIdentity),
+      ]
+    : activeCalls
 
   useEffect(() => {
     const load = async () => {
@@ -123,13 +197,31 @@ export default function Dashboard() {
 
   useEffect(() => {
     const loadCalls = async () => {
+      let apiCalls: CallLog[] = []
+
+      try {
+        const res = await callsAPI.getAll({ limit: 20 })
+        const calls = extractList<CallLog>(res, ['calls', 'results', 'items', 'data'])
+        apiCalls = calls
+        setRecentHistory(calls.map(normalizeRecentCall))
+      } catch {
+        setRecentHistory([])
+      }
+
       try {
         const trendRows = await reportsAPI.getCallTrend({ granularity: 'day' })
         setRecentCallData(trendRowsToCallLogs(trendRows) as CallLog[])
       } catch {
         try {
+          if (apiCalls.length > 0) {
+            setRecentCallData(apiCalls)
+            return
+          }
+
           const res = await callsAPI.getAll({ limit: 100 })
-          setRecentCallData(extractList<CallLog>(res, ['calls', 'results', 'items', 'data']))
+          const calls = extractList<CallLog>(res, ['calls', 'results', 'items', 'data'])
+          setRecentCallData(calls)
+          setRecentHistory(calls.map(normalizeRecentCall))
         } catch {
           // non-fatal — charts just stay empty
         }
@@ -140,6 +232,7 @@ export default function Dashboard() {
 
   const trendData    = buildTrend(recentCallData)
   const dispositionData = buildDispositionPie(recentCallData)
+  const dashboardRecentCalls = recentCalls.length > 0 ? recentCalls : recentHistory
 
   const cards = stats ? [
     { label: 'Total Agents',     value: stats.agents.total,
@@ -182,7 +275,7 @@ export default function Dashboard() {
         </h1>
         <p style={{ fontSize: 14.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <span className="pulse-dot"/>
-          Pipeline online · monitoring {activeCalls.length} live call{activeCalls.length === 1 ? '' : 's'}
+          Pipeline online · monitoring {dashboardActiveCalls.length} live call{dashboardActiveCalls.length === 1 ? '' : 's'}
         </p>
       </motion.div>
 
@@ -275,15 +368,15 @@ export default function Dashboard() {
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>Live Calls</div>
               <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Real-time pipeline</div>
             </div>
-            {activeCalls.length > 0 && (
-              <span className="badge badge-answered"><span className="pulse-dot"/> {activeCalls.length} active</span>
+            {dashboardActiveCalls.length > 0 && (
+              <span className="badge badge-answered"><span className="pulse-dot"/> {dashboardActiveCalls.length} active</span>
             )}
           </div>
-          {activeCalls.length === 0 ? (
+          {dashboardActiveCalls.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>No active calls right now</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {activeCalls.map(call => (
+              {dashboardActiveCalls.map(call => (
                 <motion.div key={call.callId} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                   style={{ padding: '12px 14px', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}
                 >
@@ -312,18 +405,20 @@ export default function Dashboard() {
               <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Last activity feed</div>
             </div>
           </div>
-          {recentCalls.length === 0 ? (
+          {dashboardRecentCalls.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>No recent calls yet</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <AnimatePresence>
-                {recentCalls.slice(0, 8).map((call, i) => (
-                  <motion.div key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < Math.min(recentCalls.length, 8) - 1 ? '1px solid var(--border)' : 'none' }}
+                {dashboardRecentCalls.slice(0, 8).map((call, i) => (
+                  <motion.div key={`${call.callId}-${i}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < Math.min(dashboardRecentCalls.length, 8) - 1 ? '1px solid var(--border)' : 'none' }}
                   >
-                    <span style={{ fontSize: 12.5, color: 'var(--text-2)', fontWeight: 600 }}>Agent #{call.agentId}</span>
+                    <span style={{ fontSize: 12.5, color: 'var(--text-2)', fontWeight: 600, minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {call.name || call.phone}
+                    </span>
                     <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>{call.duration ? `${call.duration}s` : '—'}</span>
-                    <span className={`badge ${call.status === 'ANSWERED' ? 'badge-answered' : 'badge-noanswer'}`}>{call.status}</span>
+                    <span className={`badge ${call.status === 'ANSWERED' || call.status === 'COMPLETED' ? 'badge-answered' : 'badge-noanswer'}`}>{call.status || 'UNKNOWN'}</span>
                   </motion.div>
                 ))}
               </AnimatePresence>
