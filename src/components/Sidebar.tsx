@@ -19,37 +19,43 @@ type NavItem = {
   icon: ElementType
   label: string
   roles?: string[]
+  color?: string
+}
+
+const COLORS = {
+  pink: '#fb0b8c', green: '#00a747', purple: '#8057d7', gold: '#f0b90b', red: '#ef4444', cyan: '#0891b2', indigo: '#6366f1', slate: '#64748b', orange: '#f97316', teal: '#14b8a6'
 }
 
 const NAV: NavItem[] = [
-  { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard'       },
-  { to: '/dialer',          icon: Phone,           label: 'Dialer'          },
-  { to: '/agent/dashboard', icon: Headset,         label: 'Agent Dashboard' },
-  { to: '/campaigns',       icon: Megaphone,       label: 'Campaigns',      roles: ['ADMIN', 'MANAGER'] },
-  { to: '/contacts',        icon: BookUser,        label: 'Contacts'        },
-  { to: '/agents',          icon: Users,           label: 'Agents',         roles: ['ADMIN', 'MANAGER'] },
-  { to: '/calls',           icon: History,         label: 'Call History'    },
-  { to: '/callbacks',       icon: Calendar,        label: 'Callbacks'       },
-  { to: '/supervisor',      icon: Eye,             label: 'Supervisor',     roles: ['ADMIN', 'MANAGER', 'SUPERVISOR'] },
-  { to: '/ops',             icon: Activity,        label: 'Ops Center',     roles: ['ADMIN', 'SUPERVISOR'] },
-  { to: '/monitoring',      icon: Activity,        label: 'Monitoring',     roles: ['ADMIN', 'SUPERVISOR'] },
-  { to: '/support/diagnostics', icon: LifeBuoy,    label: 'Diagnostics',    roles: ['ADMIN', 'SUPERVISOR'] },
-  { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'SUPERVISOR'] },
-  { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'] },
-  { to: '/recordings',      icon: Radio,           label: 'Recordings',     roles: ['ADMIN', 'SUPERVISOR'] },
-  { to: '/audit-logs',      icon: ClipboardList,   label: 'Audit Logs',     roles: ['ADMIN'] },
-  { to: '/admin/spoofing',  icon: PhoneCall,       label: 'Spoofing Mgmt',  roles: ['ADMIN'] },
-  { to: '/sip-settings',    icon: Wrench,          label: 'SIP Settings'    },
-  { to: '/settings',        icon: Settings2,       label: 'Account Settings' },
-  { to: '/settings/system', icon: SlidersHorizontal, label: 'System Settings', roles: ['ADMIN'] },
+  { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard', color: COLORS.purple       },
+  { to: '/dialer',          icon: Phone,           label: 'Dialer', color: COLORS.green          },
+  { to: '/agent/dashboard', icon: Headset,         label: 'Agent Dashboard', color: COLORS.cyan },
+  { to: '/campaigns',       icon: Megaphone,       label: 'Campaigns',      roles: ['ADMIN', 'MANAGER'], color: COLORS.pink },
+  { to: '/contacts',        icon: BookUser,        label: 'Contacts', color: COLORS.teal        },
+  { to: '/agents',          icon: Users,           label: 'Agents',         roles: ['ADMIN', 'MANAGER'], color: COLORS.indigo },
+  { to: '/calls',           icon: History,         label: 'Call History', color: COLORS.gold    },
+  { to: '/callbacks',       icon: Calendar,        label: 'Callbacks', color: COLORS.orange       },
+  { to: '/supervisor',      icon: Eye,             label: 'Supervisor',     roles: ['ADMIN', 'MANAGER', 'SUPERVISOR'], color: COLORS.purple },
+  { to: '/ops',             icon: Activity,        label: 'Ops Center',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.green },
+  { to: '/monitoring',      icon: Activity,        label: 'Monitoring',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.cyan },
+  { to: '/support/diagnostics', icon: LifeBuoy,    label: 'Diagnostics',    roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
+  { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.red },
+  { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.pink },
+  { to: '/recordings',      icon: Radio,           label: 'Recordings',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.green },
+  { to: '/call-intelligence', icon: Radio,         label: 'Call Intelligence', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.purple },
+  { to: '/audit-logs',      icon: ClipboardList,   label: 'Audit Logs',     roles: ['ADMIN'], color: COLORS.gold },
+  { to: '/admin/spoofing',  icon: PhoneCall,       label: 'Spoofing Mgmt',  roles: ['ADMIN'], color: COLORS.cyan },
+  { to: '/sip-settings',    icon: Wrench,          label: 'SIP Settings', color: COLORS.gold    },
+  { to: '/settings',        icon: Settings2,       label: 'Account Settings', color: COLORS.slate },
+  { to: '/settings/system', icon: SlidersHorizontal, label: 'System Settings', roles: ['ADMIN'], color: COLORS.orange },
 ]
 
 const AGENT_NAV: NavItem[] = [
-  { to: '/agent/workspace', icon: BriefcaseBusiness, label: 'Agent Workspace' },
-  { to: '/dialer',          icon: Phone,             label: 'Dialer' },
-  { to: '/calls',           icon: History,           label: 'My Calls' },
-  { to: '/callbacks',       icon: Calendar,          label: 'My Callbacks' },
-  { to: '/settings',        icon: Settings2,         label: 'Account Settings' },
+  { to: '/agent/workspace', icon: BriefcaseBusiness, label: 'Agent Workspace', color: COLORS.purple },
+  { to: '/dialer',          icon: Phone,             label: 'Dialer', color: COLORS.green },
+  { to: '/calls',           icon: History,           label: 'My Calls', color: COLORS.gold },
+  { to: '/callbacks',       icon: Calendar,          label: 'My Callbacks', color: COLORS.orange },
+  { to: '/settings',        icon: Settings2,         label: 'Account Settings', color: COLORS.slate },
 ]
 
 export default function Sidebar() {
@@ -63,14 +69,9 @@ export default function Sidebar() {
   const [desktopVersion, setDesktopVersion] = useState('')
 
   const userRole = (user as Record<string, unknown> | null)?.role as string | undefined
-
   const normalizedRole = userRole?.toUpperCase()
   const navItems = normalizedRole === 'AGENT' ? AGENT_NAV : NAV
-  const visibleNav = navItems.filter(item => {
-    if (!item.roles) return true
-    if (!normalizedRole) return true
-    return item.roles.includes(normalizedRole)
-  })
+  const visibleNav = navItems.filter(item => !item.roles || !normalizedRole || item.roles.includes(normalizedRole))
 
   const handleLogout = () => {
     void authAPI.logout().catch(() => undefined)
@@ -88,46 +89,20 @@ export default function Sidebar() {
   useEffect(() => {
     let mounted = true
     void window.ptdtDesktop?.getAppVersion()
-      .then(version => {
-        if (mounted) setDesktopVersion(version)
-      })
-      .catch(() => {
-        if (mounted) setDesktopVersion('')
-      })
-
-    return () => {
-      mounted = false
-    }
+      .then(version => { if (mounted) setDesktopVersion(version) })
+      .catch(() => { if (mounted) setDesktopVersion('') })
+    return () => { mounted = false }
   }, [])
 
   return (
     <aside style={{
-      width: 'var(--sidebar-width)',
-      height: '100vh',
-      background: 'var(--bg-glass-hi)',
-      backdropFilter: 'blur(22px) saturate(160%)',
-      WebkitBackdropFilter: 'blur(22px) saturate(160%)',
-      borderRight: '1px solid var(--border)',
-      display: 'flex',
-      flexDirection: 'column',
-      padding: '20px 14px',
-      position: 'fixed',
-      top: 0, left: 0,
-      zIndex: 30,
-      boxShadow: 'var(--shadow-md)',
-      boxSizing: 'border-box',
-      overflowX: 'hidden',
+      width: 'var(--sidebar-width)', height: '100vh', background: 'var(--bg-glass-hi)',
+      backdropFilter: 'blur(22px) saturate(160%)', WebkitBackdropFilter: 'blur(22px) saturate(160%)',
+      borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px 14px',
+      position: 'fixed', top: 0, left: 0, zIndex: 30, boxShadow: 'var(--shadow-md)', boxSizing: 'border-box', overflowX: 'hidden',
     }}>
-
-      {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px', marginBottom: 22 }}>
-        <motion.img
-          src="ptdt-main-logo.png"
-          alt="PTDT"
-          whileHover={{ scale: 1.04 }}
-          transition={{ type: 'spring', stiffness: 280 }}
-          style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 12, background: 'transparent', mixBlendMode: 'multiply' }}
-        />
+        <motion.img src="ptdt-main-logo.png" alt="PTDT" whileHover={{ scale: 1.04 }} transition={{ type: 'spring', stiffness: 280 }} style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 12, background: 'transparent', mixBlendMode: 'multiply' }} />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 900, color: 'var(--text)', lineHeight: 1.05, letterSpacing: '-0.03em' }}>
             PTDT-<span className="gradient-brand-text">Dialer</span>
@@ -138,36 +113,15 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Slogan pill */}
       <div style={{ padding: '8px 10px', marginBottom: 18, borderRadius: 12, background: 'linear-gradient(135deg, rgba(251,11,140,0.08), rgba(128,87,215,0.08))', border: '1px solid var(--border)', fontSize: 10.5, fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.4 }}>
-        Trust the <span style={{ color: 'var(--pink)' }}>{`{ Code }`}</span>,
-        <br/>
-        <span style={{ color: 'var(--green-2)' }}>// </span> Not the Cult!
+        Trust the <span style={{ color: 'var(--pink)' }}>{`{ Code }`}</span>,<br/><span style={{ color: 'var(--green-2)' }}>// </span> Not the Cult!
       </div>
 
-      {/* Nav */}
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto', overflowX: 'hidden', paddingRight: 2 }}>
         <div className="mono" style={{ fontSize: 9.5, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1.4, padding: '0 12px 8px', fontWeight: 700 }}>Navigation</div>
-
         {visibleNav.map(item => {
           const Icon = item.icon
-          const isDialer = item.to === '/dialer'
-          const isSipSettings = item.to === '/sip-settings'
-          const specialActiveBg = isDialer
-            ? 'linear-gradient(135deg, rgba(0,167,71,0.98), rgba(0,245,160,0.86))'
-            : isSipSettings
-              ? 'linear-gradient(135deg, #b87900, #d99a16)'
-              : 'linear-gradient(135deg, #fb0b8c, #ff4bad)'
-          const specialInactiveColor = isDialer
-            ? 'var(--green-2)'
-            : isSipSettings
-              ? '#b87900'
-              : 'var(--text-3)'
-          const specialInactiveBorder = isDialer
-            ? 'rgba(0,167,71,0.24)'
-            : isSipSettings
-              ? 'rgba(184,121,0,0.28)'
-              : 'transparent'
+          const iconColor = item.color || COLORS.pink
           return (
             <NavLink key={item.to} to={item.to} end={item.to === '/settings'} style={{ textDecoration: 'none' }}>
               {({ isActive }) => (
@@ -175,50 +129,19 @@ export default function Sidebar() {
                   whileHover={{ x: isActive ? 0 : 3 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   style={{
-                    position: 'relative',
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '11px 14px',
-                    borderRadius: 999,
-                    fontSize: 13.5, fontWeight: 700,
-                    background: isActive ? specialActiveBg : 'transparent',
-                    color: isActive ? '#fff' : specialInactiveColor,
-                    border: isDialer || isSipSettings
-                      ? isActive
-                        ? `1px solid ${isDialer ? 'rgba(0,245,160,0.48)' : 'rgba(217,154,22,0.50)'}`
-                        : `1px solid ${specialInactiveBorder}`
-                      : '1px solid transparent',
-                    boxShadow: isActive
-                      ? isDialer
-                        ? '0 14px 30px rgba(0,167,71,0.26), 0 0 22px rgba(0,245,160,0.18), inset 0 1px 0 rgba(255,255,255,0.22)'
-                        : isSipSettings
-                          ? '0 14px 30px rgba(184,121,0,0.24), 0 0 22px rgba(217,154,22,0.16), inset 0 1px 0 rgba(255,255,255,0.20)'
-                        : '0 12px 26px rgba(251,11,140,0.28), inset 0 1px 0 rgba(255,255,255,0.22)'
-                      : isDialer
-                        ? '0 0 18px rgba(0,167,71,0.08)'
-                        : isSipSettings
-                          ? '0 0 18px rgba(184,121,0,0.08)'
-                        : 'none',
-                    transition: 'background 0.25s, color 0.25s, box-shadow 0.25s, border-color 0.25s',
+                    position: 'relative', display: 'flex', alignItems: 'center', gap: 11,
+                    padding: '8px 10px', borderRadius: 18, fontSize: 13.3, fontWeight: 800,
+                    background: isActive ? 'linear-gradient(135deg, rgba(251,11,140,0.96), rgba(128,87,215,0.92))' : 'transparent',
+                    color: isActive ? '#fff' : 'var(--text-2)',
+                    border: isActive ? '1px solid rgba(255,255,255,0.22)' : '1px solid transparent',
+                    boxShadow: isActive ? '0 12px 26px rgba(251,11,140,0.24), inset 0 1px 0 rgba(255,255,255,0.22)' : 'none',
+                    transition: 'background .22s, color .22s, box-shadow .22s, border-color .22s',
                   }}
                 >
-                  {isActive && (
-                    <motion.span
-                      layoutId="nav-glow"
-                      style={{
-                        position: 'absolute', inset: 0, borderRadius: 999,
-                        background: specialActiveBg,
-                        boxShadow: isDialer
-                          ? '0 14px 30px rgba(0,167,71,0.26),0 0 22px rgba(0,245,160,0.18)'
-                          : isSipSettings
-                            ? '0 14px 30px rgba(184,121,0,0.24),0 0 22px rgba(217,154,22,0.16)'
-                          : '0 12px 26px rgba(251,11,140,0.30)',
-                        zIndex: -1,
-                      }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                  <Icon size={17} strokeWidth={isActive ? 2.4 : 2}/>
-                  {item.label}
+                  <span className="sidebar-icon-shell" style={{ color: isActive ? '#fff' : iconColor, background: isActive ? 'rgba(255,255,255,0.16)' : undefined }}>
+                    <Icon size={16.5} strokeWidth={isActive ? 2.5 : 2.2}/>
+                  </span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
                 </motion.div>
               )}
             </NavLink>
@@ -226,65 +149,19 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Appearance */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 10px', marginBottom: 8, borderTop: '1px solid var(--border)', marginTop: 8 }}>
         <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase' }}>Appearance</span>
         <ThemeToggle/>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setPerformanceMode(value => !value)}
-        style={{
-          margin: '0 4px 10px',
-          minHeight: 34,
-          borderRadius: 999,
-          border: performanceMode ? '1px solid rgba(0,167,71,0.36)' : '1px solid var(--border)',
-          background: performanceMode ? 'rgba(0,167,71,0.10)' : 'rgba(255,255,255,0.36)',
-          color: performanceMode ? 'var(--green-2)' : 'var(--text-3)',
-          fontSize: 10.5,
-          fontWeight: 900,
-          letterSpacing: 0.7,
-          textTransform: 'uppercase',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 7,
-          cursor: 'pointer',
-        }}
-        title="Reduce animations, blur, and background effects for smoother Electron performance"
-      >
-        <span
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: 999,
-            background: performanceMode ? 'var(--green-2)' : 'var(--muted)',
-            boxShadow: performanceMode ? '0 0 12px rgba(0,167,71,0.35)' : 'none',
-          }}
-        />
+      <button type="button" onClick={() => setPerformanceMode(value => !value)} className={`ptdt-action-btn ${performanceMode ? 'active' : ''}`} style={{ margin: '0 4px 10px', minHeight: 34, fontSize: 10.5 }} title="Reduce animations, blur, and background effects for smoother Electron performance">
+        <span style={{ width: 8, height: 8, borderRadius: 999, background: performanceMode ? 'var(--green-2)' : 'var(--muted)' }} />
         Performance {performanceMode ? 'On' : 'Off'}
       </button>
 
-      {desktopVersion && (
-        <div
-          className="mono"
-          style={{
-            margin: '0 8px 10px',
-            fontSize: 9.5,
-            color: 'var(--muted)',
-            textAlign: 'center',
-            letterSpacing: 0.7,
-            textTransform: 'uppercase',
-          }}
-        >
-          Desktop v{desktopVersion}
-        </div>
-      )}
-
+      {desktopVersion && <div className="mono" style={{ margin: '0 8px 10px', fontSize: 9.5, color: 'var(--muted)', textAlign: 'center', letterSpacing: 0.7, textTransform: 'uppercase' }}>Desktop v{desktopVersion}</div>}
       <DesktopUpdateControl />
 
-      {/* User profile + bell + logout */}
       <div style={{ paddingTop: 6 }}>
         <div className="glass" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 8, borderRadius: 14 }}>
           <div style={{ position: 'relative', width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #fb0b8c, #8057d7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', boxShadow: '0 4px 12px rgba(251,11,140,0.30)', flexShrink: 0 }}>
@@ -292,25 +169,13 @@ export default function Sidebar() {
             <span style={{ position: 'absolute', bottom: -1, right: -1, width: 10, height: 10, borderRadius: '50%', background: '#2ae97b', border: '2px solid var(--surface)' }}/>
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user?.name || 'User'}
-            </div>
-            <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)' }}>
-              {(user as Record<string, unknown> | null)?.agentCode as string || '—'}
-            </div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'User'}</div>
+            <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)' }}>{(user as Record<string, unknown> | null)?.agentCode as string || '—'}</div>
           </div>
           <NotificationBell/>
         </div>
-
-        <motion.button
-          onClick={handleLogout}
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 12px', borderRadius: 999, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 700, transition: 'all 0.2s' }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-3)' }}
-        >
-          <LogOut size={14}/> Sign Out
+        <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }} onClick={handleLogout} className="sidebar-signout" style={{ width: '100%', height: 42, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 850, cursor: 'pointer' }}>
+          <LogOut size={15}/> Sign Out
         </motion.button>
       </div>
     </aside>

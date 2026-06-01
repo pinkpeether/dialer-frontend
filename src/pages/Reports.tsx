@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
+import { useMemo, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import {
   BarChart3, CalendarDays, Download, PhoneCall,
@@ -12,11 +12,10 @@ import { campaignsAPI } from '../api/campaigns.api'
 import { agentsAPI } from '../api/agents.api'
 import {
   reportsAPI,
-  type AgentReportRow,
-  type CampaignReportRow,
   type ReportSummary,
   type ReportTrendRow,
 } from '../api/reports.api'
+import { useQuery } from '@tanstack/react-query'
 
 type Campaign = { id: number; name: string }
 type Agent = { id: number; name?: string | null }
@@ -158,65 +157,74 @@ function TableShell({ children }: { children: ReactNode }) {
 }
 
 export default function Reports() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [agents, setAgents] = useState<Agent[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<number | 'all'>('all')
   const [selectedAgent, setSelectedAgent] = useState<number | 'all'>('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [summary, setSummary] = useState<ReportSummary>(emptySummary)
-  const [trend, setTrend] = useState<ReportTrendRow[]>([])
-  const [campaignRows, setCampaignRows] = useState<CampaignReportRow[]>([])
-  const [agentRows, setAgentRows] = useState<AgentReportRow[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
 
-  useEffect(() => {
-    const loadMeta = async () => {
-      try {
-        const [campRes, agentRes] = await Promise.all([
-          campaignsAPI.getAll({ limit: 200 }),
-          agentsAPI.getAll(),
-        ])
-        setCampaigns(extractList<Campaign>(campRes, ['campaigns', 'results']))
-        setAgents(Array.isArray(agentRes) ? agentRes : extractList<Agent>(agentRes, ['agents', 'items', 'results']))
-      } catch {
-        // Non-fatal: report endpoints still work without filter labels.
+  const reportFilters = useMemo(() => ({
+    from: startDate || undefined,
+    to: endDate || undefined,
+    campaignId: selectedCampaign === 'all' ? undefined : selectedCampaign,
+    agentId: selectedAgent === 'all' ? undefined : selectedAgent,
+  }), [startDate, endDate, selectedCampaign, selectedAgent])
+
+  const metaQuery = useQuery({
+    queryKey: ['reports', 'meta'],
+    queryFn: async () => {
+      const [campRes, agentRes] = await Promise.all([
+        campaignsAPI.getAll({ limit: 200 }),
+        agentsAPI.getAll(),
+      ])
+      return {
+        campaigns: extractList<Campaign>(campRes, ['campaigns', 'results']),
+        agents: Array.isArray(agentRes) ? agentRes as Agent[] : extractList<Agent>(agentRes, ['agents', 'items', 'results']),
       }
-    }
-    void loadMeta()
-  }, [])
+    },
+    staleTime: 2 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
+
+  const reportsQuery = useQuery({
+    queryKey: ['reports', 'summary', reportFilters],
+    queryFn: async () => {
+      const [nextSummary, nextTrend, nextCampaigns, nextAgents] = await Promise.all([
+        reportsAPI.getSummary(reportFilters),
+        reportsAPI.getCallTrend({ ...reportFilters, granularity: 'day' }),
+        reportsAPI.getCampaignBreakdown(reportFilters),
+        reportsAPI.getAgentBreakdown(reportFilters),
+      ])
+      return {
+        summary: nextSummary,
+        trend: nextTrend,
+        campaignRows: nextCampaigns,
+        agentRows: nextAgents,
+      }
+    },
+    staleTime: 90 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
+
+  const campaigns = useMemo(() => metaQuery.data?.campaigns ?? [], [metaQuery.data?.campaigns])
+  const agents = useMemo(() => metaQuery.data?.agents ?? [], [metaQuery.data?.agents])
+  const summary = reportsQuery.data?.summary ?? emptySummary
+  const trend = useMemo(() => reportsQuery.data?.trend ?? [], [reportsQuery.data?.trend])
+  const campaignRows = useMemo(() => reportsQuery.data?.campaignRows ?? [], [reportsQuery.data?.campaignRows])
+  const agentRows = useMemo(() => reportsQuery.data?.agentRows ?? [], [reportsQuery.data?.agentRows])
+  const loading = reportsQuery.isLoading || reportsQuery.isFetching
+  const error = reportsQuery.error
+    ? reportsQuery.error instanceof Error
+      ? reportsQuery.error.message
+      : 'Failed to load backend reports.'
+    : ''
 
   const loadReports = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const filters = {
-        from: startDate || undefined,
-        to: endDate || undefined,
-        campaignId: selectedCampaign === 'all' ? undefined : selectedCampaign,
-        agentId: selectedAgent === 'all' ? undefined : selectedAgent,
-      }
-      const [nextSummary, nextTrend, nextCampaigns, nextAgents] = await Promise.all([
-        reportsAPI.getSummary(filters),
-        reportsAPI.getCallTrend({ ...filters, granularity: 'day' }),
-        reportsAPI.getCampaignBreakdown(filters),
-        reportsAPI.getAgentBreakdown(filters),
-      ])
-      setSummary(nextSummary)
-      setTrend(nextTrend)
-      setCampaignRows(nextCampaigns)
-      setAgentRows(nextAgents)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load backend reports.')
-      setSummary(emptySummary)
-      setTrend([])
-      setCampaignRows([])
-      setAgentRows([])
-    } finally {
-      setLoading(false)
-    }
+    await reportsQuery.refetch()
   }
 
   const trendData = useMemo(() => normalizeTrend(trend), [trend])

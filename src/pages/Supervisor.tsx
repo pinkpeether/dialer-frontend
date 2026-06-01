@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Activity, Headset, Phone, RefreshCw, Shield } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
@@ -40,16 +41,15 @@ const normalizeStatus = (v: unknown): AgentStatus => {
 export default function Supervisor() {
   const { on } = useSocket()
   const [agents, setAgents] = useState<AgentRow[]>([])
-  const [loading, setLoading] = useState(true)
   const [elapsed, setElapsed] = useState<Record<string | number, number>>({})
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
+  const agentsQuery = useQuery<AgentRow[]>({
+    queryKey: ['supervisor', 'agents'],
+    queryFn: async () => {
       const data = await agentsAPI.getAll()
       const list: unknown[] = Array.isArray(data) ? data : Array.isArray(data?.agents) ? data.agents : []
-      const rows = list.map((a: unknown) => {
+      return list.map((a: unknown) => {
         const agent = a as Record<string, unknown>
         const status = normalizeStatus(agent.status)
         const id = agent.id as number | string
@@ -62,28 +62,30 @@ export default function Supervisor() {
           activeSince: status === 'BUSY' ? Date.now() : undefined,
         }
       })
+    },
+    staleTime: 30 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
 
-      setAgents(prev => rows.map(row => {
-        const existing = prev.find(agent => String(agent.id) === String(row.id))
-        if (row.status === 'BUSY' && existing?.status === 'BUSY' && existing.activeSince) {
-          return { ...row, activeSince: existing.activeSince }
-        }
-        return row
-      }))
-      setLastRefresh(new Date())
-    } catch {
-      // Keep empty — backend may not have /agents yet
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Load on mount + 30s polling
   useEffect(() => {
-    void load()
-    const t = window.setInterval(() => void load(), 30_000)
-    return () => window.clearInterval(t)
-  }, [load])
+    if (!agentsQuery.data) return
+    setAgents(prev => agentsQuery.data.map(row => {
+      const existing = prev.find(agent => String(agent.id) === String(row.id))
+      if (row.status === 'BUSY' && existing?.status === 'BUSY' && existing.activeSince) {
+        return { ...row, activeSince: existing.activeSince }
+      }
+      return row
+    }))
+    setLastRefresh(new Date())
+  }, [agentsQuery.data])
+
+  const loading = agentsQuery.isLoading
+  const load = async () => {
+    await agentsQuery.refetch()
+  }
 
   // Socket: live agent status updates
   useEffect(() => {

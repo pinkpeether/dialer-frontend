@@ -17,13 +17,45 @@ const inputStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
 }
 
-function SectionCard({ title, subtitle, icon, children }: {
-  title: string; subtitle: string; icon: React.ReactNode; children: React.ReactNode
+function SectionCard({ title, subtitle, icon, tone = 'pink', children }: {
+  title: string; subtitle: string; icon: React.ReactNode; tone?: 'pink' | 'green' | 'purple'; children: React.ReactNode
 }) {
+  const toneMap = {
+    pink: {
+      bg: 'rgba(251,11,140,0.10)',
+      border: 'rgba(251,11,140,0.24)',
+      color: 'var(--pink)',
+    },
+    green: {
+      bg: 'rgba(0,167,71,0.10)',
+      border: 'rgba(0,167,71,0.24)',
+      color: 'var(--green-2)',
+    },
+    purple: {
+      bg: 'rgba(128,87,215,0.10)',
+      border: 'rgba(128,87,215,0.24)',
+      color: 'var(--purple)',
+    },
+  }[tone]
+
   return (
     <div className="glass" style={{ padding: 26 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <div style={{ width: 38, height: 38, borderRadius: 14, background: 'rgba(251,11,140,0.12)', border: '1px solid rgba(251,11,140,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--pink)', flexShrink: 0 }}>
+        <div
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 14,
+            background: toneMap.bg,
+            border: `1px solid ${toneMap.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: toneMap.color,
+            flexShrink: 0,
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.40)',
+          }}
+        >
           {icon}
         </div>
         <div>
@@ -75,9 +107,33 @@ function Toggle({ checked, onChange, label }: {
       <button
         type="button"
         onClick={() => onChange(!checked)}
-        style={{ width: 46, height: 26, borderRadius: 999, border: 'none', background: checked ? 'var(--pink)' : 'rgba(255,255,255,0.12)', cursor: 'pointer', position: 'relative', transition: 'background 0.22s', flexShrink: 0 }}
+        aria-pressed={checked}
+        style={{
+          width: 50,
+          height: 28,
+          borderRadius: 999,
+          border: checked ? '1px solid rgba(0,167,71,0.36)' : '1px solid var(--border)',
+          background: checked ? 'linear-gradient(135deg, var(--green-2), var(--green-light))' : 'rgba(112,106,125,0.18)',
+          cursor: 'pointer',
+          position: 'relative',
+          transition: 'background 0.22s var(--ease), border-color 0.22s var(--ease), box-shadow 0.22s var(--ease)',
+          flexShrink: 0,
+          boxShadow: checked ? '0 8px 18px rgba(0,167,71,0.20)' : 'inset 0 1px 2px rgba(16,16,24,0.12)',
+        }}
       >
-        <span style={{ position: 'absolute', top: 3, left: checked ? 23 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.22s', boxShadow: '0 2px 6px rgba(0,0,0,0.30)' }} />
+        <span
+          style={{
+            position: 'absolute',
+            top: 3,
+            left: checked ? 25 : 3,
+            width: 22,
+            height: 22,
+            borderRadius: '50%',
+            background: '#fff',
+            transition: 'left 0.22s var(--ease)',
+            boxShadow: '0 2px 7px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.8)',
+          }}
+        />
       </button>
     </div>
   )
@@ -174,7 +230,7 @@ export default function Settings() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Profile section */}
-        <SectionCard title="Profile" subtitle="Update your display name and contact info." icon={<UserRound size={17} />}>
+        <SectionCard title="Profile" subtitle="Update your display name and contact info." icon={<UserRound size={17} />} tone="pink">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <FormRow label="Display Name">
               <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} style={inputStyle} placeholder="Your name" />
@@ -195,7 +251,7 @@ export default function Settings() {
         </SectionCard>
 
         {/* Password section */}
-        <SectionCard title="Change Password" subtitle="Use a strong password of at least 8 characters." icon={<KeyRound size={17} />}>
+        <SectionCard title="Change Password" subtitle="Use a strong password of at least 8 characters." icon={<KeyRound size={17} />} tone="purple">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 460 }}>
             <FormRow label="Current Password">
               <PwInput value={currentPw} onChange={setCurrentPw} show={showCurrentPw} onToggle={() => setShowCurrentPw(p => !p)} placeholder="Current password" />
@@ -216,10 +272,31 @@ export default function Settings() {
         </SectionCard>
 
         {/* Preferences section */}
-        <SectionCard title="Preferences" subtitle="Control dialer behavior and UI preferences." icon={<Settings2 size={17} />}>
+        <SectionCard title="Preferences" subtitle="Control dialer behavior and UI preferences." icon={<Settings2 size={17} />} tone="green">
           <Toggle checked={autoOpenDisposition} onChange={setAutoOpenDisposition} label="Auto-open disposition panel after each call" />
           <Toggle checked={notifSound} onChange={setNotifSound} label="Play sound on incoming call notification" />
-          <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }} onClick={handleSavePreferences} className="btn-brand" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 16, borderRadius: 'var(--radius-full)', padding: '0 22px', minHeight: 42, fontSize: 13.5 }}>
+          <motion.button
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleSavePreferences}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              marginTop: 16,
+              borderRadius: 'var(--radius-full)',
+              padding: '0 22px',
+              minHeight: 42,
+              fontSize: 13.5,
+              fontWeight: 900,
+              color: '#fff',
+              background: 'linear-gradient(135deg, var(--green-2), var(--green-light))',
+              boxShadow: '0 12px 26px rgba(0,167,71,0.24)',
+              border: 0,
+              cursor: 'pointer',
+            }}
+          >
             <Save size={14} /> Save Preferences
           </motion.button>
         </SectionCard>

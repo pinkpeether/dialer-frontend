@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Clock3, Radio, RefreshCw, RotateCcw, Save, Settings2, SlidersHorizontal, TimerReset } from 'lucide-react'
 import { settingsAPI } from '../api/settings.api'
@@ -80,6 +81,83 @@ function SettingField({
   )
 }
 
+
+function RecordingToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean
+  onChange: (next: boolean) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      aria-pressed={checked}
+      style={{
+        width: '100%',
+        minHeight: 52,
+        padding: 4,
+        borderRadius: 999,
+        border: checked ? '1px solid rgba(0,167,71,0.34)' : '1px solid var(--border-strong)',
+        background: checked
+          ? 'linear-gradient(135deg, rgba(0,167,71,0.16), rgba(42,233,123,0.10))'
+          : 'linear-gradient(135deg, var(--bg-glass-hi), var(--bg-2))',
+        boxShadow: checked
+          ? 'inset 0 1px 0 rgba(255,255,255,0.52), inset 0 -10px 22px rgba(0,167,71,0.06), 0 10px 24px rgba(0,167,71,0.14)'
+          : 'inset 0 1px 0 rgba(255,255,255,0.52), inset 0 -10px 22px rgba(16,16,24,0.04), 0 8px 18px rgba(16,16,24,0.06)',
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        position: 'relative',
+        cursor: 'pointer',
+        overflow: 'hidden',
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute',
+          top: 4,
+          bottom: 4,
+          left: checked ? 'calc(50% + 2px)' : 4,
+          width: 'calc(50% - 6px)',
+          borderRadius: 999,
+          background: checked
+            ? 'linear-gradient(135deg, var(--green-2), var(--green-light))'
+            : 'linear-gradient(135deg, rgba(112,106,125,0.82), rgba(112,106,125,0.58))',
+          boxShadow: checked
+            ? 'inset 0 1px 0 rgba(255,255,255,0.38), inset 0 -2px 8px rgba(0,0,0,0.16), 0 8px 20px rgba(0,167,71,0.28)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.30), inset 0 -2px 8px rgba(0,0,0,0.14), 0 8px 18px rgba(16,16,24,0.16)',
+          transition: 'left 0.26s var(--ease), background 0.26s var(--ease), box-shadow 0.26s var(--ease)',
+        }}
+      />
+      {(['Off', 'On'] as const).map(label => {
+        const active = checked ? label === 'On' : label === 'Off'
+        return (
+          <span
+            key={label}
+            className="mono"
+            style={{
+              zIndex: 1,
+              display: 'grid',
+              placeItems: 'center',
+              minHeight: 44,
+              fontSize: 11.5,
+              fontWeight: 900,
+              letterSpacing: 1.1,
+              textTransform: 'uppercase',
+              color: active ? '#fff' : 'var(--text-3)',
+              textShadow: active ? '0 1px 0 rgba(0,0,0,0.18)' : 'none',
+              transition: 'color 0.22s var(--ease), text-shadow 0.22s var(--ease)',
+            }}
+          >
+            {label}
+          </span>
+        )
+      })}
+    </button>
+  )
+}
+
 function StateBanner({ type, children }: { type: 'error' | 'success' | 'warning'; children: ReactNode }) {
   const isError = type === 'error'
   const isWarning = type === 'warning'
@@ -110,11 +188,40 @@ function StateBanner({ type, children }: { type: 'error' | 'success' | 'warning'
 }
 
 export default function SystemSettings() {
+  const queryClient = useQueryClient()
   const [form, setForm] = useState<SettingsForm>(DEFAULT_FORM)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  const [manualError, setManualError] = useState('')
+
+  const settingsQuery = useQuery({
+    queryKey: ['system-settings'],
+    queryFn: settingsAPI.getAll,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
+
+  useEffect(() => {
+    if (settingsQuery.data) setForm({ ...DEFAULT_FORM, ...(settingsQuery.data || {}) })
+  }, [settingsQuery.data])
+
+  const saveMutation = useMutation({
+    mutationFn: (payload: SettingsForm) => settingsAPI.update(payload),
+    onSuccess: async (data) => {
+      setForm({ ...DEFAULT_FORM, ...(data || {}) })
+      setMessage('System settings saved.')
+      await queryClient.invalidateQueries({ queryKey: ['system-settings'] })
+    },
+  })
+
+  const loading = settingsQuery.isLoading
+  const saving = saveMutation.isPending
+  const error = manualError || (settingsQuery.error
+    ? settingsQuery.error instanceof Error
+      ? settingsQuery.error.message
+      : 'Failed to load settings'
+    : '')
 
   const validationError = useMemo(() => {
     if (!form.defaultTimezone.trim()) return 'Default timezone is required.'
@@ -128,72 +235,36 @@ export default function SystemSettings() {
   }, [form])
 
   const load = async () => {
-    setLoading(true)
-    setError('')
+    setManualError('')
     setMessage('')
-    try {
-      const data = await settingsAPI.getAll()
-      setForm({ ...DEFAULT_FORM, ...(data || {}) })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load settings')
-    } finally {
-      setLoading(false)
-    }
+    await settingsQuery.refetch()
   }
-
-  useEffect(() => {
-    let cancelled = false
-
-    const loadInitial = async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const data = await settingsAPI.getAll()
-        if (!cancelled) setForm({ ...DEFAULT_FORM, ...(data || {}) })
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load settings')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    void loadInitial()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const save = async () => {
     if (validationError) {
-      setError(validationError)
+      setManualError(validationError)
       return
     }
 
-    setSaving(true)
-    setError('')
+    setManualError('')
     setMessage('')
     try {
-      const data = await settingsAPI.update({ ...form })
-      setForm({ ...DEFAULT_FORM, ...(data || {}) })
-      setMessage('System settings saved.')
+      await saveMutation.mutateAsync({ ...form })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save settings')
-    } finally {
-      setSaving(false)
+      setManualError(err instanceof Error ? err.message : 'Failed to save settings')
     }
   }
 
   const setField = <K extends keyof SettingsForm>(key: K, value: SettingsForm[K]) => {
     setMessage('')
-    setError('')
+    setManualError('')
     setForm(prev => ({ ...prev, [key]: value }))
   }
 
   const recordingEnabled = form.recordingEnabled
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1240, margin: '0 auto' }}>
+    <div style={{ padding: '32px 36px', maxWidth: 900, margin: '0 auto' }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
         <div className="eyebrow pink" style={{ marginBottom: 14 }}>
           <SlidersHorizontal size={11} /> PTDT-Dialer Operations
@@ -333,31 +404,28 @@ export default function SystemSettings() {
               description="Global default for surfacing recording controls and saved recording access."
               icon={<Radio size={17} />}
             >
-              <button
-                type="button"
-                onClick={() => setField('recordingEnabled', !recordingEnabled)}
-                style={{
-                  height: 43,
-                  borderRadius: 999,
-                  border: recordingEnabled ? '1px solid rgba(0,167,71,0.34)' : '1px solid var(--border)',
-                  background: recordingEnabled ? 'rgba(0,167,71,0.10)' : 'var(--bg-glass-hi)',
-                  color: recordingEnabled ? 'var(--green-2)' : 'var(--text-3)',
-                  fontSize: 12,
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.7,
-                }}
-              >
-                {recordingEnabled ? 'Enabled' : 'Disabled'}
-              </button>
+              <RecordingToggle
+                checked={recordingEnabled}
+                onChange={next => setField('recordingEnabled', next)}
+              />
             </SettingField>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 20 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                gap: 10,
+                paddingTop: 22,
+                marginTop: 4,
+                borderTop: '1px solid var(--border)',
+                flexWrap: 'wrap',
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setForm(DEFAULT_FORM)}
-                style={{ height: 43, borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-3)', padding: '0 18px', fontSize: 12, fontWeight: 900, cursor: 'pointer' }}
+                style={{ height: 42, borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-glass-hi)', color: 'var(--text-3)', padding: '0 18px', fontSize: 12, fontWeight: 900, cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}
               >
                 Reset Form
               </button>
