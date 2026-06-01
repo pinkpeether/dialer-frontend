@@ -2,8 +2,8 @@ import { useEffect, useRef, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useAuthStore } from '../store/auth.store'
 import { SOCKET_EVENTS, type SocketEventName } from '../constants/socketEvents'
+import { getSocketUrl } from '../utils/socketUrl'
 
-const BACKEND_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'
 const SOCKET_DEBUG = import.meta.env.VITE_SOCKET_DEBUG === 'true'
 
 let socketInstance: Socket | null = null
@@ -17,7 +17,7 @@ export const useSocket = () => {
     if (!token) return
 
     if (!socketInstance) {
-      socketInstance = io(BACKEND_URL, {
+      socketInstance = io(getSocketUrl(), {
         auth: { token },
         transports: ['websocket', 'polling'],
         reconnection: true,

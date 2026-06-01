@@ -16,6 +16,7 @@ import FloatingDialer from '../components/FloatingDialer'
 import SipActiveCallOverlay from '../components/SipActiveCallOverlay'
 import CallDispositionModal from '../components/CallDispositionModal'
 import { useToast } from '../hooks/useToast'
+import { getSocketUrl } from '../utils/socketUrl'
 
 
 type DispositionRequest = {
@@ -78,13 +79,6 @@ function extractManualCallRecord(result: unknown) {
       '',
     ),
   }
-}
-
-const getSocketUrl = () => {
-  const explicit = import.meta.env.VITE_SOCKET_URL as string | undefined
-  if (explicit) return explicit
-  const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:3000/api'
-  return apiUrl.replace(/\/api\/?$/, '')
 }
 
 function getItems(payload: unknown): unknown[] {

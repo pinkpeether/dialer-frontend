@@ -13,6 +13,7 @@ import { agentsAPI } from '../api/agents.api'
 import { useAuthStore } from '../store/auth.store'
 import { useSipStore } from '../store/sip.store'
 import { SOCKET_EVENTS } from '../constants/socketEvents'
+import { getSocketUrl } from '../utils/socketUrl'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -96,13 +97,6 @@ const timeAgo = (iso: string) => {
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
   return date.toLocaleDateString()
-}
-
-const getSocketUrl = () => {
-  const explicit = import.meta.env.VITE_SOCKET_URL as string | undefined
-  if (explicit) return explicit
-  const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:3000/api'
-  return apiUrl.replace(/\/api\/?$/, '')
 }
 
 const normalizeIncomingCall = (payload: SocketIncomingPayload): ActiveCall | null => {
