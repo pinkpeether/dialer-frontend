@@ -95,7 +95,7 @@ export default function DncManager() {
   }
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1200, margin: '0 auto' }}>
+    <div className="ptdt-page">
 
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
@@ -111,11 +111,11 @@ export default function DncManager() {
               <span className="pulse-dot" /> {entries.length} numbers blocked from dialing
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" onClick={() => void load(search)} style={{ height: 42, width: 42, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-3)', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+          <div className="ptdt-toolbar">
+            <button type="button" onClick={() => void load(search)} className="ptdt-action-icon-btn">
               <RefreshCw size={16} />
             </button>
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setAddOpen(true)} className="btn-brand" style={{ display: 'flex', alignItems: 'center', gap: 8, borderRadius: 'var(--radius-full)', padding: '0 20px', minHeight: 42, fontSize: 13.5 }}>
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setAddOpen(true)} className="btn-brand" style={{ minHeight: 38, fontSize: 12 }}>
               <Plus size={15} /> Add Number
             </motion.button>
           </div>
@@ -149,7 +149,7 @@ export default function DncManager() {
       {/* Table */}
       <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
                 {['Phone Number', 'Reason', 'Added By', 'Date Added', 'Action'].map(h => (
@@ -256,7 +256,7 @@ export default function DncManager() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div className="ptdt-toolbar">
                 <button type="button" className="btn-brand" disabled={!addPhone.trim() || adding} onClick={() => void handleAdd()} style={{ flex: 1, minHeight: 42, borderRadius: 'var(--radius-md)', opacity: !addPhone.trim() ? 0.6 : 1 }}>
                   {adding ? 'Adding…' : 'Add to DNC'}
                 </button>

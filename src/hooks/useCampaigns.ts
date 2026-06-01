@@ -1,84 +1,80 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useMemo } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { campaignsAPI } from '../api/campaigns.api'
 
-export const useCampaigns = (params?: Record<string,unknown>) => {
+export const useCampaigns = (params?: Record<string, unknown>) => {
+  const queryClient = useQueryClient()
   const paramsKey = JSON.stringify(params ?? {})
   const stableParams = useMemo(() => JSON.parse(paramsKey) as typeof params, [paramsKey])
-  const [campaigns, setCampaigns] = useState<Record<string,unknown>[]>([])
-  const [stats, setStats] = useState<Record<string,unknown> | null>(null)
-  const [pagination, setPagination] = useState<Record<string,unknown> | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
+  const campaignsQuery = useQuery({
+    queryKey: ['campaigns', stableParams ?? {}],
+    queryFn: async () => {
       const listData = await campaignsAPI.getAll(stableParams)
-      setCampaigns(listData?.campaigns || [])
-      setPagination(listData?.pagination || null)
-
-      try {
-        const statsData = await campaignsAPI.getStats()
-        setStats(statsData)
-      } catch {
-        setStats(null)
+      const statsData = await campaignsAPI.getStats()
+        .then(value => value as Record<string, unknown>)
+        .catch(() => null)
+      return {
+        campaigns: (listData?.campaigns || []) as Record<string, unknown>[],
+        pagination: (listData?.pagination || null) as Record<string, unknown> | null,
+        stats: statsData,
       }
-    } catch (err: unknown) {
-      setError((err as Error).message || 'Failed to load campaigns')
-      setCampaigns([])
-      setPagination(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [stableParams])
+    },
+    staleTime: 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
 
-  useEffect(() => { void fetch() }, [fetch])
-
-  const createCampaign = async (data: Record<string,unknown>) => {
-    setError(null)
-    const created = await campaignsAPI.create(data)
-    setCampaigns(previous => [created as Record<string, unknown>, ...previous])
-    void fetch()
-    return created
+  const invalidate = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
+      queryClient.invalidateQueries({ queryKey: ['monitoring'] }),
+      queryClient.invalidateQueries({ queryKey: ['ops'] }),
+    ])
   }
 
-  const updateCampaign = async (id: number, data: Record<string,unknown>) => {
-    setError(null)
-    const updated = await campaignsAPI.update(id, data)
-    setCampaigns(previous => previous.map(c => Number(c.id) === id ? { ...c, ...(updated as Record<string, unknown>) } : c))
-    void fetch()
-    return updated
-  }
+  const createMutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) => campaignsAPI.create(data),
+    onSuccess: invalidate,
+  })
 
-  const updateStatus = async (id: number, status: string) => {
-    setError(null)
-    const updated = await campaignsAPI.updateStatus(id, status)
-    setCampaigns(previous => previous.map(c => Number(c.id) === id ? { ...c, ...(updated as Record<string, unknown>), status } : c))
-    void fetch()
-  }
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Record<string, unknown> }) => campaignsAPI.update(id, data),
+    onSuccess: invalidate,
+  })
 
-  const cloneCampaign = async (id: number) => {
-    setError(null)
-    const cloned = await campaignsAPI.clone(id)
-    setCampaigns(previous => [cloned as Record<string, unknown>, ...previous])
-    void fetch()
-    return cloned
-  }
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) => campaignsAPI.updateStatus(id, status),
+    onSuccess: invalidate,
+  })
 
-  const deleteCampaign = async (id: number) => {
-    setError(null)
-    await campaignsAPI.delete(id)
-    setCampaigns(previous => previous.filter(c => Number(c.id) !== id))
-    void fetch()
-  }
+  const cloneMutation = useMutation({
+    mutationFn: (id: number) => campaignsAPI.clone(id),
+    onSuccess: invalidate,
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => campaignsAPI.delete(id),
+    onSuccess: invalidate,
+  })
+
+  const error = campaignsQuery.error
+    ? (campaignsQuery.error as Error).message || 'Failed to load campaigns'
+    : null
 
   return {
-    campaigns, stats, pagination,
-    loading, error,
-    refetch: fetch,
-    createCampaign, updateCampaign,
-    updateStatus, cloneCampaign, deleteCampaign
+    campaigns: campaignsQuery.data?.campaigns ?? [],
+    stats: campaignsQuery.data?.stats ?? null,
+    pagination: campaignsQuery.data?.pagination ?? null,
+    loading: campaignsQuery.isLoading,
+    isFetching: campaignsQuery.isFetching,
+    error,
+    refetch: campaignsQuery.refetch,
+    createCampaign: (data: Record<string, unknown>) => createMutation.mutateAsync(data),
+    updateCampaign: (id: number, data: Record<string, unknown>) => updateMutation.mutateAsync({ id, data }),
+    updateStatus: (id: number, status: string) => statusMutation.mutateAsync({ id, status }),
+    cloneCampaign: (id: number) => cloneMutation.mutateAsync(id),
+    deleteCampaign: (id: number) => deleteMutation.mutateAsync(id),
   }
 }

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Megaphone, Pause, Play, RefreshCw, Upload, Users } from 'lucide-react'
 import { campaignsAPI } from '../api/campaigns.api'
@@ -64,48 +65,48 @@ const statusColor = (status: string) => {
 export default function CampaignDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [campaign, setCampaign] = useState<Campaign | null>(null)
-  const [contacts, setContacts] = useState<Contact[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [message, setMessage] = useState('')
   const [importOpen, setImportOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const campaignId = Number(id)
 
-  const loadCampaign = useCallback(async () => {
-    if (!Number.isFinite(campaignId)) return
-    setLoading(true)
-    setMessage('')
-
-    try {
+  const detailQuery = useQuery({
+    queryKey: ['campaign-detail', campaignId],
+    queryFn: async () => {
       const campaignRes = await campaignsAPI.getById(campaignId)
-      setCampaign(campaignRes as Campaign)
-
-      try {
-        const contactsRes = await contactsAPI.getAll({ campaignId, limit: 100 })
-        setContacts(extractList<Contact>(contactsRes, ['contacts', 'results']))
-      } catch {
-        setContacts([])
+      const contactsRes = await contactsAPI.getAll({ campaignId, limit: 100 }).catch(() => null)
+      return {
+        campaign: campaignRes as Campaign,
+        contacts: extractList<Contact>(contactsRes, ['contacts', 'results']),
       }
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Failed to load campaign detail.')
-    } finally {
-      setLoading(false)
-    }
-  }, [campaignId])
+    },
+    enabled: Number.isFinite(campaignId),
+    staleTime: 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
 
-  useEffect(() => { void loadCampaign() }, [loadCampaign])
+  const campaign = detailQuery.data?.campaign ?? null
+  const contacts = useMemo(() => detailQuery.data?.contacts ?? [], [detailQuery.data?.contacts])
+  const loading = detailQuery.isLoading
+
+  const loadCampaign = async () => {
+    setMessage('')
+    await detailQuery.refetch()
+  }
 
   const handleStatusChange = async (newStatus: CampaignStatus) => {
     if (!campaign) return
     setBusy(true)
     setMessage('')
     try {
-      const updated = await campaignsAPI.updateStatus(campaign.id, newStatus)
-      setCampaign({ ...campaign, ...(updated || {}), status: newStatus })
+      await campaignsAPI.updateStatus(campaign.id, newStatus)
       setMessage(`✓ Campaign status changed to ${newStatus}`)
-      void loadCampaign()
+      await queryClient.invalidateQueries({ queryKey: ['campaign-detail', campaign.id] })
+      await queryClient.invalidateQueries({ queryKey: ['campaigns'] })
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Failed to update campaign status.')
     } finally {
@@ -120,7 +121,7 @@ export default function CampaignDetail() {
     try {
       await contactsAPI.uploadCSV(campaign.id, file)
       setImportOpen(false)
-      await loadCampaign()
+      await queryClient.invalidateQueries({ queryKey: ['campaign-detail', campaign.id] })
       setMessage('✓ Contacts imported')
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Failed to import contacts.')

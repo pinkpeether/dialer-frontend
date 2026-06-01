@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import {
   Activity,
@@ -17,6 +17,7 @@ import {
   Users,
 } from 'lucide-react'
 import { monitoringAPI } from '../api/monitoring.api'
+import { useQuery } from '@tanstack/react-query'
 
 type MonitoringSummary = {
   generatedAt: string
@@ -143,41 +144,45 @@ const downloadJson = (data: unknown) => {
 }
 
 export default function ProductionMonitoring() {
-  const [summary, setSummary] = useState<MonitoringSummary | null>(null)
-  const [loading, setLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(false)
-  const [error, setError] = useState('')
+  const [manualError, setManualError] = useState('')
   const [message, setMessage] = useState('')
 
-  const load = useCallback(async () => {
-    setError('')
-    try {
-      const data = await monitoringAPI.summary()
-      setSummary(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load monitoring summary')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const monitoringQuery = useQuery<MonitoringSummary>({
+    queryKey: ['monitoring', 'summary'],
+    queryFn: monitoringAPI.summary,
+    staleTime: 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchInterval: autoRefresh ? 30 * 1000 : false,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData: unknown) => previousData as MonitoringSummary | undefined,
+  })
 
-  useEffect(() => { void load() }, [load])
+  const summary = monitoringQuery.data ?? null
+  const loading = monitoringQuery.isLoading
+  const error = manualError || (
+    monitoringQuery.error
+      ? monitoringQuery.error instanceof Error
+        ? monitoringQuery.error.message
+        : 'Failed to load monitoring summary'
+      : ''
+  )
 
-  useEffect(() => {
-    if (!autoRefresh) return undefined
-    const timer = window.setInterval(() => { void load() }, 30000)
-    return () => window.clearInterval(timer)
-  }, [autoRefresh, load])
+  const load = async () => {
+    setManualError('')
+    setMessage('')
+    await monitoringQuery.refetch()
+  }
 
   const resetRuntime = async () => {
-    setError('')
+    setManualError('')
     setMessage('')
     try {
       await monitoringAPI.resetRuntime()
       setMessage('Runtime metrics reset.')
-      await load()
+      await monitoringQuery.refetch()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset runtime metrics')
+      setManualError(err instanceof Error ? err.message : 'Failed to reset runtime metrics')
     }
   }
 
@@ -226,7 +231,7 @@ export default function ProductionMonitoring() {
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <StatusPill status={status} generatedAt={summary?.generatedAt} />
-          <ActionButton onClick={() => void load()} disabled={loading} icon={<RefreshCw size={15} />}>
+          <ActionButton onClick={() => void load()} disabled={monitoringQuery.isFetching} icon={<RefreshCw size={15} />}>
             Refresh
           </ActionButton>
           <ActionButton onClick={() => setAutoRefresh(value => !value)} active={autoRefresh} icon={<Clock3 size={15} />}>
@@ -243,6 +248,9 @@ export default function ProductionMonitoring() {
 
       {error && <Notice tone="error">{error}</Notice>}
       {message && <Notice tone="success">{message}</Notice>}
+      {monitoringQuery.isFetching && summary && (
+        <Notice tone="success">Refreshing monitoring snapshot in the background...</Notice>
+      )}
 
       {loading && !summary ? (
         <div className="glass" style={{ minHeight: 320, display: 'grid', placeItems: 'center', color: 'var(--text-3)' }}>
@@ -318,8 +326,16 @@ export default function ProductionMonitoring() {
             </Section>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 18 }}>
-            <Section title="Recent API Requests" subtitle="Last captured request timings and HTTP status codes.">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 18,
+              width: '100%',
+            }}
+          >
+            <div style={{ flex: '1 1 calc(100% - 458px)', minWidth: 0 }}>
+              <Section title="Recent API Requests" subtitle="Last captured request timings and HTTP status codes." fitContent>
               {summary.api.recentRequests.length === 0 ? (
                 <Empty text="No runtime requests recorded yet." />
               ) : (
@@ -335,9 +351,11 @@ export default function ProductionMonitoring() {
                   ))}
                 </Table>
               )}
-            </Section>
+              </Section>
+            </div>
 
-            <Section title="Recent Runtime Errors" subtitle="Recent API and process-level errors captured by monitoring.">
+            <div style={{ flex: '0 0 440px', width: 440, minWidth: 360 }}>
+              <Section title="Recent Runtime Errors" subtitle="Recent API and process-level errors captured by monitoring." compact>
               {summary.api.recentErrors.length === 0 ? (
                 <Empty text="No runtime errors recorded." />
               ) : (
@@ -353,7 +371,8 @@ export default function ProductionMonitoring() {
                   ))}
                 </Table>
               )}
-            </Section>
+              </Section>
+            </div>
           </div>
 
           <Section title="Recent Calls 24h" subtitle="Latest call records used by production monitoring.">
@@ -472,9 +491,9 @@ function Metric({ label, value, note, icon, color, bg }: { label: string; value:
   )
 }
 
-function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+function Section({ title, subtitle, children, compact = false, fitContent = false }: { title: string; subtitle?: string; children: ReactNode; compact?: boolean; fitContent?: boolean }) {
   return (
-    <section className="glass" style={{ padding: 20, overflow: 'auto' }}>
+    <section className="glass" style={{ padding: compact ? 18 : 20, overflow: fitContent ? 'hidden' : 'auto', width: '100%' }}>
       <div style={{ marginBottom: 14 }}>
         <h2 className="display" style={{ margin: 0, fontSize: 18, fontWeight: 900, color: 'var(--text)' }}>{title}</h2>
         {subtitle && <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--text-3)', lineHeight: 1.45 }}>{subtitle}</p>}
@@ -524,10 +543,10 @@ function Empty({ text }: { text: string }) {
   return <div style={{ color: 'var(--text-3)', padding: '16px 0', fontSize: 13 }}>{text}</div>
 }
 
-function Table({ headers, children }: { headers: string[]; children: ReactNode }) {
+function Table({ headers, children, minWidth = 0 }: { headers: string[]; children: ReactNode; minWidth?: number }) {
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+    <div style={{ overflowX: 'hidden', width: '100%' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth, tableLayout: 'fixed' }}>
         <thead>
           <tr>
             {headers.map(header => <th key={header} style={tableHead}>{header}</th>)}

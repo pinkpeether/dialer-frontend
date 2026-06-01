@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { BookUser, Upload, Search, Trash2 } from 'lucide-react'
+import { BookUser, Upload, Search, Trash2, Plus, X } from 'lucide-react'
 import { useContacts }  from '../hooks/useContacts'
 import StatsCard        from '../components/StatsCard'
 import { campaignsAPI } from '../api/campaigns.api'
@@ -37,9 +37,12 @@ export default function Contacts() {
   const [status,    setStatus]    = useState<string | undefined>()
   const [campaigns, setCampaigns] = useState<Record<string,unknown>[]>([])
   const [uploading, setUploading] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [newContact, setNewContact] = useState({ name: '', phone: '', email: '', notes: '' })
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const { contacts, stats, loading, error, pagination, uploadCSV, deleteContact } =
+  const { contacts, stats, loading, error, pagination, uploadCSV, createContact, deleteContact } =
     useContacts({
       campaignId: campId,
       status:     status || undefined,
@@ -78,8 +81,26 @@ export default function Contacts() {
     }
   }
 
+
+  const handleCreateContact = async () => {
+    if (!newContact.phone.trim()) { alert('Phone number is required'); return }
+    setCreating(true)
+    try {
+      await createContact({
+        name: newContact.name.trim() || newContact.phone.trim(),
+        phone: newContact.phone.trim(),
+        email: newContact.email.trim() || undefined,
+        notes: newContact.notes.trim() || undefined,
+        campaignId: campId,
+      })
+      setNewContact({ name: '', phone: '', email: '', notes: '' })
+      setAddOpen(false)
+    } catch (err) { alert(err instanceof Error ? err.message : 'Failed to add contact') }
+    finally { setCreating(false) }
+  }
+
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1600, margin: '0 auto' }}>
+    <div className="ptdt-page">
 
       {/* PTDT Header */}
       <motion.div
@@ -122,24 +143,17 @@ export default function Contacts() {
             </p>
           )}
         </div>
-        <div>
+        <div className="ptdt-toolbar">
           <input ref={fileRef} type="file" accept=".csv" onChange={handleCSV} style={{ display: 'none' }}/>
+          <button type="button" className="ptdt-action-btn active" onClick={() => setAddOpen(true)}>
+            <Plus size={14}/> Add Contact
+          </button>
           <motion.button
             whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: 'linear-gradient(135deg, rgba(0,167,71,0.14), rgba(42,233,123,0.18))',
-              border: '1px solid rgba(0,167,71,0.38)',
-              borderRadius: 'var(--radius-full)',
-              minHeight: 46,
-              padding: '0 22px',
-              cursor: uploading ? 'not-allowed' : 'pointer', color: COL_GREEN,
-              fontWeight: 800, fontSize: 13.5,
-              boxShadow: '0 12px 26px rgba(0,167,71,0.16)',
-              opacity: uploading ? 0.65 : 1,
-            }}
+            className="ptdt-action-btn active"
+            style={{ color: COL_GREEN }}
           >
             <Upload size={15}/> {uploading ? 'Uploading…' : 'Upload CSV'}
           </motion.button>
@@ -199,7 +213,7 @@ export default function Contacts() {
       {/* Table */}
       <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{ overflow: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
                 {['#', 'Name', 'Phone', 'Campaign', 'Status', 'Action'].map(h => (
@@ -294,6 +308,33 @@ export default function Contacts() {
           </table>
         </div>
       </div>
+
+
+      {addOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10050, background: 'rgba(3,2,8,0.58)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }} onMouseDown={e => { if (e.target === e.currentTarget) setAddOpen(false) }}>
+          <div className="glass-hi" style={{ width: 'min(520px, 96vw)', padding: 24, borderRadius: 28 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <div>
+                <div className="eyebrow purple" style={{ marginBottom: 10 }}><BookUser size={12}/> Individual Contact</div>
+                <h2 className="display" style={{ fontSize: 22 }}>Add Contact</h2>
+              </div>
+              <button type="button" className="ptdt-action-icon-btn" onClick={() => setAddOpen(false)}><X size={15}/></button>
+            </div>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <input className="ptdt-input" value={newContact.name} onChange={e => setNewContact({ ...newContact, name: e.target.value })} placeholder="Name / label" />
+              <input className="ptdt-input mono" value={newContact.phone} onChange={e => setNewContact({ ...newContact, phone: e.target.value })} placeholder="Phone number *" />
+              <input className="ptdt-input" value={newContact.email} onChange={e => setNewContact({ ...newContact, email: e.target.value })} placeholder="Email optional" />
+              <textarea className="ptdt-textarea" value={newContact.notes} onChange={e => setNewContact({ ...newContact, notes: e.target.value })} placeholder="Notes optional" rows={3} />
+              {!campId && <div style={{ color: 'var(--warning)', fontSize: 12 }}>No campaign selected. Contact will be created without campaign context if backend allows it.</div>}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button className="ptdt-action-btn" type="button" onClick={() => setAddOpen(false)}>Cancel</button>
+                <button className="btn-brand" type="button" disabled={creating || !newContact.phone.trim()} onClick={() => void handleCreateContact()} style={{ minHeight: 38, fontSize: 12 }}>{creating ? 'Adding...' : 'Add Contact'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

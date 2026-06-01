@@ -1,4 +1,5 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { AlertTriangle, Clock, Database, Mic2, Phone, Play, Radio, RefreshCw, Search, ShieldCheck, UserRound } from 'lucide-react'
 import { recordingsAPI } from '../api/recordings.api'
@@ -64,73 +65,52 @@ function EmptyState({ children }: { children: ReactNode }) {
 }
 
 export default function Recordings() {
-  const [recordings, setRecordings] = useState<RecordingRow[]>([])
-  const [health, setHealth] = useState<RecordingHealth | null>(null)
   const [search, setSearch] = useState('')
+  const [appliedSearch, setAppliedSearch] = useState('')
   const [activeUrl, setActiveUrl] = useState('')
   const [activeTitle, setActiveTitle] = useState('')
   const [activeExpiresAt, setActiveExpiresAt] = useState('')
   const [activeCallId, setActiveCallId] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
   const [accessingId, setAccessingId] = useState<number | null>(null)
-  const [error, setError] = useState('')
+  const [manualError, setManualError] = useState('')
 
-  const loadHealth = async () => {
-    try {
-      const data = await recordingsAPI.getHealth()
-      setHealth(data)
-    } catch {
-      setHealth(null)
-    }
-  }
+  const recordingsParams = useMemo(() => ({ search: appliedSearch || undefined, limit: 50 }), [appliedSearch])
+
+  const recordingsQuery = useQuery({
+    queryKey: ['recordings', recordingsParams],
+    queryFn: async () => {
+      const [recordingData, healthData] = await Promise.all([
+        recordingsAPI.getAll(recordingsParams),
+        recordingsAPI.getHealth().catch(() => null),
+      ])
+      return {
+        recordings: (recordingData?.recordings || []) as RecordingRow[],
+        health: healthData as RecordingHealth | null,
+      }
+    },
+    staleTime: 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
+
+  const recordings = recordingsQuery.data?.recordings ?? []
+  const health = recordingsQuery.data?.health ?? null
+  const loading = recordingsQuery.isLoading
+  const error = manualError || (recordingsQuery.error
+    ? recordingsQuery.error instanceof Error
+      ? recordingsQuery.error.message
+      : 'Failed to load recordings'
+    : '')
 
   const load = async (query = search) => {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await recordingsAPI.getAll({ search: query || undefined, limit: 50 })
-      setRecordings(data?.recordings || [])
-      await loadHealth()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load recordings')
-      setRecordings([])
-    } finally {
-      setLoading(false)
-    }
+    setManualError('')
+    setAppliedSearch(query)
+    await recordingsQuery.refetch()
   }
 
-  useEffect(() => {
-    let cancelled = false
-
-    const loadInitial = async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const recordingData = await recordingsAPI.getAll({ limit: 50 })
-        const healthData = await recordingsAPI.getHealth().catch(() => null)
-        if (!cancelled) {
-          setRecordings(recordingData?.recordings || [])
-          setHealth(healthData)
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load recordings')
-          setRecordings([])
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    void loadInitial()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   const play = async (row: RecordingRow) => {
-    setError('')
+    setManualError('')
     setAccessingId(row.id)
     try {
       const data = await recordingsAPI.getAccess(row.id)
@@ -142,7 +122,7 @@ export default function Recordings() {
       setActiveExpiresAt(data?.expiresAt || '')
       setActiveTitle(`${row.contact?.name || 'Unknown'} · ${row.contact?.phone || 'No phone'}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to access recording')
+      setManualError(err instanceof Error ? err.message : 'Failed to access recording')
     } finally {
       setAccessingId(null)
     }

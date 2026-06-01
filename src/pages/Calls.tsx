@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
   Calendar,
@@ -297,16 +298,13 @@ function DetailField({
 
 export default function Calls() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [data, setData] = useState<PagedResponse | null>(null)
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [draftStartDate, setDraftStartDate] = useState('')
   const [draftEndDate, setDraftEndDate] = useState('')
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [selectedForDisposition, setSelectedForDisposition] = useState<CallRow | null>(null)
   const [expandedId, setExpandedId] = useState<string | number | null>(null)
-  const [refreshNonce, setRefreshNonce] = useState(0)
 
   const page = Math.max(1, numberValue(searchParams.get('page'), 1))
   const limit = Math.max(1, numberValue(searchParams.get('limit'), 25))
@@ -314,6 +312,39 @@ export default function Calls() {
   const directionFilter = (searchParams.get('direction') || '') as '' | CallDirection
   const startDate = searchParams.get('startDate') || ''
   const endDate = searchParams.get('endDate') || ''
+
+  const queryParams = useMemo(() => {
+    const params: Record<string, unknown> = { page, limit }
+    if (statusFilter) params.status = statusFilter
+    if (directionFilter) params.direction = directionFilter
+    if (startDate) params.startDate = startDate
+    if (endDate) params.endDate = endDate
+    return params
+  }, [page, limit, statusFilter, directionFilter, startDate, endDate])
+
+  const callsQuery = useQuery<PagedResponse>({
+    queryKey: ['calls', queryParams],
+    queryFn: async () => {
+      try {
+        const res = await callsAPI.getAll(queryParams, { timeout: 30000 })
+        return normalizeResponse(res, page, limit)
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('timeout')) {
+          const res = await callsAPI.getAll(queryParams, { timeout: 45000 })
+          return normalizeResponse(res, page, limit)
+        }
+        throw err
+      }
+    },
+    staleTime: 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
+
+  const data = callsQuery.data ?? null
+  const loading = callsQuery.isLoading
+  const error = callsQuery.error ? callHistoryErrorMessage(callsQuery.error) : null
 
   const hasNext = data ? data.page * data.limit < data.total : false
   const hasPrev = page > 1
@@ -325,46 +356,6 @@ export default function Calls() {
     setDraftStartDate(startDate)
     setDraftEndDate(endDate)
   }, [startDate, endDate])
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-
-    const params: Record<string, unknown> = { page, limit }
-    if (statusFilter) params.status = statusFilter
-    if (directionFilter) params.direction = directionFilter
-    if (startDate) params.startDate = startDate
-    if (endDate) params.endDate = endDate
-
-    const load = async () => {
-      try {
-        return await callsAPI.getAll(params, { timeout: 30000 })
-      } catch (err) {
-        if (err instanceof Error && err.message.includes('timeout')) {
-          return callsAPI.getAll(params, { timeout: 45000 })
-        }
-        throw err
-      }
-    }
-
-    void load()
-      .then((res) => {
-        if (!cancelled) setData(normalizeResponse(res, page, limit))
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setError(callHistoryErrorMessage(err))
-        setData(null)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [page, limit, statusFilter, directionFilter, startDate, endDate, refreshNonce])
 
   const filteredItems = useMemo(() => {
     if (!data?.items) return []
@@ -911,7 +902,7 @@ export default function Calls() {
         defaultNotes={selectedForDisposition?.notes}
         defaultCallbackAt={selectedForDisposition?.callbackAt}
         onClose={() => setSelectedForDisposition(null)}
-        onSaved={() => setRefreshNonce(value => value + 1)}
+        onSaved={() => { void queryClient.invalidateQueries({ queryKey: ['calls'] }) }}
       />
     </div>
   )

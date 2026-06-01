@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
   Activity,
@@ -46,37 +47,47 @@ const entries = (record: Record<string, number>) => {
 }
 
 export default function OpsCenter() {
-  const [summary, setSummary] = useState<OpsSummary | null>(null)
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [runningJobs, setRunningJobs] = useState(false)
   const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  const [manualError, setManualError] = useState('')
+
+  const opsQuery = useQuery<OpsSummary>({
+    queryKey: ['ops', 'summary'],
+    queryFn: opsAPI.summary,
+    staleTime: 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
+
+  const summary = opsQuery.data ?? null
+  const loading = opsQuery.isLoading
+  const error = manualError || (opsQuery.error
+    ? opsQuery.error instanceof Error
+      ? opsQuery.error.message
+      : 'Failed to load ops summary'
+    : '')
 
   const load = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await opsAPI.summary()
-      setSummary(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load ops summary')
-    } finally {
-      setLoading(false)
-    }
+    setManualError('')
+    await opsQuery.refetch()
   }
-
-  useEffect(() => { void load() }, [])
 
   const runJobs = async () => {
     setRunningJobs(true)
     setMessage('')
-    setError('')
+    setManualError('')
     try {
       const result = await opsAPI.runNotificationJobs()
       setMessage(`Notification jobs completed. Created: ${result?.totalCreated ?? 0}`)
-      await load()
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['ops'] }),
+        queryClient.invalidateQueries({ queryKey: ['callbacks'] }),
+      ])
+      await opsQuery.refetch()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to run notification jobs')
+      setManualError(err instanceof Error ? err.message : 'Failed to run notification jobs')
     } finally {
       setRunningJobs(false)
     }
