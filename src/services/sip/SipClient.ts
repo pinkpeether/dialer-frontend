@@ -155,7 +155,7 @@ class SipClient {
     this.handlers.onStatusChange?.('registering')
 
     try {
-      await this.unregister()
+      await this.unregister({ emitStatus: false })
       this.sip = await import('sip.js')
 
       const uri = this.sip.UserAgent.makeURI(`sip:${config.username}@${config.domain}`)
@@ -220,7 +220,9 @@ class SipClient {
     }
   }
 
-  async unregister() {
+  async unregister(options: { emitStatus?: boolean } = {}) {
+    const emitStatus = options.emitStatus ?? true
+
     try {
       if (this.currentSession) await this.hangup()
       if (this.registerer) await this.registerer.unregister()
@@ -242,7 +244,9 @@ class SipClient {
       this.remoteTrackListener = null
       window.__ptdtSipPeerConnection = undefined
       window.__ptdtSipSession = undefined
-      this.handlers.onStatusChange?.(this.config?.enabled ? 'configured' : 'idle')
+      if (emitStatus) {
+        this.handlers.onStatusChange?.(this.config?.enabled ? 'configured' : 'idle')
+      }
     }
   }
 

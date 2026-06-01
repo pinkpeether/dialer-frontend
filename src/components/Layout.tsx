@@ -8,6 +8,7 @@ export default function Layout() {
   const sipStatus = useSipStore(s => s.status)
   const registerSip = useSipStore(s => s.register)
   const autoRegisterKeyRef = useRef('')
+  const autoRegisterInFlightRef = useRef(false)
 
   useEffect(() => {
     const ready = Boolean(
@@ -28,9 +29,17 @@ export default function Layout() {
 
     if (!['idle', 'configured'].includes(sipStatus)) return
     if (autoRegisterKeyRef.current === key) return
+    if (autoRegisterInFlightRef.current) return
 
     autoRegisterKeyRef.current = key
-    void registerSip().catch(() => undefined)
+    autoRegisterInFlightRef.current = true
+    void registerSip()
+      .catch(() => {
+        autoRegisterKeyRef.current = ''
+      })
+      .finally(() => {
+        autoRegisterInFlightRef.current = false
+      })
   }, [registerSip, sipConfig, sipStatus])
 
   return (

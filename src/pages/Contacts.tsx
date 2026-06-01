@@ -40,6 +40,7 @@ export default function Contacts() {
   const [addOpen, setAddOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newContact, setNewContact] = useState({ name: '', phone: '', email: '', notes: '' })
+  const [contactCampaignId, setContactCampaignId] = useState<number | ''>('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const { contacts, stats, loading, error, pagination, uploadCSV, createContact, deleteContact } =
@@ -84,6 +85,7 @@ export default function Contacts() {
 
   const handleCreateContact = async () => {
     if (!newContact.phone.trim()) { alert('Phone number is required'); return }
+    if (!contactCampaignId) { alert('Select a campaign before adding a contact'); return }
     setCreating(true)
     try {
       await createContact({
@@ -91,7 +93,7 @@ export default function Contacts() {
         phone: newContact.phone.trim(),
         email: newContact.email.trim() || undefined,
         notes: newContact.notes.trim() || undefined,
-        campaignId: campId,
+        campaignId: contactCampaignId,
       })
       setNewContact({ name: '', phone: '', email: '', notes: '' })
       setAddOpen(false)
@@ -145,7 +147,14 @@ export default function Contacts() {
         </div>
         <div className="ptdt-toolbar">
           <input ref={fileRef} type="file" accept=".csv" onChange={handleCSV} style={{ display: 'none' }}/>
-          <button type="button" className="ptdt-action-btn active" onClick={() => setAddOpen(true)}>
+          <button
+            type="button"
+            className="ptdt-action-btn active"
+            onClick={() => {
+              setContactCampaignId(campId ?? '')
+              setAddOpen(true)
+            }}
+          >
             <Plus size={14}/> Add Contact
           </button>
           <motion.button
@@ -321,14 +330,25 @@ export default function Contacts() {
               <button type="button" className="ptdt-action-icon-btn" onClick={() => setAddOpen(false)}><X size={15}/></button>
             </div>
             <div style={{ display: 'grid', gap: 12 }}>
+              <select
+                className="ptdt-input"
+                value={contactCampaignId}
+                onChange={e => setContactCampaignId(e.target.value ? Number(e.target.value) : '')}
+                required
+              >
+                <option value="">Select campaign *</option>
+                {visibleCampaigns.map(c => (
+                  <option key={c.id as number} value={c.id as number}>{c.name as string}</option>
+                ))}
+              </select>
               <input className="ptdt-input" value={newContact.name} onChange={e => setNewContact({ ...newContact, name: e.target.value })} placeholder="Name / label" />
               <input className="ptdt-input mono" value={newContact.phone} onChange={e => setNewContact({ ...newContact, phone: e.target.value })} placeholder="Phone number *" />
               <input className="ptdt-input" value={newContact.email} onChange={e => setNewContact({ ...newContact, email: e.target.value })} placeholder="Email optional" />
               <textarea className="ptdt-textarea" value={newContact.notes} onChange={e => setNewContact({ ...newContact, notes: e.target.value })} placeholder="Notes optional" rows={3} />
-              {!campId && <div style={{ color: 'var(--warning)', fontSize: 12 }}>No campaign selected. Contact will be created without campaign context if backend allows it.</div>}
+              {!contactCampaignId && <div style={{ color: 'var(--warning)', fontSize: 12 }}>Campaign is required because contacts are stored inside a campaign.</div>}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                 <button className="ptdt-action-btn" type="button" onClick={() => setAddOpen(false)}>Cancel</button>
-                <button className="btn-brand" type="button" disabled={creating || !newContact.phone.trim()} onClick={() => void handleCreateContact()} style={{ minHeight: 38, fontSize: 12 }}>{creating ? 'Adding...' : 'Add Contact'}</button>
+                <button className="btn-brand" type="button" disabled={creating || !newContact.phone.trim() || !contactCampaignId} onClick={() => void handleCreateContact()} style={{ minHeight: 38, fontSize: 12 }}>{creating ? 'Adding...' : 'Add Contact'}</button>
               </div>
             </div>
           </div>

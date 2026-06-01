@@ -15,12 +15,14 @@ type CallIntelligenceData = {
   transcriptText?: string | null
   transcription?: string | null
   status?: string | null
+  note?: string | null
   call?: CallIntelligenceCall | null
   data?: {
     transcript?: string | null
     transcriptText?: string | null
     transcription?: string | null
     status?: string | null
+    note?: string | null
     call?: CallIntelligenceCall | null
   } | null
 }
@@ -52,6 +54,7 @@ export default function CallIntelligence() {
   const call = data?.call
   const transcript = data?.transcript || data?.data?.transcript || data?.transcriptText || data?.transcription
   const status = data?.status || data?.data?.status || 'PHASE 4'
+  const note = data?.note || data?.data?.note || ''
 
   return (
     <div className="ptdt-page">
@@ -59,7 +62,7 @@ export default function CallIntelligence() {
         <div>
           <div className="eyebrow purple" style={{ marginBottom: 12 }}><Brain size={12} /> AI Call Intelligence</div>
           <h1 className="ptdt-page-title">Call <span className="gradient-brand-text">Intelligence</span></h1>
-          <p className="ptdt-page-desc">Search a call, generate transcript, and review AI-ready call context. Persistence requires the Phase 4 storage migration.</p>
+          <p className="ptdt-page-desc">Search a call, check recording readiness, and generate transcript output when recording storage and AI transcription are enabled.</p>
         </div>
         <div className="ptdt-toolbar">
           <span className="ptdt-chip"><Sparkles size={12} /> {status}</span>
@@ -113,6 +116,11 @@ export default function CallIntelligence() {
             <div className="ptdt-card" style={{ padding: 16, marginBottom: 16, color: 'var(--text)', lineHeight: 1.75 }}>{String(transcript)}</div>
           ) : (
             <div className="ptdt-card" style={{ padding: 18, marginBottom: 16, color: 'var(--text-3)' }}>No transcript generated yet.</div>
+          )}
+          {note && (
+            <div className="ptdt-card" style={{ padding: 14, marginBottom: 16, color: 'var(--text-3)', lineHeight: 1.65 }}>
+              {note}
+            </div>
           )}
           <pre className="ptdt-raw-json">{data ? JSON.stringify(data, null, 2) : 'No call loaded.'}</pre>
         </section>

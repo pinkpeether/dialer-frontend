@@ -167,6 +167,11 @@ export const useSipStore = create<SipStore>((set, get) => ({
   },
 
   register: async () => {
+    const currentStatus = get().status
+    if (['registering', 'registered', 'in_call', 'calling', 'incoming'].includes(currentStatus)) {
+      return
+    }
+
     const config = get().config
     try {
       const resolvedInputDeviceId = await sipClient.setAudioInputDevice(get().audioInputDeviceId)
