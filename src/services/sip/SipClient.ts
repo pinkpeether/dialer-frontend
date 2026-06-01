@@ -130,6 +130,7 @@ class SipClient {
   private remoteTrackListener: ((event: RTCTrackEvent) => void) | null = null
   private heldAudioSenderTracks = new Map<RTCRtpSender, MediaStreamTrack | null>()
   private holdMusicState: HoldMusicState | null = null
+  private endedSessions = new WeakSet<object>()
 
   isRegistered() {
     return Boolean(this.userAgent && this.registerer)
@@ -309,9 +310,9 @@ class SipClient {
       }, 500)
     } catch (err) {
       const message = friendlySipError(err, 'SIP call failed')
-      this.cleanupCurrentCallState()
+      this.cleanupCurrentCallState(inviter)
       this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
-      this.handlers.onCallEnded?.()
+      this.notifyCallEnded(inviter)
       this.handlers.onError?.(message)
       throw new Error(message, { cause: err })
     }
@@ -338,9 +339,9 @@ class SipClient {
       }, 500)
     } catch (err) {
       const message = friendlySipError(err, 'SIP answer failed')
-      this.cleanupCurrentCallState()
+      this.cleanupCurrentCallState(session)
       this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
-      this.handlers.onCallEnded?.()
+      this.notifyCallEnded(session)
       this.handlers.onError?.(message)
       throw new Error(message, { cause: err })
     }
@@ -363,10 +364,10 @@ class SipClient {
     } catch (err) {
       console.warn('[SIP] Hangup signaling failed; clearing local call state:', err)
     } finally {
-      this.cleanupCurrentCallState()
+      this.cleanupCurrentCallState(session)
     }
 
-    this.handlers.onCallEnded?.(endedAt)
+    this.notifyCallEnded(session, endedAt)
     this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
   }
 
@@ -621,7 +622,12 @@ class SipClient {
     this.localAudioStream = null
   }
 
-  private cleanupCurrentCallState() {
+  private cleanupCurrentCallState(session?: SipSession) {
+    if (session && this.currentSession && this.currentSession !== session) {
+      sipDebugInfo('[SIP] Ignoring stale session cleanup for non-current session')
+      return
+    }
+
     this.currentSession = null
     this.stopLocalAudioStream()
     this.stopHoldMusic()
@@ -629,6 +635,16 @@ class SipClient {
     this.remoteTrackListener = null
     window.__ptdtSipPeerConnection = undefined
     window.__ptdtSipSession = undefined
+  }
+
+  private notifyCallEnded(session?: SipSession | null, endedAt = Date.now()) {
+    if (session && typeof session === 'object') {
+      if (this.endedSessions.has(session)) return false
+      this.endedSessions.add(session)
+    }
+
+    this.handlers.onCallEnded?.(endedAt)
+    return true
   }
 
   private isSessionEstablished(session: SipSession) {
@@ -665,7 +681,7 @@ class SipClient {
     } catch (err) {
       console.warn('[SIP] Previous session cleanup before new call failed:', err)
     } finally {
-      this.cleanupCurrentCallState()
+      this.cleanupCurrentCallState(session)
       this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
     }
   }
@@ -792,9 +808,15 @@ class SipClient {
 
       if (stateName.includes('Terminated')) {
         const endedAt = Date.now()
-        this.cleanupCurrentCallState()
-        this.handlers.onCallEnded?.(endedAt)
-        this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
+        const isCurrentSession = this.currentSession === session
+        this.cleanupCurrentCallState(session)
+
+        if (isCurrentSession) {
+          this.notifyCallEnded(session, endedAt)
+          this.handlers.onStatusChange?.(this.registerer ? 'registered' : 'configured')
+        } else {
+          sipDebugInfo('[SIP] Ignored stale Terminated event from previous session')
+        }
       }
     })
   }
