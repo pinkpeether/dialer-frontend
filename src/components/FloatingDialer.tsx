@@ -658,19 +658,23 @@ export default function FloatingDialer({
 
   useEffect(() => {
     const activateSipCall = (startedAtInput?: number) => {
+      const startedAt = startedAtInput || Date.now();
       stopRingback();
       setError(null);
       setLoading(false);
       setState("active");
       setTab("controls");
+      clearSipPublicAnswerConfirm();
 
-      if (!timerRef.current) {
-        const startedAt = startedAtInput || Date.now();
+      if (!timerRef.current || callStart.current !== startedAt) {
+        stopTimer();
         callStart.current = startedAt;
         setElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
         timerRef.current = setInterval(() => {
           setElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
         }, 1000);
+      } else {
+        setElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
       }
     };
 
@@ -690,26 +694,12 @@ export default function FloatingDialer({
       sipCallEstablishedRef.current = true;
 
       if (!wasAlreadyActive) {
-        if (sipPublicNumberCallRef.current) {
-          if (!sipPublicAnswerConfirmRef.current) {
-            sipPublicAnswerConfirmRef.current = setTimeout(() => {
-              sipPublicAnswerConfirmRef.current = null;
-              if (!sipPublicNumberCallRef.current) return;
-              activateSipCall(Date.now());
-              playConnectedTone();
-            }, 4500);
-          }
-          return;
-        }
-
         activateSipCall(sipActiveCall.startedAt || Date.now());
         playConnectedTone();
         return;
       }
 
-      if (!sipPublicNumberCallRef.current) {
-        activateSipCall(sipActiveCall.startedAt || Date.now());
-      }
+      activateSipCall(sipActiveCall.startedAt || Date.now());
       return;
     }
 
