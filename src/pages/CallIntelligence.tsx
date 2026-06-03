@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Brain, FileAudio, Search, Sparkles, Wand2, Lightbulb, TrendingUp } from 'lucide-react'
+import { Brain, FileAudio, Search, Sparkles, Wand2, Lightbulb, TrendingUp, Copy, Download } from 'lucide-react'
 import { callIntelligenceAPI } from '../api/callIntelligence.api'
 
 type CallIntelligenceCall = {
@@ -86,8 +86,33 @@ export default function CallIntelligence() {
   const summary = data?.summary || data?.data?.summary || insight?.summary || ''
   const sentiment = data?.sentiment || data?.data?.sentiment || insight?.sentiment || ''
   const score = insight?.score
+  const actionItems = Array.isArray(insight?.actionItems) ? insight.actionItems : []
   const status = data?.status || data?.data?.status || 'PHASE 4'
   const note = data?.note || data?.data?.note || ''
+
+  const copyText = async (value: string, label: string) => {
+    if (!value.trim()) return
+    try {
+      await navigator.clipboard.writeText(value)
+      setError('')
+    } catch {
+      setError(`Unable to copy ${label}. Please copy it manually.`)
+    }
+  }
+
+  const exportPayload = () => {
+    if (!data) return
+    const payload = JSON.stringify(data, null, 2)
+    const blob = new Blob([payload], { type: 'application/json' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `ptdt-call-intelligence-${(call?.id ?? callId) || 'call'}.json`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="ptdt-page">
@@ -142,9 +167,33 @@ export default function CallIntelligence() {
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 14 }}>
             <div>
               <div className="display" style={{ fontSize: 20 }}>AI Output</div>
-              <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Transcript preview and raw call intelligence payload.</p>
+              <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Transcript preview, supervisor insight, and export tools.</p>
             </div>
             <span className="ptdt-chip">OpenRouter Ready</span>
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+            <button
+              className="ptdt-action-btn"
+              onClick={() => void copyText(String(transcript || ''), 'transcript')}
+              disabled={!transcript}
+            >
+              <Copy size={14} /> Copy Transcript
+            </button>
+            <button
+              className="ptdt-action-btn"
+              onClick={() => void copyText(String(summary || ''), 'summary')}
+              disabled={!summary}
+            >
+              <Copy size={14} /> Copy Summary
+            </button>
+            <button
+              className="ptdt-action-btn"
+              onClick={exportPayload}
+              disabled={!data}
+            >
+              <Download size={14} /> Export JSON
+            </button>
           </div>
           {(summary || sentiment || typeof score === 'number') && (
             <div className="ptdt-card" style={{ padding: 16, marginBottom: 16 }}>
@@ -167,9 +216,9 @@ export default function CallIntelligence() {
                 </div>
               </div>
               {summary && <p style={{ color: 'var(--text)', lineHeight: 1.7, marginBottom: 12 }}>{summary}</p>}
-              {Array.isArray(insight?.actionItems) && insight.actionItems.length > 0 && (
+              {actionItems.length > 0 && (
                 <div style={{ color: 'var(--text-3)', fontSize: 13 }}>
-                  <strong style={{ color: 'var(--text)' }}>Action Items:</strong> {insight.actionItems.join(', ')}
+                  <strong style={{ color: 'var(--text)' }}>Action Items:</strong> {actionItems.join(', ')}
                 </div>
               )}
             </div>
