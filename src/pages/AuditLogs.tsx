@@ -82,6 +82,96 @@ function formatDate(iso: string) {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString()
 }
 
+function formatDetailValue(value: unknown) {
+  if (value === null || value === undefined || value === '') return '—'
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '—'
+  if (typeof value === 'string') return value
+  return JSON.stringify(value)
+}
+
+function flattenMetadata(value: unknown, prefix = 'metadata'): Array<[string, string]> {
+  if (value === null || value === undefined) return []
+  if (typeof value !== 'object') return [[prefix, formatDetailValue(value)]]
+  if (Array.isArray(value)) {
+    return value.length
+      ? value.flatMap((item, index) => flattenMetadata(item, `${prefix}[${index}]`))
+      : [[prefix, '[]']]
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>)
+  if (entries.length === 0) return [[prefix, '{}']]
+
+  return entries.flatMap(([key, item]) => {
+    const path = prefix === 'metadata' ? key : `${prefix}.${key}`
+    if (item && typeof item === 'object') return flattenMetadata(item, path)
+    return [[path, formatDetailValue(item)]]
+  })
+}
+
+function DetailTable({ title, rows }: { title: string; rows: Array<[string, ReactNode]> }) {
+  return (
+    <div
+      style={{
+        border: '1px solid var(--border)',
+        borderRadius: 18,
+        overflow: 'hidden',
+        background: 'var(--surface)',
+      }}
+    >
+      <div
+        className="mono"
+        style={{
+          padding: '12px 14px',
+          borderBottom: '1px solid var(--border)',
+          color: 'var(--text-2)',
+          fontSize: 10.5,
+          fontWeight: 950,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+        }}
+      >
+        {title}
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <tbody>
+          {rows.map(([label, value]) => (
+            <tr key={label}>
+              <td
+                style={{
+                  width: '34%',
+                  padding: '10px 14px',
+                  borderTop: '1px solid rgba(16,16,24,0.06)',
+                  color: 'var(--text-3)',
+                  fontSize: 12,
+                  fontWeight: 850,
+                  verticalAlign: 'top',
+                }}
+              >
+                {label}
+              </td>
+              <td
+                style={{
+                  padding: '10px 14px',
+                  borderTop: '1px solid rgba(16,16,24,0.06)',
+                  color: 'rgba(31,31,42,0.82)',
+                  fontSize: 12.5,
+                  fontWeight: 800,
+                  lineHeight: 1.5,
+                  wordBreak: 'break-word',
+                  verticalAlign: 'top',
+                }}
+              >
+                {value}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 function EmptyState({ children }: { children: ReactNode }) {
   return (
     <div style={{ minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: 14 }}>
@@ -404,9 +494,38 @@ export default function AuditLogs() {
                 Close
               </button>
             </div>
-            <pre style={{ margin: 0, maxHeight: 'calc(86vh - 78px)', overflow: 'auto', whiteSpace: 'pre-wrap', background: 'rgba(7,5,16,0.86)', color: 'rgba(229,231,235,0.92)', padding: 18, fontSize: 12, lineHeight: 1.65, fontWeight: 650 }}>
-              {JSON.stringify(selected, null, 2)}
-            </pre>
+            <div
+              style={{
+                maxHeight: 'calc(86vh - 78px)',
+                overflow: 'auto',
+                padding: 18,
+                display: 'grid',
+                gap: 14,
+                background: 'rgba(255,255,255,0.88)',
+              }}
+            >
+              <DetailTable
+                title="Audit Summary"
+                rows={[
+                  ['Log ID', selected.id],
+                  ['Time', formatDate(selected.createdAt)],
+                  ['Actor', selected.actorId ?? 'System'],
+                  ['Action', selected.action],
+                  ['Entity', selected.entity],
+                  ['Entity ID', selected.entityId || '—'],
+                  ['IP Address', selected.ipAddress || '—'],
+                ]}
+              />
+
+              <DetailTable
+                title="Metadata"
+                rows={
+                  flattenMetadata(selected.metadata).length
+                    ? flattenMetadata(selected.metadata)
+                    : [['Metadata', 'No metadata captured for this audit entry.']]
+                }
+              />
+            </div>
           </motion.div>
         </motion.div>
       )}

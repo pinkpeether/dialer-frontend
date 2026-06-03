@@ -42,6 +42,19 @@ export default function CallDispositionModal({
     return () => window.clearTimeout(timer)
   }, [open, callId, saveMode])
 
+  useEffect(() => {
+    if (!open) return
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing) return
+      event.preventDefault()
+      onClose()
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [open, onClose])
+
   if (!open || callId === null) return null
 
   const handleSubmit = async (payload: DispositionSubmitPayload) => {

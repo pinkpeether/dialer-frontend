@@ -9,6 +9,7 @@ type SupportDiagnosticsData = {
   recordings?: { storageStatus?: string } | null
   backend?: { uptimeSeconds?: number; nodeEnv?: string; memory?: { heapUsedMb?: number; rssMb?: number } }
   envPresence?: Record<string, boolean>
+  [key: string]: unknown
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -21,6 +22,234 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 const goodish = (value?: string) => value === 'HEALTHY' || value === 'EMPTY' || value === 'OK'
+
+function formatDiagnosticsValue(value: unknown) {
+  if (value === null || value === undefined || value === '') return '—'
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '—'
+  if (typeof value === 'string') return value
+  return JSON.stringify(value)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function titleize(key: string) {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, char => char.toUpperCase())
+}
+
+function collectArrayColumns(rows: unknown[]) {
+  const columns = new Set<string>()
+  rows.forEach(row => {
+    if (isRecord(row)) {
+      Object.keys(row).forEach(key => columns.add(key))
+    }
+  })
+  return Array.from(columns)
+}
+
+function StructuredValueTable({ title, value, depth = 0 }: { title: string; value: unknown; depth?: number }) {
+  const nestedBackground = depth > 0 ? 'rgba(255,255,255,0.72)' : 'var(--surface)'
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return <DiagnosticsTable title={title} rows={[{ label: 'Rows', value: 'No entries' }]} />
+    }
+
+    const columns = collectArrayColumns(value)
+    if (columns.length === 0) {
+      return (
+        <DiagnosticsTable
+          title={title}
+          rows={value.map((item, index) => ({ label: `Item ${index + 1}`, value: item }))}
+        />
+      )
+    }
+
+    return (
+      <div
+        style={{
+          border: '1px solid var(--border)',
+          borderRadius: 18,
+          overflow: 'hidden',
+          background: nestedBackground,
+          minWidth: 0,
+        }}
+      >
+        <div
+          className="mono"
+          style={{
+            padding: '12px 14px',
+            borderBottom: '1px solid var(--border)',
+            color: 'var(--text-2)',
+            fontSize: 10.5,
+            fontWeight: 950,
+            letterSpacing: 1,
+            textTransform: 'uppercase',
+          }}
+        >
+          {title} · {value.length} rows
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: Math.max(520, columns.length * 150) }}>
+            <thead>
+              <tr>
+                {columns.map(column => (
+                  <th
+                    key={column}
+                    className="mono"
+                    style={{
+                      padding: '10px 12px',
+                      textAlign: 'left',
+                      borderBottom: '1px solid var(--border)',
+                      color: 'var(--text-3)',
+                      fontSize: 10,
+                      fontWeight: 950,
+                      letterSpacing: 0.7,
+                      textTransform: 'uppercase',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {titleize(column)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {value.map((row, rowIndex) => (
+                <tr key={`${title}-${rowIndex}`}>
+                  {columns.map(column => (
+                    <td
+                      key={column}
+                      style={{
+                        padding: '10px 12px',
+                        borderTop: '1px solid rgba(16,16,24,0.06)',
+                        color: column.toLowerCase().includes('status') ? 'var(--green-2)' : 'var(--text)',
+                        fontSize: 12,
+                        fontWeight: 800,
+                        wordBreak: 'break-word',
+                        verticalAlign: 'top',
+                      }}
+                    >
+                      {formatDiagnosticsValue(isRecord(row) ? row[column] : row)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+  if (isRecord(value)) {
+    const entries = Object.entries(value)
+    const scalarRows = entries
+      .filter(([, item]) => !isRecord(item) && !Array.isArray(item))
+      .map(([key, item]) => ({ label: titleize(key), value: item }))
+    const nestedRows = entries.filter(([, item]) => isRecord(item) || Array.isArray(item))
+
+    return (
+      <div style={{ display: 'grid', gap: 12, minWidth: 0 }}>
+        {scalarRows.length > 0 && <DiagnosticsTable title={title} rows={scalarRows} />}
+        {nestedRows.map(([key, item]) => (
+          <StructuredValueTable key={key} title={`${title} · ${titleize(key)}`} value={item} depth={depth + 1} />
+        ))}
+      </div>
+    )
+  }
+
+  return <DiagnosticsTable title={title} rows={[{ label: 'Value', value }]} />
+}
+
+function DiagnosticsPayloadTables({ data }: { data: SupportDiagnosticsData }) {
+  const entries = Object.entries(data)
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      {entries.map(([key, value]) => (
+        <StructuredValueTable key={key} title={titleize(key)} value={value} />
+      ))}
+    </div>
+  )
+}
+
+function DiagnosticsTable({
+  title,
+  rows,
+}: {
+  title: string
+  rows: Array<{ label: string; value: unknown; tone?: 'good' | 'warning' | 'danger' }>
+}) {
+  const toneColor = {
+    good: 'var(--green-2)',
+    warning: 'var(--gold)',
+    danger: 'var(--danger)',
+  }
+
+  return (
+    <div
+      style={{
+        border: '1px solid var(--border)',
+        borderRadius: 18,
+        overflow: 'hidden',
+        background: 'var(--surface)',
+        minWidth: 0,
+      }}
+    >
+      <div
+        className="mono"
+        style={{
+          padding: '12px 14px',
+          borderBottom: '1px solid var(--border)',
+          color: 'var(--text-2)',
+          fontSize: 10.5,
+          fontWeight: 950,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+        }}
+      >
+        {title}
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <tbody>
+          {rows.map(row => (
+            <tr key={row.label}>
+              <td
+                style={{
+                  width: '42%',
+                  padding: '10px 14px',
+                  borderTop: '1px solid rgba(16,16,24,0.06)',
+                  color: 'var(--text-3)',
+                  fontSize: 12,
+                  fontWeight: 800,
+                }}
+              >
+                {row.label}
+              </td>
+              <td
+                style={{
+                  padding: '10px 14px',
+                  borderTop: '1px solid rgba(16,16,24,0.06)',
+                  color: row.tone ? toneColor[row.tone] : 'var(--text)',
+                  fontSize: 12.5,
+                  fontWeight: 850,
+                  wordBreak: 'break-word',
+                }}
+              >
+                {formatDiagnosticsValue(row.value)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
 function Metric({ title, value, note, icon, good }: { title: string; value: string; note?: string; icon: ReactNode; good?: boolean }) {
   const color = good === false ? 'var(--danger)' : good === true ? 'var(--green-2)' : 'var(--pink)'
@@ -42,7 +271,7 @@ function Metric({ title, value, note, icon, good }: { title: string; value: stri
 export default function SupportDiagnostics() {
   const [message, setMessage] = useState('')
   const [manualError, setManualError] = useState('')
-  const [showJson, setShowJson] = useState(false)
+  const [showPayload, setShowPayload] = useState(false)
 
   const diagnosticsQuery = useQuery<SupportDiagnosticsData>({
     queryKey: ['support', 'diagnostics'],
@@ -184,17 +413,59 @@ export default function SupportDiagnostics() {
           </section>
 
           <section className="glass" style={{ padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginBottom: showJson ? 14 : 0, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
               <div>
-                <h2 className="display" style={{ fontSize: 20, marginBottom: 4 }}>Diagnostics JSON</h2>
-                <p style={{ color: 'var(--text-3)', fontSize: 12 }}>Collapsed by default to keep this page lightweight.</p>
+                <h2 className="display" style={{ fontSize: 20, marginBottom: 4 }}>Diagnostics Details</h2>
+                <p style={{ color: 'var(--text-3)', fontSize: 12 }}>Readable support snapshot. The full backend payload opens as tables below.</p>
               </div>
-              <button className="ptdt-action-btn" type="button" onClick={() => setShowJson(value => !value)}>
-                {showJson ? <EyeOff size={14} /> : <Eye size={14} />}
-                {showJson ? 'Hide JSON' : 'Show JSON'}
+              <button className="ptdt-action-btn" type="button" onClick={() => setShowPayload(value => !value)}>
+                {showPayload ? <EyeOff size={14} /> : <Eye size={14} />}
+                {showPayload ? 'Hide Full Payload' : 'Show Full Payload'}
               </button>
             </div>
-            {showJson && <pre className="ptdt-raw-json">{jsonText}</pre>}
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: 12,
+              }}
+            >
+              <DiagnosticsTable
+                title="Backend Runtime"
+                rows={[
+                  { label: 'Environment', value: data.backend?.nodeEnv || 'unknown' },
+                  { label: 'Uptime', value: `${data.backend?.uptimeSeconds ?? 0}s` },
+                  { label: 'Heap Used', value: `${data.backend?.memory?.heapUsedMb ?? '-'}MB` },
+                  { label: 'RSS Memory', value: `${data.backend?.memory?.rssMb ?? '-'}MB` },
+                ]}
+              />
+              <DiagnosticsTable
+                title="Database"
+                rows={[
+                  { label: 'Status', value: dbOk ? 'OK' : 'FAIL', tone: dbOk ? 'good' : 'danger' },
+                  { label: 'Latency', value: `${data.db?.latencyMs ?? '-'}ms`, tone: dbOk ? 'good' : 'warning' },
+                ]}
+              />
+              <DiagnosticsTable
+                title="Monitoring"
+                rows={[
+                  { label: 'Status', value: monitoringStatus, tone: monitoringStatus === 'HEALTHY' ? 'good' : 'warning' },
+                ]}
+              />
+              <DiagnosticsTable
+                title="Recordings"
+                rows={[
+                  { label: 'Storage Status', value: recordingStatus, tone: goodish(recordingStatus) ? 'good' : 'warning' },
+                ]}
+              />
+            </div>
+
+            {showPayload && (
+              <div style={{ marginTop: 14 }}>
+                <DiagnosticsPayloadTables data={data} />
+              </div>
+            )}
           </section>
         </div>
       ) : <div className="glass" style={{ padding: 24 }}>No diagnostics available.</div>}
