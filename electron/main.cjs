@@ -16,6 +16,8 @@ const allowLocalCertBypass = isDev || process.env.PTDT_ALLOW_LOCAL_CERT_BYPASS =
 const updaterEnabled = app.isPackaged && process.env.PTDT_DISABLE_AUTO_UPDATES !== 'true'
 let updaterControls = null
 
+app.setName('PTDT Dialer')
+
 // ---------------------------------------------------------------------------
 // Chromium autoplay policy — allow audio.play() without user gesture.
 // Required for SIP.js remote audio to play automatically when call connects.
@@ -52,6 +54,204 @@ function isTrustedFreepbxUrl(url) {
     return typeof url === 'string' &&
       Array.from(DEV_FREEPBX_HOSTS).some(host => url.includes(host))
   }
+}
+
+function buildAboutHtml() {
+  const version = app.getVersion()
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>About PTDT Dialer</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f7f7f9;
+      color: #1f2937;
+      overflow: hidden;
+    }
+
+    .about-card {
+      width: 100%;
+      padding: 18px 26px 16px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .title {
+      margin: 0 0 4px;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #111827;
+    }
+
+    .version {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: #6b7280;
+      font-weight: 600;
+    }
+
+    .separator {
+      margin: 8px auto;
+      color: #9ca3af;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1;
+      white-space: pre;
+      letter-spacing: -0.04em;
+    }
+
+    .dedication {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.42;
+      color: #374151;
+      font-weight: 600;
+    }
+
+    .dedication strong {
+      display: block;
+      margin: 1px 0;
+      font-size: 16px;
+      line-height: 1.25;
+      color: #111827;
+      font-weight: 800;
+    }
+
+    .copyright {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.35;
+      color: #6b7280;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .close-button {
+      margin-top: 12px;
+      min-width: 92px;
+      border: 0;
+      border-radius: 999px;
+      padding: 7px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #ffffff;
+      background: #111827;
+      cursor: pointer;
+    }
+
+    .close-button:hover {
+      background: #374151;
+    }
+  </style>
+</head>
+<body>
+  <main class="about-card">
+    <h1 class="title">PTDT Dialer</h1>
+    <p class="version">Version ${version} (${version})</p>
+
+    <div class="separator">--------------------------------------------</div>
+
+    <p class="dedication">
+      This product is dedicated to the one &amp; only!
+      <strong>Shaikh Mohammad Saleem</strong>
+      Dedicated by his Son -SMZ
+    </p>
+
+    <div class="separator">--------------------------------------------</div>
+
+    <p class="copyright">Copyrights © 2026 Peether - PTDT | Pink Taxi Group LTD. UK. All rights reserved.</p>
+
+    <button class="close-button" type="button" onclick="window.close()">Close</button>
+  </main>
+</body>
+</html>`
+}
+
+function showAboutWindow() {
+  const parentWindow = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0] || null
+  const aboutWindow = new BrowserWindow({
+    width: 520,
+    height: 310,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    closable: true,
+    fullscreenable: false,
+    title: 'About PTDT Dialer',
+    parent: parentWindow || undefined,
+    modal: Boolean(parentWindow),
+    show: false,
+    backgroundColor: '#f7f7f9',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+    },
+  })
+
+  aboutWindow.removeMenu()
+  aboutWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(buildAboutHtml())}`)
+  aboutWindow.once('ready-to-show', () => {
+    aboutWindow.show()
+  })
+}
+
+function installApplicationMenu() {
+  const template = process.platform === 'darwin'
+    ? [
+        {
+          label: app.name,
+          submenu: [
+            { label: 'About PTDT Dialer', click: showAboutWindow },
+            { type: 'separator' },
+            { role: 'services' },
+            { type: 'separator' },
+            { role: 'hide' },
+            { role: 'hideOthers' },
+            { role: 'unhide' },
+            { type: 'separator' },
+            { role: 'quit' },
+          ],
+        },
+        { role: 'editMenu' },
+        { role: 'viewMenu' },
+        { role: 'windowMenu' },
+        {
+          role: 'help',
+          submenu: [],
+        },
+      ]
+    : [
+        {
+          label: 'File',
+          submenu: [
+            { role: 'quit' },
+          ],
+        },
+        { role: 'editMenu' },
+        { role: 'viewMenu' },
+        {
+          label: 'Help',
+          submenu: [
+            { label: 'About PTDT Dialer', click: showAboutWindow },
+          ],
+        },
+      ]
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
 // ---------------------------------------------------------------------------
@@ -192,6 +392,7 @@ ipcMain.handle('updater:install', () => {
 // ---------------------------------------------------------------------------
 app.whenReady().then(() => {
   installCertificateBypass()
+  installApplicationMenu()
   createWindow()
 })
 
