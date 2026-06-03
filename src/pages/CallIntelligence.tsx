@@ -54,6 +54,7 @@ export default function CallIntelligence() {
   const [loading, setLoading] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
   const [insighting, setInsighting] = useState(false)
+  const [showRawPayload, setShowRawPayload] = useState(false)
 
   const load = async () => {
     if (!callId.trim()) return
@@ -184,7 +185,18 @@ export default function CallIntelligence() {
               {note}
             </div>
           )}
-          <pre className="ptdt-raw-json">{data ? JSON.stringify(data, null, 2) : 'No call loaded.'}</pre>
+          <button
+            className="ptdt-action-btn"
+            onClick={() => setShowRawPayload(value => !value)}
+            disabled={!data}
+            style={{ marginBottom: 12 }}
+          >
+            {showRawPayload ? 'Hide Raw Payload' : 'Show Raw Payload'}
+          </button>
+
+          {showRawPayload && (
+            <pre className="ptdt-raw-json">{data ? JSON.stringify(data, null, 2) : 'No call loaded.'}</pre>
+          )}
         </section>
       </div>
     </div>
