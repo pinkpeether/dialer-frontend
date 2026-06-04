@@ -29,10 +29,38 @@ export default function DialerPanel({
   ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <>
+
+      <style>{`
+        @media (max-width: 640px) {
+          .ptdt-dialer-panel-root {
+            width: 100% !important;
+            max-width: 100% !important;
+            gap: 12px !important;
+          }
+
+          .ptdt-dialer-panel-stats {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+
+          .ptdt-dialer-panel-active-card {
+            padding: 18px !important;
+          }
+
+          .ptdt-dialer-panel-actions {
+            flex-direction: column !important;
+          }
+
+          .ptdt-dialer-panel-actions button {
+            width: 100% !important;
+          }
+        }
+      `}</style>
+
+    <div className="ptdt-dialer-panel-root" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
       {/* Stats grid */}
-      <div style={{
+      <div className="ptdt-dialer-panel-stats" style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gap: 10,
@@ -212,5 +240,6 @@ export default function DialerPanel({
         </div>
       )}
     </div>
+    </>
   )
 }

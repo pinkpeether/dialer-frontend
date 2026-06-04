@@ -15,6 +15,211 @@ import {
 import { opsAPI } from '../api/ops.api'
 import ExportButtons from '../components/reports/ExportButtons'
 
+const PTDT_MOBILE_PAGE_CSS = `
+@media (max-width: 900px) {
+  .ptdt-mobile-page {
+    width: 100% !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 72px 12px 28px !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .ptdt-mobile-page *,
+  .ptdt-mobile-page *::before,
+  .ptdt-mobile-page *::after {
+    box-sizing: border-box;
+    min-width: 0;
+  }
+
+  .ptdt-mobile-page .eyebrow {
+    max-width: 100% !important;
+    white-space: normal !important;
+    line-height: 1.35 !important;
+  }
+
+  .ptdt-mobile-page h1 {
+    font-size: clamp(1.8rem, 8vw, 2.4rem) !important;
+    line-height: 1.04 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .ptdt-mobile-page h2,
+  .ptdt-mobile-page h3 {
+    overflow-wrap: anywhere !important;
+  }
+
+  .ptdt-mobile-page p,
+  .ptdt-mobile-page span,
+  .ptdt-mobile-page div {
+    max-width: 100%;
+  }
+
+  .ptdt-mobile-page .mono {
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+
+  .ptdt-mobile-page [style*="display: grid"],
+  .ptdt-mobile-page [style*="display:grid"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ptdt-mobile-page [style*="grid-template-columns"],
+  .ptdt-mobile-page [style*="gridTemplateColumns"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ptdt-mobile-page [style*="grid-column"],
+  .ptdt-mobile-page [style*="gridColumn"] {
+    grid-column: auto !important;
+  }
+
+  .ptdt-mobile-page [style*="display: flex"],
+  .ptdt-mobile-page [style*="display:flex"] {
+    flex-wrap: wrap !important;
+    min-width: 0 !important;
+  }
+
+  .ptdt-mobile-page [style*="justify-content: space-between"],
+  .ptdt-mobile-page [style*="justifyContent: space-between"] {
+    justify-content: flex-start !important;
+  }
+
+  .ptdt-mobile-page .glass,
+  .ptdt-mobile-page .glass-hi,
+  .ptdt-mobile-page .ptdt-card,
+  .ptdt-mobile-page .lift {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 18px !important;
+  }
+
+  .ptdt-mobile-page .glass,
+  .ptdt-mobile-page .glass-hi {
+    padding: 14px !important;
+  }
+
+  .ptdt-mobile-page .glass:has(table),
+  .ptdt-mobile-page .glass-hi:has(table),
+  .ptdt-mobile-page .ptdt-card:has(table),
+  .ptdt-mobile-page [style*="overflow-x"],
+  .ptdt-mobile-page [style*="overflowX"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ptdt-mobile-page table {
+    min-width: 640px !important;
+    width: max-content !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
+  }
+
+  .ptdt-mobile-page th,
+  .ptdt-mobile-page td {
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    padding: 10px 12px !important;
+    vertical-align: middle !important;
+  }
+
+  .ptdt-mobile-page input,
+  .ptdt-mobile-page textarea,
+  .ptdt-mobile-page select,
+  .ptdt-mobile-page .ptdt-input,
+  .ptdt-mobile-page .ptdt-select,
+  .ptdt-mobile-page .ptdt-textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .ptdt-mobile-page input[type="number"] {
+    min-width: 82px !important;
+    width: 100% !important;
+  }
+
+  .ptdt-mobile-page button,
+  .ptdt-mobile-page .btn-brand,
+  .ptdt-mobile-page .ptdt-action-btn,
+  .ptdt-mobile-page .ptdt-action-icon-btn {
+    max-width: 100% !important;
+    white-space: normal !important;
+  }
+
+  .ptdt-mobile-page .btn-brand {
+    min-height: 42px !important;
+  }
+
+  .ptdt-mobile-page .ptdt-action-icon-btn {
+    width: 40px !important;
+    min-width: 40px !important;
+    flex: 0 0 auto !important;
+  }
+
+  .ptdt-mobile-page .ptdt-toolbar {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 6px !important;
+  }
+
+  .ptdt-mobile-page .ptdt-toolbar > * {
+    flex: 0 0 auto !important;
+  }
+
+  .ptdt-mobile-page svg,
+  .ptdt-mobile-page canvas {
+    max-width: 100% !important;
+  }
+
+  .ptdt-mobile-page .recharts-wrapper,
+  .ptdt-mobile-page .recharts-surface,
+  .ptdt-mobile-page .recharts-responsive-container {
+    max-width: 100% !important;
+  }
+
+  .ptdt-mobile-page .recharts-legend-wrapper {
+    max-width: 100% !important;
+  }
+
+  .ptdt-mobile-page audio,
+  .ptdt-mobile-page video {
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .ptdt-mobile-page {
+    padding: 66px 10px 24px !important;
+  }
+
+  .ptdt-mobile-page .glass,
+  .ptdt-mobile-page .glass-hi {
+    padding: 12px !important;
+    border-radius: 16px !important;
+  }
+
+  .ptdt-mobile-page h1 {
+    font-size: clamp(1.65rem, 9vw, 2.1rem) !important;
+  }
+
+  .ptdt-mobile-page table {
+    min-width: 600px !important;
+  }
+
+  .ptdt-mobile-page th,
+  .ptdt-mobile-page td {
+    padding: 9px 10px !important;
+    font-size: 12px !important;
+  }
+}
+`
+
+
 type OpsSummary = {
   generatedAt: string
   campaigns: { total: number; draft: number; active: number; paused: number; completed: number }
@@ -97,7 +302,8 @@ export default function OpsCenter() {
   const callStatusRows = useMemo(() => entries(summary?.todayCalls.byStatus || {}), [summary])
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1500, margin: '0 auto' }}>
+    <div className="ptdt-mobile-page ptdt-mobile-page-ops-center" style={{ padding: '32px 36px', maxWidth: 1500, margin: '0 auto' }}>
+      <style>{PTDT_MOBILE_PAGE_CSS}</style>
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

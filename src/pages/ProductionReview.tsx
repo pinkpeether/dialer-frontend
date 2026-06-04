@@ -47,14 +47,14 @@ export default function ProductionReview() {
   useEffect(() => { void load() }, [])
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1500, margin: '0 auto' }}>
+    <div className="ptdt-page">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap', marginBottom: 24 }}>
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}><ClipboardCheck size={12} /> Production v1</div>
-          <h1 className="display" style={{ fontSize: 38, fontWeight: 900, margin: 0 }}>Production <span className="gradient-brand-text">Review</span></h1>
+          <h1 className="ptdt-page-title" style={{ margin: 0 }}>Production <span className="gradient-brand-text">Review</span></h1>
           <p style={{ color: 'var(--text-3)', maxWidth: 760, lineHeight: 1.6 }}>Admin-only final checklist view for production v1 route and role review.</p>
         </div>
-        <button type="button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} /> Refresh</button>
+        <button type="button" className="ptdt-action-btn" onClick={() => void load()} disabled={loading}><RefreshCw size={14} /> Refresh</button>
       </div>
 
       {error && <div style={{ color: '#ef4444', marginBottom: 14 }}>{error}</div>}
@@ -68,7 +68,7 @@ export default function ProductionReview() {
 
       <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 940 }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
                 {['Method', 'Path', 'Frontend Roles', 'Backend Roles', 'Level', 'Status', 'Note'].map(header => (

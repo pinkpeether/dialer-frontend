@@ -1,17 +1,5 @@
 import { useState } from 'react'
-import {
-  Brain,
-  FileAudio,
-  Search,
-  Sparkles,
-  Wand2,
-  Lightbulb,
-  TrendingUp,
-  Copy,
-  Download,
-  ShieldCheck,
-  LockKeyhole,
-} from 'lucide-react'
+import { Brain, FileAudio, Search, Sparkles, Wand2, Lightbulb, TrendingUp, Copy, Download } from 'lucide-react'
 import { callIntelligenceAPI } from '../api/callIntelligence.api'
 
 type CallIntelligenceCall = {
@@ -35,14 +23,6 @@ type CallInsight = {
   status?: string | null
 }
 
-type AiControls = {
-  transcriptionEnabled?: boolean
-  insightsEnabled?: boolean
-  maxTranscriptionMinutes?: number
-  maxTranscriptsPerDay?: number
-  maxInsightsPerDay?: number
-}
-
 type CallIntelligenceData = {
   transcript?: string | null
   transcriptText?: string | null
@@ -50,7 +30,6 @@ type CallIntelligenceData = {
   summary?: string | null
   sentiment?: string | null
   insight?: CallInsight | null
-  aiControls?: AiControls | null
   status?: string | null
   note?: string | null
   call?: CallIntelligenceCall | null
@@ -61,22 +40,12 @@ type CallIntelligenceData = {
     summary?: string | null
     sentiment?: string | null
     insight?: CallInsight | null
-    aiControls?: AiControls | null
     status?: string | null
     note?: string | null
     call?: CallIntelligenceCall | null
   } | null
 }
 
-const formatEnabled = (value?: boolean) => {
-  if (typeof value !== 'boolean') return '—'
-  return value ? 'Enabled' : 'Disabled'
-}
-
-const formatLimit = (value?: number, suffix = '') => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
-  return `${value}${suffix}`
-}
 
 export default function CallIntelligence() {
   const [callId, setCallId] = useState('')
@@ -111,19 +80,15 @@ export default function CallIntelligence() {
     finally { setInsighting(false) }
   }
 
-  const call = data?.call || data?.data?.call || null
-  const transcript = data?.transcript || data?.data?.transcript || data?.transcriptText || data?.data?.transcriptText || data?.transcription || data?.data?.transcription
+  const call = data?.call
+  const transcript = data?.transcript || data?.data?.transcript || data?.transcriptText || data?.transcription
   const insight = data?.insight || data?.data?.insight || null
-  const aiControls = data?.aiControls || data?.data?.aiControls || null
   const summary = data?.summary || data?.data?.summary || insight?.summary || ''
   const sentiment = data?.sentiment || data?.data?.sentiment || insight?.sentiment || ''
   const score = insight?.score
   const actionItems = Array.isArray(insight?.actionItems) ? insight.actionItems : []
   const status = data?.status || data?.data?.status || 'PHASE 4'
   const note = data?.note || data?.data?.note || ''
-
-  const transcriptionDisabledByControl = aiControls?.transcriptionEnabled === false
-  const insightsDisabledByControl = aiControls?.insightsEnabled === false
 
   const copyText = async (value: string, label: string) => {
     if (!value.trim()) return
@@ -163,11 +128,11 @@ export default function CallIntelligence() {
       </div>
 
       <div className="glass" style={{ padding: 20, marginBottom: 18 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) auto auto auto', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, alignItems: 'center' }}>
           <input className="ptdt-input mono" value={callId} onChange={e => setCallId(e.target.value)} placeholder="Enter Call ID, e.g. 65" onKeyDown={e => { if (e.key === 'Enter') void load() }} />
           <button className="ptdt-action-btn" onClick={() => void load()} disabled={!callId.trim() || loading}><Search size={14} /> {loading ? 'Loading...' : 'Load Call'}</button>
-          <button className="btn-brand" onClick={() => void queueTranscript()} disabled={!callId.trim() || transcribing || transcriptionDisabledByControl} style={{ minHeight: 38, fontSize: 12 }}><Wand2 size={14} /> {transcribing ? 'Processing...' : 'Queue Transcript'}</button>
-          <button className="ptdt-action-btn" onClick={() => void generateInsight()} disabled={!callId.trim() || insighting || insightsDisabledByControl} style={{ minHeight: 38, fontSize: 12 }}><Lightbulb size={14} /> {insighting ? 'Generating...' : 'Generate Insight'}</button>
+          <button className="btn-brand" onClick={() => void queueTranscript()} disabled={!callId.trim() || transcribing} style={{ minHeight: 38, fontSize: 12 }}><Wand2 size={14} /> {transcribing ? 'Processing...' : 'Queue Transcript'}</button>
+          <button className="ptdt-action-btn" onClick={() => void generateInsight()} disabled={!callId.trim() || insighting} style={{ minHeight: 38, fontSize: 12 }}><Lightbulb size={14} /> {insighting ? 'Generating...' : 'Generate Insight'}</button>
         </div>
       </div>
 
@@ -182,7 +147,7 @@ export default function CallIntelligence() {
               <div style={{ color: 'var(--text-3)', fontSize: 12 }}>Recording and transcript readiness</div>
             </div>
           </div>
-          <div style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
+          <div style={{ display: 'grid', gap: 10 }}>
             {[
               ['Call ID', call?.id ?? (callId || '—')],
               ['Recording', call?.recordingUrl ? 'Available' : 'Not available'],
@@ -196,43 +161,6 @@ export default function CallIntelligence() {
               </div>
             ))}
           </div>
-
-          <div className="ptdt-card" style={{ padding: 14, marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <ShieldCheck size={16} />
-              <strong>AI Controls</strong>
-            </div>
-            {aiControls ? (
-              <div style={{ display: 'grid', gap: 8 }}>
-                {[
-                  ['Transcription', formatEnabled(aiControls.transcriptionEnabled)],
-                  ['Insights', formatEnabled(aiControls.insightsEnabled)],
-                  ['Max Recording', formatLimit(aiControls.maxTranscriptionMinutes, ' min')],
-                  ['Daily Transcripts', formatLimit(aiControls.maxTranscriptsPerDay, '/day')],
-                  ['Daily Insights', formatLimit(aiControls.maxInsightsPerDay, '/day')],
-                ].map(([label, value]) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: 'var(--text-3)', fontSize: 12 }}>
-                    <span className="mono">{label}</span>
-                    <strong style={{ color: 'var(--text)', textAlign: 'right' }}>{value}</strong>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ color: 'var(--text-3)', fontSize: 13, lineHeight: 1.6 }}>
-                Load a call to view live backend AI limits and enable/disable status.
-              </div>
-            )}
-          </div>
-
-          <div className="ptdt-card" style={{ padding: 14, color: 'var(--text-3)', fontSize: 13, lineHeight: 1.65 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <LockKeyhole size={15} />
-              <strong style={{ color: 'var(--text)' }}>Retention & Safety</strong>
-            </div>
-            <div>
-              Recordings are stored in private storage with signed URLs. Signed recording links expire and are refreshed by the backend before transcription. Stored transcripts and insights are visible only to authorized Admin/Supervisor users. Daily AI limits are controlled from backend environment variables for pilot cost safety.
-            </div>
-          </div>
         </section>
 
         <section className="glass" style={{ padding: 20, minHeight: 420 }}>
@@ -241,7 +169,7 @@ export default function CallIntelligence() {
               <div className="display" style={{ fontSize: 20 }}>AI Output</div>
               <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Transcript preview, supervisor insight, and export tools.</p>
             </div>
-            <span className="ptdt-chip">{aiControls ? 'AI Controls Active' : 'OpenRouter Ready'}</span>
+            <span className="ptdt-chip">OpenRouter Ready</span>
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>

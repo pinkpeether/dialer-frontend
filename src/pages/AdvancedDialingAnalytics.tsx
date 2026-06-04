@@ -198,7 +198,7 @@ export default function AdvancedDialingAnalytics() {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, 0.72fr)', gap: 16, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, alignItems: 'start' }}>
             <section className="ptdt-card" style={{ padding: 18 }}>
               <SectionTitle icon={<BarChart3 size={16} />} title="Baseline Metrics" subtitle={`Generated ${fmtDate(metrics?.generatedAt)}`} />
               <BaselineMetricsPanel metrics={metrics} />

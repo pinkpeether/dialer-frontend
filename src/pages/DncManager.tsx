@@ -149,7 +149,7 @@ export default function DncManager() {
       {/* Table */}
       <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{ overflowX: 'auto' }}>
-          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
                 {['Phone Number', 'Reason', 'Added By', 'Date Added', 'Action'].map(h => (

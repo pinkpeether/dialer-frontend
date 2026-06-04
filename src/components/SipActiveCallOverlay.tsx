@@ -216,7 +216,61 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
   const combinedMessage = message || sipAudioInputError || sipAudioOutputError || microphoneMeterError || audioDevicesError
 
   return (
+
+    <>
+      <style>{`
+        @media (max-width: 900px) {
+          .ptdt-sip-active-overlay {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            border-radius: 22px !important;
+            padding: 14px !important;
+            overflow: visible !important;
+          }
+
+          .ptdt-sip-active-header {
+            flex-direction: column-reverse !important;
+            align-items: stretch !important;
+            justify-content: flex-start !important;
+            text-align: left !important;
+            gap: 12px !important;
+          }
+
+          .ptdt-sip-active-header [style*="justify-content: center"] {
+            justify-content: flex-start !important;
+          }
+
+          .ptdt-sip-active-actions {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 10px !important;
+            margin-top: 18px !important;
+          }
+
+          .ptdt-sip-active-actions button {
+            height: 48px !important;
+            min-height: 48px !important;
+            border-radius: 18px !important;
+            font-size: 14px !important;
+            grid-column: auto !important;
+          }
+
+          .ptdt-sip-active-actions button svg {
+            width: 18px !important;
+            height: 18px !important;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .ptdt-sip-active-overlay {
+            padding: 12px !important;
+            border-radius: 20px !important;
+          }
+        }
+      `}</style>
     <div
+      className="ptdt-sip-active-overlay"
       style={{
         position: embedded ? 'relative' : 'fixed',
         right: embedded ? undefined : 28,
@@ -240,6 +294,7 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
       }}
     >
       <div
+        className="ptdt-sip-active-header"
         style={{
           display: 'flex',
           flexDirection: embedded ? 'column-reverse' : 'row',
@@ -301,6 +356,7 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
       </div>
 
       <div
+        className="ptdt-sip-active-actions"
         style={{
           display: 'grid',
           gridTemplateColumns: embedded ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, 1fr)',
@@ -763,5 +819,6 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
         Incoming and outgoing SIP calls stay controllable here even when the Floating Dialer is closed.
       </div>
     </div>
+    </>
   )
 }

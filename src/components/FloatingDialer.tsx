@@ -1299,9 +1299,40 @@ export default function FloatingDialer({
           background: rgba(251,11,140,0.35); border-radius: 4px;
         }
         .ptdt-dialer-input::placeholder { color: rgba(249,247,255,0.28); }
+
+        @media (max-width: 900px) {
+          .ptdt-floating-dialer-root {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+          }
+
+          .ptdt-floating-dialer-panel {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            border-radius: 22px !important;
+          }
+
+          .ptdt-floating-dialer-panel .ptdt-panel {
+            max-height: none !important;
+            overflow: visible !important;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .ptdt-floating-dialer-panel {
+            border-radius: 20px !important;
+          }
+        }
       `}</style>
 
       <div
+        className="ptdt-floating-dialer-root"
         style={{
           position: isEmbedded ? "relative" : "fixed",
           bottom: isEmbedded ? undefined : 28 - pos.y,
@@ -1322,6 +1353,7 @@ export default function FloatingDialer({
           {isOpen && (
             <motion.div
               key="panel"
+              className="ptdt-floating-dialer-panel"
               initial={{ opacity: 0, scale: 0.78, y: 54, rotateX: -8 }}
               animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }}
               exit={{ opacity: 0, scale: 0.78, y: 54, rotateX: -8 }}

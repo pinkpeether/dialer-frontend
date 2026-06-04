@@ -75,7 +75,7 @@ export default function Agents() {
   }
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1600, margin: '0 auto' }}>
+    <div className="ptdt-page">
 
       {/* PTDT Header */}
       <motion.div
@@ -160,7 +160,7 @@ export default function Agents() {
               New Agent
             </h3>
             <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
               gap: 12, marginBottom: 14,
             }}>
               {[
@@ -219,7 +219,7 @@ export default function Agents() {
       {/* Table */}
       <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{ overflow: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
                 {['#', 'Agent', 'Email', 'Role', 'Status', 'Actions'].map(h => (

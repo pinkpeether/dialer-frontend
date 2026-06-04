@@ -602,11 +602,122 @@ export default function Dialer() {
   )
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1600, margin: '0 auto' }}>
+    <>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .ptdt-dialer-page {
+            width: 100% !important;
+            max-width: 100vw !important;
+            padding: 64px 10px 24px !important;
+            overflow-x: hidden !important;
+          }
+
+          .ptdt-dialer-header {
+            margin-bottom: 16px !important;
+          }
+
+          .ptdt-dialer-header-actions {
+            width: 100% !important;
+            justify-content: flex-start !important;
+            overflow-x: auto !important;
+            padding-bottom: 4px !important;
+          }
+
+          .ptdt-dialer-shell {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 14px !important;
+            min-height: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: hidden !important;
+          }
+
+          .ptdt-dialer-control-card {
+            position: relative !important;
+            top: auto !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 18px !important;
+          }
+
+          .ptdt-dialer-voice-section {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+          }
+
+          .ptdt-dialer-voice-header {
+            align-items: flex-start !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+          }
+
+          .ptdt-dialer-voice-header-actions {
+            width: 100% !important;
+            justify-content: space-between !important;
+            gap: 8px !important;
+          }
+
+          .ptdt-dialer-voice-grid {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            padding: 10px !important;
+            min-height: 0 !important;
+          }
+
+          .ptdt-dialer-embedded-dialer,
+          .ptdt-dialer-overlay-slot {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            min-height: 0 !important;
+          }
+
+          .ptdt-dialer-overlay-slot {
+            min-height: 220px !important;
+            border-radius: 22px !important;
+          }
+
+          .ptdt-dialer-contacts-card {
+            padding: 14px !important;
+            overflow: hidden !important;
+          }
+
+          .ptdt-dialer-search-wrap {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .ptdt-dialer-page {
+            padding: 58px 8px 20px !important;
+          }
+
+          .ptdt-dialer-control-card {
+            padding: 14px !important;
+          }
+
+          .ptdt-dialer-voice-grid {
+            padding: 8px !important;
+          }
+
+          .ptdt-dialer-contacts-card {
+            padding: 12px !important;
+          }
+        }
+      `}</style>
+
+    <div className="ptdt-dialer-page" style={{ padding: '32px 36px', maxWidth: 1600, margin: '0 auto' }}>
       {/* PTDT Header */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
+        className="ptdt-dialer-header"
         style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -647,7 +758,7 @@ export default function Dialer() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="ptdt-dialer-header-actions" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="glass" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span
               style={{
@@ -703,7 +814,7 @@ export default function Dialer() {
         </div>
       </motion.div>
 
-      <div style={{
+      <div className="ptdt-dialer-shell" style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(300px, 340px) minmax(0, 1fr)',
         gap: 20,
@@ -714,7 +825,7 @@ export default function Dialer() {
       <motion.aside
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="glass"
+        className="glass ptdt-dialer-control-card"
         style={{
           padding: 22,
           display: 'flex', flexDirection: 'column', gap: 18,
@@ -988,7 +1099,7 @@ export default function Dialer() {
       <motion.section
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass"
+        className="glass ptdt-dialer-voice-section"
         style={{
           padding: 0,
           overflow: 'hidden',
@@ -997,6 +1108,7 @@ export default function Dialer() {
         }}
       >
         <div
+          className="ptdt-dialer-voice-header"
           style={{
             minHeight: 62,
             padding: '13px 16px',
@@ -1027,7 +1139,7 @@ export default function Dialer() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <div className="ptdt-dialer-voice-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             {!voiceDeskOpen && (
               <div
                 style={{
@@ -1107,6 +1219,7 @@ export default function Dialer() {
           }}
         >
               <div
+                className="ptdt-dialer-voice-grid"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'minmax(360px, 1.15fr) minmax(320px, 0.85fr)',
@@ -1115,7 +1228,7 @@ export default function Dialer() {
                   minHeight: 336,
                 }}
               >
-                <div style={{ minWidth: 0, minHeight: 336 }}>
+                <div className="ptdt-dialer-embedded-dialer" style={{ minWidth: 0, minHeight: 336 }}>
                   <FloatingDialer
                     mode="embedded"
                     onDispositionRequested={openDispositionFromRequest}
@@ -1124,6 +1237,7 @@ export default function Dialer() {
                 </div>
 
                 <div
+                  className="ptdt-dialer-overlay-slot"
                   style={{
                     minWidth: 0,
                     minHeight: 336,
@@ -1202,7 +1316,7 @@ export default function Dialer() {
       <motion.section
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass"
+        className="glass ptdt-dialer-contacts-card"
         style={{ padding: 24, overflow: 'hidden', gridColumn: '1 / -1' }}
       >
         {/* Header */}
@@ -1228,7 +1342,7 @@ export default function Dialer() {
           </div>
 
           {/* Search */}
-          <div style={{ position: 'relative', minWidth: 260 }}>
+          <div className="ptdt-dialer-search-wrap" style={{ position: 'relative', minWidth: 260 }}>
             <Search size={14} color="var(--text-3)" style={{
               position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
             }}/>
@@ -1384,5 +1498,6 @@ export default function Dialer() {
         onClose={() => setNotice(null)}
       />
     </div>
+    </>
   )
 }

@@ -64,7 +64,7 @@ export default function SpoofingManagement() {
 
       <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{ overflowX: 'auto' }}>
-          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
             <thead><tr style={{ background: 'var(--bg-glass)' }}>{['Number', 'Label', 'Scope', 'Provider', 'Active', 'Verified', 'Actions'].map(h => <th key={h} style={{ padding: '13px 16px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>)}</tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={7} style={{ padding: 30, color: 'var(--text-3)' }}>Loading caller IDs...</td></tr> : numbers.length === 0 ? <tr><td colSpan={7} style={{ padding: 30, color: 'var(--text-3)' }}>No caller IDs configured yet.</td></tr> : numbers.map(record => (

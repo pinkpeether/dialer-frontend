@@ -136,7 +136,7 @@ export default function Supervisor() {
   }), [agents])
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1600, margin: '0 auto' }}>
+    <div className="ptdt-page">
 
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
@@ -148,7 +148,7 @@ export default function Supervisor() {
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 3.2vw, 42px)', fontWeight: 900, lineHeight: 1.05, color: 'var(--text)', letterSpacing: '-0.04em', marginBottom: 10 }}>
               Supervisor <span className="gradient-brand-text">Monitor</span>
             </h1>
-            <p style={{ fontSize: 14.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <p style={{ fontSize: 14.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span className="pulse-dot pink" />
               Live agent grid — refreshes every 30s. Last: {lastRefresh.toLocaleTimeString()}
             </p>
@@ -188,7 +188,7 @@ export default function Supervisor() {
           <div>No agents found — ensure backend returns data from <span className="mono">/agents</span></div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
           {agents.map((agent, i) => {
             const theme = STATUS_THEME[agent.status]
             const callSecs = elapsed[agent.id] ?? 0

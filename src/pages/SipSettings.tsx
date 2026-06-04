@@ -92,7 +92,84 @@ export default function SipSettings() {
   }
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1320, margin: '0 auto' }}>
+    <>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .ptdt-sip-page {
+            width: 100% !important;
+            max-width: 100vw !important;
+            padding: 64px 10px 24px !important;
+            overflow-x: hidden !important;
+          }
+
+          .ptdt-sip-shell {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 14px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: hidden !important;
+          }
+
+          .ptdt-sip-form-card,
+          .ptdt-sip-info-card {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 16px !important;
+            overflow: hidden !important;
+          }
+
+          .ptdt-sip-form-header {
+            align-items: flex-start !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+          }
+
+          .ptdt-sip-fields-grid {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 14px !important;
+          }
+
+          .ptdt-sip-fields-grid label,
+          .ptdt-sip-fields-grid > div {
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+
+          .ptdt-sip-actions {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+
+          .ptdt-sip-actions button {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .ptdt-sip-page {
+            padding: 58px 8px 20px !important;
+          }
+
+          .ptdt-sip-form-card,
+          .ptdt-sip-info-card {
+            padding: 14px !important;
+          }
+
+          .ptdt-sip-page h1 {
+            font-size: clamp(28px, 11vw, 38px) !important;
+          }
+
+          .ptdt-sip-page p {
+            font-size: 13px !important;
+          }
+        }
+      `}</style>
+
+    <div className="ptdt-sip-page" style={{ padding: '32px 36px', maxWidth: 1320, margin: '0 auto' }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
         <div className="eyebrow pink" style={{ marginBottom: 14 }}>
           <PhoneCall size={11}/> Universal SIP Provider Mode
@@ -114,15 +191,15 @@ export default function SipSettings() {
         </p>
       </motion.div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 20 }}>
+      <div className="ptdt-sip-shell" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 20 }}>
         <motion.form
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass"
+          className="glass ptdt-sip-form-card"
           onSubmit={e => { e.preventDefault(); handleSave() }}
           style={{ padding: 24 }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginBottom: 22 }}>
+          <div className="ptdt-sip-form-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginBottom: 22 }}>
             <div>
               <h2 className="display" style={{ color: 'var(--text)', fontSize: 19, fontWeight: 900, marginBottom: 5 }}>
                 Provider Credentials
@@ -134,7 +211,7 @@ export default function SipSettings() {
             <SipStatusBadge status={status}/>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+          <div className="ptdt-sip-fields-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
             <Field label="Enable SIP Mode">
               <select
                 value={form.enabled ? 'yes' : 'no'}
@@ -211,7 +288,7 @@ export default function SipSettings() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 22 }}>
+          <div className="ptdt-sip-actions" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 22 }}>
             <button type="submit" className="btn-brand" style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Save size={14}/> Save SIP Account
             </button>
@@ -227,7 +304,7 @@ export default function SipSettings() {
           </div>
         </motion.form>
 
-        <motion.aside initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass" style={{ padding: 22, height: 'fit-content' }}>
+        <motion.aside initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass ptdt-sip-info-card" style={{ padding: 22, height: 'fit-content' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <ShieldCheck size={18} color="var(--green-2)"/>
             <h3 className="display" style={{ color: 'var(--text)', fontSize: 16, fontWeight: 900 }}>Universal Dialer Mode</h3>
@@ -251,5 +328,6 @@ export default function SipSettings() {
         </motion.aside>
       </div>
     </div>
+    </>
   )
 }

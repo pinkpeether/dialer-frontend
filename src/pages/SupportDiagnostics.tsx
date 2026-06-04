@@ -215,7 +215,7 @@ function DiagnosticsTable({
       >
         {title}
       </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
         <tbody>
           {rows.map(row => (
             <tr key={row.label}>

@@ -54,14 +54,14 @@ export default function AgentWorkspace() {
   const sipReady = sipStatus === 'registered' || sipStatus === 'in_call' || sipStatus === 'incoming'
 
   return (
-    <div style={{ padding: 26 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, marginBottom: 22 }}>
+    <div className="ptdt-page">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, marginBottom: 22, flexWrap: 'wrap' }}>
         <div>
           <div className="eyebrow" style={{ marginBottom: 14 }}>
             <Sparkles size={12} />
             PTDT Agent Shell
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 52, lineHeight: 0.95, letterSpacing: '-0.055em', margin: 0, color: 'var(--text)' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 9vw, 52px)', lineHeight: 0.95, letterSpacing: '-0.055em', margin: 0, color: 'var(--text)' }}>
             Agent <span className="gradient-brand-text">Workspace</span>
           </h1>
           <p style={{ margin: '14px 0 0', color: 'var(--text-3)', fontSize: 15, maxWidth: 620, lineHeight: 1.65 }}>
@@ -158,7 +158,7 @@ export default function AgentWorkspace() {
         </button>
       </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
         {workspaceCards.map(card => {
           const Icon = card.icon
           return (
