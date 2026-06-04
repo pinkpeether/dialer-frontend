@@ -882,3 +882,754 @@ html[data-performance-mode="on"] *::after {
   .ptdt-page { padding: 22px 18px; }
   .ptdt-toolbar { justify-content: flex-start; }
 }
+
+/* ============================================================
+   SPRINT 12F — MOBILE RESPONSIVE PILOT PATCH
+   Scope: global layout + sidebar drawer + safe mobile stacking.
+   ============================================================ */
+
+.ptdt-mobile-nav-toggle,
+.ptdt-mobile-sidebar-close,
+.ptdt-mobile-nav-backdrop {
+  display: none;
+}
+
+/* Give wide content a safe horizontal-scroll container behavior without page blowout. */
+.ptdt-page,
+.glass,
+.ptdt-card {
+  min-width: 0;
+}
+
+.ptdt-page table,
+.glass table,
+.ptdt-card table {
+  border-collapse: collapse;
+}
+
+.ptdt-page pre,
+.ptdt-raw-json {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ptdt-page input,
+.ptdt-page textarea,
+.ptdt-page select,
+.ptdt-input {
+  max-width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .ptdt-page [style*="grid-template-columns"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ptdt-page [style*="minmax(280px, 420px)"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ptdt-page [style*="repeat(3"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .ptdt-page [style*="repeat(4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --sidebar-width: 0px;
+    --nav-h: 60px;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  body {
+    font-size: 14px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .aurora-bg::before,
+  .aurora-bg::after,
+  .aurora-orb-3,
+  .grid-overlay {
+    opacity: 0.35;
+  }
+
+  .ptdt-mobile-nav-toggle {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top));
+    left: 12px;
+    z-index: 1200;
+    min-height: 40px;
+    padding: 9px 13px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #fff;
+    background: linear-gradient(135deg, rgba(251,11,140,0.96), rgba(128,87,215,0.94));
+    box-shadow: 0 12px 28px rgba(16,16,24,0.18);
+    border: 1px solid rgba(255,255,255,0.28);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+  }
+
+  .ptdt-mobile-nav-backdrop.is-open {
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    display: block;
+    background: rgba(10,10,15,0.48);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+
+  .ptdt-sidebar {
+    width: min(86vw, 286px) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    z-index: 1100 !important;
+    transform: translateX(-105%) !important;
+    transition: transform 220ms var(--ease) !important;
+    box-shadow: 24px 0 70px rgba(16,16,24,0.24) !important;
+  }
+
+  .ptdt-sidebar.is-open {
+    transform: translateX(0) !important;
+  }
+
+  .ptdt-mobile-sidebar-close {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-2);
+    background: var(--bg-glass);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  main[style*="margin-left"] {
+    width: 100% !important;
+    margin-left: 0 !important;
+    padding-top: 64px !important;
+    overflow-x: hidden !important;
+  }
+
+  .ptdt-page {
+    width: 100%;
+    max-width: 100vw;
+    padding: 16px 12px 28px !important;
+    overflow-x: hidden;
+  }
+
+  .ptdt-page-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .ptdt-page-title {
+    font-size: clamp(1.75rem, 8vw, 2.65rem) !important;
+    line-height: 1.03 !important;
+  }
+
+  .ptdt-page-desc {
+    max-width: 100% !important;
+    font-size: 13px !important;
+    line-height: 1.55 !important;
+  }
+
+  .ptdt-toolbar {
+    width: 100% !important;
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    padding-bottom: 4px !important;
+  }
+
+  .ptdt-toolbar > * {
+    flex: 0 0 auto;
+  }
+
+  .glass,
+  .ptdt-card {
+    max-width: 100%;
+  }
+
+  .glass {
+    padding: 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .ptdt-card {
+    border-radius: 16px !important;
+  }
+
+  .ptdt-page [style*="grid-template-columns"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ptdt-page [style*="display: grid"],
+  .ptdt-page [style*="display:grid"] {
+    min-width: 0 !important;
+  }
+
+  .ptdt-page [style*="justify-content: space-between"] {
+    flex-wrap: wrap !important;
+  }
+
+  .ptdt-page [style*="display: flex"],
+  .ptdt-page [style*="display:flex"] {
+    min-width: 0 !important;
+  }
+
+  .ptdt-input,
+  .ptdt-page input,
+  .ptdt-page select,
+  .ptdt-page textarea {
+    width: 100% !important;
+  }
+
+  .ptdt-action-btn,
+  .btn-brand,
+  .ptdt-page button {
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  .ptdt-chip {
+    white-space: nowrap;
+  }
+
+  .display {
+    overflow-wrap: anywhere;
+  }
+
+  .mono {
+    overflow-wrap: anywhere;
+  }
+
+  .ptdt-page table {
+    min-width: 720px;
+  }
+
+  .ptdt-page [style*="overflow-x"] {
+    max-width: 100%;
+  }
+
+  footer {
+    padding: 16px 12px !important;
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .ptdt-mobile-nav-toggle {
+    min-height: 38px;
+    padding: 8px 11px;
+    font-size: 11px;
+  }
+
+  .ptdt-sidebar {
+    width: min(90vw, 294px) !important;
+    padding: 16px 12px !important;
+  }
+
+  main[style*="margin-left"] {
+    padding-top: 58px !important;
+  }
+
+  .ptdt-page {
+    padding: 12px 10px 24px !important;
+  }
+
+  .ptdt-page-title {
+    font-size: clamp(1.55rem, 9vw, 2.15rem) !important;
+  }
+
+  .ptdt-page-desc {
+    font-size: 12.5px !important;
+  }
+
+  .glass {
+    padding: 12px !important;
+    border-radius: 16px !important;
+  }
+
+  .ptdt-card {
+    padding: 12px !important;
+  }
+
+  .ptdt-action-btn,
+  .btn-brand {
+    min-height: 38px !important;
+    font-size: 11.5px !important;
+  }
+
+  .ptdt-page [style*="repeat(2"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ptdt-page [style*="font-size: 20"] {
+    font-size: 18px !important;
+  }
+
+  .ptdt-page [style*="font-size: 18"] {
+    font-size: 16px !important;
+  }
+}
+
+/* ============================================================
+   SPRINT 12F — LOGIN RESPONSIVE STYLES
+   One-piece index.css support for Login.tsx responsive layout.
+   ============================================================ */
+
+.ptdt-login-root {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.ptdt-login-theme-toggle {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 20;
+}
+
+.ptdt-login-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(390px, 1fr);
+  gap: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.ptdt-login-brand-panel {
+  padding: 60px 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.ptdt-login-brand-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ptdt-login-logo {
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  flex-shrink: 0;
+}
+
+.ptdt-login-brand-copy {
+  min-width: 0;
+}
+
+.ptdt-login-brand-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.ptdt-login-brand-subtitle {
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.ptdt-login-hero {
+  min-width: 0;
+}
+
+.ptdt-login-eyebrow {
+  margin-bottom: 24px;
+}
+
+.ptdt-login-heading {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5vw, 60px);
+  font-weight: 900;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+  margin-bottom: 22px;
+  color: var(--text);
+}
+
+.ptdt-login-copy {
+  font-size: 16px;
+  color: var(--text-2);
+  line-height: 1.7;
+  max-width: 480px;
+  margin-bottom: 28px;
+}
+
+.ptdt-login-slogan {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(251,11,140,0.10), rgba(128,87,215,0.08), rgba(0,167,71,0.10));
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  margin-bottom: 30px;
+  max-width: 100%;
+}
+
+.ptdt-login-feature-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ptdt-login-feature-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 700;
+}
+
+.ptdt-login-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 10.5px;
+  color: var(--text-3);
+  line-height: 1.6;
+}
+
+.ptdt-login-card-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+  min-width: 0;
+}
+
+.ptdt-login-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 40px;
+  border-radius: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ptdt-login-card-accent {
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  background: linear-gradient(90deg, #fb0b8c 0%, #8057d7 50%, #2ae97b 100%);
+  border-radius: 2px;
+  opacity: 0.85;
+}
+
+.ptdt-login-card-header {
+  margin-bottom: 28px;
+}
+
+.ptdt-login-card-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 6px;
+  letter-spacing: -0.03em;
+}
+
+.ptdt-login-card-desc {
+  font-size: 13.5px;
+  color: var(--text-3);
+}
+
+.ptdt-login-error {
+  background: var(--status-busy-bg);
+  border: 1px solid var(--status-busy-bd);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--status-busy-fg);
+  font-size: 13px;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.ptdt-login-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.ptdt-login-input-wrap {
+  position: relative;
+}
+
+.ptdt-login-input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.ptdt-login-password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-3);
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+}
+
+.ptdt-login-submit {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 14.5px;
+}
+
+.ptdt-login-security-note {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .ptdt-login-theme-toggle {
+    top: 14px;
+    right: 14px;
+  }
+
+  .ptdt-login-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .ptdt-login-brand-panel {
+    padding: 54px 18px 14px;
+    justify-content: flex-start;
+    gap: 18px;
+  }
+
+  .ptdt-login-brand-top {
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ptdt-login-logo {
+    width: 58px;
+    height: 58px;
+  }
+
+  .ptdt-login-brand-title {
+    font-size: 20px;
+  }
+
+  .ptdt-login-brand-subtitle {
+    font-size: 9.5px;
+    letter-spacing: 1px;
+    line-height: 1.45;
+  }
+
+  .ptdt-login-eyebrow {
+    margin-bottom: 14px;
+    max-width: 100%;
+  }
+
+  .ptdt-login-heading {
+    font-size: clamp(32px, 10vw, 46px);
+    margin-bottom: 12px;
+  }
+
+  .ptdt-login-copy {
+    font-size: 13.5px;
+    line-height: 1.55;
+    max-width: 100%;
+    margin-bottom: 14px;
+  }
+
+  .ptdt-login-slogan {
+    padding: 8px 12px;
+    font-size: 10.5px;
+    margin-bottom: 12px;
+    white-space: normal;
+    border-radius: 16px;
+  }
+
+  .ptdt-login-feature-row {
+    display: none;
+  }
+
+  .ptdt-login-footer {
+    display: none;
+  }
+
+  .ptdt-login-card-wrap {
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0 12px 20px;
+    width: 100%;
+  }
+
+  .ptdt-login-card {
+    max-width: 520px;
+    padding: 22px 16px 18px;
+    border-radius: 20px;
+  }
+
+  .ptdt-login-card-header {
+    margin-bottom: 18px;
+  }
+
+  .ptdt-login-card-title {
+    font-size: 23px;
+  }
+
+  .ptdt-login-card-desc {
+    font-size: 12.5px;
+  }
+
+  .ptdt-login-submit {
+    min-height: 44px;
+    padding: 12px;
+  }
+
+  .ptdt-login-security-note {
+    margin-top: 16px;
+    padding-top: 14px;
+    font-size: 10.5px;
+  }
+}
+
+@media (max-width: 520px) {
+  .ptdt-login-root {
+    min-width: 0;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  .ptdt-login-brand-panel {
+    padding: 50px 12px 12px;
+    gap: 14px;
+  }
+
+  .ptdt-login-logo {
+    width: 50px;
+    height: 50px;
+  }
+
+  .ptdt-login-brand-title {
+    font-size: 18px;
+  }
+
+  .ptdt-login-brand-subtitle {
+    font-size: 8.5px;
+    letter-spacing: 0.9px;
+  }
+
+  .ptdt-login-eyebrow {
+    padding: 8px 12px;
+    font-size: 10px;
+  }
+
+  .ptdt-login-heading {
+    font-size: clamp(28px, 12vw, 40px);
+  }
+
+  .ptdt-login-copy,
+  .ptdt-login-slogan {
+    display: none;
+  }
+
+  .ptdt-login-card-wrap {
+    padding: 0 10px 18px;
+  }
+
+  .ptdt-login-card {
+    padding: 20px 14px 16px;
+    border-radius: 18px;
+  }
+
+  .ptdt-login-card-accent {
+    left: 16px;
+    right: 16px;
+  }
+
+  .ptdt-login-card-title {
+    font-size: 22px;
+  }
+
+  .ptdt-login-label {
+    font-size: 10px;
+  }
+}

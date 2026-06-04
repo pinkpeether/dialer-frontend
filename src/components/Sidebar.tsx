@@ -5,6 +5,7 @@ import {
   Megaphone, BookUser, LogOut,
   BarChart3, Headset, Settings2, History,
   ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap,
+  Menu, X,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
@@ -38,7 +39,7 @@ const NAV: NavItem[] = [
   { to: '/supervisor',      icon: Eye,             label: 'Supervisor',     roles: ['ADMIN', 'MANAGER', 'SUPERVISOR'], color: COLORS.purple },
   { to: '/ops',             icon: Activity,        label: 'Ops Center',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.green },
   { to: '/monitoring',      icon: Activity,        label: 'Monitoring',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.cyan },
-  { to: '/advanced-dialing', icon: Zap,             label: 'Advanced Dialing', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.orange },
+  { to: '/advanced-dialing', icon: Zap,            label: 'Advanced Dialing', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.orange },
   { to: '/support/diagnostics', icon: LifeBuoy,    label: 'Diagnostics',    roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
   { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.red },
   { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.pink },
@@ -59,10 +60,13 @@ const AGENT_NAV: NavItem[] = [
   { to: '/settings',        icon: Settings2,         label: 'Account Settings', color: COLORS.slate },
 ]
 
+const isMobileViewport = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
+
 export default function Sidebar() {
   const { user, logout } = useAuthStore()
   const unregisterSip = useSipStore(s => s.unregister)
   const navigate = useNavigate()
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [performanceMode, setPerformanceMode] = useState(() => {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem('ptdt-performance-mode') === 'on'
@@ -73,6 +77,10 @@ export default function Sidebar() {
   const normalizedRole = userRole?.toUpperCase()
   const navItems = normalizedRole === 'AGENT' ? AGENT_NAV : NAV
   const visibleNav = navItems.filter(item => !item.roles || !normalizedRole || item.roles.includes(normalizedRole))
+
+  const closeMobileNav = () => {
+    if (isMobileViewport()) setMobileOpen(false)
+  }
 
   const handleLogout = () => {
     void authAPI.logout().catch(() => undefined)
@@ -95,90 +103,135 @@ export default function Sidebar() {
     return () => { mounted = false }
   }, [])
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false)
+    }
+
+    const onResize = () => {
+      if (!isMobileViewport()) setMobileOpen(false)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [])
+
   return (
-    <aside style={{
-      width: 'var(--sidebar-width)', height: '100vh', background: 'var(--bg-glass-hi)',
-      backdropFilter: 'blur(22px) saturate(160%)', WebkitBackdropFilter: 'blur(22px) saturate(160%)',
-      borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px 14px',
-      position: 'fixed', top: 0, left: 0, zIndex: 30, boxShadow: 'var(--shadow-md)', boxSizing: 'border-box', overflowX: 'hidden',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px', marginBottom: 22 }}>
-        <motion.img src="ptdt-main-logo.png" alt="PTDT" whileHover={{ scale: 1.04 }} transition={{ type: 'spring', stiffness: 280 }} style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 12, background: 'transparent', mixBlendMode: 'multiply' }} />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 900, color: 'var(--text)', lineHeight: 1.05, letterSpacing: '-0.03em' }}>
-            PTDT-<span className="gradient-brand-text">Dialer</span>
-          </div>
-          <div className="mono" style={{ fontSize: 9, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1.4, marginTop: 3, fontWeight: 700 }}>
-            {userRole || 'Operator'} Console
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding: '8px 10px', marginBottom: 18, borderRadius: 12, background: 'linear-gradient(135deg, rgba(251,11,140,0.08), rgba(128,87,215,0.08))', border: '1px solid var(--border)', fontSize: 10.5, fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.4 }}>
-        Trust the <span style={{ color: 'var(--pink)' }}>{`{ Code }`}</span>,<br/><span style={{ color: 'var(--green-2)' }}>// </span> Not the Cult!
-      </div>
-
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto', overflowX: 'hidden', paddingRight: 2 }}>
-        <div className="mono" style={{ fontSize: 9.5, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1.4, padding: '0 12px 8px', fontWeight: 700 }}>Navigation</div>
-        {visibleNav.map(item => {
-          const Icon = item.icon
-          const iconColor = item.color || COLORS.pink
-          return (
-            <NavLink key={item.to} to={item.to} end={item.to === '/settings'} style={{ textDecoration: 'none' }}>
-              {({ isActive }) => (
-                <motion.div
-                  whileHover={{ x: isActive ? 0 : 3 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  style={{
-                    position: 'relative', display: 'flex', alignItems: 'center', gap: 11,
-                    padding: '8px 10px', borderRadius: 18, fontSize: 13.3, fontWeight: 800,
-                    background: isActive ? 'linear-gradient(135deg, rgba(251,11,140,0.96), rgba(128,87,215,0.92))' : 'transparent',
-                    color: isActive ? '#fff' : 'var(--text-2)',
-                    border: isActive ? '1px solid rgba(255,255,255,0.22)' : '1px solid transparent',
-                    boxShadow: isActive ? '0 12px 26px rgba(251,11,140,0.24), inset 0 1px 0 rgba(255,255,255,0.22)' : 'none',
-                    transition: 'background .22s, color .22s, box-shadow .22s, border-color .22s',
-                  }}
-                >
-                  <span className="sidebar-icon-shell" style={{ color: isActive ? '#fff' : iconColor, background: isActive ? 'rgba(255,255,255,0.16)' : undefined }}>
-                    <Icon size={16.5} strokeWidth={isActive ? 2.5 : 2.2}/>
-                  </span>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
-                </motion.div>
-              )}
-            </NavLink>
-          )
-        })}
-      </nav>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 10px', marginBottom: 8, borderTop: '1px solid var(--border)', marginTop: 8 }}>
-        <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase' }}>Appearance</span>
-        <ThemeToggle/>
-      </div>
-
-      <button type="button" onClick={() => setPerformanceMode(value => !value)} className={`ptdt-action-btn ${performanceMode ? 'active' : ''}`} style={{ margin: '0 4px 10px', minHeight: 34, fontSize: 10.5 }} title="Reduce animations, blur, and background effects for smoother Electron performance">
-        <span style={{ width: 8, height: 8, borderRadius: 999, background: performanceMode ? 'var(--green-2)' : 'var(--muted)' }} />
-        Performance {performanceMode ? 'On' : 'Off'}
+    <>
+      <button
+        type="button"
+        className="ptdt-mobile-nav-toggle"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open navigation menu"
+      >
+        <Menu size={18} />
+        <span>Menu</span>
       </button>
 
-      {desktopVersion && <div className="mono" style={{ margin: '0 8px 10px', fontSize: 9.5, color: 'var(--muted)', textAlign: 'center', letterSpacing: 0.7, textTransform: 'uppercase' }}>Desktop v{desktopVersion}</div>}
-      <DesktopUpdateControl />
+      <button
+        type="button"
+        className={`ptdt-mobile-nav-backdrop ${mobileOpen ? 'is-open' : ''}`}
+        onClick={() => setMobileOpen(false)}
+        aria-label="Close navigation menu"
+      />
 
-      <div style={{ paddingTop: 6 }}>
-        <div className="glass" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 8, borderRadius: 14 }}>
-          <div style={{ position: 'relative', width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #fb0b8c, #8057d7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', boxShadow: '0 4px 12px rgba(251,11,140,0.30)', flexShrink: 0 }}>
-            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            <span style={{ position: 'absolute', bottom: -1, right: -1, width: 10, height: 10, borderRadius: '50%', background: '#2ae97b', border: '2px solid var(--surface)' }}/>
-          </div>
+      <aside className={`ptdt-sidebar ${mobileOpen ? 'is-open' : ''}`} style={{
+        width: 'var(--sidebar-width)', height: '100vh', background: 'var(--bg-glass-hi)',
+        backdropFilter: 'blur(22px) saturate(160%)', WebkitBackdropFilter: 'blur(22px) saturate(160%)',
+        borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px 14px',
+        position: 'fixed', top: 0, left: 0, zIndex: 30, boxShadow: 'var(--shadow-md)', boxSizing: 'border-box', overflowX: 'hidden',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px', marginBottom: 22 }}>
+          <motion.img src="ptdt-main-logo.png" alt="PTDT" whileHover={{ scale: 1.04 }} transition={{ type: 'spring', stiffness: 280 }} style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 12, background: 'transparent', mixBlendMode: 'multiply' }} />
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'User'}</div>
-            <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)' }}>{(user as Record<string, unknown> | null)?.agentCode as string || '—'}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 900, color: 'var(--text)', lineHeight: 1.05, letterSpacing: '-0.03em' }}>
+              PTDT-<span className="gradient-brand-text">Dialer</span>
+            </div>
+            <div className="mono" style={{ fontSize: 9, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1.4, marginTop: 3, fontWeight: 700 }}>
+              {userRole || 'Operator'} Console
+            </div>
           </div>
-          <NotificationBell/>
+
+          <button
+            type="button"
+            className="ptdt-mobile-sidebar-close"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation menu"
+          >
+            <X size={18} />
+          </button>
         </div>
-        <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }} onClick={handleLogout} className="sidebar-signout" style={{ width: '100%', height: 42, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 850, cursor: 'pointer' }}>
-          <LogOut size={15}/> Sign Out
-        </motion.button>
-      </div>
-    </aside>
+
+        <div style={{ padding: '8px 10px', marginBottom: 18, borderRadius: 12, background: 'linear-gradient(135deg, rgba(251,11,140,0.08), rgba(128,87,215,0.08))', border: '1px solid var(--border)', fontSize: 10.5, fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.4 }}>
+          Trust the <span style={{ color: 'var(--pink)' }}>{`{ Code }`}</span>,<br/><span style={{ color: 'var(--green-2)' }}>// </span> Not the Cult!
+        </div>
+
+        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto', overflowX: 'hidden', paddingRight: 2 }}>
+          <div className="mono" style={{ fontSize: 9.5, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1.4, padding: '0 12px 8px', fontWeight: 700 }}>Navigation</div>
+          {visibleNav.map(item => {
+            const Icon = item.icon
+            const iconColor = item.color || COLORS.pink
+            return (
+              <NavLink key={item.to} to={item.to} end={item.to === '/settings'} style={{ textDecoration: 'none' }} onClick={closeMobileNav}>
+                {({ isActive }) => (
+                  <motion.div
+                    whileHover={{ x: isActive ? 0 : 3 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    style={{
+                      position: 'relative', display: 'flex', alignItems: 'center', gap: 11,
+                      padding: '8px 10px', borderRadius: 18, fontSize: 13.3, fontWeight: 800,
+                      background: isActive ? 'linear-gradient(135deg, rgba(251,11,140,0.96), rgba(128,87,215,0.92))' : 'transparent',
+                      color: isActive ? '#fff' : 'var(--text-2)',
+                      border: isActive ? '1px solid rgba(255,255,255,0.22)' : '1px solid transparent',
+                      boxShadow: isActive ? '0 12px 26px rgba(251,11,140,0.24), inset 0 1px 0 rgba(255,255,255,0.22)' : 'none',
+                      transition: 'background .22s, color .22s, box-shadow .22s, border-color .22s',
+                    }}
+                  >
+                    <span className="sidebar-icon-shell" style={{ color: isActive ? '#fff' : iconColor, background: isActive ? 'rgba(255,255,255,0.16)' : undefined }}>
+                      <Icon size={16.5} strokeWidth={isActive ? 2.5 : 2.2}/>
+                    </span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                  </motion.div>
+                )}
+              </NavLink>
+            )
+          })}
+        </nav>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 10px', marginBottom: 8, borderTop: '1px solid var(--border)', marginTop: 8 }}>
+          <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase' }}>Appearance</span>
+          <ThemeToggle/>
+        </div>
+
+        <button type="button" onClick={() => setPerformanceMode(value => !value)} className={`ptdt-action-btn ${performanceMode ? 'active' : ''}`} style={{ margin: '0 4px 10px', minHeight: 34, fontSize: 10.5 }} title="Reduce animations, blur, and background effects for smoother Electron performance">
+          <span style={{ width: 8, height: 8, borderRadius: 999, background: performanceMode ? 'var(--green-2)' : 'var(--muted)' }} />
+          Performance {performanceMode ? 'On' : 'Off'}
+        </button>
+
+        {desktopVersion && <div className="mono" style={{ margin: '0 8px 10px', fontSize: 9.5, color: 'var(--muted)', textAlign: 'center', letterSpacing: 0.7, textTransform: 'uppercase' }}>Desktop v{desktopVersion}</div>}
+        <DesktopUpdateControl />
+
+        <div style={{ paddingTop: 6 }}>
+          <div className="glass" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 8, borderRadius: 14 }}>
+            <div style={{ position: 'relative', width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #fb0b8c, #8057d7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', boxShadow: '0 4px 12px rgba(251,11,140,0.30)', flexShrink: 0 }}>
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              <span style={{ position: 'absolute', bottom: -1, right: -1, width: 10, height: 10, borderRadius: '50%', background: '#2ae97b', border: '2px solid var(--surface)' }}/>
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'User'}</div>
+              <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)' }}>{(user as Record<string, unknown> | null)?.agentCode as string || '—'}</div>
+            </div>
+            <NotificationBell/>
+          </div>
+          <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }} onClick={handleLogout} className="sidebar-signout" style={{ width: '100%', height: 42, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 850, cursor: 'pointer' }}>
+            <LogOut size={15}/> Sign Out
+          </motion.button>
+        </div>
+      </aside>
+    </>
   )
 }
