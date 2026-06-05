@@ -4,7 +4,7 @@ import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
   BarChart3, Headset, Settings2, History,
-  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap, Globe, Layers3, HardDriveDownload, BellRing, Palette, LockKeyhole,
+  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap, Globe, Layers3, HardDriveDownload, BellRing, Palette, LockKeyhole, ServerCog,
   Menu, X,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -49,6 +49,7 @@ const NAV: NavItem[] = [
   { to: '/reports-analytics-pro', icon: BarChart3, label: 'Reports Analytics+', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.purple },
   { to: '/ui-ux-pro',       icon: Palette,         label: 'UI/UX Pro',      roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.teal },
   { to: '/security-admin-pro', icon: LockKeyhole,  label: 'Security Admin Pro', roles: ['ADMIN'], color: COLORS.red },
+  { to: '/deployment-platform-pro', icon: ServerCog, label: 'Deployment Platform', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.teal },
   { to: '/support/diagnostics', icon: LifeBuoy,    label: 'Diagnostics',    roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
   { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.red },
   { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.pink },
