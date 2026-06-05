@@ -4,7 +4,7 @@ import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
   BarChart3, Headset, Settings2, History,
-  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap, Globe, Layers3, HardDriveDownload, BellRing,
+  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap, Globe, Layers3, HardDriveDownload, BellRing, Palette,
   Menu, X,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -47,6 +47,12 @@ const NAV: NavItem[] = [
   { to: '/live-ai',         icon: Radio,           label: 'Live AI',        roles: ['ADMIN', 'SUPERVISOR', 'AGENT'], color: COLORS.pink },
   { to: '/campaign-management-pro', icon: Layers3, label: 'Campaign Mgmt Pro', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.teal },
   { to: '/reports-analytics-pro', icon: BarChart3, label: 'Reports Analytics+', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.purple },
+  { to: '/ui-ux-pro',       icon: Palette,         label: 'UI/UX Pro',      roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.teal },
+  { to: '/call-controls',   icon: PhoneCall,       label: 'Call Controls',  roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.red },
+  { to: '/live-ai',         icon: Radio,           label: 'Live AI',        roles: ['ADMIN', 'SUPERVISOR', 'AGENT'], color: COLORS.pink },
+  { to: '/campaign-management-pro', icon: Layers3, label: 'Campaign Mgmt Pro', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.teal },
+  { to: '/reports-analytics-pro', icon: BarChart3, label: 'Reports Analytics+', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.purple },
+  { to: '/ui-ux-pro',       icon: Palette,         label: 'UI/UX Pro',      roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.teal },
   { to: '/support/diagnostics', icon: LifeBuoy,    label: 'Diagnostics',    roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
   { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.red },
   { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.pink },
