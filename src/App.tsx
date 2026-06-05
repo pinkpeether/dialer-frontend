@@ -27,6 +27,7 @@ import CallIntelligence       from './pages/CallIntelligence'
 import OpsCenter              from './pages/OpsCenter'
 import ProductionMonitoring   from './pages/ProductionMonitoring'
 import AdvancedDialingAnalytics from './pages/AdvancedDialingAnalytics'
+import LiveAiConsole           from './pages/LiveAiConsole'
 import SupportDiagnostics     from './pages/SupportDiagnostics'
 import ProductionReview       from './pages/ProductionReview'
 import Unauthorized           from './pages/Unauthorized'
@@ -85,6 +86,7 @@ export default function App() {
             <Route path="/ops"                element={<RoleRoute roles={adminSupervisorRoles}><OpsCenter /></RoleRoute>}      />
             <Route path="/monitoring"         element={<RoleRoute roles={adminSupervisorRoles}><ProductionMonitoring /></RoleRoute>} />
             <Route path="/advanced-dialing"   element={<RoleRoute roles={adminSupervisorRoles}><AdvancedDialingAnalytics /></RoleRoute>} />
+            <Route path="/live-ai"            element={<RoleRoute><LiveAiConsole /></RoleRoute>} />
             <Route path="/support/diagnostics" element={<RoleRoute roles={adminSupervisorRoles}><SupportDiagnostics /></RoleRoute>} />
             <Route path="/production/review"   element={<RoleRoute roles={['ADMIN']}><ProductionReview /></RoleRoute>} />
             <Route path="/admin/spoofing" element={<RoleRoute roles={['ADMIN']}><SpoofingManagement /></RoleRoute>} />
