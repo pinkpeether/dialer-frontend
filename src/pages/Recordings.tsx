@@ -219,6 +219,7 @@ type RecordingRow = {
   hasRecording?: boolean
   startedAt?: string
   duration?: number
+  remoteNumber?: string | null
   contact?: { name?: string | null; phone?: string | null }
   agent?: { name?: string | null }
   campaign?: { name?: string | null }
@@ -278,6 +279,7 @@ export default function Recordings() {
   const [activeCallId, setActiveCallId] = useState<number | null>(null)
   const [accessingId, setAccessingId] = useState<number | null>(null)
   const [manualError, setManualError] = useState('')
+  const [playbackError, setPlaybackError] = useState('')
 
   const recordingsParams = useMemo(() => ({ search: appliedSearch || undefined, limit: 50 }), [appliedSearch])
 
@@ -316,6 +318,7 @@ export default function Recordings() {
 
   const play = async (row: RecordingRow) => {
     setManualError('')
+    setPlaybackError('')
     setAccessingId(row.id)
     try {
       const data = await recordingsAPI.getAccess(row.id)
@@ -325,7 +328,7 @@ export default function Recordings() {
       setActiveUrl(playbackUrl)
       setActiveCallId(row.id)
       setActiveExpiresAt(data?.expiresAt || '')
-      setActiveTitle(`${row.contact?.name || 'Unknown'} · ${row.contact?.phone || 'No phone'}`)
+      setActiveTitle(`#${row.id} · ${row.contact?.name || 'SIP'} · ${row.contact?.phone || row.remoteNumber || 'No phone'}`)
     } catch (err) {
       setManualError(err instanceof Error ? err.message : 'Failed to access recording')
     } finally {
@@ -412,7 +415,41 @@ export default function Recordings() {
               {activeExpiresAt ? `Access expires ${fmtDate(activeExpiresAt)}` : 'Signed playback access'}
             </span>
           </div>
-          <audio src={activeUrl} controls style={{ width: '100%', display: 'block' }} />
+          <audio
+            src={activeUrl}
+            controls
+            preload="metadata"
+            style={{ width: '100%', display: 'block' }}
+            onLoadedMetadata={(event) => {
+              const duration = event.currentTarget.duration
+              if (!Number.isFinite(duration) || duration <= 0) {
+                setPlaybackError('Recording loaded with zero duration. The file may be empty, expired, or unavailable in storage.')
+              } else {
+                setPlaybackError('')
+              }
+            }}
+            onError={(event) => {
+              const code = event.currentTarget.error?.code
+              setPlaybackError(`Playback failed${code ? ` (media error ${code})` : ''}. Click Play again for a fresh URL, or verify the recording file exists in storage.`)
+            }}
+          />
+          {playbackError && (
+            <div
+              style={{
+                marginTop: 10,
+                padding: '10px 12px',
+                borderRadius: 14,
+                border: '1px solid rgba(239,68,68,0.26)',
+                background: 'rgba(239,68,68,0.08)',
+                color: 'var(--danger)',
+                fontSize: 12,
+                fontWeight: 800,
+                lineHeight: 1.45,
+              }}
+            >
+              {playbackError}
+            </div>
+          )}
           <div style={{ marginTop: 10, color: 'var(--text-3)', fontSize: 12 }}>
             If playback expires, click Play again to generate a fresh signed URL.
           </div>
@@ -430,7 +467,7 @@ export default function Recordings() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
-                {['Time', 'Contact', 'Phone', 'Agent', 'Campaign', 'Duration', 'Provider', 'Recording SID', 'Action'].map(h => (
+                {['Time', 'Call ID', 'Contact', 'Phone', 'Agent', 'Campaign', 'Duration', 'Provider', 'Recording SID', 'Action'].map(h => (
                   <th key={h} style={{ padding: '13px 16px', textAlign: 'left', fontSize: 10.5, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
@@ -439,9 +476,9 @@ export default function Recordings() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9}><EmptyState>Loading recordings...</EmptyState></td></tr>
+                <tr><td colSpan={10}><EmptyState>Loading recordings...</EmptyState></td></tr>
               ) : recordings.length === 0 ? (
-                <tr><td colSpan={9}><EmptyState>No recordings found.</EmptyState></td></tr>
+                <tr><td colSpan={10}><EmptyState>No recordings found.</EmptyState></td></tr>
               ) : recordings.map((row, index) => (
                 <motion.tr
                   key={row.id}
@@ -456,7 +493,10 @@ export default function Recordings() {
                       {fmtDate(row.startedAt)}
                     </div>
                   </td>
-                  <td style={{ padding: '14px 16px', fontWeight: 900, color: 'var(--text)' }}>
+                  <td className="mono" style={{ padding: '14px 16px', color: 'var(--pink)', fontSize: 12, fontWeight: 900, whiteSpace: 'nowrap' }}>
+                    #{row.id}
+                  </td>
+                  <td style={{ padding: '14px 16px', fontWeight: 850, color: 'var(--text)', fontSize: 12.5, lineHeight: 1.35, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {row.contact?.name || 'Unknown'}
                   </td>
                   <td className="mono" style={{ padding: '14px 16px', color: 'var(--text-2)', fontSize: 12.5 }}>
