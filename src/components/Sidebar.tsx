@@ -33,6 +33,7 @@ const NAV: NavItem[] = [
   { to: '/agent/dashboard', icon: Headset,         label: 'Agent Dashboard', color: COLORS.cyan },
   { to: '/campaigns',       icon: Megaphone,       label: 'Campaigns',      roles: ['ADMIN', 'MANAGER'], color: COLORS.pink },
   { to: '/contacts',        icon: BookUser,        label: 'Contacts', color: COLORS.teal        },
+  { to: '/contact-management-pro', icon: Users,    label: 'Contact Mgmt Pro', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.teal },
   { to: '/agents',          icon: Users,           label: 'Agents',         roles: ['ADMIN', 'MANAGER'], color: COLORS.indigo },
   { to: '/calls',           icon: History,         label: 'Call History', color: COLORS.gold    },
   { to: '/callbacks',       icon: Calendar,        label: 'Callbacks', color: COLORS.orange       },

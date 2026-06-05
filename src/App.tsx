@@ -11,6 +11,7 @@ import Campaigns              from './pages/Campaigns'
 import CampaignDetail         from './pages/CampaignDetail'
 import Contacts               from './pages/Contacts'
 import ContactDetail          from './pages/ContactDetail'
+import ContactManagementPro   from './pages/ContactManagementPro'
 import AgentWorkspace         from './pages/AgentWorkspace'
 import AgentDashboard         from './pages/AgentDashboard'
 import Reports                from './pages/Reports'
@@ -70,6 +71,7 @@ export default function App() {
             <Route path="/campaigns/:id"      element={<RoleRoute roles={adminManagerRoles}><CampaignDetail /></RoleRoute>} />
             <Route path="/contacts"           element={<RoleRoute><Contacts /></RoleRoute>}       />
             <Route path="/contacts/:id"       element={<RoleRoute><ContactDetail /></RoleRoute>}  />
+            <Route path="/contact-management-pro" element={<RoleRoute roles={adminSupervisorRoles}><ContactManagementPro /></RoleRoute>} />
             <Route path="/agents"             element={<RoleRoute roles={adminManagerRoles}><Agents /></RoleRoute>}         />
             <Route path="/calls"              element={<RoleRoute><Calls /></RoleRoute>}          />
             <Route path="/callbacks"          element={<RoleRoute><Callbacks /></RoleRoute>}      />
