@@ -27,6 +27,7 @@ import Recordings             from './pages/Recordings'
 import CallIntelligence       from './pages/CallIntelligence'
 import OpsCenter              from './pages/OpsCenter'
 import ProductionMonitoring   from './pages/ProductionMonitoring'
+import LiveMonitoringAdvanced from './pages/LiveMonitoringAdvanced'
 import AdvancedDialingAnalytics from './pages/AdvancedDialingAnalytics'
 import CallControls            from './pages/CallControls'
 import LiveAiConsole           from './pages/LiveAiConsole'
@@ -88,6 +89,7 @@ export default function App() {
             <Route path="/call-intelligence"  element={<RoleRoute roles={adminSupervisorRoles}><CallIntelligence /></RoleRoute>} />
             <Route path="/ops"                element={<RoleRoute roles={adminSupervisorRoles}><OpsCenter /></RoleRoute>}      />
             <Route path="/monitoring"         element={<RoleRoute roles={adminSupervisorRoles}><ProductionMonitoring /></RoleRoute>} />
+            <Route path="/live-monitoring-advanced" element={<RoleRoute roles={adminSupervisorRoles}><LiveMonitoringAdvanced /></RoleRoute>} />
             <Route path="/advanced-dialing"   element={<RoleRoute roles={adminSupervisorRoles}><AdvancedDialingAnalytics /></RoleRoute>} />
             <Route path="/call-controls"      element={<RoleRoute roles={adminSupervisorRoles}><CallControls /></RoleRoute>} />
             <Route path="/live-ai"            element={<RoleRoute><LiveAiConsole /></RoleRoute>} />

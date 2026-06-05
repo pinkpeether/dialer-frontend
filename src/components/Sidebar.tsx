@@ -4,7 +4,7 @@ import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
   BarChart3, Headset, Settings2, History,
-  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap,
+  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap, Globe,
   Menu, X,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -40,6 +40,7 @@ const NAV: NavItem[] = [
   { to: '/supervisor',      icon: Eye,             label: 'Supervisor',     roles: ['ADMIN', 'MANAGER', 'SUPERVISOR'], color: COLORS.purple },
   { to: '/ops',             icon: Activity,        label: 'Ops Center',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.green },
   { to: '/monitoring',      icon: Activity,        label: 'Monitoring',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.cyan },
+  { to: '/live-monitoring-advanced', icon: Globe,  label: 'Live Monitoring+', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.teal },
   { to: '/advanced-dialing', icon: Zap,            label: 'Advanced Dialing', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.orange },
   { to: '/call-controls',   icon: PhoneCall,       label: 'Call Controls',  roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.red },
   { to: '/live-ai',         icon: Radio,           label: 'Live AI',        roles: ['ADMIN', 'SUPERVISOR', 'AGENT'], color: COLORS.pink },
