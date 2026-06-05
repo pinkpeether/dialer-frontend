@@ -40,6 +40,7 @@ const NAV: NavItem[] = [
   { to: '/ops',             icon: Activity,        label: 'Ops Center',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.green },
   { to: '/monitoring',      icon: Activity,        label: 'Monitoring',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.cyan },
   { to: '/advanced-dialing', icon: Zap,            label: 'Advanced Dialing', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.orange },
+  { to: '/reports-analytics-pro', icon: BarChart3, label: 'Reports Analytics+', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.purple },
   { to: '/support/diagnostics', icon: LifeBuoy,    label: 'Diagnostics',    roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
   { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.red },
   { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.pink },
