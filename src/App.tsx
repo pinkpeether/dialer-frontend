@@ -25,6 +25,7 @@ import Settings               from './pages/Settings'
 import AuditLogs              from './pages/AuditLogs'
 import SystemSettings         from './pages/SystemSettings'
 import Recordings             from './pages/Recordings'
+import RecordingStoragePro    from './pages/RecordingStoragePro'
 import CallIntelligence       from './pages/CallIntelligence'
 import OpsCenter              from './pages/OpsCenter'
 import ProductionMonitoring   from './pages/ProductionMonitoring'
@@ -92,6 +93,7 @@ export default function App() {
             <Route path="/audit-logs"         element={<RoleRoute roles={['ADMIN']}><AuditLogs /></RoleRoute>}      />
             <Route path="/settings/system"    element={<RoleRoute roles={['ADMIN']}><SystemSettings /></RoleRoute>} />
             <Route path="/recordings"         element={<RoleRoute roles={adminSupervisorRoles}><Recordings /></RoleRoute>}     />
+            <Route path="/recording-storage-pro" element={<RoleRoute roles={adminSupervisorRoles}><RecordingStoragePro /></RoleRoute>} />
             <Route path="/call-intelligence"  element={<RoleRoute roles={adminSupervisorRoles}><CallIntelligence /></RoleRoute>} />
             <Route path="/ops"                element={<RoleRoute roles={adminSupervisorRoles}><OpsCenter /></RoleRoute>}      />
             <Route path="/monitoring"         element={<RoleRoute roles={adminSupervisorRoles}><ProductionMonitoring /></RoleRoute>} />

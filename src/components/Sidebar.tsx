@@ -4,7 +4,7 @@ import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
   BarChart3, Headset, Settings2, History,
-  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap, Globe, Layers3,
+  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap, Globe, Layers3, HardDriveDownload,
   Menu, X,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -50,6 +50,7 @@ const NAV: NavItem[] = [
   { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.red },
   { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.pink },
   { to: '/recordings',      icon: Radio,           label: 'Recordings',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.green },
+  { to: '/recording-storage-pro', icon: HardDriveDownload, label: 'Recording Storage', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.cyan },
   { to: '/call-intelligence', icon: Radio,         label: 'Call Intelligence', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.purple },
   { to: '/audit-logs',      icon: ClipboardList,   label: 'Audit Logs',     roles: ['ADMIN'], color: COLORS.gold },
   { to: '/admin/spoofing',  icon: PhoneCall,       label: 'Spoofing Mgmt',  roles: ['ADMIN'], color: COLORS.cyan },
