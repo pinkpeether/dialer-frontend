@@ -28,6 +28,7 @@ import OpsCenter              from './pages/OpsCenter'
 import ProductionMonitoring   from './pages/ProductionMonitoring'
 import AdvancedDialingAnalytics from './pages/AdvancedDialingAnalytics'
 import CallControls            from './pages/CallControls'
+import LiveAiConsole           from './pages/LiveAiConsole'
 import SupportDiagnostics     from './pages/SupportDiagnostics'
 import ProductionReview       from './pages/ProductionReview'
 import Unauthorized           from './pages/Unauthorized'
@@ -87,6 +88,9 @@ export default function App() {
             <Route path="/monitoring"         element={<RoleRoute roles={adminSupervisorRoles}><ProductionMonitoring /></RoleRoute>} />
             <Route path="/advanced-dialing"   element={<RoleRoute roles={adminSupervisorRoles}><AdvancedDialingAnalytics /></RoleRoute>} />
             <Route path="/call-controls"      element={<RoleRoute roles={adminSupervisorRoles}><CallControls /></RoleRoute>} />
+            <Route path="/live-ai"            element={<RoleRoute><LiveAiConsole /></RoleRoute>} />
+            <Route path="/call-controls"      element={<RoleRoute roles={adminSupervisorRoles}><CallControls /></RoleRoute>} />
+            <Route path="/live-ai"            element={<RoleRoute><LiveAiConsole /></RoleRoute>} />
             <Route path="/support/diagnostics" element={<RoleRoute roles={adminSupervisorRoles}><SupportDiagnostics /></RoleRoute>} />
             <Route path="/production/review"   element={<RoleRoute roles={['ADMIN']}><ProductionReview /></RoleRoute>} />
             <Route path="/admin/spoofing" element={<RoleRoute roles={['ADMIN']}><SpoofingManagement /></RoleRoute>} />
