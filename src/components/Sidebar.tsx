@@ -5,6 +5,7 @@ import {
   Megaphone, BookUser, LogOut,
   BarChart3, Headset, Settings2, History,
   ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap,
+  BellRing,
   Menu, X,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -45,6 +46,7 @@ const NAV: NavItem[] = [
   { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.pink },
   { to: '/recordings',      icon: Radio,           label: 'Recordings',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.green },
   { to: '/call-intelligence', icon: Radio,         label: 'Call Intelligence', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.purple },
+  { to: '/notifications-alerts-pro', icon: BellRing, label: 'Notifications & Alerts', color: COLORS.orange },
   { to: '/audit-logs',      icon: ClipboardList,   label: 'Audit Logs',     roles: ['ADMIN'], color: COLORS.gold },
   { to: '/admin/spoofing',  icon: PhoneCall,       label: 'Spoofing Mgmt',  roles: ['ADMIN'], color: COLORS.cyan },
   { to: '/sip-settings',    icon: Wrench,          label: 'SIP Settings', color: COLORS.gold    },
@@ -57,6 +59,7 @@ const AGENT_NAV: NavItem[] = [
   { to: '/dialer',          icon: Phone,             label: 'Dialer', color: COLORS.green },
   { to: '/calls',           icon: History,           label: 'My Calls', color: COLORS.gold },
   { to: '/callbacks',       icon: Calendar,          label: 'My Callbacks', color: COLORS.orange },
+  { to: '/notifications-alerts-pro', icon: BellRing, label: 'Notifications & Alerts', color: COLORS.orange },
   { to: '/settings',        icon: Settings2,         label: 'Account Settings', color: COLORS.slate },
 ]
 
