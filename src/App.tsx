@@ -31,14 +31,12 @@ import OpsCenter              from './pages/OpsCenter'
 import ProductionMonitoring   from './pages/ProductionMonitoring'
 import LiveMonitoringAdvanced from './pages/LiveMonitoringAdvanced'
 import AdvancedDialingAnalytics from './pages/AdvancedDialingAnalytics'
-import CallControls            from './pages/CallControls'
-import LiveAiConsole           from './pages/LiveAiConsole'
-import CampaignManagementPro  from './pages/CampaignManagementPro'
 import CallControls           from './pages/CallControls'
 import LiveAiConsole          from './pages/LiveAiConsole'
 import CampaignManagementPro  from './pages/CampaignManagementPro'
 import SupportDiagnostics     from './pages/SupportDiagnostics'
 import ProductionReview       from './pages/ProductionReview'
+import ReportsAnalyticsPro    from './pages/ReportsAnalyticsPro'
 import Unauthorized           from './pages/Unauthorized'
 import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
@@ -99,12 +97,11 @@ export default function App() {
             <Route path="/monitoring"         element={<RoleRoute roles={adminSupervisorRoles}><ProductionMonitoring /></RoleRoute>} />
             <Route path="/live-monitoring-advanced" element={<RoleRoute roles={adminSupervisorRoles}><LiveMonitoringAdvanced /></RoleRoute>} />
             <Route path="/advanced-dialing"   element={<RoleRoute roles={adminSupervisorRoles}><AdvancedDialingAnalytics /></RoleRoute>} />
+            <Route path="/reports-analytics-pro" element={<RoleRoute roles={adminSupervisorRoles}><ReportsAnalyticsPro /></RoleRoute>} />
             <Route path="/call-controls"      element={<RoleRoute roles={adminSupervisorRoles}><CallControls /></RoleRoute>} />
             <Route path="/live-ai"            element={<RoleRoute><LiveAiConsole /></RoleRoute>} />
             <Route path="/campaign-management-pro" element={<RoleRoute roles={adminSupervisorRoles}><CampaignManagementPro /></RoleRoute>} />
-            <Route path="/call-controls"      element={<RoleRoute roles={adminSupervisorRoles}><CallControls /></RoleRoute>} />
-            <Route path="/live-ai"            element={<RoleRoute><LiveAiConsole /></RoleRoute>} />
-            <Route path="/campaign-management-pro" element={<RoleRoute roles={adminSupervisorRoles}><CampaignManagementPro /></RoleRoute>} />
+            <Route path="/reports-analytics-pro" element={<RoleRoute roles={adminSupervisorRoles}><ReportsAnalyticsPro /></RoleRoute>} />
             <Route path="/support/diagnostics" element={<RoleRoute roles={adminSupervisorRoles}><SupportDiagnostics /></RoleRoute>} />
             <Route path="/production/review"   element={<RoleRoute roles={['ADMIN']}><ProductionReview /></RoleRoute>} />
             <Route path="/admin/spoofing" element={<RoleRoute roles={['ADMIN']}><SpoofingManagement /></RoleRoute>} />
