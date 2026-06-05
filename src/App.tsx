@@ -31,6 +31,7 @@ import OpsCenter              from './pages/OpsCenter'
 import ProductionMonitoring   from './pages/ProductionMonitoring'
 import LiveMonitoringAdvanced from './pages/LiveMonitoringAdvanced'
 import AdvancedDialingAnalytics from './pages/AdvancedDialingAnalytics'
+import SecurityAdminPro       from './pages/SecurityAdminPro'
 import CallControls           from './pages/CallControls'
 import LiveAiConsole          from './pages/LiveAiConsole'
 import CampaignManagementPro  from './pages/CampaignManagementPro'
@@ -105,6 +106,14 @@ export default function App() {
             <Route path="/campaign-management-pro" element={<RoleRoute roles={adminSupervisorRoles}><CampaignManagementPro /></RoleRoute>} />
             <Route path="/notifications-alerts-pro" element={<RoleRoute><NotificationsAlertsPro /></RoleRoute>} />
             <Route path="/ui-ux-pro"          element={<RoleRoute roles={adminSupervisorRoles}><UiUxPro /></RoleRoute>} />
+            <Route path="/security-admin-pro" element={<RoleRoute roles={['ADMIN']}><SecurityAdminPro /></RoleRoute>} />
+            <Route path="/reports-analytics-pro" element={<RoleRoute roles={adminSupervisorRoles}><ReportsAnalyticsPro /></RoleRoute>} />
+            <Route path="/call-controls"      element={<RoleRoute roles={adminSupervisorRoles}><CallControls /></RoleRoute>} />
+            <Route path="/live-ai"            element={<RoleRoute><LiveAiConsole /></RoleRoute>} />
+            <Route path="/campaign-management-pro" element={<RoleRoute roles={adminSupervisorRoles}><CampaignManagementPro /></RoleRoute>} />
+            <Route path="/notifications-alerts-pro" element={<RoleRoute><NotificationsAlertsPro /></RoleRoute>} />
+            <Route path="/ui-ux-pro"          element={<RoleRoute roles={adminSupervisorRoles}><UiUxPro /></RoleRoute>} />
+            <Route path="/security-admin-pro" element={<RoleRoute roles={['ADMIN']}><SecurityAdminPro /></RoleRoute>} />
             <Route path="/support/diagnostics" element={<RoleRoute roles={adminSupervisorRoles}><SupportDiagnostics /></RoleRoute>} />
             <Route path="/production/review"   element={<RoleRoute roles={['ADMIN']}><ProductionReview /></RoleRoute>} />
             <Route path="/admin/spoofing" element={<RoleRoute roles={['ADMIN']}><SpoofingManagement /></RoleRoute>} />
