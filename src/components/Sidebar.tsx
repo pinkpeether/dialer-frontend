@@ -4,7 +4,7 @@ import {
   Phone, LayoutDashboard, Users,
   Megaphone, BookUser, LogOut,
   BarChart3, Headset, Settings2, History,
-  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap, Globe, Layers3, HardDriveDownload,
+  ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap, Globe, Layers3, HardDriveDownload, BellRing,
   Menu, X,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -47,16 +47,13 @@ const NAV: NavItem[] = [
   { to: '/live-ai',         icon: Radio,           label: 'Live AI',        roles: ['ADMIN', 'SUPERVISOR', 'AGENT'], color: COLORS.pink },
   { to: '/campaign-management-pro', icon: Layers3, label: 'Campaign Mgmt Pro', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.teal },
   { to: '/reports-analytics-pro', icon: BarChart3, label: 'Reports Analytics+', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.purple },
-  { to: '/call-controls',   icon: PhoneCall,       label: 'Call Controls',  roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.red },
-  { to: '/live-ai',         icon: Radio,           label: 'Live AI',        roles: ['ADMIN', 'SUPERVISOR', 'AGENT'], color: COLORS.pink },
-  { to: '/campaign-management-pro', icon: Layers3, label: 'Campaign Mgmt Pro', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.teal },
-  { to: '/reports-analytics-pro', icon: BarChart3, label: 'Reports Analytics+', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.purple },
   { to: '/support/diagnostics', icon: LifeBuoy,    label: 'Diagnostics',    roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
   { to: '/dnc',             icon: ShieldOff,       label: 'DNC Registry',   roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.red },
   { to: '/reports',         icon: BarChart3,       label: 'Reports',        roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.pink },
   { to: '/recordings',      icon: Radio,           label: 'Recordings',     roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.green },
   { to: '/recording-storage-pro', icon: HardDriveDownload, label: 'Recording Storage', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.cyan },
   { to: '/call-intelligence', icon: Radio,         label: 'Call Intelligence', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.purple },
+  { to: '/notifications-alerts-pro', icon: BellRing, label: 'Notifications & Alerts', color: COLORS.orange },
   { to: '/audit-logs',      icon: ClipboardList,   label: 'Audit Logs',     roles: ['ADMIN'], color: COLORS.gold },
   { to: '/admin/spoofing',  icon: PhoneCall,       label: 'Spoofing Mgmt',  roles: ['ADMIN'], color: COLORS.cyan },
   { to: '/sip-settings',    icon: Wrench,          label: 'SIP Settings', color: COLORS.gold    },
@@ -70,6 +67,7 @@ const AGENT_NAV: NavItem[] = [
   { to: '/live-ai',         icon: Radio,             label: 'Live AI', color: COLORS.pink },
   { to: '/calls',           icon: History,           label: 'My Calls', color: COLORS.gold },
   { to: '/callbacks',       icon: Calendar,          label: 'My Callbacks', color: COLORS.orange },
+  { to: '/notifications-alerts-pro', icon: BellRing, label: 'Notifications & Alerts', color: COLORS.orange },
   { to: '/settings',        icon: Settings2,         label: 'Account Settings', color: COLORS.slate },
 ]
 

@@ -34,6 +34,7 @@ import AdvancedDialingAnalytics from './pages/AdvancedDialingAnalytics'
 import CallControls           from './pages/CallControls'
 import LiveAiConsole          from './pages/LiveAiConsole'
 import CampaignManagementPro  from './pages/CampaignManagementPro'
+import NotificationsAlertsPro from './pages/NotificationsAlertsPro'
 import SupportDiagnostics     from './pages/SupportDiagnostics'
 import ProductionReview       from './pages/ProductionReview'
 import ReportsAnalyticsPro    from './pages/ReportsAnalyticsPro'
@@ -101,7 +102,7 @@ export default function App() {
             <Route path="/call-controls"      element={<RoleRoute roles={adminSupervisorRoles}><CallControls /></RoleRoute>} />
             <Route path="/live-ai"            element={<RoleRoute><LiveAiConsole /></RoleRoute>} />
             <Route path="/campaign-management-pro" element={<RoleRoute roles={adminSupervisorRoles}><CampaignManagementPro /></RoleRoute>} />
-            <Route path="/reports-analytics-pro" element={<RoleRoute roles={adminSupervisorRoles}><ReportsAnalyticsPro /></RoleRoute>} />
+            <Route path="/notifications-alerts-pro" element={<RoleRoute><NotificationsAlertsPro /></RoleRoute>} />
             <Route path="/support/diagnostics" element={<RoleRoute roles={adminSupervisorRoles}><SupportDiagnostics /></RoleRoute>} />
             <Route path="/production/review"   element={<RoleRoute roles={['ADMIN']}><ProductionReview /></RoleRoute>} />
             <Route path="/admin/spoofing" element={<RoleRoute roles={['ADMIN']}><SpoofingManagement /></RoleRoute>} />
