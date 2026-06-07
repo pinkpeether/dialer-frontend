@@ -41,6 +41,7 @@ import DeploymentPlatformPro  from './pages/DeploymentPlatformPro'
 import SupportDiagnostics     from './pages/SupportDiagnostics'
 import ProductionReview       from './pages/ProductionReview'
 import ReportsAnalyticsPro    from './pages/ReportsAnalyticsPro'
+import SmsConsole             from './pages/SmsConsole'
 import Unauthorized           from './pages/Unauthorized'
 import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
@@ -77,6 +78,7 @@ export default function App() {
             <Route path="/dashboard"          element={<RoleRoute roles={adminConsoleRoles}><Dashboard /></RoleRoute>}      />
             <Route path="/agent/workspace"    element={<RoleRoute roles={['AGENT']}><AgentWorkspace /></RoleRoute>} />
             <Route path="/dialer"             element={<RoleRoute><Dialer /></RoleRoute>}         />
+            <Route path="/sms"                element={<RoleRoute><SmsConsole /></RoleRoute>} />
             <Route path="/agent/dashboard"    element={<RoleRoute roles={adminConsoleRoles}><AgentDashboard /></RoleRoute>} />
             <Route path="/campaigns"          element={<RoleRoute roles={adminManagerRoles}><Campaigns /></RoleRoute>}      />
             <Route path="/campaigns/:id"      element={<RoleRoute roles={adminManagerRoles}><CampaignDetail /></RoleRoute>} />

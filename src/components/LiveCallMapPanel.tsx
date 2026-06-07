@@ -14,11 +14,11 @@ type Props = {
 }
 
 const cardStyle: React.CSSProperties = {
-  border: '1px solid rgba(148, 163, 184, 0.24)',
-  borderRadius: 18,
-  background: 'rgba(15, 23, 42, 0.94)',
+  border: '1px solid var(--border)',
+  borderRadius: 24,
+  background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-glass-hi) 94%, transparent), color-mix(in srgb, var(--surface) 96%, transparent))',
   padding: 18,
-  boxShadow: '0 18px 45px rgba(15, 23, 42, 0.16)',
+  boxShadow: 'var(--shadow-md)',
 }
 
 const gridStyle: React.CSSProperties = {
@@ -32,7 +32,7 @@ const bucketStyle: React.CSSProperties = {
   border: '1px solid rgba(148, 163, 184, 0.18)',
   borderRadius: 16,
   padding: 14,
-  background: 'rgba(30, 41, 59, 0.76)',
+  background: 'var(--bg-2)',
 }
 
 export default function LiveCallMapPanel({ buckets }: Props) {
@@ -40,33 +40,33 @@ export default function LiveCallMapPanel({ buckets }: Props) {
     <section style={cardStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#f8fafc', fontSize: 20 }}>Live Call Map</h2>
-          <p style={{ margin: '6px 0 0', color: '#94a3b8', fontSize: 13 }}>
+          <h2 style={{ margin: 0, color: 'var(--text)', fontSize: 20, fontFamily: 'var(--font-display)' }}>Live Call Map</h2>
+          <p style={{ margin: '6px 0 0', color: 'var(--text-3)', fontSize: 13 }}>
             Region buckets are inferred from customer number prefixes until geocoding is added.
           </p>
         </div>
-        <span style={{ color: '#22c55e', fontWeight: 700 }}>{buckets.length} live regions</span>
+        <span className="ptdt-pro-pill" style={{ color: 'var(--green-2)' }}>{buckets.length} live regions</span>
       </div>
 
       {buckets.length === 0 ? (
-        <div style={{ marginTop: 18, color: '#cbd5e1', fontSize: 14 }}>No active calls on the map right now.</div>
+        <div style={{ marginTop: 18, color: 'var(--text-3)', fontSize: 14 }}>No active calls on the map right now.</div>
       ) : (
         <div style={gridStyle}>
           {buckets.map(bucket => (
             <div key={bucket.key} style={bucketStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                <strong style={{ color: '#f8fafc' }}>{bucket.label}</strong>
-                <span style={{ color: '#f472b6', fontWeight: 800 }}>{bucket.activeCalls}</span>
+                <strong style={{ color: 'var(--text)' }}>{bucket.label}</strong>
+                <span style={{ color: 'var(--pink)', fontWeight: 800 }}>{bucket.activeCalls}</span>
               </div>
-              <div style={{ marginTop: 8, color: '#cbd5e1', fontSize: 12 }}>
+              <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 12 }}>
                 Lat {bucket.lat.toFixed(2)} / Lng {bucket.lng.toFixed(2)}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                <span style={{ color: '#fde68a', fontSize: 12 }}>Ringing: {bucket.ringingCalls}</span>
-                <span style={{ color: '#86efac', fontSize: 12 }}>Answered: {bucket.answeredCalls}</span>
+                <span style={{ color: 'var(--gold)', fontSize: 12 }}>Ringing: {bucket.ringingCalls}</span>
+                <span style={{ color: 'var(--green-2)', fontSize: 12 }}>Answered: {bucket.answeredCalls}</span>
               </div>
               {bucket.sampleNumbers && bucket.sampleNumbers.length > 0 && (
-                <div style={{ marginTop: 10, color: '#94a3b8', fontSize: 12, wordBreak: 'break-word' }}>
+                <div style={{ marginTop: 10, color: 'var(--text-3)', fontSize: 12, wordBreak: 'break-word' }}>
                   {bucket.sampleNumbers.join(', ')}
                 </div>
               )}

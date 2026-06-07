@@ -5,8 +5,8 @@ import RetentionPolicyPanel from '../components/RetentionPolicyPanel'
 
 export default function RecordingStoragePro() {
   return (
-    <div className="ptdt-page">
-      <div className="ptdt-page-header">
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
             <HardDriveDownload size={12} /> Recording Operations
@@ -25,7 +25,7 @@ export default function RecordingStoragePro() {
         <RecordingSearchPanel />
         <RetentionPolicyPanel />
 
-        <section className="ptdt-card" style={{ padding: 14, color: 'var(--warning)', borderColor: 'rgba(245,158,11,0.28)' }}>
+        <section className="ptdt-card ptdt-pro-callout" style={{ padding: 14, color: 'var(--warning)', borderColor: 'rgba(245,158,11,0.28)' }}>
           Hard object deletion from Supabase or R2 should remain provider-policy driven. This module currently focuses on search, access, visibility, and safe metadata retention control.
         </section>
       </div>

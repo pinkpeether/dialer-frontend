@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Download, Search } from 'lucide-react'
 import { recordingStorageProAPI, type RecordingSearchParams } from '../api/recordingStoragePro.api'
 
@@ -55,7 +55,7 @@ export default function RecordingSearchPanel() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
-  const load = async (nextFilters = filters) => {
+  const load = useCallback(async (nextFilters: RecordingSearchParams = filters) => {
     setLoading(true)
     setError('')
     try {
@@ -67,11 +67,11 @@ export default function RecordingSearchPanel() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
 
   useEffect(() => {
     void load(initialFilters)
-  }, [])
+  }, [load])
 
   const updateFilter = (key: keyof RecordingSearchParams, value: string | boolean | number | undefined) => {
     setFilters(prev => ({ ...prev, [key]: value, page: 1 }))

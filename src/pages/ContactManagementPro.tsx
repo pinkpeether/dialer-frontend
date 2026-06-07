@@ -74,8 +74,8 @@ export default function ContactManagementPro() {
   }
 
   return (
-    <div className="ptdt-page">
-      <div className="ptdt-page-header">
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
             <Users2 size={12} /> Contact Operations
@@ -107,7 +107,7 @@ export default function ContactManagementPro() {
       {activeTab === 'tags' && <ContactTagsPanel />}
 
       {activeTab === 'import-export' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+        <div className="ptdt-pro-grid two-col">
           <section className="ptdt-card" style={{ padding: 18 }}>
             <div className="eyebrow pink" style={{ marginBottom: 10 }}>
               <UploadCloud size={12} /> Import Preview
@@ -148,21 +148,7 @@ export default function ContactManagementPro() {
               <Download size={14} /> Download CSV
             </button>
 
-            <pre
-              style={{
-                marginTop: 14,
-                maxHeight: 420,
-                overflow: 'auto',
-                borderRadius: 16,
-                background: '#0f1020',
-                color: '#f8fafc',
-                padding: 14,
-                fontSize: 12,
-                lineHeight: 1.55,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
+            <pre className="ptdt-pro-json" style={{ marginTop: 14, maxHeight: 420 }}>
               {previewResult ? JSON.stringify(previewResult, null, 2) : 'Preview output will appear here.'}
             </pre>
           </section>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { liveAiAPI } from '../api/liveAi.api'
 import type { LiveAiSession, SmartScriptPrompt } from '../api/liveAi.api'
 
@@ -8,18 +8,18 @@ type Props = {
 }
 
 const panel: CSSProperties = {
-  border: '1px solid rgba(236, 72, 153, 0.25)',
+  border: '1px solid var(--border)',
   borderRadius: 24,
   padding: 18,
-  background: 'rgba(255,255,255,0.92)',
-  boxShadow: '0 18px 60px rgba(15, 23, 42, 0.08)',
+  background: 'var(--bg-glass-hi)',
+  boxShadow: 'var(--shadow-md)',
 }
 
 const darkPanel: CSSProperties = {
   ...panel,
-  background: 'rgba(17, 11, 24, 0.92)',
-  color: '#fff',
-  border: '1px solid rgba(236, 72, 153, 0.35)',
+  background: 'linear-gradient(180deg, rgba(17, 11, 24, 0.92), rgba(27, 23, 35, 0.92))',
+  color: 'var(--text)',
+  border: '1px solid rgba(236, 72, 153, 0.24)',
 }
 
 const buttonBase: CSSProperties = {
@@ -33,11 +33,13 @@ const buttonBase: CSSProperties = {
 const inputStyle: CSSProperties = {
   width: '100%',
   borderRadius: 14,
-  border: '1px solid rgba(148, 163, 184, 0.35)',
+  border: '1px solid var(--border)',
   padding: '12px 14px',
   fontSize: 14,
   outline: 'none',
   boxSizing: 'border-box',
+  background: 'var(--bg-glass-hi)',
+  color: 'var(--text)',
 }
 
 const sentimentColor = (sentiment?: string) => {
@@ -69,7 +71,7 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
 
   const currentCallId = useMemo(() => activeCallId || Number(manualCallId) || null, [activeCallId, manualCallId])
 
-  const loadSession = async (id = currentCallId) => {
+  const loadSession = useCallback(async (id = currentCallId) => {
     if (!id) return
     try {
       const result = await liveAiAPI.getSession(id)
@@ -77,9 +79,9 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
     } catch {
       // A session may not exist yet; this is fine before Start Live AI.
     }
-  }
+  }, [currentCallId])
 
-  const loadScript = async (id = currentCallId) => {
+  const loadScript = useCallback(async (id = currentCallId) => {
     if (!id) return
     try {
       const result = await liveAiAPI.getSmartScript(id)
@@ -87,7 +89,7 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
     } catch {
       setScript(null)
     }
-  }
+  }, [currentCallId])
 
   useEffect(() => {
     if (callId) {
@@ -97,10 +99,10 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
   }, [callId])
 
   useEffect(() => {
-    if (!currentCallId || !session || session.status !== 'LIVE') return undefined
+    if (!currentCallId || session?.status !== 'LIVE') return undefined
     const timer = window.setInterval(() => loadSession(currentCallId), 4000)
     return () => window.clearInterval(timer)
-  }, [currentCallId, session?.status])
+  }, [currentCallId, loadSession, session?.status])
 
   const run = async (task: () => Promise<void>, okMessage: string) => {
     setLoading(true)
@@ -168,11 +170,11 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
     <section style={compact ? darkPanel : panel}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div>
-          <p style={{ margin: 0, letterSpacing: 3, textTransform: 'uppercase', fontSize: 12, color: '#ec4899', fontWeight: 900 }}>
+          <p style={{ margin: 0, letterSpacing: 3, textTransform: 'uppercase', fontSize: 12, color: 'var(--pink)', fontWeight: 900 }}>
             Live AI Assistant
           </p>
           <h2 style={{ margin: '8px 0 6px', fontSize: compact ? 22 : 30 }}>Realtime Call Intelligence</h2>
-          <p style={{ margin: 0, color: compact ? '#cbd5e1' : '#64748b', lineHeight: 1.6 }}>
+          <p style={{ margin: 0, color: 'var(--text-3)', lineHeight: 1.6 }}>
             Live transcript chunks, answer detection, sentiment alerts, smart script hints, auto disposition, and callback suggestions.
           </p>
         </div>
@@ -192,34 +194,34 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
-        <button style={{ ...buttonBase, background: '#ec4899', color: '#fff' }} onClick={start} disabled={loading}>Start Live AI</button>
-        <button style={{ ...buttonBase, background: '#111827', color: '#fff' }} onClick={refresh} disabled={loading}>Refresh</button>
-        <button style={{ ...buttonBase, background: '#f8fafc', color: '#111827', border: '1px solid #e2e8f0' }} onClick={stop} disabled={loading}>Stop</button>
+        <button style={{ ...buttonBase, background: 'linear-gradient(135deg, var(--pink), var(--purple))', color: '#fff' }} onClick={start} disabled={loading}>Start Live AI</button>
+        <button style={{ ...buttonBase, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }} onClick={refresh} disabled={loading}>Refresh</button>
+        <button style={{ ...buttonBase, background: 'var(--bg-2)', color: 'var(--text)', border: '1px solid var(--border)' }} onClick={stop} disabled={loading}>Stop</button>
       </div>
 
       {(message || error) && (
-        <div style={{ marginTop: 14, padding: 12, borderRadius: 14, background: error ? '#fee2e2' : '#dcfce7', color: error ? '#991b1b' : '#166534', fontWeight: 800 }}>
+        <div style={{ marginTop: 14, padding: 12, borderRadius: 14, background: error ? 'rgba(239,68,68,0.08)' : 'rgba(0,167,71,0.10)', color: error ? 'var(--danger)' : 'var(--green-2)', fontWeight: 800 }}>
           {error || message}
         </div>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 18 }}>
-        <div style={{ padding: 14, borderRadius: 18, background: compact ? 'rgba(255,255,255,0.06)' : '#f8fafc' }}>
-          <div style={{ fontSize: 11, letterSpacing: 2, fontWeight: 900, color: '#64748b' }}>STATUS</div>
+        <div style={{ padding: 14, borderRadius: 18, background: 'var(--bg-2)' }}>
+          <div style={{ fontSize: 11, letterSpacing: 2, fontWeight: 900, color: 'var(--text-3)' }}>STATUS</div>
           <div style={{ fontSize: 22, fontWeight: 900 }}>{session?.status || 'IDLE'}</div>
         </div>
-        <div style={{ padding: 14, borderRadius: 18, background: compact ? 'rgba(255,255,255,0.06)' : '#f8fafc' }}>
-          <div style={{ fontSize: 11, letterSpacing: 2, fontWeight: 900, color: '#64748b' }}>ANSWER</div>
+        <div style={{ padding: 14, borderRadius: 18, background: 'var(--bg-2)' }}>
+          <div style={{ fontSize: 11, letterSpacing: 2, fontWeight: 900, color: 'var(--text-3)' }}>ANSWER</div>
           <div style={{ fontSize: 22, fontWeight: 900 }}>{session?.answerDetection || 'UNKNOWN'}</div>
         </div>
-        <div style={{ padding: 14, borderRadius: 18, background: compact ? 'rgba(255,255,255,0.06)' : '#f8fafc' }}>
-          <div style={{ fontSize: 11, letterSpacing: 2, fontWeight: 900, color: '#64748b' }}>SENTIMENT</div>
+        <div style={{ padding: 14, borderRadius: 18, background: 'var(--bg-2)' }}>
+          <div style={{ fontSize: 11, letterSpacing: 2, fontWeight: 900, color: 'var(--text-3)' }}>SENTIMENT</div>
           <div style={{ fontSize: 22, fontWeight: 900, color: sentimentColor(session?.sentiment) }}>
             {session?.sentiment || 'NEUTRAL'} {session ? `(${session.sentimentScore})` : ''}
           </div>
         </div>
-        <div style={{ padding: 14, borderRadius: 18, background: compact ? 'rgba(255,255,255,0.06)' : '#f8fafc' }}>
-          <div style={{ fontSize: 11, letterSpacing: 2, fontWeight: 900, color: '#64748b' }}>DISPOSITION</div>
+        <div style={{ padding: 14, borderRadius: 18, background: 'var(--bg-2)' }}>
+          <div style={{ fontSize: 11, letterSpacing: 2, fontWeight: 900, color: 'var(--text-3)' }}>DISPOSITION</div>
           <div style={{ fontSize: 22, fontWeight: 900 }}>{session?.autoDisposition || '—'}</div>
         </div>
       </div>
@@ -242,7 +244,7 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
             <button style={{ ...buttonBase, background: '#10b981', color: '#fff' }} onClick={sendChunk} disabled={loading}>Analyze Chunk</button>
           </div>
 
-          <div style={{ marginTop: 16, padding: 14, borderRadius: 18, background: compact ? 'rgba(255,255,255,0.06)' : '#f8fafc', maxHeight: 260, overflow: 'auto' }}>
+          <div style={{ marginTop: 16, padding: 14, borderRadius: 18, background: 'var(--bg-2)', maxHeight: 260, overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 10px' }}>Transcript</h3>
             {session?.chunks?.length ? session.chunks.slice().reverse().map(chunk => (
               <div key={chunk.id} style={{ borderBottom: '1px solid rgba(148,163,184,0.22)', padding: '10px 0' }}>
@@ -252,53 +254,53 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
                 </div>
                 <p style={{ margin: '6px 0 0', lineHeight: 1.6 }}>{chunk.text}</p>
               </div>
-            )) : <p style={{ color: '#64748b' }}>No live transcript chunks yet.</p>}
+            )) : <p style={{ color: 'var(--text-3)' }}>No live transcript chunks yet.</p>}
           </div>
         </div>
 
         <aside style={{ minWidth: 0, display: 'grid', gap: 12 }}>
-          <div style={{ padding: 14, borderRadius: 18, background: compact ? 'rgba(255,255,255,0.06)' : '#f8fafc' }}>
+          <div style={{ padding: 14, borderRadius: 18, background: 'var(--bg-2)' }}>
             <h3 style={{ margin: '0 0 8px' }}>Smart Script</h3>
-            <p style={{ margin: 0, lineHeight: 1.55, color: compact ? '#e2e8f0' : '#334155' }}>
+            <p style={{ margin: 0, lineHeight: 1.55, color: 'var(--text-2)' }}>
               {script?.baseScript || session?.scriptPrompt || 'Start a Live AI session to load campaign script.'}
             </p>
-            <div style={{ marginTop: 12, padding: 12, borderRadius: 14, background: compact ? 'rgba(236,72,153,0.16)' : '#fce7f3', color: compact ? '#fff' : '#9d174d', fontWeight: 800, lineHeight: 1.5 }}>
+            <div style={{ marginTop: 12, padding: 12, borderRadius: 14, background: 'rgba(251,11,140,0.10)', color: 'var(--pink)', fontWeight: 800, lineHeight: 1.5 }}>
               {session?.recommendedResponse || script?.liveHint || 'Live AI hint will appear here.'}
             </div>
           </div>
 
-          <div style={{ padding: 14, borderRadius: 18, background: compact ? 'rgba(255,255,255,0.06)' : '#f8fafc' }}>
+          <div style={{ padding: 14, borderRadius: 18, background: 'var(--bg-2)' }}>
             <h3 style={{ margin: '0 0 8px' }}>Follow-up</h3>
-            <p style={{ margin: 0, color: compact ? '#e2e8f0' : '#334155', lineHeight: 1.5 }}>
+            <p style={{ margin: 0, color: 'var(--text-2)', lineHeight: 1.5 }}>
               {session?.followUpSuggestion?.reason || 'No follow-up suggestion yet.'}
             </p>
             {session?.followUpSuggestion?.shouldSchedule && (
-              <button style={{ ...buttonBase, marginTop: 12, background: '#8b5cf6', color: '#fff' }} onClick={createFollowUp} disabled={loading}>
+              <button style={{ ...buttonBase, marginTop: 12, background: 'linear-gradient(135deg, var(--purple), var(--pink))', color: '#fff' }} onClick={createFollowUp} disabled={loading}>
                 Create Callback
               </button>
             )}
           </div>
 
-          <div style={{ padding: 14, borderRadius: 18, background: compact ? 'rgba(255,255,255,0.06)' : '#f8fafc' }}>
+          <div style={{ padding: 14, borderRadius: 18, background: 'var(--bg-2)' }}>
             <h3 style={{ margin: '0 0 8px' }}>Auto Disposition</h3>
-            <p style={{ margin: 0, color: compact ? '#e2e8f0' : '#334155' }}>{session?.autoDisposition || 'No suggestion yet.'}</p>
-            <button style={{ ...buttonBase, marginTop: 12, background: '#0f172a', color: '#fff' }} onClick={applyDisposition} disabled={loading || !session?.autoDisposition}>
+            <p style={{ margin: 0, color: 'var(--text-2)' }}>{session?.autoDisposition || 'No suggestion yet.'}</p>
+            <button style={{ ...buttonBase, marginTop: 12, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }} onClick={applyDisposition} disabled={loading || !session?.autoDisposition}>
               Apply Suggestion
             </button>
           </div>
 
-          <div style={{ padding: 14, borderRadius: 18, background: compact ? 'rgba(255,255,255,0.06)' : '#f8fafc' }}>
+          <div style={{ padding: 14, borderRadius: 18, background: 'var(--bg-2)' }}>
             <h3 style={{ margin: '0 0 8px' }}>Sentiment Alerts</h3>
             {session?.alerts?.length ? session.alerts.slice().reverse().map(alert => (
-              <div key={alert.id} style={{ padding: 10, borderRadius: 12, marginBottom: 8, background: alert.severity === 'CRITICAL' ? '#fee2e2' : '#fef3c7', color: alert.severity === 'CRITICAL' ? '#991b1b' : '#92400e', fontWeight: 800 }}>
+              <div key={alert.id} style={{ padding: 10, borderRadius: 12, marginBottom: 8, background: alert.severity === 'CRITICAL' ? 'rgba(239,68,68,0.10)' : 'rgba(240,185,11,0.12)', color: alert.severity === 'CRITICAL' ? 'var(--danger)' : 'var(--gold)', fontWeight: 800 }}>
                 {alert.message}
               </div>
-            )) : <p style={{ margin: 0, color: '#64748b' }}>No alerts.</p>}
+            )) : <p style={{ margin: 0, color: 'var(--text-3)' }}>No alerts.</p>}
           </div>
         </aside>
       </div>
 
-      <p style={{ margin: '14px 0 0', color: compact ? '#94a3b8' : '#64748b', fontSize: 12 }}>
+      <p style={{ margin: '14px 0 0', color: 'var(--text-3)', fontSize: 12 }}>
         Started: {fmt(session?.startedAt)} · Updated: {fmt(session?.updatedAt)}
       </p>
 

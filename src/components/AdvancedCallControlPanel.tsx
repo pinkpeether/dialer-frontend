@@ -20,7 +20,7 @@ import type { CallControlAction, CallControlPayload } from '../api/callControl.a
 
 type Props = {
   defaultCallId?: number | string
-  defaultTwilioCallSid?: string
+  defaultProviderCallId?: string
   compact?: boolean
 }
 
@@ -61,11 +61,11 @@ const toneStyle = (tone: string): React.CSSProperties => {
 
 export default function AdvancedCallControlPanel({
   defaultCallId,
-  defaultTwilioCallSid,
+  defaultProviderCallId,
   compact = false,
 }: Props) {
   const [callId, setCallId] = useState(defaultCallId ? String(defaultCallId) : '')
-  const [twilioCallSid, setTwilioCallSid] = useState(defaultTwilioCallSid || '')
+  const [providerCallId, setProviderCallId] = useState(defaultProviderCallId || '')
   const [targetNumber, setTargetNumber] = useState('')
   const [supervisorPhone, setSupervisorPhone] = useState('')
   const [room, setRoom] = useState('')
@@ -79,7 +79,7 @@ export default function AdvancedCallControlPanel({
 
   const payload = (): CallControlPayload => ({
     callId: callId || undefined,
-    twilioCallSid: twilioCallSid || undefined,
+    providerCallId: providerCallId || undefined,
     targetNumber: targetNumber || undefined,
     supervisorPhone: supervisorPhone || undefined,
     room: room || undefined,
@@ -105,12 +105,12 @@ export default function AdvancedCallControlPanel({
     }
   }
 
-  const inputStyle: React.CSSProperties = {
+const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '12px 14px',
     borderRadius: 14,
     border: '1px solid var(--border)',
-    background: 'var(--surface)',
+    background: 'var(--bg-glass-hi)',
     color: 'var(--text)',
     outline: 'none',
     fontFamily: 'var(--font-body)',
@@ -118,7 +118,7 @@ export default function AdvancedCallControlPanel({
 
   return (
     <div
-      className="glass-hi"
+      className="glass-hi ptdt-pro-surface"
       style={{
         borderRadius: 24,
         padding: compact ? 18 : 24,
@@ -129,14 +129,14 @@ export default function AdvancedCallControlPanel({
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>
+          <div className="eyebrow pink" style={{ marginBottom: 10 }}>
             <VolumeX size={14} /> Advanced Call Controls
           </div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: compact ? 24 : 32, lineHeight: 1.05, margin: 0 }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: compact ? 24 : 32, lineHeight: 1.05, margin: 0, color: 'var(--text)' }}>
             Supervisor controls, transfer, hold and voicemail drop
           </h2>
           <p style={{ color: 'var(--text-3)', marginTop: 8, maxWidth: 760 }}>
-            Safe provider-aware panel. Twilio legacy actions work where provider call SID exists; SIP/PBX controls become fully live after public PBX/AMI/ARI adapter.
+            Provider-aware control panel for active calls. Use provider or PBX call references where available while SIP/PBX controls continue to expand.
           </p>
         </div>
 
@@ -168,7 +168,7 @@ export default function AdvancedCallControlPanel({
 
         <label>
           <span className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--text-3)', marginBottom: 6 }}>PROVIDER CALL SID</span>
-          <input style={inputStyle} value={twilioCallSid} onChange={e => setTwilioCallSid(e.target.value)} placeholder="Twilio SID / provider ref" />
+          <input style={inputStyle} value={providerCallId} onChange={e => setProviderCallId(e.target.value)} placeholder="Provider call ID / PBX ref" />
         </label>
 
         <label>
@@ -211,13 +211,7 @@ export default function AdvancedCallControlPanel({
         />
       </label>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))',
-          gap: 10,
-        }}
-      >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: 10 }}>
         {actionButtons.map(item => {
           const Icon = item.icon
           const active = loadingAction === item.action
@@ -226,13 +220,14 @@ export default function AdvancedCallControlPanel({
             <button
               key={item.action}
               type="button"
-              className="btn-ghost"
+              className="ptdt-action-btn"
               onClick={() => run(item.action)}
               disabled={Boolean(loadingAction)}
               style={{
                 justifyContent: 'center',
                 gap: 8,
                 minHeight: 48,
+                minWidth: 0,
                 ...toneStyle(item.tone),
                 opacity: loadingAction && !active ? 0.55 : 1,
               }}
@@ -245,13 +240,13 @@ export default function AdvancedCallControlPanel({
       </div>
 
       {error && (
-        <div style={{ marginTop: 18, border: '1px solid rgba(239,68,68,.30)', background: 'rgba(239,68,68,.08)', color: '#ef4444', borderRadius: 16, padding: 14 }}>
+        <div style={{ marginTop: 18, border: '1px solid rgba(239,68,68,.30)', background: 'rgba(239,68,68,.08)', color: 'var(--danger)', borderRadius: 16, padding: 14 }}>
           {error}
         </div>
       )}
 
       {result && (
-        <div style={{ marginTop: 18, border: '1px solid var(--border)', borderRadius: 16, padding: 14, background: 'var(--surface)' }}>
+        <div style={{ marginTop: 18, border: '1px solid var(--border)', borderRadius: 18, padding: 14, background: 'var(--bg-glass-hi)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
             <strong>{result.action}</strong>
             <span className="mono" style={{ color: result.status === 'COMPLETED' ? 'var(--green-2)' : 'var(--text-3)' }}>

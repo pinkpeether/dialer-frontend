@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AudioLines, Volume2 } from 'lucide-react'
 import type { AlertSeverity } from '../api/notificationsAlertsPro.api'
 
@@ -45,7 +45,12 @@ export default function AlertSoundManager({ enabled }: Props) {
     setLastPlayed(`${soundKey} / ${severity}`)
   }, [enabled])
 
-  ;(window as Window & { ptdtPlayAlertSound?: typeof play }).ptdtPlayAlertSound = play
+  useEffect(() => {
+    ;(window as Window & { ptdtPlayAlertSound?: typeof play }).ptdtPlayAlertSound = play
+    return () => {
+      delete (window as Window & { ptdtPlayAlertSound?: typeof play }).ptdtPlayAlertSound
+    }
+  }, [play])
 
   const actions = useMemo(() => [
     { label: 'Info', key: 'soft-ping' as SoundKey, severity: 'INFO' as AlertSeverity },

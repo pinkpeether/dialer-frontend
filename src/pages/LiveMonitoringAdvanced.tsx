@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Activity, Globe2, RefreshCw, ShieldAlert } from 'lucide-react'
 import { liveMonitoringAdvancedAPI } from '../api/liveMonitoringAdvanced.api'
 import LiveCallMapPanel, { type LiveCallMapBucket } from '../components/LiveCallMapPanel'
@@ -54,10 +54,10 @@ type LiveMonitoringOverview = {
 
 function StatCard({ label, value, sub, dark = false }: { label: string; value: string | number; sub?: string; dark?: boolean }) {
   return (
-    <div className="glass" style={{ padding: 18, borderRadius: 20, background: dark ? '#0f172a' : undefined, color: dark ? '#f8fafc' : undefined }}>
-      <div className="mono" style={{ color: dark ? '#94a3b8' : 'var(--text-3)', fontSize: 11, marginBottom: 8 }}>{label}</div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 34, fontWeight: 900 }}>{value}</div>
-      {sub ? <div style={{ color: dark ? '#cbd5e1' : 'var(--text-3)', marginTop: 6, fontSize: 12.5 }}>{sub}</div> : null}
+    <div className="ptdt-pro-kpi" style={dark ? { background: 'linear-gradient(135deg, rgba(128,87,215,0.14), rgba(15,23,42,0.92))' } : undefined}>
+      <div className="ptdt-pro-kpi-label" style={dark ? { color: '#cbd5e1' } : undefined}>{label}</div>
+      <div className="ptdt-pro-kpi-value" style={dark ? { color: '#fff' } : undefined}>{value}</div>
+      {sub ? <div className="ptdt-pro-kpi-note" style={dark ? { color: '#cbd5e1' } : undefined}>{sub}</div> : null}
     </div>
   )
 }
@@ -76,7 +76,7 @@ export default function LiveMonitoringAdvanced() {
   const [error, setError] = useState('')
   const [autoRefresh, setAutoRefresh] = useState(true)
 
-  const fetchOverview = async () => {
+  const fetchOverview = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -88,11 +88,11 @@ export default function LiveMonitoringAdvanced() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [campaignId])
 
   useEffect(() => {
     void fetchOverview()
-  }, [])
+  }, [fetchOverview])
 
   useEffect(() => {
     if (!autoRefresh) return undefined
@@ -100,7 +100,7 @@ export default function LiveMonitoringAdvanced() {
       void fetchOverview()
     }, 10000)
     return () => window.clearInterval(timer)
-  }, [autoRefresh, campaignId])
+  }, [autoRefresh, fetchOverview])
 
   const tracker = data?.answerRateTracker
   const calls = data?.simultaneousCalls
@@ -111,8 +111,8 @@ export default function LiveMonitoringAdvanced() {
   )
 
   return (
-    <div className="ptdt-page">
-      <div className="ptdt-page-header">
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
             <Activity size={12} /> PTDT Live Monitoring
@@ -147,7 +147,7 @@ export default function LiveMonitoringAdvanced() {
         </div>
       )}
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 18 }}>
+      <section className="ptdt-pro-kpis" style={{ marginBottom: 18 }}>
         <StatCard label="Active Calls" value={calls?.totalActive || 0} sub={`Initiated ${calls?.initiated || 0} / Ringing ${calls?.ringing || 0} / Answered ${calls?.answered || 0}`} />
         <StatCard label="Answer Rate" value={`${tracker?.answerRate || 0}%`} sub={`${tracker?.answeredCalls || 0} answered from ${tracker?.totalCalls || 0} calls`} />
         <StatCard label="Ready Agents" value={tracker?.readyAgents || 0} sub={`Online ${tracker?.onlineAgents || 0} / Busy ${tracker?.busyAgents || 0}`} />

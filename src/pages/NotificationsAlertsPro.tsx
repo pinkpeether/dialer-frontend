@@ -119,8 +119,8 @@ export default function NotificationsAlertsPro() {
   ]
 
   return (
-    <div className="ptdt-page">
-      <div className="ptdt-page-header">
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
             <Sparkles size={12} /> Notifications & Alerts
@@ -146,9 +146,9 @@ export default function NotificationsAlertsPro() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, marginBottom: 18 }}>
+      <div className="ptdt-pro-kpis" style={{ marginBottom: 18 }}>
         {kpis.map(kpi => (
-          <div key={kpi.label} className="ptdt-card" style={{ padding: 18, position: 'relative', overflow: 'hidden' }}>
+          <div key={kpi.label} className="ptdt-pro-kpi">
             <div style={{ position: 'absolute', inset: 'auto -34px -48px auto', width: 120, height: 120, borderRadius: '50%', background: `${kpi.accent}18`, filter: 'blur(18px)' }} />
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', position: 'relative' }}>
               <div style={{ width: 40, height: 40, borderRadius: 14, display: 'grid', placeItems: 'center', border: `1px solid ${kpi.accent}44`, background: `${kpi.accent}12`, color: kpi.accent }}>
@@ -163,7 +163,7 @@ export default function NotificationsAlertsPro() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(320px, 0.95fr)', gap: 16, alignItems: 'start' }}>
+      <div className="ptdt-pro-grid sidebar" style={{ alignItems: 'start' }}>
         <AlertCenterPanel
           alerts={alerts}
           loading={loading}

@@ -184,8 +184,8 @@ export default function CampaignManagementPro() {
   ]
 
   return (
-    <div className="ptdt-page">
-      <div className="ptdt-page-header">
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
             <Layers3 size={12} /> Campaign Operations
@@ -225,13 +225,13 @@ export default function CampaignManagementPro() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, marginBottom: 18 }}>
+      <div className="ptdt-pro-kpis" style={{ marginBottom: 18 }}>
         {cards.map(card => (
-          <div key={card.label} className="ptdt-card" style={{ padding: 16 }}>
-            <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+          <div key={card.label} className="ptdt-pro-kpi">
+            <div className="ptdt-pro-kpi-label">
               {card.label}
             </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, lineHeight: 1.1, marginTop: 8 }}>
+            <div className="ptdt-pro-kpi-value" style={{ fontSize: 30 }}>
               {String(card.value)}
             </div>
           </div>
@@ -245,7 +245,7 @@ export default function CampaignManagementPro() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 18 }}>
+      <div className="ptdt-pro-grid two-col" style={{ marginBottom: 18 }}>
         <section className="ptdt-card" style={{ padding: 18 }}>
           <div className="eyebrow pink" style={{ marginBottom: 10 }}>
             <CopyPlus size={12} /> Clone Campaign

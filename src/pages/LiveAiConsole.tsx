@@ -33,8 +33,8 @@ export default function LiveAiConsole() {
   }, [])
 
   return (
-    <div className="page-shell">
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 24 }}>
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
             <Brain size={12} /> PTDT Live AI
@@ -59,24 +59,27 @@ export default function LiveAiConsole() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 22 }}>
-        <div className="glass" style={{ padding: 18, borderRadius: 20 }}>
-          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginBottom: 8 }}>ACTIVE SESSIONS</div>
-          <div style={{ fontSize: 34, fontWeight: 900 }}>{sessions.length}</div>
+      <div className="ptdt-pro-kpis" style={{ marginBottom: 22 }}>
+        <div className="ptdt-pro-kpi">
+          <div className="ptdt-pro-kpi-label">Active Sessions</div>
+          <div className="ptdt-pro-kpi-value">{sessions.length}</div>
+          <div className="ptdt-pro-kpi-note">Live AI attached calls</div>
         </div>
-        <div className="glass" style={{ padding: 18, borderRadius: 20 }}>
-          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginBottom: 8 }}>LIVE STATUS</div>
-          <div style={{ fontSize: 20, fontWeight: 900 }}>{sessions.some(session => session.status === 'LIVE') ? 'Monitoring' : 'Idle'}</div>
+        <div className="ptdt-pro-kpi">
+          <div className="ptdt-pro-kpi-label">Live Status</div>
+          <div className="ptdt-pro-kpi-value" style={{ fontSize: '1.6rem' }}>{sessions.some(session => session.status === 'LIVE') ? 'Monitoring' : 'Idle'}</div>
+          <div className="ptdt-pro-kpi-note">Realtime intelligence loop</div>
         </div>
-        <div className="glass" style={{ padding: 18, borderRadius: 20 }}>
-          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginBottom: 8 }}>LAST UPDATE</div>
-          <div style={{ fontSize: 20, fontWeight: 900 }}>
+        <div className="ptdt-pro-kpi">
+          <div className="ptdt-pro-kpi-label">Last Update</div>
+          <div className="ptdt-pro-kpi-value" style={{ fontSize: '1.45rem' }}>
             {sessions[0]?.updatedAt ? new Date(sessions[0].updatedAt).toLocaleTimeString() : '—'}
           </div>
+          <div className="ptdt-pro-kpi-note">Latest session heartbeat</div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 0.35fr) minmax(0, 1fr)', gap: 16 }} className="live-ai-page-grid">
+      <div className="ptdt-pro-grid sidebar live-ai-page-grid">
         <aside className="glass-hi" style={{ borderRadius: 24, padding: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             <Radio size={18} color="var(--pink)" />

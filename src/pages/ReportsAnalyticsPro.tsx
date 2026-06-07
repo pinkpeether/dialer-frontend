@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { BarChart3, CalendarDays, Download, Mail, RefreshCw, Sparkles, UserCircle2 } from 'lucide-react'
 import ReportsKpiGrid from '../components/ReportsKpiGrid'
 import HourlyAnalyticsChart from '../components/HourlyAnalyticsChart'
@@ -8,6 +8,90 @@ import ConversionAndDurationPanel from '../components/ConversionAndDurationPanel
 import { reportsAnalyticsProAPI, type ReportsAnalyticsFilters } from '../api/reportsAnalyticsPro.api'
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error'
+
+type OverviewData = {
+  kpis?: {
+    totalCalls?: number
+    answeredCalls?: number
+    missedCalls?: number
+    conversions?: number
+    answerRate?: number
+    conversionRate?: number
+    missedRate?: number
+    averageDurationSeconds?: number
+  }
+}
+
+type AgentsData = {
+  agents?: Array<{
+    agentId: number
+    name: string
+    agentCode?: string | null
+    totalCalls: number
+    answeredCalls: number
+    missedCalls: number
+    conversions: number
+    answerRate: number
+    conversionRate: number
+    averageDurationSeconds: number
+    talkTimeSeconds: number
+    score: number
+  }>
+}
+
+type HourlyData = {
+  buckets?: Array<{
+    hour: number
+    label: string
+    totalCalls: number
+    answeredCalls: number
+    conversions: number
+    answerRate: number
+    averageDurationSeconds?: number
+  }>
+}
+
+type ConversionsData = {
+  campaigns?: Array<{
+    campaignId: number
+    name: string
+    status?: string | null
+    totalCalls: number
+    answeredCalls: number
+    missedCalls: number
+    conversions: number
+    answerRate: number
+    conversionRate: number
+  }>
+}
+
+type DurationData = {
+  summary?: {
+    callsWithDuration?: number
+    averageDurationSeconds?: number
+    minDurationSeconds?: number
+    maxDurationSeconds?: number
+    p50DurationSeconds?: number
+    p90DurationSeconds?: number
+  }
+  buckets?: Array<{ label: string; count: number }>
+}
+
+type MissedData = {
+  totalMissedCalls?: number
+  repeatMissedNumbers?: Array<{
+    number: string
+    missedCount: number
+    lastMissedAt?: string | null
+  }>
+}
+
+type EmailPreviewData = {
+  subject: string
+  body: string
+  status?: string
+  message?: string
+}
 
 const today = new Date()
 const sevenDaysAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000)
@@ -52,13 +136,13 @@ export default function ReportsAnalyticsPro() {
   const [period, setPeriod] = useState('daily')
   const [state, setState] = useState<LoadState>('idle')
   const [error, setError] = useState('')
-  const [overview, setOverview] = useState<any>(null)
-  const [agents, setAgents] = useState<any>(null)
-  const [hourly, setHourly] = useState<any>(null)
-  const [conversions, setConversions] = useState<any>(null)
-  const [duration, setDuration] = useState<any>(null)
-  const [missed, setMissed] = useState<any>(null)
-  const [emailPreview, setEmailPreview] = useState<any>(null)
+  const [overview, setOverview] = useState<OverviewData | null>(null)
+  const [agents, setAgents] = useState<AgentsData | null>(null)
+  const [hourly, setHourly] = useState<HourlyData | null>(null)
+  const [conversions, setConversions] = useState<ConversionsData | null>(null)
+  const [duration, setDuration] = useState<DurationData | null>(null)
+  const [missed, setMissed] = useState<MissedData | null>(null)
+  const [emailPreview, setEmailPreview] = useState<EmailPreviewData | null>(null)
   const [emailStatus, setEmailStatus] = useState('')
 
   const filters = useMemo<ReportsAnalyticsFilters>(() => ({
@@ -69,7 +153,7 @@ export default function ReportsAnalyticsPro() {
     period,
   }), [from, to, campaignId, agentId, period])
 
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     setState('loading')
     setError('')
     try {
@@ -92,7 +176,7 @@ export default function ReportsAnalyticsPro() {
       setState('error')
       setError(err instanceof Error ? err.message : 'Unable to load reports')
     }
-  }
+  }, [filters])
 
   const previewEmail = async () => {
     try {
@@ -116,11 +200,11 @@ export default function ReportsAnalyticsPro() {
 
   useEffect(() => {
     void loadReports()
-  }, [])
+  }, [loadReports])
 
   return (
-    <div className="ptdt-page">
-      <div className="ptdt-page-header">
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
             <Sparkles size={12} /> Reports & Analytics Pro
@@ -143,7 +227,7 @@ export default function ReportsAnalyticsPro() {
         </div>
       </div>
 
-      <div className="ptdt-card" style={{ padding: 20, marginBottom: 18 }}>
+      <div className="ptdt-card ptdt-pro-surface" style={{ padding: 20, marginBottom: 18 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
           <FilterField label="From" icon={<CalendarDays size={13} />}>
             <input type="date" value={from} onChange={event => setFrom(event.target.value)} style={inputStyle} />
@@ -184,7 +268,7 @@ export default function ReportsAnalyticsPro() {
           <CampaignPdfReportPanel filters={filters} onPreviewEmail={previewEmail} onSendEmail={sendEmail} emailStatus={emailStatus} />
 
           {emailPreview && (
-            <section className="ptdt-card" style={{ padding: 20 }}>
+            <section className="ptdt-card ptdt-pro-surface" style={{ padding: 20 }}>
               <h3 style={{ margin: 0, color: 'var(--text)', fontSize: 22, fontWeight: 900 }}>Daily Email <span className="gradient-brand-text">Preview</span></h3>
               <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: 16, background: 'var(--bg-glass-hi)', border: '1px solid var(--border)', color: 'var(--text-2)', fontSize: 13, fontWeight: 800 }}>
                 {emailPreview.subject}
@@ -210,7 +294,7 @@ export default function ReportsAnalyticsPro() {
 
           <HourlyAnalyticsChart buckets={hourly?.buckets || []} />
           <AgentPerformanceReportPanel agents={agents?.agents || []} />
-          <ConversionAndDurationPanel campaigns={conversions?.campaigns || []} duration={duration} missed={missed} />
+          <ConversionAndDurationPanel campaigns={conversions?.campaigns || []} duration={duration || undefined} missed={missed || undefined} />
 
           <div className="ptdt-card" style={{ padding: 15, color: 'var(--text-3)', lineHeight: 1.65 }}>
             <strong style={{ color: 'var(--text)' }}>Pilot note:</strong> PDF generation is dependency-free. Daily summary email send remains guarded until SMTP/SendGrid/Brevo sender adapter is explicitly enabled.

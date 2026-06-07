@@ -47,11 +47,11 @@ export default function DeploymentPlatformPro() {
   }, [])
 
   return (
-    <div className="ptdt-page">
-      <div className="ptdt-page-header">
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
-            <ServerCog size={12} /> Number 13
+            <ServerCog size={12} /> Deployment Readiness
           </div>
           <h1 className="ptdt-page-title">
             Deployment / <span className="gradient-brand-text">Platform Pro</span>

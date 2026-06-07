@@ -127,7 +127,7 @@ nextRetryAt DateTime?
 
 ### Current Starting Point
 
-The backend already has call fields for `recordingUrl` and `recordingSid`, and webhook logic can save Twilio recording metadata.
+The backend already has call fields for `recordingUrl` and `recordingSid`, and webhook logic can save provider recording metadata.
 
 Phase 2 should turn this into a real module.
 

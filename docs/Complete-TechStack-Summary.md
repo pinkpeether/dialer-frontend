@@ -51,7 +51,7 @@ For the backend, identify and summarize:
 - Logging and process management
 - Prisma/migration setup
 - Railway/deployment configuration
-- Twilio/FreePBX/SIP integration touchpoints
+- provider/FreePBX/SIP integration touchpoints
 
 - Node.js
 - TypeScript
@@ -63,7 +63,7 @@ For the backend, identify and summarize:
 - bcrypt/password hashing, if present
 - Role-based authorization
 - Axios or third-party API clients, if present
-- Twilio SDK / Twilio API integration, if present
+- provider SDK / provider API integration, if present
 - Socket.IO, if present
 - Winston or logging libraries, if present
 - CORS, Helmet, Morgan, rate limiting, validation middleware, if present

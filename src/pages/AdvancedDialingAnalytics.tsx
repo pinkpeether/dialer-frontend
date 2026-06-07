@@ -214,8 +214,8 @@ export default function AdvancedDialingAnalytics() {
   }
 
   return (
-    <div className="ptdt-page">
-      <div className="ptdt-page-header">
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
             <Sparkles size={12} /> Predictive / Progressive Engine
@@ -248,7 +248,7 @@ export default function AdvancedDialingAnalytics() {
         <div className="ptdt-card" style={{ padding: 22, color: 'var(--text-3)' }}>Loading advanced dialing metrics...</div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 18 }}>
+          <div className="ptdt-pro-kpis" style={{ marginBottom: 18 }}>
             {cards.map(card => <MetricCard key={card.label} {...card} />)}
           </div>
 

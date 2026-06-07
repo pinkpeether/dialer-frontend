@@ -149,12 +149,10 @@ function extractCallRecord(result: unknown) {
         payload.callRecordId,
     ),
     callSid: String(
-      record.twilioCallSid ||
-        record.twilioSid ||
+      record.providerCallId ||
         record.callSid ||
         record.sid ||
-        payload.twilioCallSid ||
-        payload.twilioSid ||
+        payload.providerCallId ||
         payload.callSid ||
         payload.sid ||
         "",

@@ -68,12 +68,10 @@ function extractManualCallRecord(result: unknown) {
       payload.callRecordId,
     ),
     callSid: String(
-      record.twilioCallSid ||
-      record.twilioSid ||
+      record.providerCallId ||
       record.callSid ||
       record.sid ||
-      payload.twilioCallSid ||
-      payload.twilioSid ||
+      payload.providerCallId ||
       payload.callSid ||
       payload.sid ||
       '',
@@ -105,7 +103,7 @@ async function recoverCallIdFromHistory(callSid: string, phone: string | null) {
     for (const item of getItems(payload)) {
       if (!isRecord(item)) continue
 
-      const itemSid = String(item.twilioCallSid || item.twilioSid || item.callSid || item.sid || '')
+      const itemSid = String(item.providerCallId || item.callSid || item.sid || '')
       const itemPhone = normalizePhone(item.remoteNumber || item.phone || item.phoneNumber || item.to || item.from || item.destination)
       const sidMatches = Boolean(callSid && itemSid && itemSid === callSid)
       const phoneMatches = Boolean(normalizedPhone && itemPhone && itemPhone === normalizedPhone)

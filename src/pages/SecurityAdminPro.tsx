@@ -44,11 +44,11 @@ export default function SecurityAdminPro() {
   }, [])
 
   return (
-    <div className="ptdt-page">
-      <div className="ptdt-page-header">
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
-            <LockKeyhole size={12} /> Number 12
+            <LockKeyhole size={12} /> Security Hardening
           </div>
           <h1 className="ptdt-page-title">
             Security & <span className="gradient-brand-text">Admin Pro</span>

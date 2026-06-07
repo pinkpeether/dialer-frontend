@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Crown, RefreshCw, ShieldCheck, Users } from 'lucide-react'
 import AgentLeaderboardPanel from '../components/AgentLeaderboardPanel'
 import { agentManagementAPI } from '../api/agentManagement.api'
@@ -78,10 +78,10 @@ type SessionsResponse = {
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="glass" style={{ padding: 18, borderRadius: 20 }}>
-      <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginBottom: 8 }}>{label}</div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 34, fontWeight: 900 }}>{value}</div>
-      {sub ? <div style={{ color: 'var(--text-3)', marginTop: 6, fontSize: 12.5 }}>{sub}</div> : null}
+    <div className="ptdt-pro-kpi">
+      <div className="ptdt-pro-kpi-label">{label}</div>
+      <div className="ptdt-pro-kpi-value">{value}</div>
+      {sub ? <div className="ptdt-pro-kpi-note">{sub}</div> : null}
     </div>
   )
 }
@@ -103,7 +103,7 @@ export default function AgentManagementPro() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     setMessage('')
     try {
@@ -122,11 +122,11 @@ export default function AgentManagementPro() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [days])
 
   useEffect(() => {
     void load()
-  }, [days])
+  }, [load])
 
   const handleStartSession = async () => {
     setMessage('')
@@ -153,8 +153,8 @@ export default function AgentManagementPro() {
   const activeReminders = useMemo(() => overview?.reminders || [], [overview])
 
   return (
-    <div className="ptdt-page">
-      <div className="ptdt-page-header">
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
             <Users size={12} /> Agent Operations
@@ -189,14 +189,14 @@ export default function AgentManagementPro() {
         </div>
       ) : null}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
+      <div className="ptdt-pro-kpis" style={{ marginBottom: 18 }}>
         <StatCard label="Agents" value={overview?.totals.totalAgents ?? '—'} sub="Active users in dialer roles" />
         <StatCard label="Ready" value={overview?.totals.readyAgents ?? '—'} sub="Available for routing" />
         <StatCard label="Answer Rate" value={`${overview?.totals.answerRate ?? 0}%`} sub={`${overview?.totals.answeredCalls ?? 0} answered calls`} />
         <StatCard label="Sessions" value={overview?.totals.activeSessionCount ?? '—'} sub="Single-session guard" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(320px, 0.7fr)', gap: 16, marginBottom: 18 }} className="agent-management-grid">
+      <div className="ptdt-pro-grid sidebar agent-management-grid" style={{ marginBottom: 18 }}>
         <AgentLeaderboardPanel entries={leaderboard?.leaderboard || []} loading={loading} />
 
         <div style={{ display: 'grid', gap: 16 }}>

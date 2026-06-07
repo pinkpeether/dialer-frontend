@@ -16,7 +16,7 @@ export type CallControlAction =
 
 export type CallControlPayload = {
   callId?: number | string
-  twilioCallSid?: string
+  providerCallId?: string
   targetNumber?: string
   supervisorPhone?: string
   room?: string

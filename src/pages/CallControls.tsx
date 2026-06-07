@@ -5,7 +5,7 @@ import { callControlAPI } from '../api/callControl.api'
 
 type ActiveCall = {
   id: number
-  twilioCallSid?: string | null
+  providerCallId?: string | null
   status: string
   remoteNumber?: string | null
   source?: string | null
@@ -45,16 +45,16 @@ export default function CallControls() {
   }, [])
 
   return (
-    <div className="page-shell">
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: 24 }}>
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
-          <div className="eyebrow" style={{ marginBottom: 12 }}>
+          <div className="eyebrow pink" style={{ marginBottom: 12 }}>
             <ShieldCheck size={14} /> Supervisor Call-Control Console
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(34px, 5vw, 58px)', lineHeight: 1.02, margin: 0 }}>
+          <h1 className="ptdt-page-title" style={{ fontSize: 'clamp(34px, 5vw, 58px)', margin: 0 }}>
             Advanced <span className="gradient-brand-text">Call Controls</span>
           </h1>
-          <p style={{ color: 'var(--text-3)', marginTop: 12, maxWidth: 760 }}>
+          <p className="ptdt-page-desc" style={{ marginTop: 12 }}>
             Hold, resume, transfer, conference, whisper, barge-in, voicemail drop, mute/unmute and noise-control guardrails.
           </p>
         </div>
@@ -70,20 +70,21 @@ export default function CallControls() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 22 }}>
-        <div className="glass" style={{ padding: 18, borderRadius: 20 }}>
-          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginBottom: 8 }}>ACTIVE CALLS</div>
-          <div style={{ fontSize: 34, fontWeight: 900 }}>{calls.length}</div>
+      <div className="ptdt-pro-kpis" style={{ marginBottom: 22 }}>
+        <div className="ptdt-pro-kpi">
+          <div className="ptdt-pro-kpi-label">Active Calls</div>
+          <div className="ptdt-pro-kpi-value">{calls.length}</div>
+          <div className="ptdt-pro-kpi-note">Supervisor-call-control surface</div>
         </div>
-
-        <div className="glass" style={{ padding: 18, borderRadius: 20 }}>
-          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginBottom: 8 }}>PROVIDER</div>
-          <div style={{ fontSize: 20, fontWeight: 900 }}>{String(capabilities?.provider || 'universal-sip')}</div>
+        <div className="ptdt-pro-kpi">
+          <div className="ptdt-pro-kpi-label">Provider</div>
+          <div className="ptdt-pro-kpi-value" style={{ fontSize: '1.6rem' }}>{String(capabilities?.provider || 'universal-sip')}</div>
+          <div className="ptdt-pro-kpi-note">Current routed control adapter</div>
         </div>
-
-        <div className="glass" style={{ padding: 18, borderRadius: 20 }}>
-          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginBottom: 8 }}>TWILIO LEGACY</div>
-          <div style={{ fontSize: 20, fontWeight: 900 }}>{capabilities?.twilioLegacyConfigured ? 'Configured' : 'Not configured'}</div>
+        <div className="ptdt-pro-kpi">
+          <div className="ptdt-pro-kpi-label">Provider Adapter</div>
+          <div className="ptdt-pro-kpi-value" style={{ fontSize: '1.6rem' }}>{capabilities?.providerAdapterConfigured ? 'Configured' : 'Not configured'}</div>
+          <div className="ptdt-pro-kpi-note">Server-side provider control readiness</div>
         </div>
       </div>
 
@@ -127,7 +128,7 @@ export default function CallControls() {
 
       <AdvancedCallControlPanel
         defaultCallId={selected?.id}
-        defaultTwilioCallSid={selected?.twilioCallSid || undefined}
+        defaultProviderCallId={selected?.providerCallId || undefined}
       />
     </div>
   )
