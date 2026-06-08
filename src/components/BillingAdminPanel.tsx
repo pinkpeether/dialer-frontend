@@ -1,13 +1,31 @@
 type BillingData = {
-  provider?: string
-  sipTrunk?: { provider?: string; balanceUsd?: string | null; lowBalanceThresholdUsd?: string | null }
-  providerAdapter?: { configured?: boolean; estimatedBalanceUsd?: string | null; callerIdConfigured?: boolean }
+  sipTrunk?: {
+    provider?: string
+    accountId?: { configured?: boolean; preview?: string | null }
+    balanceUsd?: string | null
+    lowBalanceThresholdUsd?: string | null
+  }
+  provider?: {
+    configured?: boolean
+    accountSid?: { configured?: boolean; preview?: string | null }
+    fromNumberConfigured?: boolean
+    estimatedBalanceUsd?: string | null
+  }
   ai?: { openRouterConfigured?: boolean; openAiConfigured?: boolean }
   railway?: { plan?: string | null; service?: string | null }
-  supabase?: { storageBucket?: string | null }
+  supabase?: {
+    projectRef?: { configured?: boolean; preview?: string | null }
+    storageBucket?: string | null
+  }
+  generatedAt?: string
 }
 
 export default function BillingAdminPanel({ billing }: { billing: BillingData | null }) {
+  const providerStatus = billing?.provider?.configured ? 'Configured' : 'Missing'
+  const providerAccountPreview = billing?.provider?.accountSid?.preview || 'not provided'
+  const providerBalance = billing?.provider?.estimatedBalanceUsd || 'not provided'
+  const providerCallerId = billing?.provider?.fromNumberConfigured ? 'Yes' : 'No'
+
   return (
     <div className="glass" style={{ padding: 18 }}>
       <div style={{ marginBottom: 14 }}>
@@ -18,11 +36,15 @@ export default function BillingAdminPanel({ billing }: { billing: BillingData | 
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-        <Panel label="Call Provider" lines={[billing?.provider || 'not-set', `SIP trunk: ${billing?.sipTrunk?.provider || 'not-set'}`]} />
+        <Panel label="Call Provider" lines={[
+          `Status: ${providerStatus}`,
+          `Provider: ${billing?.sipTrunk?.provider || 'not-set'}`,
+          `Account: ${providerAccountPreview}`,
+        ]} />
         <Panel label="Provider Adapter" lines={[
-          billing?.providerAdapter?.configured ? 'Configured' : 'Missing',
-          `Balance: ${billing?.providerAdapter?.estimatedBalanceUsd || 'not provided'}`,
-          `Caller ID: ${billing?.providerAdapter?.callerIdConfigured ? 'Yes' : 'No'}`,
+          providerStatus,
+          `Balance: ${providerBalance}`,
+          `Caller ID: ${providerCallerId}`,
         ]} />
         <Panel label="AI Billing" lines={[
           `OpenRouter: ${billing?.ai?.openRouterConfigured ? 'Ready' : 'Missing'}`,
@@ -32,7 +54,10 @@ export default function BillingAdminPanel({ billing }: { billing: BillingData | 
           `Plan: ${billing?.railway?.plan || 'not provided'}`,
           `Service: ${billing?.railway?.service || 'not provided'}`,
         ]} />
-        <Panel label="Supabase" lines={[`Bucket: ${billing?.supabase?.storageBucket || 'not provided'}`]} />
+        <Panel label="Supabase" lines={[
+          `Project: ${billing?.supabase?.projectRef?.preview || 'not provided'}`,
+          `Bucket: ${billing?.supabase?.storageBucket || 'not provided'}`,
+        ]} />
         <Panel label="SIP Trunk Credit" lines={[
           `Balance: ${billing?.sipTrunk?.balanceUsd || 'not provided'}`,
           `Low threshold: ${billing?.sipTrunk?.lowBalanceThresholdUsd || '10'}`,
