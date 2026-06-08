@@ -1,4 +1,4 @@
-const PRODUCTION_BACKEND_URL = 'https://dialer-backend-production-2a23.up.railway.app'
+const PRODUCTION_BACKEND_URL = 'https://dialer-api.ptdt.taxi'
 
 export function getSocketUrl() {
   const explicit = import.meta.env.VITE_SOCKET_URL as string | undefined

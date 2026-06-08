@@ -7,10 +7,12 @@ import Login                  from './pages/Login'
 import Dashboard              from './pages/Dashboard'
 import Dialer                 from './pages/Dialer'
 import Agents                 from './pages/Agents'
+import AgentManagementPro     from './pages/AgentManagementPro'
 import Campaigns              from './pages/Campaigns'
 import CampaignDetail         from './pages/CampaignDetail'
 import Contacts               from './pages/Contacts'
 import ContactDetail          from './pages/ContactDetail'
+import ContactManagementPro   from './pages/ContactManagementPro'
 import AgentWorkspace         from './pages/AgentWorkspace'
 import AgentDashboard         from './pages/AgentDashboard'
 import Reports                from './pages/Reports'
@@ -23,12 +25,23 @@ import Settings               from './pages/Settings'
 import AuditLogs              from './pages/AuditLogs'
 import SystemSettings         from './pages/SystemSettings'
 import Recordings             from './pages/Recordings'
+import RecordingStoragePro    from './pages/RecordingStoragePro'
 import CallIntelligence       from './pages/CallIntelligence'
 import OpsCenter              from './pages/OpsCenter'
 import ProductionMonitoring   from './pages/ProductionMonitoring'
+import LiveMonitoringAdvanced from './pages/LiveMonitoringAdvanced'
 import AdvancedDialingAnalytics from './pages/AdvancedDialingAnalytics'
+import SecurityAdminPro       from './pages/SecurityAdminPro'
+import CallControls           from './pages/CallControls'
+import LiveAiConsole          from './pages/LiveAiConsole'
+import CampaignManagementPro  from './pages/CampaignManagementPro'
+import NotificationsAlertsPro from './pages/NotificationsAlertsPro'
+import UiUxPro                from './pages/UiUxPro'
+import DeploymentPlatformPro  from './pages/DeploymentPlatformPro'
 import SupportDiagnostics     from './pages/SupportDiagnostics'
 import ProductionReview       from './pages/ProductionReview'
+import ReportsAnalyticsPro    from './pages/ReportsAnalyticsPro'
+import SmsConsole             from './pages/SmsConsole'
 import Unauthorized           from './pages/Unauthorized'
 import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
@@ -65,12 +78,15 @@ export default function App() {
             <Route path="/dashboard"          element={<RoleRoute roles={adminConsoleRoles}><Dashboard /></RoleRoute>}      />
             <Route path="/agent/workspace"    element={<RoleRoute roles={['AGENT']}><AgentWorkspace /></RoleRoute>} />
             <Route path="/dialer"             element={<RoleRoute><Dialer /></RoleRoute>}         />
+            <Route path="/sms"                element={<RoleRoute><SmsConsole /></RoleRoute>} />
             <Route path="/agent/dashboard"    element={<RoleRoute roles={adminConsoleRoles}><AgentDashboard /></RoleRoute>} />
             <Route path="/campaigns"          element={<RoleRoute roles={adminManagerRoles}><Campaigns /></RoleRoute>}      />
             <Route path="/campaigns/:id"      element={<RoleRoute roles={adminManagerRoles}><CampaignDetail /></RoleRoute>} />
             <Route path="/contacts"           element={<RoleRoute><Contacts /></RoleRoute>}       />
             <Route path="/contacts/:id"       element={<RoleRoute><ContactDetail /></RoleRoute>}  />
+            <Route path="/contact-management-pro" element={<RoleRoute roles={adminSupervisorRoles}><ContactManagementPro /></RoleRoute>} />
             <Route path="/agents"             element={<RoleRoute roles={adminManagerRoles}><Agents /></RoleRoute>}         />
+            <Route path="/agent-management-pro" element={<RoleRoute roles={adminSupervisorRoles}><AgentManagementPro /></RoleRoute>} />
             <Route path="/calls"              element={<RoleRoute><Calls /></RoleRoute>}          />
             <Route path="/callbacks"          element={<RoleRoute><Callbacks /></RoleRoute>}      />
             <Route path="/supervisor"         element={<RoleRoute roles={adminConsoleRoles}><Supervisor /></RoleRoute>}     />
@@ -81,10 +97,20 @@ export default function App() {
             <Route path="/audit-logs"         element={<RoleRoute roles={['ADMIN']}><AuditLogs /></RoleRoute>}      />
             <Route path="/settings/system"    element={<RoleRoute roles={['ADMIN']}><SystemSettings /></RoleRoute>} />
             <Route path="/recordings"         element={<RoleRoute roles={adminSupervisorRoles}><Recordings /></RoleRoute>}     />
+            <Route path="/recording-storage-pro" element={<RoleRoute roles={adminSupervisorRoles}><RecordingStoragePro /></RoleRoute>} />
             <Route path="/call-intelligence"  element={<RoleRoute roles={adminSupervisorRoles}><CallIntelligence /></RoleRoute>} />
             <Route path="/ops"                element={<RoleRoute roles={adminSupervisorRoles}><OpsCenter /></RoleRoute>}      />
             <Route path="/monitoring"         element={<RoleRoute roles={adminSupervisorRoles}><ProductionMonitoring /></RoleRoute>} />
+            <Route path="/live-monitoring-advanced" element={<RoleRoute roles={adminSupervisorRoles}><LiveMonitoringAdvanced /></RoleRoute>} />
             <Route path="/advanced-dialing"   element={<RoleRoute roles={adminSupervisorRoles}><AdvancedDialingAnalytics /></RoleRoute>} />
+            <Route path="/reports-analytics-pro" element={<RoleRoute roles={adminSupervisorRoles}><ReportsAnalyticsPro /></RoleRoute>} />
+            <Route path="/call-controls"      element={<RoleRoute roles={adminSupervisorRoles}><CallControls /></RoleRoute>} />
+            <Route path="/live-ai"            element={<RoleRoute><LiveAiConsole /></RoleRoute>} />
+            <Route path="/campaign-management-pro" element={<RoleRoute roles={adminSupervisorRoles}><CampaignManagementPro /></RoleRoute>} />
+            <Route path="/notifications-alerts-pro" element={<RoleRoute><NotificationsAlertsPro /></RoleRoute>} />
+            <Route path="/ui-ux-pro"          element={<RoleRoute roles={adminSupervisorRoles}><UiUxPro /></RoleRoute>} />
+            <Route path="/security-admin-pro" element={<RoleRoute roles={['ADMIN']}><SecurityAdminPro /></RoleRoute>} />
+            <Route path="/deployment-platform-pro" element={<RoleRoute roles={adminSupervisorRoles}><DeploymentPlatformPro /></RoleRoute>} />
             <Route path="/support/diagnostics" element={<RoleRoute roles={adminSupervisorRoles}><SupportDiagnostics /></RoleRoute>} />
             <Route path="/production/review"   element={<RoleRoute roles={['ADMIN']}><ProductionReview /></RoleRoute>} />
             <Route path="/admin/spoofing" element={<RoleRoute roles={['ADMIN']}><SpoofingManagement /></RoleRoute>} />

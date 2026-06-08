@@ -46,7 +46,7 @@ PTDT-Dialer is launch-ready only when the following areas pass QA:
 | SIP wrong credentials | Clear error shown | TODO |
 | FreePBX unavailable | UI does not hang | TODO |
 | Outgoing SIP extension call | Call connects and ends cleanly | TODO |
-| PSTN call through FreePBX/Twilio | Verified number rings | TODO |
+| PSTN call through FreePBX/SIP trunk | Verified number rings | TODO |
 | Hangup before answer | UI resets cleanly | TODO |
 | Remote party hangup | UI detects end | TODO |
 | Active call overlay | No stuck call controls | TODO |
@@ -174,7 +174,7 @@ These are not required for Phase 1 launch:
 | CORS | Production origin allowed | TODO |
 | Secrets | Not committed | TODO |
 | FreePBX gateway/DNS | Stable | TODO |
-| Twilio trunk | Resolves and completes call | TODO |
+| SIP trunk | Resolves and completes call | TODO |
 
 ## Phase 1 Acceptance Criteria
 

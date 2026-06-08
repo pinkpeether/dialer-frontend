@@ -59,7 +59,7 @@ Please audit the following areas:
 - SIP account registration and unregister flows
 - WebRTC media handling
 - FreePBX integration assumptions
-- Twilio/PSTN outbound flow assumptions
+- provider/PSTN outbound flow assumptions
 - Call logging accuracy
 - Hangup/disconnect edge cases
 - Trial/verified-number limitations

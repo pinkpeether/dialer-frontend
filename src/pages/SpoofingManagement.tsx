@@ -57,7 +57,7 @@ export default function SpoofingManagement() {
           </select>
           {form.scope === 'campaign' && <input className="ptdt-input" type="number" value={form.campaignId ?? ''} onChange={e => setForm({ ...form, campaignId: e.target.value ? Number(e.target.value) : null })} placeholder="Campaign ID" required />}
           {form.scope === 'user' && <input className="ptdt-input" type="number" value={form.userId ?? ''} onChange={e => setForm({ ...form, userId: e.target.value ? Number(e.target.value) : null })} placeholder="User ID" required />}
-          <input className="ptdt-input" value={form.provider || ''} onChange={e => setForm({ ...form, provider: e.target.value })} placeholder="Provider, e.g. generic/twilio/custom-sip" />
+          <input className="ptdt-input" value={form.provider || ''} onChange={e => setForm({ ...form, provider: e.target.value })} placeholder="Provider, e.g. generic/illyvoip/custom-sip" />
           <button type="submit" className="btn-brand" disabled={saving}>{saving ? 'Saving...' : 'Save Caller ID'}</button>
         </form>
       )}

@@ -187,7 +187,7 @@ export default function SipSettings() {
         </h1>
         <p style={{ fontSize: 14.5, color: 'var(--text-3)', lineHeight: 1.7, maxWidth: 860 }}>
           Configure any compatible SIP provider. PTDT Dialer will use this account for softphone calls instead of a hardcoded telecom API.
-          For browser/Electron calling, your provider must support SIP over WebSocket, normally a <strong>WSS</strong> server URL.
+          Use the transport that matches your provider or PBX deployment, including WebSocket, TLS, TCP, or UDP where supported.
         </p>
       </motion.div>
 
@@ -205,7 +205,7 @@ export default function SipSettings() {
                 Provider Credentials
               </h2>
               <p style={{ color: 'var(--text-3)', fontSize: 12.5 }}>
-                Works with Telnyx, VoIP.ms, FreePBX, Asterisk, 3CX, and SIP-compatible providers that expose WSS.
+                Works with FreePBX, Asterisk, 3CX, VoIP.ms, Telnyx, trunk providers, and other SIP-compatible platforms.
               </p>
             </div>
             <SipStatusBadge status={status}/>
@@ -230,10 +230,10 @@ export default function SipSettings() {
                 style={inputStyle}
               >
                 <option value="WSS">WSS — recommended for Electron/WebRTC</option>
-                <option value="WS">WS</option>
-                <option value="TLS">TLS — native SIP later</option>
-                <option value="TCP">TCP — native SIP later</option>
-                <option value="UDP">UDP — native SIP later</option>
+                <option value="WS">WS — non-TLS WebSocket</option>
+                <option value="TLS">TLS — secure SIP transport</option>
+                <option value="TCP">TCP — SIP over TCP</option>
+                <option value="UDP">UDP — standard PBX/trunk SIP</option>
               </select>
             </Field>
 
@@ -289,16 +289,16 @@ export default function SipSettings() {
           )}
 
           <div className="ptdt-sip-actions" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 22 }}>
-            <button type="submit" className="btn-brand" style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button type="submit" className="btn-brand" style={{ borderRadius: 999, padding: '9px 15px', minHeight: 38, display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, fontWeight: 800 }}>
               <Save size={14}/> Save SIP Account
             </button>
-            <button type="button" onClick={handleRegister} disabled={busy} style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--green-2)', background: 'rgba(0,167,71,0.10)', color: 'var(--green-2)', fontWeight: 800 }}>
+            <button type="button" onClick={handleRegister} disabled={busy} style={{ borderRadius: 999, padding: '9px 15px', minHeight: 38, display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--green-2)', background: 'rgba(0,167,71,0.10)', color: 'var(--green-2)', fontSize: 12.5, fontWeight: 800 }}>
               <Wifi size={14}/> Register
             </button>
-            <button type="button" onClick={handleUnregister} disabled={busy} style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-3)', fontWeight: 800 }}>
+            <button type="button" onClick={handleUnregister} disabled={busy} style={{ borderRadius: 999, padding: '9px 15px', minHeight: 38, display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 800 }}>
               <WifiOff size={14}/> Unregister
             </button>
-            <button type="button" onClick={() => { clearConfig(); setForm({ ...form, enabled: false, username: '', password: '', domain: '', webSocketServer: '' }); toast.warning('SIP account cleared') }} style={{ borderRadius: 999, padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.10)', color: 'var(--danger)', fontWeight: 800 }}>
+            <button type="button" onClick={() => { clearConfig(); setForm({ ...form, enabled: false, username: '', password: '', domain: '', webSocketServer: '' }); toast.warning('SIP account cleared') }} style={{ borderRadius: 999, padding: '9px 15px', minHeight: 38, display: 'flex', alignItems: 'center', gap: 7, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.10)', color: 'var(--danger)', fontSize: 12.5, fontWeight: 800 }}>
               <Trash2 size={14}/> Clear
             </button>
           </div>
@@ -307,17 +307,17 @@ export default function SipSettings() {
         <motion.aside initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass ptdt-sip-info-card" style={{ padding: 22, height: 'fit-content' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <ShieldCheck size={18} color="var(--green-2)"/>
-            <h3 className="display" style={{ color: 'var(--text)', fontSize: 16, fontWeight: 900 }}>Universal Dialer Mode</h3>
+            <h3 className="display" style={{ color: 'var(--text)', fontSize: 16, fontWeight: 900 }}>Deployment Notes</h3>
           </div>
           <p style={{ color: 'var(--text-3)', fontSize: 12.5, lineHeight: 1.7, marginBottom: 14 }}>
-            PTDT Dialer does not need to own telecom service credentials. Users can bring their own SIP provider or PBX account.
+            PTDT Dialer is configured to work with your own PBX, VPS, and SIP trunk stack instead of relying on a bundled carrier setup.
           </p>
           <div style={{ display: 'grid', gap: 10 }}>
             {[
-              'Requires provider support for SIP over WebSocket/WSS.',
+              'Use the transport required by your current provider, PBX, or trunk endpoint.',
               'Credentials are stored locally in this app for now.',
-              'Twilio API mode remains as legacy fallback until SIP is fully validated.',
-              'Native UDP/TCP/TLS SIP can be added later with PJSIP/PJSUA2.',
+              'WebRTC softphone sessions commonly use WSS or WS, while PBX and trunk routing often use TLS, TCP, or UDP.',
+              'Caller ID, outbound proxy, and transport should match the live values configured in your FreePBX and trunk provider.',
             ].map(item => (
               <div key={item} style={{ display: 'flex', gap: 8, color: 'var(--text-3)', fontSize: 12.5, lineHeight: 1.5 }}>
                 <Info size={14} color="var(--pink)" style={{ flexShrink: 0, marginTop: 2 }}/>

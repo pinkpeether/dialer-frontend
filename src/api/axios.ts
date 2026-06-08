@@ -1,10 +1,12 @@
 import axios from 'axios'
 
+const PRODUCTION_API_URL = 'https://dialer-api.ptdt.taxi/api'
+
 const apiBaseURL =
   import.meta.env.VITE_API_URL ||
   (
     import.meta.env.PROD
-      ? 'https://dialer-backend-production-2a23.up.railway.app/api'
+      ? PRODUCTION_API_URL
       : 'http://localhost:3001/api'
   )
 

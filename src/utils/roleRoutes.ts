@@ -3,8 +3,10 @@ import type { UserRole } from '../store/auth.store'
 const AGENT_ROUTES = [
   '/agent/workspace',
   '/dialer',
+  '/live-ai',
   '/calls',
   '/callbacks',
+  '/notifications-alerts-pro',
   '/settings',
 ]
 

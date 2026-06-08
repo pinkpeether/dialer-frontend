@@ -8,7 +8,7 @@ Scope: Electron/Vite React frontend, SIP browser dialer, call controls, call his
 
 The PTDT-Dialer frontend evolved from a standard campaign/manual dialer interface into a full SIP-enabled operator console. The major frontend outcome is a working embedded dialer experience inside the Dialer page, integrated with SIP registration, outgoing/incoming call handling, active-call controls, DTMF, blind transfer, call history, disposition workflows, dashboards, callback management, notifications, and improved production UI behavior.
 
-The final milestone verified in this phase was a real outbound PSTN call from the PTDT-Dialer through FreePBX and Twilio Elastic SIP Trunking to a verified US number. That confirmed the browser SIP layer, FreePBX routing, trunk selection, number normalization, and call control path were aligned.
+The final milestone verified in this phase was a real outbound PSTN call from the PTDT-Dialer through FreePBX and SIP trunking to a verified US number. That confirmed the browser SIP layer, FreePBX routing, trunk selection, number normalization, and call control path were aligned.
 
 ## Starting Point
 
@@ -302,7 +302,7 @@ Verified during the implementation lifecycle:
 - Callback cleanup behavior when a saved callback disposition is changed to a non-callback disposition.
 - Dashboard and route rendering.
 - Electron UI behavior.
-- Final outbound PSTN call through FreePBX/Twilio to a verified US number.
+- Final outbound PSTN call through FreePBX/SIP trunk to a verified US number.
 
 ## Final Frontend Status
 
@@ -323,6 +323,6 @@ The final outbound PSTN success confirmed that the frontend can initiate a real-
 
 ## Report Verification Notes
 
-- Live FreePBX, Twilio, PM2, Railway, DNS, and gateway outcomes are operationally verified from the working environment and logs; they are not fully provable from frontend source files alone.
+- Live FreePBX, provider, PM2, Railway, DNS, and gateway outcomes are operationally verified from the working environment and logs; they are not fully provable from frontend source files alone.
 - Callback scheduling is now backend-owned from the disposition save path. The frontend collects the callback datetime and sends it with `PATCH /api/calls/:id/disposition`, while the backend creates or updates the callback record.
 - Recent backend hardening also makes callback transitions safe: pending/rescheduled callbacks are cancelled when a disposition changes away from `CALLBACK`, contact `callbackAt` is cleared, and duplicate callbacks for the same call are avoided.

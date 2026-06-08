@@ -32,12 +32,12 @@ export const dialerAPI = {
   },
 
   sendDTMF: async (callSid: string, digits: string) => {
-    const res = await api.post('/dialer/call/dtmf', { twilioCallSid: callSid, digits })
+    const res = await api.post('/dialer/call/dtmf', { providerCallId: callSid, digits })
     return res.data
   },
 
   hangupCall: async (callSid: string) => {
-    const res = await api.post('/dialer/call/hangup', { twilioCallSid: callSid })
+    const res = await api.post('/dialer/call/hangup', { providerCallId: callSid })
     return res.data
   },
 }

@@ -1,7 +1,7 @@
 # PTDT-Dialer Market Launch QA Audit Plan
 
 Date: May 23, 2026  
-Scope: `dialer-frontend`, `dialer-backend`, backend API contracts, SIP/FreePBX/Twilio call flow, deployment readiness, and market-launch risk review.
+Scope: `dialer-frontend`, `dialer-backend`, backend API contracts, SIP/FreePBX/SIP trunk call flow, deployment readiness, and market-launch risk review.
 
 ## Purpose
 
@@ -51,7 +51,7 @@ No result should be treated as final unless the commit SHAs are recorded.
 | Railway backend | Yes | Deployed API verification | Health endpoint and authenticated APIs work |
 | Local backend/PM2 | Recommended | Debug/reproduce backend issues | PM2 process online and `/api/health` returns success |
 | FreePBX VM | Yes | SIP registration and trunk routing | SIP extension registers and routes outbound calls |
-| Twilio Elastic SIP Trunk | Yes | PSTN outbound verification | Verified number receives a real call |
+| SIP trunk provider | Yes | PSTN outbound verification | Verified number receives a real call |
 | PostgreSQL/Supabase | Yes | Persistence verification | Calls, callbacks, contacts, reports persist and reload |
 
 ## Role Matrix
@@ -193,7 +193,7 @@ Goal: Test the app exactly as a real agent/admin would use it.
 | Scenario | Expected Result | Status | Evidence |
 |---|---|---|---|
 | Dial SIP extension | Call rings/establishes | TBD | Screen recording/Asterisk log |
-| Dial PSTN verified number | PSTN phone rings | TBD | Screen recording/Asterisk/Twilio log |
+| Dial PSTN verified number | PSTN phone rings | TBD | Screen recording/Asterisk/provider log |
 | Hang up before answer | Call state resets, no stuck overlay | TBD | Screen recording |
 | Remote party hangs up | UI detects end and disposition opens | TBD | Screen recording |
 | Backend down during call | SIP call may continue, persistence error is clear | TBD | Screen recording/log |
@@ -315,8 +315,8 @@ Goal: Prove call handling is stable under real failure modes.
 | Transfer failed | Error shown, original call state recoverable | TBD | Screen recording |
 | DTMF during hold | Behavior documented and no crash | TBD | Screen recording |
 | Remote hangup during transfer | UI clears safely | TBD | Screen recording |
-| PSTN verified number call | Call completes through Twilio | TBD | Asterisk/Twilio logs |
-| Trial restriction destination | Error surfaced clearly | TBD | Twilio/Asterisk logs |
+| PSTN verified number call | Call completes through provider | TBD | Asterisk/provider logs |
+| Trial restriction destination | Error surfaced clearly | TBD | provider/Asterisk logs |
 
 ## Phase 6 — Deployment / Production Readiness
 
@@ -345,7 +345,7 @@ Goal: Prove call handling is stable under real failure modes.
 | Rate limiting active | Auth/API endpoints protected | TBD |
 | Error messages safe | No stack traces/secrets in production responses | TBD |
 | DNC/contact PII access | Role-limited where appropriate | TBD |
-| Logs do not leak secrets | SIP/Twilio credentials not logged | TBD |
+| Logs do not leak secrets | SIP/provider credentials not logged | TBD |
 
 ## Performance / Stability Review
 
@@ -403,7 +403,7 @@ Launch can proceed with documented limitations only if:
 5. Login as Admin, Supervisor, and Agent.
 6. Test Dialer page with SIP registered.
 7. Complete internal extension call.
-8. Complete PSTN call through FreePBX/Twilio.
+8. Complete PSTN call through FreePBX/SIP trunk.
 9. Save every disposition type.
 10. Verify call history persistence and prefill.
 11. Verify CALLBACK create/update/cancel transitions.

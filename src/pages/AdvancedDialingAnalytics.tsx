@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Activity, AlertTriangle, BarChart3, CheckCircle2, Gauge, RefreshCw, ShieldAlert, Sparkles, Zap } from 'lucide-react'
+import { Activity, AlertTriangle, BarChart3, CheckCircle2, Gauge, Phone, Play, RefreshCw, ShieldAlert, Sparkles, Square, Zap } from 'lucide-react'
 import { advancedDialingAPI } from '../api/advancedDialing.api'
 
 type DialingMetrics = {
@@ -43,6 +43,33 @@ type GuardrailPreview = {
   abandonmentRate?: number
 }
 
+type EngineStatus = {
+  campaignId?: number
+  generatedAt?: string
+  running?: boolean
+  campaignStatus?: string | null
+  mode?: string
+  runtimeAllowed?: boolean
+  waitingReason?: string | null
+  readyAgents?: number
+  activeCalls?: number
+  pendingContacts?: number
+  retryDueContacts?: number
+  answeredCalls?: number
+  totalCalls?: number
+  answerRate?: number
+  recommendedDialCount?: number
+  availableDialSlots?: number
+  guardrails?: {
+    safe?: boolean
+    reasons?: string[]
+  }
+  pacing?: PacingPreview
+}
+
+const METRICS_CACHE_KEY = 'ptdt-advanced-dialing-metrics'
+const ENGINE_CAMPAIGN_KEY = 'ptdt-advanced-dialing-engine-campaign-id'
+
 const fmtPercent = (value?: number) => {
   if (!Number.isFinite(value)) return '0%'
   return `${Math.round((value || 0) * 100)}%`
@@ -54,9 +81,7 @@ const fmtDate = (value?: string) => {
   return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString()
 }
 
-const METRICS_CACHE_KEY = 'ptdt-advanced-dialing-metrics'
-
-function readCachedMetrics(): DialingMetrics | undefined {
+const readCachedMetrics = (): DialingMetrics | undefined => {
   try {
     const cached = window.localStorage.getItem(METRICS_CACHE_KEY)
     return cached ? JSON.parse(cached) as DialingMetrics : undefined
@@ -65,11 +90,20 @@ function readCachedMetrics(): DialingMetrics | undefined {
   }
 }
 
-function writeCachedMetrics(metrics: DialingMetrics) {
+const writeCachedMetrics = (metrics: DialingMetrics) => {
   try {
     window.localStorage.setItem(METRICS_CACHE_KEY, JSON.stringify(metrics))
   } catch {
-    // Cache is a performance helper only.
+    // cache helper only
+  }
+}
+
+const readEngineCampaignId = () => {
+  try {
+    const value = Number(window.localStorage.getItem(ENGINE_CAMPAIGN_KEY) || 1)
+    return Number.isFinite(value) && value > 0 ? value : 1
+  } catch {
+    return 1
   }
 }
 
@@ -78,6 +112,8 @@ export default function AdvancedDialingAnalytics() {
   const [guardrails, setGuardrails] = useState<GuardrailPreview | null>(null)
   const [previewing, setPreviewing] = useState(false)
   const [previewError, setPreviewError] = useState('')
+  const [engineCampaignId, setEngineCampaignId] = useState(readEngineCampaignId)
+  const [engineBusy, setEngineBusy] = useState(false)
 
   const metricsQuery = useQuery<DialingMetrics>({
     queryKey: ['advanced-dialing', 'metrics'],
@@ -93,6 +129,14 @@ export default function AdvancedDialingAnalytics() {
     placeholderData: previousData => previousData,
   })
 
+  const engineQuery = useQuery<EngineStatus>({
+    queryKey: ['advanced-dialing', 'engine-status', engineCampaignId],
+    queryFn: () => advancedDialingAPI.getEngineStatus(engineCampaignId),
+    enabled: Number.isFinite(engineCampaignId) && engineCampaignId > 0,
+    refetchInterval: 8000,
+    refetchOnWindowFocus: false,
+  })
+
   const metrics = metricsQuery.data ?? null
   const loading = metricsQuery.isLoading && !metrics
   const error = previewError || (
@@ -106,10 +150,11 @@ export default function AdvancedDialingAnalytics() {
   const totals = metrics?.totals || {}
   const rates = metrics?.rates || {}
   const recentCallCount = metrics?.recentCalls?.length || 0
+  const engineStatus = engineQuery.data || null
 
   const cards = useMemo(
     () => [
-      { label: 'Total Calls', value: totals.totalCalls || 0, sub: `${totals.completedCalls || 0} completed`, icon: PhoneIcon(), color: '#fb0b8c' },
+      { label: 'Total Calls', value: totals.totalCalls || 0, sub: `${totals.completedCalls || 0} completed`, icon: <Phone size={18} />, color: '#fb0b8c' },
       { label: 'Answer Rate', value: fmtPercent(rates.answerRate), sub: `${totals.answeredCalls || 0} answered`, icon: <BarChart3 size={18} />, color: '#00a747' },
       { label: 'Callback Rate', value: fmtPercent(rates.callbackRate), sub: `${totals.callbackCalls || 0} callbacks`, icon: <Activity size={18} />, color: '#8057d7' },
       { label: 'Recent Sample', value: recentCallCount, sub: 'latest calls inspected', icon: <Gauge size={18} />, color: '#f0b90b' },
@@ -120,16 +165,15 @@ export default function AdvancedDialingAnalytics() {
   const preview = async () => {
     setPreviewing(true)
     setPreviewError('')
-
     try {
       const [nextPacing, nextGuardrails] = await Promise.all([
         advancedDialingAPI.previewPacing({
-          readyAgents: 3,
-          answerRate: rates.answerRate || 0.2,
+          readyAgents: engineStatus?.readyAgents || 3,
+          answerRate: engineStatus?.answerRate || rates.answerRate || 0.2,
           maxCallsPerReadyAgent: 2,
         }),
         advancedDialingAPI.previewGuardrails({
-          campaignId: metrics?.campaignId || 1,
+          campaignId: engineCampaignId,
           abandonmentRate: 0.01,
         }),
       ])
@@ -142,31 +186,51 @@ export default function AdvancedDialingAnalytics() {
     }
   }
 
+  const setCampaignId = (value: string) => {
+    const numeric = Number(value)
+    const next = Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : 1
+    setEngineCampaignId(next)
+    try { window.localStorage.setItem(ENGINE_CAMPAIGN_KEY, String(next)) } catch { /* ignore */ }
+  }
+
+  const engineAction = async (action: 'start' | 'stop' | 'tick') => {
+    setEngineBusy(true)
+    setPreviewError('')
+    try {
+      if (action === 'start') await advancedDialingAPI.startCampaignEngine(engineCampaignId)
+      if (action === 'stop') await advancedDialingAPI.stopCampaignEngine(engineCampaignId)
+      if (action === 'tick') await advancedDialingAPI.runEngineTick(engineCampaignId)
+      await Promise.all([engineQuery.refetch(), metricsQuery.refetch()])
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : `Failed to ${action} engine`)
+    } finally {
+      setEngineBusy(false)
+    }
+  }
+
   const refreshMetrics = async () => {
     setPreviewError('')
-    await metricsQuery.refetch()
+    await Promise.all([metricsQuery.refetch(), engineQuery.refetch()])
   }
 
   return (
-    <div className="ptdt-page">
-      <div className="ptdt-page-header">
+    <div className="ptdt-page ptdt-pro-page">
+      <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
-            <Sparkles size={12} /> Phase 6 Analytics
+            <Sparkles size={12} /> Predictive / Progressive Engine
           </div>
           <h1 className="ptdt-page-title">
             Advanced <span className="gradient-brand-text">Dialing Analytics</span>
           </h1>
           <p className="ptdt-page-desc">
-            Baseline dialing metrics, predictive pacing preview, and abandonment guardrail simulation for Admin/Supervisor review.
+            Predictive pacing, progressive dialing, retry visibility, DNC guardrails, and live campaign engine control for Admin/Supervisor review.
           </p>
         </div>
         <div className="ptdt-toolbar">
-          <span className="ptdt-chip">
-            <ShieldAlert size={13} /> Preview only
-          </span>
-          <button className="ptdt-action-btn" type="button" onClick={() => void refreshMetrics()} disabled={metricsQuery.isFetching}>
-            <RefreshCw size={14} /> {metricsQuery.isFetching ? 'Refreshing...' : 'Refresh'}
+          <span className="ptdt-chip"><ShieldAlert size={13} /> Engine guarded</span>
+          <button className="ptdt-action-btn" type="button" onClick={() => void refreshMetrics()} disabled={metricsQuery.isFetching || engineQuery.isFetching}>
+            <RefreshCw size={14} /> {metricsQuery.isFetching || engineQuery.isFetching ? 'Refreshing...' : 'Refresh'}
           </button>
           <button className="btn-brand" type="button" onClick={() => void preview()} disabled={previewing}>
             <Zap size={14} /> {previewing ? 'Running...' : 'Run Preview'}
@@ -180,25 +244,53 @@ export default function AdvancedDialingAnalytics() {
         </div>
       )}
 
-      {!error && metricsQuery.isFetching && metrics && (
-        <div className="ptdt-card" style={{ padding: 12, marginBottom: 16, color: 'var(--text-3)', borderColor: 'var(--border)' }}>
-          <RefreshCw size={14} /> Showing cached analytics while refreshing in the background.
-        </div>
-      )}
-
       {loading ? (
-        <div className="ptdt-card" style={{ padding: 22, color: 'var(--text-3)' }}>
-          Loading advanced dialing metrics...
-        </div>
+        <div className="ptdt-card" style={{ padding: 22, color: 'var(--text-3)' }}>Loading advanced dialing metrics...</div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 18 }}>
-            {cards.map((card) => (
-              <MetricCard key={card.label} {...card} />
-            ))}
+          <div className="ptdt-pro-kpis" style={{ marginBottom: 18 }}>
+            {cards.map(card => <MetricCard key={card.label} {...card} />)}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, alignItems: 'start' }}>
+          <section className="ptdt-card" style={{ padding: 18, marginBottom: 18 }}>
+            <SectionTitle icon={<Zap size={16} />} title="Live Campaign Engine" subtitle="Start/stop guarded predictive or progressive dialing for one campaign." />
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 260px) minmax(0, 1fr)', gap: 14, alignItems: 'end' }}>
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Campaign ID</span>
+                <input className="ptdt-input" type="number" min={1} value={engineCampaignId} onChange={event => setCampaignId(event.target.value)} />
+              </label>
+              <div className="ptdt-toolbar" style={{ justifyContent: 'flex-start' }}>
+                <button className="btn-brand" type="button" onClick={() => void engineAction('start')} disabled={engineBusy}>
+                  <Play size={14} /> Start Engine
+                </button>
+                <button className="ptdt-action-btn danger" type="button" onClick={() => void engineAction('stop')} disabled={engineBusy}>
+                  <Square size={14} /> Stop
+                </button>
+                <button className="ptdt-action-btn" type="button" onClick={() => void engineAction('tick')} disabled={engineBusy}>
+                  <RefreshCw size={14} /> Run Tick
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginTop: 16 }}>
+              <MiniStat label="Running" value={engineStatus?.running ? 'YES' : 'NO'} />
+              <MiniStat label="Mode" value={engineStatus?.mode || '-'} />
+              <MiniStat label="Ready Agents" value={engineStatus?.readyAgents ?? 0} />
+              <MiniStat label="Active Calls" value={engineStatus?.activeCalls ?? 0} />
+              <MiniStat label="Dial Slots" value={engineStatus?.availableDialSlots ?? 0} />
+              <MiniStat label="Answer Rate" value={fmtPercent(engineStatus?.answerRate)} />
+            </div>
+
+            <div style={{ marginTop: 14 }}>
+              {engineStatus?.guardrails?.safe ? (
+                <div className="badge badge-answered"><CheckCircle2 size={13} /> Engine safe</div>
+              ) : (
+                <div className="badge badge-pending"><AlertTriangle size={13} /> {(engineStatus?.guardrails?.reasons || ['Awaiting status']).join(' · ')}</div>
+              )}
+            </div>
+          </section>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, 0.72fr)', gap: 16, alignItems: 'start' }}>
             <section className="ptdt-card" style={{ padding: 18 }}>
               <SectionTitle icon={<BarChart3 size={16} />} title="Baseline Metrics" subtitle={`Generated ${fmtDate(metrics?.generatedAt)}`} />
               <BaselineMetricsPanel metrics={metrics} />
@@ -206,7 +298,7 @@ export default function AdvancedDialingAnalytics() {
 
             <div style={{ display: 'grid', gap: 16 }}>
               <section className="ptdt-card" style={{ padding: 18 }}>
-                <SectionTitle icon={<Zap size={16} />} title="Predictive V2 Preview" subtitle="Not connected to live scheduler." />
+                <SectionTitle icon={<Zap size={16} />} title="Predictive Pacing Preview" subtitle="Simulation + live engine inputs." />
                 {pacing ? (
                   <>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 12 }}>
@@ -215,71 +307,44 @@ export default function AdvancedDialingAnalytics() {
                     </div>
                     <JsonBlock data={pacing} compact />
                   </>
-                ) : (
-                  <EmptyState text="Run preview to calculate conservative predictive pacing." />
-                )}
+                ) : <EmptyState text="Run preview to calculate conservative predictive pacing." />}
               </section>
 
               <section className="ptdt-card" style={{ padding: 18 }}>
-                <SectionTitle icon={<ShieldAlert size={16} />} title="Abandonment Guardrails" subtitle="Simulation only." />
+                <SectionTitle icon={<ShieldAlert size={16} />} title="Guardrails" subtitle="Abandonment, DNC, retries, and runtime checks." />
                 {guardrails ? (
                   <>
-                    <div className={guardrails.safe ? 'badge badge-answered' : 'badge badge-noanswer'} style={{ width: 'fit-content', marginBottom: 12 }}>
-                      {guardrails.safe ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
-                      {guardrails.safe ? 'Safe to preview' : 'Should pause'}
+                    <div className={guardrails.safe ? 'badge badge-answered' : 'badge badge-busy'} style={{ marginBottom: 12 }}>
+                      {guardrails.safe ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
+                      {guardrails.safe ? 'Safe' : 'Action needed'}
                     </div>
                     <JsonBlock data={guardrails} compact />
                   </>
-                ) : (
-                  <EmptyState text="Run preview to inspect guardrail output." />
-                )}
+                ) : <EmptyState text="Run preview to evaluate guardrails." />}
               </section>
             </div>
           </div>
 
-          {metrics?.note && (
-            <div className="ptdt-card" style={{ padding: 14, marginTop: 16, color: 'var(--text-3)', lineHeight: 1.6 }}>
-              {metrics.note}
-            </div>
-          )}
+          <section className="ptdt-card" style={{ padding: 18, marginTop: 16 }}>
+            <SectionTitle icon={<Activity size={16} />} title="Recent Dialing Sample" subtitle="Latest records used for pacing visibility." />
+            <RecentCallsTable calls={metrics?.recentCalls || []} />
+          </section>
         </>
       )}
     </div>
   )
 }
 
-function PhoneIcon() {
-  return <Activity size={18} />
-}
-
-function MetricCard({
-  label,
-  value,
-  sub,
-  icon,
-  color,
-}: {
-  label: string
-  value: string | number
-  sub: string
-  icon: ReactNode
-  color: string
-}) {
+function MetricCard({ label, value, sub, icon, color }: { label: string; value: ReactNode; sub: string; icon: ReactNode; color: string }) {
   return (
-    <div className="ptdt-card" style={{ padding: 18 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-        <div>
-          <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 850 }}>
-            {label}
-          </div>
-          <div className="display" style={{ marginTop: 8, fontSize: 28, fontWeight: 950, color }}>
-            {value}
-          </div>
-          <div style={{ marginTop: 5, fontSize: 12, color: 'var(--text-3)' }}>{sub}</div>
-        </div>
-        <div style={{ width: 38, height: 38, borderRadius: 14, display: 'grid', placeItems: 'center', color, background: `${color}18`, border: `1px solid ${color}44` }}>
-          {icon}
-        </div>
+    <div className="ptdt-card" style={{ padding: 16, display: 'flex', gap: 14, alignItems: 'center' }}>
+      <div style={{ width: 44, height: 44, borderRadius: 16, display: 'grid', placeItems: 'center', color, border: `1px solid ${color}33`, background: `${color}12` }}>
+        {icon}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
+        <div className="display" style={{ fontSize: 28, marginTop: 2 }}>{value}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{sub}</div>
       </div>
     </div>
   )
@@ -287,23 +352,21 @@ function MetricCard({
 
 function SectionTitle({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-      <div style={{ width: 34, height: 34, borderRadius: 12, display: 'grid', placeItems: 'center', color: 'var(--pink)', background: 'rgba(251,11,140,0.10)', border: '1px solid rgba(251,11,140,0.22)' }}>
-        {icon}
-      </div>
+    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 14 }}>
+      <div style={{ width: 30, height: 30, borderRadius: 12, display: 'grid', placeItems: 'center', color: 'var(--pink)', background: 'rgba(251,11,140,0.10)', border: '1px solid rgba(251,11,140,0.22)' }}>{icon}</div>
       <div>
-        <div style={{ fontWeight: 900, color: 'var(--text)', fontSize: 15 }}>{title}</div>
-        <div style={{ color: 'var(--text-3)', fontSize: 11.5, marginTop: 2 }}>{subtitle}</div>
+        <h2 style={{ fontSize: 18, margin: 0 }}>{title}</h2>
+        <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--text-3)' }}>{subtitle}</p>
       </div>
     </div>
   )
 }
 
-function MiniStat({ label, value }: { label: string; value: string | number }) {
+function MiniStat({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div style={{ padding: '10px 11px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
-      <div className="mono" style={{ color: 'var(--text-3)', fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
-      <div style={{ color: 'var(--text)', fontWeight: 950, fontSize: 20, marginTop: 4 }}>{value}</div>
+    <div style={{ border: '1px solid var(--border)', borderRadius: 14, padding: 12, background: 'var(--surface)' }}>
+      <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
+      <div className="display" style={{ fontSize: 22, marginTop: 4 }}>{value}</div>
     </div>
   )
 }
@@ -311,123 +374,54 @@ function MiniStat({ label, value }: { label: string; value: string | number }) {
 function BaselineMetricsPanel({ metrics }: { metrics: DialingMetrics | null }) {
   const totals = metrics?.totals || {}
   const rates = metrics?.rates || {}
-  const recentCalls = metrics?.recentCalls || []
-  const totalRows: Array<[string, string | number]> = [
-    ['Total calls', totals.totalCalls || 0],
-    ['Completed calls', totals.completedCalls || 0],
-    ['Answered calls', totals.answeredCalls || 0],
-    ['Callback calls', totals.callbackCalls || 0],
-    ['DNC calls', totals.dncCalls || 0],
-  ]
-
-  const rateRows: Array<[string, string | number]> = [
-    ['Answer rate', fmtPercent(rates.answerRate)],
-    ['Callback rate', fmtPercent(rates.callbackRate)],
-  ]
-
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-        <MetricTable title="Call Totals" rows={totalRows} />
-        <MetricTable title="Conversion Rates" rows={rateRows} />
+    <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+        <MiniStat label="Completed" value={totals.completedCalls || 0} />
+        <MiniStat label="Answered" value={totals.answeredCalls || 0} />
+        <MiniStat label="Callbacks" value={totals.callbackCalls || 0} />
+        <MiniStat label="DNC" value={totals.dncCalls || 0} />
       </div>
-
-      <div style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', background: 'var(--bg-glass)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '11px 13px', borderBottom: '1px solid var(--border)' }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text)' }}>Recent Call Sample</div>
-            <div style={{ color: 'var(--text-3)', fontSize: 11, marginTop: 2 }}>Latest calls used for this baseline snapshot.</div>
-          </div>
-          <span className="ptdt-chip">{recentCalls.length} rows</span>
-        </div>
-
-        {recentCalls.length === 0 ? (
-          <EmptyState text="No recent call sample available." />
-        ) : (
-          <div style={{ overflow: 'auto', maxHeight: 360 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
-              <thead>
-                <tr>
-                  {['Call', 'Campaign', 'Agent', 'Status', 'Disposition', 'Duration', 'Started'].map((heading) => (
-                    <th key={heading} style={tableHeadStyle}>{heading}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {recentCalls.map((call, index) => (
-                  <tr key={call.id || index}>
-                    <td style={tableCellStyle}>#{call.id || '-'}</td>
-                    <td style={tableCellStyle}>{call.campaignId || '-'}</td>
-                    <td style={tableCellStyle}>{call.agentId || '-'}</td>
-                    <td style={tableCellStyle}><StatusPill value={call.status || 'UNKNOWN'} /></td>
-                    <td style={tableCellStyle}>{call.disposition || '-'}</td>
-                    <td style={tableCellStyle}>{typeof call.duration === 'number' ? `${call.duration}s` : '-'}</td>
-                    <td style={tableCellStyle}>{fmtDate(call.startedAt || undefined)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <JsonBlock data={{ rates, note: metrics?.note }} compact />
     </div>
   )
 }
 
-function MetricTable({ title, rows }: { title: string; rows: Array<[string, string | number]> }) {
+function RecentCallsTable({ calls }: { calls: RecentDialingCall[] }) {
+  if (calls.length === 0) return <EmptyState text="No recent calls available." />
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', background: 'var(--bg-glass)' }}>
-      <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 900, color: 'var(--text)' }}>
-        {title}
-      </div>
-      {rows.map(([label, value]) => (
-        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
-          <span style={{ color: 'var(--text-3)', fontSize: 12 }}>{label}</span>
-          <span className="mono" style={{ color: 'var(--text)', fontWeight: 900, fontSize: 12 }}>{value}</span>
-        </div>
-      ))}
+    <div style={{ overflowX: 'auto' }}>
+      <table className="ptdt-table" style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid var(--border)' }}>
+            <th style={{ textAlign: 'left', padding: '10px 8px' }}>Call</th>
+            <th style={{ textAlign: 'left', padding: '10px 8px' }}>Campaign</th>
+            <th style={{ textAlign: 'left', padding: '10px 8px' }}>Agent</th>
+            <th style={{ textAlign: 'left', padding: '10px 8px' }}>Status</th>
+            <th style={{ textAlign: 'left', padding: '10px 8px' }}>Disposition</th>
+            <th style={{ textAlign: 'left', padding: '10px 8px' }}>Started</th>
+          </tr>
+        </thead>
+        <tbody>
+          {calls.slice(0, 20).map(call => (
+            <tr key={call.id} className="table-row" style={{ borderBottom: '1px solid var(--border)' }}>
+              <td style={{ padding: '10px 8px', fontWeight: 800 }}>#{call.id}</td>
+              <td style={{ padding: '10px 8px' }}>{call.campaignId || '-'}</td>
+              <td style={{ padding: '10px 8px' }}>{call.agentId || '-'}</td>
+              <td style={{ padding: '10px 8px' }}>{call.status || '-'}</td>
+              <td style={{ padding: '10px 8px' }}>{call.disposition || '-'}</td>
+              <td style={{ padding: '10px 8px' }}>{fmtDate(call.startedAt || undefined)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
-}
-
-function StatusPill({ value }: { value: string }) {
-  const normalized = value.toUpperCase()
-  const positive = normalized === 'COMPLETED' || normalized === 'ANSWERED'
-  return (
-    <span className={positive ? 'badge badge-answered' : 'badge badge-noanswer'}>
-      {normalized}
-    </span>
-  )
-}
-
-const tableHeadStyle = {
-  padding: '10px 11px',
-  color: 'var(--text-3)',
-  fontSize: 10,
-  fontWeight: 900,
-  letterSpacing: 1,
-  textTransform: 'uppercase' as const,
-  textAlign: 'left' as const,
-  borderBottom: '1px solid var(--border)',
-}
-
-const tableCellStyle = {
-  padding: '10px 11px',
-  color: 'var(--text-2)',
-  fontSize: 12,
-  borderBottom: '1px solid var(--border)',
-  whiteSpace: 'nowrap' as const,
 }
 
 function JsonBlock({ data, compact = false }: { data: unknown; compact?: boolean }) {
   return (
-    <pre
-      className="ptdt-raw-json"
-      style={{
-        maxHeight: compact ? 260 : 520,
-        margin: 0,
-      }}
-    >
+    <pre className="ptdt-raw-json" style={{ maxHeight: compact ? 220 : 560, borderRadius: 14, padding: 12, background: 'var(--bg-2)', border: '1px solid var(--border)' }}>
       {JSON.stringify(data, null, 2)}
     </pre>
   )
@@ -435,7 +429,7 @@ function JsonBlock({ data, compact = false }: { data: unknown; compact?: boolean
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div style={{ padding: '18px 0', color: 'var(--text-3)', fontSize: 12.5 }}>
+    <div style={{ border: '1px dashed var(--border)', borderRadius: 14, padding: 16, color: 'var(--text-3)', fontSize: 13 }}>
       {text}
     </div>
   )

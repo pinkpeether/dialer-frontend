@@ -127,7 +127,7 @@ Phase 3 is for premium features, not launch-critical features.
 | IP whitelisting | Restrict production access by IP | Medium | TODO |
 | Advanced audit exports | Export audit trail | Medium | TODO |
 | Backup and restore UI | Admin database backup controls | Medium | TODO |
-| Billing overview | Twilio cost/credits/call spend | Low/Medium | TODO |
+| Billing overview | carrier cost/credits/call spend | Low/Medium | TODO |
 | Advanced role permissions | Granular permission matrix | Medium | TODO |
 
 ### Acceptance Criteria

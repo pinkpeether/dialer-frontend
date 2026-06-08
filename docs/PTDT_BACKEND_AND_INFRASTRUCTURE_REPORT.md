@@ -2,13 +2,13 @@
 
 Date: May 23, 2026  
 Repositories: `dialer-backend`, `dialer-frontend` integration points  
-Scope: Backend API sync, Prisma/schema work, call persistence, callbacks, reports, DNC, disposition plumbing, Railway build setup, PM2 local backend, FreePBX, Asterisk, SIP trunking, and Twilio Elastic SIP Trunking.
+Scope: Backend API sync, Prisma/schema work, call persistence, callbacks, reports, DNC, disposition plumbing, Railway build setup, PM2 local backend, FreePBX, Asterisk, SIP trunking, and SIP trunking.
 
 ## Executive Summary
 
 The backend and infrastructure work converted PTDT-Dialer from a mostly frontend/SIP-console workflow into a backend-synced CRM dialer stack. The backend gained endpoints and schema support for DNC management, callbacks, reports, self-profile updates, call logging, SIP disposition handoff, and frontend contract alignment.
 
-The infrastructure work culminated in a successful outbound PSTN call from the PTDT-Dialer through FreePBX and Twilio Elastic SIP Trunking to a verified US number. The final blocker was not frontend code or Twilio credentials; it was FreePBX VM network routing. The VM had its default gateway incorrectly set to its own IP address. Once the gateway and DNS were corrected, the Twilio SIP trunk domain resolved and the first PSTN call succeeded.
+The infrastructure work culminated in a successful outbound PSTN call from the PTDT-Dialer through FreePBX and SIP trunking to a verified US number. The final blocker was not frontend code or provider credentials; it was FreePBX VM network routing. The VM had its default gateway incorrectly set to its own IP address. Once the gateway and DNS were corrected, the provider SIP trunk domain resolved and the first PSTN call succeeded.
 
 ## Starting Point
 
@@ -227,7 +227,7 @@ Returned:
 
 Root route returned expected `Route not found`, which is acceptable because the API health route is the valid check.
 
-## FreePBX / Asterisk / Twilio PSTN Work
+## FreePBX / Asterisk / provider PSTN Work
 
 ### Architecture
 
@@ -239,7 +239,7 @@ PTDT-Dialer Electron/Browser
   -> FreePBX extension 1001
   -> FreePBX outbound route
   -> PJSIP trunk ptdt-dialer
-  -> Twilio Elastic SIP Trunk
+  -> SIP trunk provider
   -> PSTN verified US number
 ```
 
@@ -249,14 +249,14 @@ Extension `1001`:
 
 - Browser/PTDT-Dialer SIP login.
 - Used for PTDT-Dialer to register with FreePBX.
-- Not the Twilio trunk credential.
+- Not the SIP trunk credential.
 
-Twilio trunk credential:
+SIP trunk credential:
 
-- Used by FreePBX to authenticate outbound calls to Twilio.
+- Used by FreePBX to authenticate outbound calls to provider.
 - Belongs in FreePBX PJSIP trunk auth fields.
 
-Twilio number:
+provider outbound DID:
 
 - Trial number/caller ID: `+12405404427`
 - Verified destination used during testing included `+15512943079`.
@@ -266,7 +266,7 @@ Twilio number:
 Route matched correctly:
 
 ```text
-_ROUTENAME=twilio-outbound
+_ROUTENAME=sip-outbound
 DIAL_NUMBER=+15512943079
 OUTNUM=+15512943079
 TRUNKCIDOVERRIDE=+12405404427
@@ -275,10 +275,10 @@ TRUNKCIDOVERRIDE=+12405404427
 This confirmed:
 
 - Dialed 10-digit number was rewritten to E.164.
-- Outbound route selected the Twilio trunk.
+- Outbound route selected the SIP trunk.
 - Caller ID was applied.
 
-### Twilio Elastic SIP Trunk
+### SIP trunk provider
 
 Trunk:
 
@@ -289,13 +289,13 @@ PTDT FreePBX Trunk
 Termination SIP URI:
 
 ```text
-ptdt-freepbx.pstn.twilio.com
+<provider-sip-domain>
 ```
 
 Important distinction:
 
-- `ptdt-freepbx.pstn.twilio.com` is the Elastic SIP Trunk termination URI for FreePBX outbound calls.
-- Other SIP domains seen in Twilio UI may relate to Programmable Voice/SIP Domain and should not be confused with the trunk termination URI.
+- `<provider-sip-domain>` is the Elastic SIP Trunk termination URI for FreePBX outbound calls.
+- Other SIP domains seen in provider UI may relate to Programmable Voice/SIP Domain and should not be confused with the trunk termination URI.
 
 ### FreePBX Trunk Settings
 
@@ -304,21 +304,21 @@ General expected settings:
 ```text
 Authentication: Outbound
 Registration: None
-SIP Server: ptdt-freepbx.pstn.twilio.com
+SIP Server: <provider-sip-domain>
 SIP Server Port: 5060
 Transport: 0.0.0.0-udp
 Context: from-pstn
-Username/Auth Username: Twilio credential username
-Secret: Twilio credential password
+Username/Auth Username: provider credential username
+Secret: provider credential password
 ```
 
 Advanced expected settings:
 
 ```text
-From Domain: ptdt-freepbx.pstn.twilio.com
+From Domain: <provider-sip-domain>
 From User: +12405404427
-Client URI: sip:<twilio-credential-username>@ptdt-freepbx.pstn.twilio.com
-Server URI: sip:ptdt-freepbx.pstn.twilio.com
+Client URI: sip:<provider-credential-username>@<provider-sip-domain>
+Server URI: sip:<provider-sip-domain>
 Rewrite Contact: No
 Qualify Frequency: 0
 ```
@@ -345,11 +345,11 @@ Resolution:
 - FreePBX was launched.
 - SIP registration succeeded.
 
-### Problem 2: Twilio Calls Did Not Ring
+### Problem 2: Provider SIP Calls Did Not Ring
 
 Initial suspicion included:
 
-- Twilio trial limitation.
+- provider trial limitation.
 - Caller ID.
 - Trunk authentication.
 - SIP URI.
@@ -379,15 +379,15 @@ DIALSTATUS = CONGESTION
 HANGUPCAUSE = 34
 ```
 
-This showed FreePBX was failing before a useful Twilio response could be captured.
+This showed FreePBX was failing before a useful provider response could be captured.
 
-### Problem 4: Asterisk Could Not Resolve Twilio Hostname
+### Problem 4: Asterisk Could Not Resolve provider Hostname
 
 Final useful error:
 
 ```text
-getaddrinfo("ptdt-freepbx.pstn.twilio.com", "(null)", ...): Name or service not known
-Identify 'ptdt-dialer' failed when adding resolution results of 'ptdt-freepbx.pstn.twilio.com'
+getaddrinfo("<provider-sip-domain>", "(null)", ...): Name or service not known
+Identify 'ptdt-dialer' failed when adding resolution results of '<provider-sip-domain>'
 Could not create an object of type 'identify' with id 'ptdt-dialer'
 ```
 
@@ -405,7 +405,7 @@ DNS was set to:
 But:
 
 ```text
-nslookup ptdt-freepbx.pstn.twilio.com
+nslookup <provider-sip-domain>
 ;; connection timed out; no servers could be reached
 ping google.com
 Name or service not known
@@ -441,10 +441,10 @@ Verification:
 default via 192.168.0.1 dev eth0
 ping 1.1.1.1 OK
 nslookup google.com OK
-nslookup ptdt-freepbx.pstn.twilio.com OK
+nslookup <provider-sip-domain> OK
 ```
 
-Twilio resolved to:
+Provider SIP domain resolved to:
 
 ```text
 54.172.60.0
@@ -464,8 +464,8 @@ This confirmed:
 - Outbound route transforms dialed number correctly.
 - Trunk selection works.
 - Caller ID is applied.
-- FreePBX can resolve and reach Twilio.
-- Twilio Elastic SIP Trunk can complete the outbound call to the verified US number.
+- FreePBX can resolve and reach provider.
+- SIP trunk provider can complete the outbound call to the verified US number.
 
 ## Commands Worth Keeping
 
@@ -479,7 +479,7 @@ nmcli dev show eth0 | grep -E 'IP4.ADDRESS|IP4.GATEWAY|IP4.DNS'
 ping -c 2 192.168.0.1
 ping -c 2 1.1.1.1
 nslookup google.com
-nslookup ptdt-freepbx.pstn.twilio.com
+nslookup <provider-sip-domain>
 ```
 
 FreePBX static network fix:
@@ -527,17 +527,17 @@ Backend/API status:
 - Non-callback disposition changes cancel stale pending/rescheduled callbacks and clear contact callback dates.
 - `CALLBACK` disposition requires a callback datetime at API validation level.
 
-FreePBX/Twilio status:
+FreePBX/SIP trunk status:
 
 - FreePBX static IP configured.
 - Gateway corrected.
 - DNS corrected.
-- Twilio trunk domain resolves.
+- SIP trunk domain resolves.
 - Outbound PSTN call succeeded to a verified US number.
 
 The stack is now confirmed end-to-end from frontend SIP call initiation through backend-supported CRM workflows and real PSTN outbound calling.
 
 ## Report Verification Notes
 
-- FreePBX gateway, DNS, Twilio trunk, PM2 runtime, and Railway behavior are operational environment findings. They were verified through live commands/logs and successful call testing, not solely through repository source code.
-- Repository source code verifies the API routes, Prisma schema, frontend screens, and client/server contracts. Live telephony success also depends on external FreePBX/Twilio/network configuration remaining intact.
+- FreePBX gateway, DNS, SIP trunk, PM2 runtime, and Railway behavior are operational environment findings. They were verified through live commands/logs and successful call testing, not solely through repository source code.
+- Repository source code verifies the API routes, Prisma schema, frontend screens, and client/server contracts. Live telephony success also depends on external FreePBX/SIP trunk/network configuration remaining intact.
