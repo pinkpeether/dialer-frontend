@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { BadgeDollarSign, BellRing, CreditCard, Plus, RefreshCw, ShieldCheck, WalletCards } from 'lucide-react'
 import { commercialControlApi, type CommercialAccount, type CommercialAddonCode, type CommercialCatalog, type CommercialPlanCode, type CommercialSummary, type PaymentRequest } from '../api/commercialControl.api'
 
@@ -15,14 +15,46 @@ const stateColor = (state?: string) => {
 }
 
 const cardStyle = { padding: 18, borderRadius: 18 } as const
+const CACHE_KEY = 'ptdt-commercial-control:last-good'
+
+type CommercialControlCache = {
+  savedAt: string
+  selectedAccountId?: number
+  catalog: CommercialCatalog | null
+  summary: CommercialSummary | null
+  accounts: CommercialAccount[]
+  paymentRequests: PaymentRequest[]
+}
+
+const readCache = (): CommercialControlCache | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY)
+    return raw ? JSON.parse(raw) as CommercialControlCache : null
+  } catch {
+    return null
+  }
+}
+
+const writeCache = (cache: Omit<CommercialControlCache, 'savedAt'>) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cache, savedAt: new Date().toISOString() }))
+  } catch {
+    // Storage is best-effort; the backend remains the source of truth.
+  }
+}
 
 export default function CommercialControl() {
-  const [summary, setSummary] = useState<CommercialSummary | null>(null)
-  const [catalog, setCatalog] = useState<CommercialCatalog | null>(null)
-  const [accounts, setAccounts] = useState<CommercialAccount[]>([])
-  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([])
-  const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(undefined)
-  const [loading, setLoading] = useState(true)
+  const cached = useMemo(() => readCache(), [])
+  const [summary, setSummary] = useState<CommercialSummary | null>(cached?.summary ?? null)
+  const [catalog, setCatalog] = useState<CommercialCatalog | null>(cached?.catalog ?? null)
+  const [accounts, setAccounts] = useState<CommercialAccount[]>(cached?.accounts ?? [])
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>(cached?.paymentRequests ?? [])
+  const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(cached?.selectedAccountId)
+  const [loading, setLoading] = useState(!cached?.summary)
+  const [refreshing, setRefreshing] = useState(Boolean(cached?.summary))
+  const hasVisibleDataRef = useRef(Boolean(cached?.summary))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
@@ -49,8 +81,12 @@ export default function CommercialControl() {
     }
   }, [])
 
-  const loadData = useCallback(async (accountId?: number) => {
-    setLoading(true)
+  const loadData = useCallback(async (accountId?: number, options: { silent?: boolean } = {}) => {
+    if (options.silent || hasVisibleDataRef.current) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
     setError('')
     setWarning('')
     setMessage('')
@@ -64,15 +100,23 @@ export default function CommercialControl() {
         commercialControlApi.listAccounts(),
         commercialControlApi.listPaymentRequests(resolvedAccountId),
       ])
-      setCatalog(catalogRes)
-      setSummary(summaryRes)
-      setAccounts(
+      const nextAccounts =
         accountsResult.status === 'fulfilled'
           ? accountsResult.value
-          : [summaryRes.account],
-      )
-      setPaymentRequests(requestsResult.status === 'fulfilled' ? requestsResult.value : [])
+          : [summaryRes.account]
+      const nextPaymentRequests = requestsResult.status === 'fulfilled' ? requestsResult.value : []
+      setCatalog(catalogRes)
+      setSummary(summaryRes)
+      setAccounts(nextAccounts)
+      setPaymentRequests(nextPaymentRequests)
       setSelectedAccountId(resolvedAccountId)
+      writeCache({
+        selectedAccountId: resolvedAccountId,
+        catalog: catalogRes,
+        summary: summaryRes,
+        accounts: nextAccounts,
+        paymentRequests: nextPaymentRequests,
+      })
       if (accountsResult.status === 'rejected') {
         const detail = accountsResult.reason instanceof Error ? accountsResult.reason.message : 'Unknown error'
         setWarning(`Accounts list could not be refreshed. Showing current account only. ${detail}`)
@@ -86,13 +130,23 @@ export default function CommercialControl() {
         hardStopEnabled: Boolean(summaryRes.account.hardStopEnabled),
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load commercial control data')
+      const detail = err instanceof Error ? err.message : 'Failed to load commercial control data'
+      if (hasVisibleDataRef.current) {
+        setWarning(`Showing cached commercial control data. ${detail}`)
+      } else {
+        setError(detail)
+      }
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [runStep])
 
-  useEffect(() => { void loadData() }, [loadData])
+  useEffect(() => { void loadData(cached?.selectedAccountId, { silent: Boolean(cached?.summary) }) }, [cached?.selectedAccountId, cached?.summary, loadData])
+
+  useEffect(() => {
+    hasVisibleDataRef.current = Boolean(summary)
+  }, [summary])
 
   const withSave = async (fn: () => Promise<void>, successMessage: string) => {
     setSaving(true)
@@ -158,7 +212,7 @@ export default function CommercialControl() {
       .then(updatedAddon => {
         setSummary(current => {
           if (!current) return current
-          return {
+          const nextSummary = {
             ...current,
             addons: current.addons.map(item =>
               item.addon.code === addonCode
@@ -180,6 +234,14 @@ export default function CommercialControl() {
                 }
               : current.callerIdControl,
           }
+          writeCache({
+            selectedAccountId: nextSummary.account.id,
+            catalog,
+            summary: nextSummary,
+            accounts,
+            paymentRequests,
+          })
+          return nextSummary
         })
         setMessage(`${addonCode.replace(/_/g, ' ')} set to ${nextStatus}.`)
       })
@@ -202,7 +264,8 @@ export default function CommercialControl() {
           <p className="ptdt-page-desc">Control customer plan, manual payment verification, wallet balance, low-balance alerts, and paid add-ons like Dynamic Caller ID — without adding card/crypto payment gateways.</p>
         </div>
         <div className="ptdt-toolbar">
-          <button type="button" className="ptdt-action-btn" onClick={() => void loadData(currentAccountId)} disabled={loading}><RefreshCw size={14} /> Refresh</button>
+          {refreshing && <span className="ptdt-chip">Refreshing...</span>}
+          <button type="button" className="ptdt-action-btn" onClick={() => void loadData(currentAccountId)} disabled={loading || refreshing}><RefreshCw size={14} /> Refresh</button>
           <button type="button" className="btn-brand" onClick={handleSeed} disabled={saving} style={{ minHeight: 38, fontSize: 12 }}><ShieldCheck size={14} /> Seed Catalog</button>
         </div>
       </div>
