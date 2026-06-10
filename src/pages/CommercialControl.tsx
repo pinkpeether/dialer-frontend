@@ -150,9 +150,43 @@ export default function CommercialControl() {
   const handleAddonToggle = (addonCode: CommercialAddonCode) => {
     if (!currentAccountId) return
     const nextStatus = activeAddonCodes.has(addonCode) ? 'INACTIVE' : 'ACTIVE'
-    void withSave(async () => {
-      await commercialControlApi.setAddonStatus(currentAccountId, addonCode, { status: nextStatus, notes: `Set from Commercial Control UI` })
-    }, `${addonCode.replace(/_/g, ' ')} set to ${nextStatus}.`)
+    setSaving(true)
+    setError('')
+    setMessage('')
+    void commercialControlApi
+      .setAddonStatus(currentAccountId, addonCode, { status: nextStatus, notes: `Set from Commercial Control UI` })
+      .then(updatedAddon => {
+        setSummary(current => {
+          if (!current) return current
+          return {
+            ...current,
+            addons: current.addons.map(item =>
+              item.addon.code === addonCode
+                ? {
+                    ...item,
+                    id: typeof updatedAddon?.id === 'number' ? updatedAddon.id : item.id,
+                    status: updatedAddon?.status || nextStatus,
+                    priceOverride: updatedAddon?.priceOverride ?? item.priceOverride,
+                    startsAt: updatedAddon?.startsAt ?? item.startsAt,
+                    endsAt: updatedAddon?.endsAt ?? item.endsAt,
+                    notes: updatedAddon?.notes ?? item.notes,
+                  }
+                : item,
+            ),
+            callerIdControl: addonCode === 'DYNAMIC_CALLER_ID'
+              ? {
+                  ...current.callerIdControl,
+                  dynamicCallerIdEnabled: nextStatus === 'ACTIVE' && current.callerIdControl.activeVerifiedCallerIds > 0,
+                }
+              : current.callerIdControl,
+          }
+        })
+        setMessage(`${addonCode.replace(/_/g, ' ')} set to ${nextStatus}.`)
+      })
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Add-on update failed')
+      })
+      .finally(() => setSaving(false))
   }
 
   const handlePaymentStatus = (request: PaymentRequest, status: PaymentRequest['status']) => {

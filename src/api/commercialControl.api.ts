@@ -50,6 +50,7 @@ export type CommercialAddon = {
 }
 
 export type CommercialAddonStatus = {
+  id?: number
   addon: CommercialAddon
   status: CommercialStatus
   startsAt?: string | null
