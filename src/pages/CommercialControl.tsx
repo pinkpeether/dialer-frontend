@@ -25,6 +25,7 @@ export default function CommercialControl() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [warning, setWarning] = useState('')
   const [message, setMessage] = useState('')
 
   const [accountForm, setAccountForm] = useState({ name: '', code: '', email: '', phone: '', currency: 'USD' })
@@ -51,22 +52,34 @@ export default function CommercialControl() {
   const loadData = useCallback(async (accountId = currentAccountId) => {
     setLoading(true)
     setError('')
+    setWarning('')
     setMessage('')
     try {
-      const [catalogRes, accountsRes] = await Promise.all([
+      const [catalogRes, summaryRes] = await Promise.all([
         runStep('Catalog request failed', () => commercialControlApi.getCatalog()),
-        runStep('Accounts request failed', () => commercialControlApi.listAccounts()),
+        runStep('Summary request failed', () => commercialControlApi.getSummary(accountId)),
       ])
-      const fallbackAccountId = accountId || accountsRes[0]?.id
-      const [summaryRes, requestsRes] = await Promise.all([
-        runStep('Summary request failed', () => commercialControlApi.getSummary(fallbackAccountId)),
-        runStep('Payment requests request failed', () => commercialControlApi.listPaymentRequests(fallbackAccountId)),
+      const resolvedAccountId = summaryRes.account.id
+      const [accountsResult, requestsResult] = await Promise.allSettled([
+        commercialControlApi.listAccounts(),
+        commercialControlApi.listPaymentRequests(resolvedAccountId),
       ])
       setCatalog(catalogRes)
-      setAccounts(accountsRes)
       setSummary(summaryRes)
-      setPaymentRequests(requestsRes)
-      setSelectedAccountId(summaryRes.account.id)
+      setAccounts(
+        accountsResult.status === 'fulfilled'
+          ? accountsResult.value
+          : [summaryRes.account],
+      )
+      setPaymentRequests(requestsResult.status === 'fulfilled' ? requestsResult.value : [])
+      setSelectedAccountId(resolvedAccountId)
+      if (accountsResult.status === 'rejected') {
+        const detail = accountsResult.reason instanceof Error ? accountsResult.reason.message : 'Unknown error'
+        setWarning(`Accounts list could not be refreshed. Showing current account only. ${detail}`)
+      } else if (requestsResult.status === 'rejected') {
+        const detail = requestsResult.reason instanceof Error ? requestsResult.reason.message : 'Unknown error'
+        setWarning(`Payment requests could not be refreshed. ${detail}`)
+      }
       setThresholdForm({
         lowBalanceThreshold: String(summaryRes.account.lowBalanceThreshold || '10'),
         criticalBalanceThreshold: String(summaryRes.account.criticalBalanceThreshold || '3'),
@@ -161,6 +174,7 @@ export default function CommercialControl() {
       </div>
 
       {error && <div className="glass" style={{ color: 'var(--danger)', marginBottom: 14, padding: 14, borderColor: 'rgba(239,68,68,.28)' }}>{error}</div>}
+      {warning && <div className="glass" style={{ color: 'var(--orange)', marginBottom: 14, padding: 14, borderColor: 'rgba(240,185,11,.28)' }}>{warning}</div>}
       {message && <div className="glass" style={{ color: 'var(--green-2)', marginBottom: 14, padding: 14, borderColor: 'rgba(0,229,160,.28)' }}>{message}</div>}
 
       {loading && <div className="glass" style={{ ...cardStyle, color: 'var(--text-3)' }}>Loading commercial control data...</div>}
