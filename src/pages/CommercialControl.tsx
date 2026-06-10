@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { BadgeDollarSign, BellRing, CreditCard, Plus, RefreshCw, ShieldCheck, WalletCards } from 'lucide-react'
-import { commercialControlApi, type CommercialAccount, type CommercialAddonCode, type CommercialCatalog, type CommercialPlanCode, type CommercialSummary, type PaymentRequest } from '../api/commercialControl.api'
+import { commercialControlApi, type CommercialAccount, type CommercialAddonCode, type CommercialCatalog, type CommercialPlanCode, type CommercialStatus, type CommercialSummary, type PaymentRequest } from '../api/commercialControl.api'
 
 const money = (value: string | number | null | undefined, currency = 'USD') => {
   const amount = Number(value || 0)
@@ -56,6 +56,7 @@ export default function CommercialControl() {
   const [refreshing, setRefreshing] = useState(Boolean(cached?.summary))
   const hasVisibleDataRef = useRef(Boolean(cached?.summary))
   const [saving, setSaving] = useState(false)
+  const [pendingAddonCode, setPendingAddonCode] = useState<CommercialAddonCode | null>(null)
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
   const [message, setMessage] = useState('')
@@ -71,6 +72,21 @@ export default function CommercialControl() {
 
   const activePlanName = summary?.subscription?.plan?.name || 'No active plan'
   const activeAddonCodes = useMemo(() => new Set(summary?.addons.filter(item => item.status === 'ACTIVE').map(item => item.addon.code) || []), [summary])
+
+  const applyAddonState = useCallback((current: CommercialSummary, addonCode: CommercialAddonCode, status: CommercialStatus, patch?: Partial<CommercialSummary['addons'][number]>) => ({
+    ...current,
+    addons: current.addons.map(item =>
+      item.addon.code === addonCode
+        ? { ...item, ...patch, status }
+        : item,
+    ),
+    callerIdControl: addonCode === 'DYNAMIC_CALLER_ID'
+      ? {
+          ...current.callerIdControl,
+          dynamicCallerIdEnabled: status === 'ACTIVE' && current.callerIdControl.activeVerifiedCallerIds > 0,
+        }
+      : current.callerIdControl,
+  }), [])
 
   const runStep = useCallback(async <T,>(label: string, task: () => Promise<T>) => {
     try {
@@ -202,9 +218,22 @@ export default function CommercialControl() {
   }
 
   const handleAddonToggle = (addonCode: CommercialAddonCode) => {
-    if (!currentAccountId) return
+    if (!currentAccountId || pendingAddonCode) return
     const nextStatus = activeAddonCodes.has(addonCode) ? 'INACTIVE' : 'ACTIVE'
+    const previousSummary = summary
+    if (previousSummary) {
+      const optimisticSummary = applyAddonState(previousSummary, addonCode, nextStatus)
+      setSummary(optimisticSummary)
+      writeCache({
+        selectedAccountId: optimisticSummary.account.id,
+        catalog,
+        summary: optimisticSummary,
+        accounts,
+        paymentRequests,
+      })
+    }
     setSaving(true)
+    setPendingAddonCode(addonCode)
     setError('')
     setMessage('')
     void commercialControlApi
@@ -212,28 +241,13 @@ export default function CommercialControl() {
       .then(updatedAddon => {
         setSummary(current => {
           if (!current) return current
-          const nextSummary = {
-            ...current,
-            addons: current.addons.map(item =>
-              item.addon.code === addonCode
-                ? {
-                    ...item,
-                    id: typeof updatedAddon?.id === 'number' ? updatedAddon.id : item.id,
-                    status: updatedAddon?.status || nextStatus,
-                    priceOverride: updatedAddon?.priceOverride ?? item.priceOverride,
-                    startsAt: updatedAddon?.startsAt ?? item.startsAt,
-                    endsAt: updatedAddon?.endsAt ?? item.endsAt,
-                    notes: updatedAddon?.notes ?? item.notes,
-                  }
-                : item,
-            ),
-            callerIdControl: addonCode === 'DYNAMIC_CALLER_ID'
-              ? {
-                  ...current.callerIdControl,
-                  dynamicCallerIdEnabled: nextStatus === 'ACTIVE' && current.callerIdControl.activeVerifiedCallerIds > 0,
-                }
-              : current.callerIdControl,
-          }
+          const nextSummary = applyAddonState(current, addonCode, updatedAddon?.status || nextStatus, {
+            id: typeof updatedAddon?.id === 'number' ? updatedAddon.id : undefined,
+            priceOverride: updatedAddon?.priceOverride ?? undefined,
+            startsAt: updatedAddon?.startsAt ?? undefined,
+            endsAt: updatedAddon?.endsAt ?? undefined,
+            notes: updatedAddon?.notes ?? undefined,
+          })
           writeCache({
             selectedAccountId: nextSummary.account.id,
             catalog,
@@ -246,9 +260,22 @@ export default function CommercialControl() {
         setMessage(`${addonCode.replace(/_/g, ' ')} set to ${nextStatus}.`)
       })
       .catch(err => {
+        if (previousSummary) {
+          setSummary(previousSummary)
+          writeCache({
+            selectedAccountId: previousSummary.account.id,
+            catalog,
+            summary: previousSummary,
+            accounts,
+            paymentRequests,
+          })
+        }
         setError(err instanceof Error ? err.message : 'Add-on update failed')
       })
-      .finally(() => setSaving(false))
+      .finally(() => {
+        setSaving(false)
+        setPendingAddonCode(null)
+      })
   }
 
   const handlePaymentStatus = (request: PaymentRequest, status: PaymentRequest['status']) => {
@@ -363,7 +390,14 @@ export default function CommercialControl() {
                   <p style={{ color: 'var(--text-3)', fontSize: 12.5, lineHeight: 1.5 }}>{item.addon.description}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
                     <span className="ptdt-chip">{money(item.priceOverride || item.addon.monthlyFee, currentCurrency)}/mo</span>
-                    <button type="button" className={`ptdt-action-btn ${item.status === 'ACTIVE' ? 'danger' : 'active'}`} onClick={() => handleAddonToggle(item.addon.code)} disabled={saving}>{item.status === 'ACTIVE' ? 'Disable' : 'Enable'}</button>
+                    <button
+                      type="button"
+                      className={`ptdt-action-btn ${item.status === 'ACTIVE' ? 'danger' : 'active'}`}
+                      onClick={() => handleAddonToggle(item.addon.code)}
+                      disabled={pendingAddonCode === item.addon.code}
+                    >
+                      {pendingAddonCode === item.addon.code ? 'Saving...' : item.status === 'ACTIVE' ? 'Disable' : 'Enable'}
+                    </button>
                   </div>
                 </div>
               ))}
