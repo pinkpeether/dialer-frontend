@@ -17,6 +17,32 @@ const stateColor = (state?: string) => {
 const cardStyle = { padding: 18, borderRadius: 18 } as const
 const CACHE_KEY = 'ptdt-commercial-control:last-good'
 
+const switchStyle = (active: boolean, pending: boolean) => ({
+  width: 74,
+  height: 38,
+  border: active ? '1px solid rgba(0, 167, 71, .62)' : '1px solid rgba(148, 163, 184, .52)',
+  borderRadius: 999,
+  padding: 3,
+  background: active ? 'linear-gradient(135deg, #13b85f, #08a64f)' : 'linear-gradient(135deg, #f3f4f6, #d9dce2)',
+  boxShadow: active ? '0 12px 24px rgba(19, 184, 95, .22)' : 'inset 0 2px 5px rgba(15, 23, 42, .12)',
+  cursor: pending ? 'progress' : 'pointer',
+  opacity: pending ? .72 : 1,
+  transition: 'background .18s ease, border-color .18s ease, box-shadow .18s ease, opacity .18s ease',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: active ? 'flex-end' : 'flex-start',
+  flexShrink: 0,
+}) as const
+
+const switchThumbStyle = {
+  width: 30,
+  height: 30,
+  borderRadius: '50%',
+  background: '#fff',
+  boxShadow: '0 4px 10px rgba(15, 23, 42, .22)',
+  transition: 'transform .18s ease',
+} as const
+
 type CommercialControlCache = {
   savedAt: string
   selectedAccountId?: number
@@ -392,11 +418,15 @@ export default function CommercialControl() {
                     <span className="ptdt-chip">{money(item.priceOverride || item.addon.monthlyFee, currentCurrency)}/mo</span>
                     <button
                       type="button"
-                      className={`ptdt-action-btn ${item.status === 'ACTIVE' ? 'danger' : 'active'}`}
+                      role="switch"
+                      aria-checked={item.status === 'ACTIVE'}
+                      aria-label={`${item.status === 'ACTIVE' ? 'Disable' : 'Enable'} ${item.addon.name}`}
+                      title={pendingAddonCode === item.addon.code ? 'Saving...' : item.status === 'ACTIVE' ? 'Disable' : 'Enable'}
                       onClick={() => handleAddonToggle(item.addon.code)}
                       disabled={pendingAddonCode === item.addon.code}
+                      style={switchStyle(item.status === 'ACTIVE', pendingAddonCode === item.addon.code)}
                     >
-                      {pendingAddonCode === item.addon.code ? 'Saving...' : item.status === 'ACTIVE' ? 'Disable' : 'Enable'}
+                      <span style={switchThumbStyle} />
                     </button>
                   </div>
                 </div>
