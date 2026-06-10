@@ -39,19 +39,28 @@ export default function CommercialControl() {
   const activePlanName = summary?.subscription?.plan?.name || 'No active plan'
   const activeAddonCodes = useMemo(() => new Set(summary?.addons.filter(item => item.status === 'ACTIVE').map(item => item.addon.code) || []), [summary])
 
+  const runStep = useCallback(async <T,>(label: string, task: () => Promise<T>) => {
+    try {
+      return await task()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      throw new Error(`${label}: ${message}`, { cause: err })
+    }
+  }, [])
+
   const loadData = useCallback(async (accountId = currentAccountId) => {
     setLoading(true)
     setError('')
     setMessage('')
     try {
       const [catalogRes, accountsRes] = await Promise.all([
-        commercialControlApi.getCatalog(),
-        commercialControlApi.listAccounts(),
+        runStep('Catalog request failed', () => commercialControlApi.getCatalog()),
+        runStep('Accounts request failed', () => commercialControlApi.listAccounts()),
       ])
       const fallbackAccountId = accountId || accountsRes[0]?.id
       const [summaryRes, requestsRes] = await Promise.all([
-        commercialControlApi.getSummary(fallbackAccountId),
-        commercialControlApi.listPaymentRequests(fallbackAccountId),
+        runStep('Summary request failed', () => commercialControlApi.getSummary(fallbackAccountId)),
+        runStep('Payment requests request failed', () => commercialControlApi.listPaymentRequests(fallbackAccountId)),
       ])
       setCatalog(catalogRes)
       setAccounts(accountsRes)
@@ -68,7 +77,7 @@ export default function CommercialControl() {
     } finally {
       setLoading(false)
     }
-  }, [currentAccountId])
+  }, [currentAccountId, runStep])
 
   useEffect(() => { void loadData() }, [loadData])
 
