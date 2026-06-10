@@ -49,7 +49,7 @@ export default function CommercialControl() {
     }
   }, [])
 
-  const loadData = useCallback(async (accountId = currentAccountId) => {
+  const loadData = useCallback(async (accountId?: number) => {
     setLoading(true)
     setError('')
     setWarning('')
@@ -90,7 +90,7 @@ export default function CommercialControl() {
     } finally {
       setLoading(false)
     }
-  }, [currentAccountId, runStep])
+  }, [runStep])
 
   useEffect(() => { void loadData() }, [loadData])
 
@@ -168,7 +168,7 @@ export default function CommercialControl() {
           <p className="ptdt-page-desc">Control customer plan, manual payment verification, wallet balance, low-balance alerts, and paid add-ons like Dynamic Caller ID — without adding card/crypto payment gateways.</p>
         </div>
         <div className="ptdt-toolbar">
-          <button type="button" className="ptdt-action-btn" onClick={() => void loadData()} disabled={loading}><RefreshCw size={14} /> Refresh</button>
+          <button type="button" className="ptdt-action-btn" onClick={() => void loadData(currentAccountId)} disabled={loading}><RefreshCw size={14} /> Refresh</button>
           <button type="button" className="btn-brand" onClick={handleSeed} disabled={saving} style={{ minHeight: 38, fontSize: 12 }}><ShieldCheck size={14} /> Seed Catalog</button>
         </div>
       </div>

@@ -131,56 +131,58 @@ export type CommercialCatalog = {
   addons: CommercialAddon[]
 }
 
+const commercialRequestConfig = { timeout: 45000 }
+
 export const commercialControlApi = {
   seedCatalog: async () => {
-    const res = await api.post('/commercial-control/admin/seed-catalog')
+    const res = await api.post('/commercial-control/admin/seed-catalog', undefined, commercialRequestConfig)
     return res.data.data as CommercialSummary
   },
   getCatalog: async () => {
-    const res = await api.get('/commercial-control/catalog')
+    const res = await api.get('/commercial-control/catalog', commercialRequestConfig)
     return res.data.data as CommercialCatalog
   },
   getSummary: async (accountId?: number) => {
-    const res = await api.get('/commercial-control/summary', { params: accountId ? { accountId } : undefined })
+    const res = await api.get('/commercial-control/summary', { ...commercialRequestConfig, params: accountId ? { accountId } : undefined })
     return res.data.data as CommercialSummary
   },
   listAccounts: async () => {
-    const res = await api.get('/commercial-control/admin/accounts')
+    const res = await api.get('/commercial-control/admin/accounts', commercialRequestConfig)
     return res.data.data as CommercialAccount[]
   },
   createAccount: async (payload: { name: string; code?: string; email?: string; phone?: string; currency?: string; lowBalanceThreshold?: string; criticalBalanceThreshold?: string }) => {
-    const res = await api.post('/commercial-control/admin/accounts', payload)
+    const res = await api.post('/commercial-control/admin/accounts', payload, commercialRequestConfig)
     return res.data.data as CommercialAccount
   },
   listPaymentRequests: async (accountId?: number) => {
-    const res = await api.get('/commercial-control/admin/payment-requests', { params: accountId ? { accountId } : undefined })
+    const res = await api.get('/commercial-control/admin/payment-requests', { ...commercialRequestConfig, params: accountId ? { accountId } : undefined })
     return res.data.data as PaymentRequest[]
   },
   createPaymentRequest: async (payload: { accountId: number; amount: string; currency?: string; requestedPlanCode?: CommercialPlanCode | ''; requestedAddonCodes?: CommercialAddonCode[]; paymentMethod?: string; paymentReference?: string; proofUrl?: string; notes?: string }) => {
     const res = await api.post('/commercial-control/admin/payment-requests', {
       ...payload,
       requestedPlanCode: payload.requestedPlanCode || null,
-    })
+    }, commercialRequestConfig)
     return res.data.data as PaymentRequest
   },
   updatePaymentRequestStatus: async (id: number, status: PaymentRequestStatus) => {
-    const res = await api.patch(`/commercial-control/admin/payment-requests/${id}/status`, { status })
+    const res = await api.patch(`/commercial-control/admin/payment-requests/${id}/status`, { status }, commercialRequestConfig)
     return res.data.data as PaymentRequest
   },
   activatePlan: async (accountId: number, payload: { planCode: CommercialPlanCode; status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'TRIAL'; monthlyFeeOverride?: string; endsAt?: string; notes?: string }) => {
-    const res = await api.post(`/commercial-control/admin/accounts/${accountId}/activate-plan`, payload)
+    const res = await api.post(`/commercial-control/admin/accounts/${accountId}/activate-plan`, payload, commercialRequestConfig)
     return res.data.data as CommercialSubscription
   },
   topUpWallet: async (accountId: number, payload: { amount: string; description?: string; reference?: string }) => {
-    const res = await api.post(`/commercial-control/admin/accounts/${accountId}/topup`, payload)
+    const res = await api.post(`/commercial-control/admin/accounts/${accountId}/topup`, payload, commercialRequestConfig)
     return res.data.data as { wallet: CommercialWallet; transaction: WalletTransaction }
   },
   setAddonStatus: async (accountId: number, addonCode: CommercialAddonCode, payload: { status: CommercialStatus; priceOverride?: string; notes?: string }) => {
-    const res = await api.patch(`/commercial-control/admin/accounts/${accountId}/addons/${addonCode}`, payload)
+    const res = await api.patch(`/commercial-control/admin/accounts/${accountId}/addons/${addonCode}`, payload, commercialRequestConfig)
     return res.data.data
   },
   updateThresholds: async (accountId: number, payload: { lowBalanceThreshold?: string; criticalBalanceThreshold?: string; hardStopEnabled?: boolean }) => {
-    const res = await api.patch(`/commercial-control/admin/accounts/${accountId}/thresholds`, payload)
+    const res = await api.patch(`/commercial-control/admin/accounts/${accountId}/thresholds`, payload, commercialRequestConfig)
     return res.data.data as CommercialAccount
   },
 }
