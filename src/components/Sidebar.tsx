@@ -6,6 +6,7 @@ import {
   BarChart3, Headset, Settings2, History,
   ShieldOff, Calendar, Eye, Wrench, ClipboardList, SlidersHorizontal, Radio, Activity, BriefcaseBusiness, LifeBuoy, PhoneCall, Zap, Globe, Layers3, HardDriveDownload, BellRing, Palette, LockKeyhole, ServerCog,
   MessageSquareText,
+  CreditCard,
   Menu, X, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -82,6 +83,7 @@ const NAV: NavItem[] = [
   { to: '/call-intelligence', icon: Radio,         label: 'Call Intelligence', roles: ['ADMIN', 'SUPERVISOR'], color: COLORS.purple },
   { to: '/notifications-alerts-pro', icon: BellRing, label: 'Notifications & Alerts', color: COLORS.orange },
   { to: '/audit-logs',      icon: ClipboardList,   label: 'Audit Logs',     roles: ['ADMIN'], color: COLORS.gold },
+  { to: '/commercial-control', icon: CreditCard,   label: 'Commercial Control', roles: ['ADMIN'], color: COLORS.green },
   { to: '/admin/spoofing',  icon: PhoneCall,       label: 'Spoofing Management',  roles: ['ADMIN'], color: COLORS.cyan },
   { to: '/sip-settings',    icon: Wrench,          label: 'SIP Settings', color: COLORS.gold    },
   { to: '/settings',        icon: Settings2,       label: 'Account Settings', color: COLORS.slate },
@@ -108,7 +110,7 @@ const CONSOLE_GROUPS: NavGroup[] = [
   { key: 'monitoring', label: 'MONITORING', icon: Activity, color: COLORS.cyan, roles: ['ADMIN', 'SUPERVISOR'], items: ['/monitoring', '/live-monitoring-advanced', '/ops'] },
   { key: 'reports', label: 'REPORTS', icon: BarChart3, color: COLORS.purple, roles: ['ADMIN', 'SUPERVISOR'], items: ['/reports', '/reports-analytics-pro'] },
   { key: 'recordings', label: 'RECORDINGS', icon: Radio, color: COLORS.green, roles: ['ADMIN', 'SUPERVISOR'], items: ['/recordings', '/recording-storage-pro'] },
-  { key: 'settings', label: 'SETTINGS', icon: Settings2, color: COLORS.slate, items: ['/settings', '/audit-logs', '/security-admin-pro', '/settings/system', '/notifications-alerts-pro'] },
+  { key: 'settings', label: 'SETTINGS', icon: Settings2, color: COLORS.slate, items: ['/settings', '/commercial-control', '/audit-logs', '/security-admin-pro', '/settings/system', '/notifications-alerts-pro'] },
 ]
 
 const CONSOLE_STANDALONE = [

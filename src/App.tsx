@@ -42,6 +42,7 @@ import SupportDiagnostics     from './pages/SupportDiagnostics'
 import ProductionReview       from './pages/ProductionReview'
 import ReportsAnalyticsPro    from './pages/ReportsAnalyticsPro'
 import SmsConsole             from './pages/SmsConsole'
+import CommercialControl     from './pages/CommercialControl'
 import Unauthorized           from './pages/Unauthorized'
 import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
@@ -114,6 +115,7 @@ export default function App() {
             <Route path="/support/diagnostics" element={<RoleRoute roles={adminSupervisorRoles}><SupportDiagnostics /></RoleRoute>} />
             <Route path="/production/review"   element={<RoleRoute roles={['ADMIN']}><ProductionReview /></RoleRoute>} />
             <Route path="/admin/spoofing" element={<RoleRoute roles={['ADMIN']}><SpoofingManagement /></RoleRoute>} />
+            <Route path="/commercial-control" element={<RoleRoute roles={['ADMIN']}><CommercialControl /></RoleRoute>} />
             <Route path="/unauthorized"       element={<Unauthorized />} />
             <Route path="*"                  element={<NotFound />}       />
           </Route>
