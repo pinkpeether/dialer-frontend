@@ -69,6 +69,7 @@ export default function TeamUsersV3() {
   const [showInactive, setShowInactive] = useState(false)
   const [finalTarget, setFinalTarget] = useState<Record<string, unknown> | null>(null)
   const [confirmEmail, setConfirmEmail] = useState('')
+  const [armedEmail, setArmedEmail] = useState('')
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'AGENT', extension: '', phone: '' })
 
   const { agents, loading, createAgent, refetch } = useAgents({ isActive: showInactive ? undefined : true })
@@ -109,10 +110,16 @@ export default function TeamUsersV3() {
       setDialog({ tone: 'error', title: 'Confirmation mismatch', message: 'Please type the exact email address to continue.' })
       return
     }
+    if (armedEmail !== email) {
+      setArmedEmail(email)
+      setDialog({ tone: 'confirm', title: 'Final confirmation required', message: 'Click Confirm cleanup one more time to complete this action.' })
+      return
+    }
     await withBusy(async () => {
       try {
         await agentsAPI.finalRemove(Number(finalTarget.id))
         setFinalTarget(null)
+        setArmedEmail('')
         await refetch()
         setDialog({ tone: 'success', title: 'User cleared', message: 'The test/orphan user has been cleared.' })
       } catch (err) {
@@ -142,10 +149,10 @@ export default function TeamUsersV3() {
           <div className="eyebrow pink">Danger Zone</div>
           <h3 style={{ margin: '8px 0', color: danger }}>Final user cleanup</h3>
           <p style={{ color: 'var(--text-2)' }}>Type <strong>{String(finalTarget.email)}</strong> to confirm this final action.</p>
-          <input className="ptdt-input" value={confirmEmail} onChange={event => setConfirmEmail(event.target.value)} placeholder="Exact email" />
+          <input className="ptdt-input" value={confirmEmail} onChange={event => { setArmedEmail(''); setConfirmEmail(event.target.value) }} placeholder="Exact email" />
           <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
             <button className="ptdt-action-btn" type="button" onClick={() => setFinalTarget(null)}>Cancel</button>
-            <button className="ptdt-action-btn danger" type="button" disabled={confirmEmail !== String(finalTarget.email)} onClick={() => void finishFinalAction()}>Confirm cleanup</button>
+            <button className="ptdt-action-btn danger" type="button" disabled={confirmEmail !== String(finalTarget.email)} onClick={() => void finishFinalAction()}>{armedEmail === String(finalTarget.email || '') ? 'Final click to cleanup' : 'Confirm cleanup'}</button>
           </div>
         </div>
       )}
@@ -187,7 +194,7 @@ export default function TeamUsersV3() {
                 <td style={{ padding: 14 }}>{roleLabel(user.role)}</td>
                 <td style={{ padding: 14 }}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}` }}>{String(user.status)}</span></td>
                 <td style={{ padding: 14 }}>{isSelf ? <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }}><ShieldCheck size={13} /> Signed in</span> : <button type="button" role="switch" aria-checked={active} disabled={pendingId === Number(user.id)} onClick={() => void setUserActive(user, !active)} style={switchStyle(active, pendingId === Number(user.id))}><span style={switchKnob} /></button>}</td>
-                <td style={{ padding: 14 }}>{isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setFinalTarget(user) }}>Cleanup</button> : '—'}</td>
+                <td style={{ padding: 14 }}>{isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setArmedEmail(''); setFinalTarget(user) }}>Cleanup</button> : '—'}</td>
               </tr>
             })}
           </tbody>
