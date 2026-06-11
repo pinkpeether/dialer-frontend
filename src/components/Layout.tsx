@@ -5,6 +5,7 @@ import { useSipStore } from '../store/sip.store'
 import { useAuthStore } from '../store/auth.store'
 import { authAPI } from '../api/auth.api'
 import PtdtDialog from './PtdtDialog'
+import DynamicCallerIdDialerSelector from './DynamicCallerIdDialerSelector'
 
 export default function Layout() {
   const sipConfig = useSipStore(s => s.config)
@@ -94,6 +95,7 @@ export default function Layout() {
       <div className="grid-overlay" />
 
       <Sidebar />
+      <DynamicCallerIdDialerSelector />
 
       <main style={{
         flex: 1,
