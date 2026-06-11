@@ -6,7 +6,9 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 
 const savedPerformanceMode = window.localStorage.getItem('ptdt-performance-mode')
-document.documentElement.dataset.performanceMode = savedPerformanceMode === 'on' ? 'on' : 'off'
+const resolvedPerformanceMode = savedPerformanceMode === null ? 'on' : savedPerformanceMode
+window.localStorage.setItem('ptdt-performance-mode', resolvedPerformanceMode)
+document.documentElement.dataset.performanceMode = resolvedPerformanceMode === 'on' ? 'on' : 'off'
 
 const app = (
   <QueryClientProvider client={queryClient}>
