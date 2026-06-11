@@ -1,3 +1,4 @@
+// PTDT Platform Administration V2
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Building2, Crown, RefreshCw, UserPlus, Users } from 'lucide-react'
 import { administrationApi, type AccountMembership, type AdminCommercialAccount, type AdminUser, type CommercialAccountRole } from '../api/administration.api'
