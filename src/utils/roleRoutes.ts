@@ -26,7 +26,8 @@ export function normalizeRole(role?: string | null): UserRole | null {
   return null
 }
 
-export function defaultRouteForRole() {
+export function defaultRouteForRole(role?: string | null) {
+  void role
   return '/dashboard'
 }
 
