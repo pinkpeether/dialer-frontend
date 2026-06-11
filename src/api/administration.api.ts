@@ -26,6 +26,13 @@ export type AdminCommercialAccount = {
   lowBalanceThreshold?: string | number
   criticalBalanceThreshold?: string | number
   hardStopEnabled?: boolean
+  memberships?: Array<{
+    id: number
+    accountId: number
+    userId: number
+    status: CommercialMembershipStatus
+    user?: AdminUser
+  }>
   wallet?: {
     id: number
     availableBalance: string | number
