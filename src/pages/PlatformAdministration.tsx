@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 
-const Page = lazy(() => import('./PlatformAdministrationV2'))
+const Page = lazy(() => import('./' + 'PlatformAdministrationPolished'))
 
 export default function PlatformAdministration() {
   return (
