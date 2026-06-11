@@ -1,5 +1,12 @@
 import api from './axios'
 
+const selectedDynamicCallerId = (explicit?: number | string | null) => {
+  if (explicit) return Number(explicit)
+  if (typeof window === 'undefined') return undefined
+  const stored = window.localStorage.getItem('ptdt-dialer:selected-dynamic-caller-id')
+  return stored ? Number(stored) : undefined
+}
+
 export const dialerAPI = {
   getToken: async () => {
     const res = await api.get('/dialer/token')
@@ -21,13 +28,13 @@ export const dialerAPI = {
     return res.data.data
   },
 
-  makeManualCall: async (contactId: number, campaignId: number, callerIdId?: number | null) => {
-    const res = await api.post('/dialer/call/manual', { contactId, campaignId, callerIdId: callerIdId || undefined })
+  makeManualCall: async (contactId: number, campaignId: number, callerIdId?: number | string | null) => {
+    const res = await api.post('/dialer/call/manual', { contactId, campaignId, callerIdId: selectedDynamicCallerId(callerIdId) })
     return res.data.data
   },
 
-  makeAdhocCall: async (phone: string, note?: string, callerIdId?: number | null) => {
-    const res = await api.post('/dialer/call/adhoc', { phone, note, callerIdId: callerIdId || undefined })
+  makeAdhocCall: async (phone: string, note?: string, callerIdId?: number | string | null) => {
+    const res = await api.post('/dialer/call/adhoc', { phone, note, callerIdId: selectedDynamicCallerId(callerIdId) })
     return res.data.data
   },
 
