@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type UserRole = 'ADMIN' | 'MANAGER' | 'SUPERVISOR' | 'AGENT'
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'CUSTOMER_ADMIN' | 'MANAGER' | 'SUPERVISOR' | 'AGENT'
 
 export interface User {
   id: number

@@ -43,6 +43,8 @@ import ProductionReview       from './pages/ProductionReview'
 import ReportsAnalyticsPro    from './pages/ReportsAnalyticsPro'
 import SmsConsole             from './pages/SmsConsole'
 import CommercialControl     from './pages/CommercialControl'
+import PlatformAdministration from './pages/PlatformAdministration'
+import CustomerBillingPortal  from './pages/CustomerBillingPortal'
 import Unauthorized           from './pages/Unauthorized'
 import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
@@ -52,9 +54,11 @@ import { useAuthStore, type UserRole } from './store/auth.store'
 import { defaultRouteForRole } from './utils/roleRoutes'
 import SpoofingManagement from './pages/SpoofingManagement'
 
-const adminConsoleRoles: UserRole[] = ['ADMIN', 'MANAGER', 'SUPERVISOR']
-const adminManagerRoles: UserRole[] = ['ADMIN', 'MANAGER']
-const adminSupervisorRoles: UserRole[] = ['ADMIN', 'SUPERVISOR']
+const platformAdminRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN']
+const adminConsoleRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR']
+const adminManagerRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER']
+const adminSupervisorRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR']
+const billingRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR']
 
 function RoleHomeRedirect() {
   const isAuth = useAuthStore(s => s.isAuth)
@@ -95,8 +99,8 @@ export default function App() {
             <Route path="/sip-settings"       element={<RoleRoute><SipSettings /></RoleRoute>}    />
             <Route path="/dnc"                element={<RoleRoute roles={adminSupervisorRoles}><DncManager /></RoleRoute>}     />
             <Route path="/settings"           element={<RoleRoute><Settings /></RoleRoute>}       />
-            <Route path="/audit-logs"         element={<RoleRoute roles={['ADMIN']}><AuditLogs /></RoleRoute>}      />
-            <Route path="/settings/system"    element={<RoleRoute roles={['ADMIN']}><SystemSettings /></RoleRoute>} />
+            <Route path="/audit-logs"         element={<RoleRoute roles={platformAdminRoles}><AuditLogs /></RoleRoute>}      />
+            <Route path="/settings/system"    element={<RoleRoute roles={platformAdminRoles}><SystemSettings /></RoleRoute>} />
             <Route path="/recordings"         element={<RoleRoute roles={adminSupervisorRoles}><Recordings /></RoleRoute>}     />
             <Route path="/recording-storage-pro" element={<RoleRoute roles={adminSupervisorRoles}><RecordingStoragePro /></RoleRoute>} />
             <Route path="/call-intelligence"  element={<RoleRoute roles={adminSupervisorRoles}><CallIntelligence /></RoleRoute>} />
@@ -110,12 +114,14 @@ export default function App() {
             <Route path="/campaign-management-pro" element={<RoleRoute roles={adminSupervisorRoles}><CampaignManagementPro /></RoleRoute>} />
             <Route path="/notifications-alerts-pro" element={<RoleRoute><NotificationsAlertsPro /></RoleRoute>} />
             <Route path="/ui-ux-pro"          element={<RoleRoute roles={adminSupervisorRoles}><UiUxPro /></RoleRoute>} />
-            <Route path="/security-admin-pro" element={<RoleRoute roles={['ADMIN']}><SecurityAdminPro /></RoleRoute>} />
+            <Route path="/security-admin-pro" element={<RoleRoute roles={platformAdminRoles}><SecurityAdminPro /></RoleRoute>} />
             <Route path="/deployment-platform-pro" element={<RoleRoute roles={adminSupervisorRoles}><DeploymentPlatformPro /></RoleRoute>} />
             <Route path="/support/diagnostics" element={<RoleRoute roles={adminSupervisorRoles}><SupportDiagnostics /></RoleRoute>} />
-            <Route path="/production/review"   element={<RoleRoute roles={['ADMIN']}><ProductionReview /></RoleRoute>} />
-            <Route path="/admin/spoofing" element={<RoleRoute roles={['ADMIN']}><SpoofingManagement /></RoleRoute>} />
-            <Route path="/commercial-control" element={<RoleRoute roles={['ADMIN']}><CommercialControl /></RoleRoute>} />
+            <Route path="/production/review"   element={<RoleRoute roles={platformAdminRoles}><ProductionReview /></RoleRoute>} />
+            <Route path="/admin/spoofing" element={<RoleRoute roles={platformAdminRoles}><SpoofingManagement /></RoleRoute>} />
+            <Route path="/commercial-control" element={<RoleRoute roles={platformAdminRoles}><CommercialControl /></RoleRoute>} />
+            <Route path="/platform/administration" element={<RoleRoute roles={platformAdminRoles}><PlatformAdministration /></RoleRoute>} />
+            <Route path="/billing" element={<RoleRoute roles={billingRoles}><CustomerBillingPortal /></RoleRoute>} />
             <Route path="/unauthorized"       element={<Unauthorized />} />
             <Route path="*"                  element={<NotFound />}       />
           </Route>
