@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Plus, Search, Trash2, X } from 'lucide-react'
+import { Users, Plus, Search, UserX, X } from 'lucide-react'
 import { useAgents } from '../hooks/useAgents'
 import StatsCard     from '../components/StatsCard'
 
@@ -20,17 +20,13 @@ const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
 }
 
 
-const FALLBACK_AGENT_STATS = { total: 7, online: 2, ready: 2, busy: 1, offline: 1 }
-
-const FALLBACK_AGENTS: Record<string, unknown>[] = [
-  { id: 1, name: 'Aisha Khan', email: 'aisha@jd.com', role: 'AGENT', agentCode: 'JD-101', status: 'ONLINE' },
-  { id: 2, name: 'Marcus Reed', email: 'marcus@jd.com', role: 'AGENT', agentCode: 'JD-102', status: 'READY' },
-  { id: 3, name: 'Sara Liu', email: 'sara@jd.com', role: 'SUPERVISOR', agentCode: 'JD-103', status: 'BUSY' },
-  { id: 4, name: 'David Okafor', email: 'david@jd.com', role: 'AGENT', agentCode: 'JD-104', status: 'WRAP_UP' },
-  { id: 5, name: 'Mei Tanaka', email: 'mei@jd.com', role: 'AGENT', agentCode: 'JD-105', status: 'OFFLINE' },
-  { id: 6, name: 'Carlos Vega', email: 'carlos@jd.com', role: 'AGENT', agentCode: 'JD-106', status: 'ONLINE' },
-  { id: 7, name: 'Hannah Schmidt', email: 'hannah@jd.com', role: 'AGENT', agentCode: 'JD-107', status: 'READY' },
-]
+const EMPTY_AGENT_STATS = { total: 0, online: 0, ready: 0, busy: 0, offline: 0 }
+const ROLE_LABELS: Record<string, string> = {
+  CUSTOMER_ADMIN: 'Customer Admin',
+  MANAGER: 'Manager',
+  SUPERVISOR: 'Supervisor',
+  AGENT: 'Agent',
+}
 
 const inputStyle: React.CSSProperties = {
   padding: '11px 14px',
@@ -45,22 +41,22 @@ const inputStyle: React.CSSProperties = {
 export default function Agents() {
   const [search,   setSearch]   = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [showInactive, setShowInactive] = useState(false)
   const [form, setForm] = useState({
     name: '', email: '', password: '', role: 'AGENT', extension: '', phone: '',
   })
 
   const { agents, stats, loading, createAgent, deleteAgent } =
-    useAgents({ search: search || undefined })
+    useAgents({ search: search || undefined, isActive: showInactive ? undefined : true })
 
-  const sourceAgents = agents.length > 0 ? agents : FALLBACK_AGENTS
-  const visibleAgents = sourceAgents.filter(agent => {
+  const visibleAgents = agents.filter(agent => {
     if (!search) return true
     const q = search.toLowerCase()
     return String(agent.name || '').toLowerCase().includes(q) ||
       String(agent.email || '').toLowerCase().includes(q) ||
       String(agent.agentCode || '').toLowerCase().includes(q)
   })
-  const visibleStats = stats || FALLBACK_AGENT_STATS
+  const visibleStats = stats || EMPTY_AGENT_STATS
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,13 +95,13 @@ export default function Agents() {
             letterSpacing: '-0.04em',
             marginBottom: 10,
           }}>
-            Agent <span className="gradient-brand-text">Management</span>
+            Team <span className="gradient-brand-text">Users</span>
           </h1>
           <p style={{
             fontSize: 14.5, color: 'var(--text-3)', display: 'flex',
             alignItems: 'center', gap: 10, flexWrap: 'wrap',
           }}>
-            <span className="pulse-dot pink"/> Manage PTDT-Dialer agents, access, roles and live availability.
+            <span className="pulse-dot pink"/> Create customer-side users, assign safe roles, and monitor live availability.
           </p>
         </div>
         <motion.button
@@ -118,7 +114,7 @@ export default function Agents() {
             fontSize: 13.5, minHeight: 46,
           }}
         >
-          {showForm ? <X size={15}/> : <Plus size={15}/>} {showForm ? 'Cancel' : 'Add Agent'}
+          {showForm ? <X size={15}/> : <Plus size={15}/>} {showForm ? 'Cancel' : 'New Customer User'}
         </motion.button>
       </motion.div>
 
@@ -157,7 +153,7 @@ export default function Agents() {
               fontSize: 17, fontWeight: 700, color: 'var(--text)',
               marginBottom: 18, letterSpacing: '-0.01em',
             }}>
-              New Agent
+              New Customer User
             </h3>
             <div style={{
               display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
@@ -183,7 +179,8 @@ export default function Agents() {
                 style={inputStyle}>
                 <option value="AGENT">Agent</option>
                 <option value="SUPERVISOR">Supervisor</option>
-                <option value="ADMIN">Admin</option>
+                <option value="MANAGER">Manager</option>
+                <option value="CUSTOMER_ADMIN">Customer Admin</option>
               </select>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -191,7 +188,7 @@ export default function Agents() {
                 borderRadius: 'var(--radius-md)', padding: '10px 22px',
                 fontSize: 13, color: '#fff',
               }}>
-                Create Agent
+                Create User
               </button>
               <button type="button" onClick={() => setShowForm(false)} style={{
                 background: 'var(--bg-glass)',
@@ -207,13 +204,19 @@ export default function Agents() {
       </AnimatePresence>
 
       {/* Search */}
-      <div style={{ position: 'relative', marginBottom: 16, maxWidth: 320 }}>
-        <Search size={14} color="var(--text-3)" style={{
-          position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-        }}/>
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search agents…"
-          style={{ ...inputStyle, paddingLeft: 36 }}/>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
+        <div style={{ position: 'relative', maxWidth: 320, flex: '1 1 260px' }}>
+          <Search size={14} color="var(--text-3)" style={{
+            position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+          }}/>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search team users..."
+            style={{ ...inputStyle, paddingLeft: 36 }}/>
+        </div>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--text-2)', fontSize: 13, fontWeight: 700 }}>
+          <input type="checkbox" checked={showInactive} onChange={event => setShowInactive(event.target.checked)} />
+          Show inactive users
+        </label>
       </div>
 
       {/* Table */}
@@ -222,7 +225,7 @@ export default function Agents() {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
-                {['#', 'Agent', 'Email', 'Role', 'Status', 'Actions'].map(h => (
+                {['#', 'User', 'Email', 'Role', 'Status', 'Actions'].map(h => (
                   <th key={h} style={{
                     padding: '13px 16px', textAlign: 'left',
                     fontSize: 10.5, fontWeight: 700, color: 'var(--text-3)',
@@ -241,7 +244,7 @@ export default function Agents() {
                 </td></tr>
               ) : visibleAgents.length === 0 ? (
                 <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}>
-                  No agents found
+                  No team users found
                 </td></tr>
               ) : visibleAgents.map((agent, i) => {
                 const sc = STATUS_COLORS[agent.status as string] || STATUS_COLORS.OFFLINE
@@ -290,7 +293,7 @@ export default function Agents() {
                       padding: '14px 16px', fontSize: 12, color: 'var(--text-3)',
                       fontWeight: 600,
                     }}>
-                      {agent.role as string}
+                      {ROLE_LABELS[String(agent.role)] || agent.role as string}
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       <span className="badge" style={{
@@ -302,7 +305,7 @@ export default function Agents() {
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       <button
-                        onClick={() => { if (confirm('Delete this agent?')) deleteAgent(agent.id as number) }}
+                        onClick={() => { if (confirm('Deactivate this user?')) deleteAgent(agent.id as number) }}
                         style={{
                           background: 'transparent',
                           border: '1px solid rgba(239,68,68,0.32)',
@@ -312,7 +315,8 @@ export default function Agents() {
                           display: 'inline-flex', alignItems: 'center',
                         }}
                       >
-                        <Trash2 size={13}/>
+                        <UserX size={13}/>
+                        <span style={{ marginLeft: 6, fontSize: 12, fontWeight: 800 }}>Deactivate</span>
                       </button>
                     </td>
                   </motion.tr>

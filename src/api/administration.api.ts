@@ -80,6 +80,8 @@ export type AdministrationMe = {
 export type PlatformAdministrationOverview = {
   accounts: AdminCommercialAccount[]
   users: AdminUser[]
+  platformUsers?: AdminUser[]
+  assignableCustomerUsers?: AdminUser[]
   stats: {
     accounts: number
     users: number

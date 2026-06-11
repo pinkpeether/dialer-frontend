@@ -6,6 +6,7 @@ export const useAgents = (params?: {
   limit?: number
   search?: string
   status?: string
+  isActive?: boolean
 }) => {
   const paramsKey = JSON.stringify(params ?? {})
   const stableParams = useMemo(() => JSON.parse(paramsKey) as typeof params, [paramsKey])

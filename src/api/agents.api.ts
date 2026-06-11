@@ -6,6 +6,7 @@ export const agentsAPI = {
     limit?: number
     search?: string
     status?: string
+    isActive?: boolean
   }) => {
     const res = await api.get('/agents', { params })
     return res.data.data

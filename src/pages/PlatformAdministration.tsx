@@ -15,6 +15,8 @@ const statusColor = (status?: string) => {
 
 const roleOptions: CommercialAccountRole[] = ['OWNER', 'ADMIN', 'BILLING', 'SUPERVISOR', 'AGENT']
 const statusOptions: CommercialMembershipStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED']
+const platformRoles = new Set(['SUPER_ADMIN', 'ADMIN'])
+const accountRoleLabel = (role: string) => role === 'ADMIN' ? 'Account Admin' : role
 
 type PlatformAdministrationCache = {
   savedAt: string
@@ -117,6 +119,7 @@ export default function PlatformAdministration() {
   })
 
   const selectedAccount = useMemo(() => accounts.find(account => account.id === selectedAccountId) || accounts[0], [accounts, selectedAccountId])
+  const assignableUsers = useMemo(() => users.filter(user => !platformRoles.has(String(user.role).toUpperCase())), [users])
 
   const loadMembers = useCallback(async (accountId: number) => {
     const nextMembers = await administrationApi.listPlatformAccountMembers(accountId)
@@ -139,13 +142,13 @@ export default function PlatformAdministration() {
         nextMembers = await administrationApi.listPlatformAccountMembers(resolvedAccountId)
       }
       setAccounts(overview.accounts)
-      setUsers(overview.users)
+      setUsers(overview.assignableCustomerUsers || overview.users)
       setStats(overview.stats)
       setMembers(nextMembers)
       setSelectedAccountId(resolvedAccountId)
       writeCache({
         accounts: overview.accounts,
-        users: overview.users,
+        users: overview.assignableCustomerUsers || overview.users,
         members: nextMembers,
         selectedAccountId: resolvedAccountId,
         stats: overview.stats,
@@ -278,10 +281,10 @@ export default function PlatformAdministration() {
             <form onSubmit={handleAddMember} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 18 }}>
               <select className="ptdt-select" required value={memberForm.userId} onChange={event => setMemberForm({ ...memberForm, userId: event.target.value })}>
                 <option value="">Select user</option>
-                {users.map(user => <option key={user.id} value={user.id}>{user.name} — {user.email} ({user.role})</option>)}
+                {assignableUsers.map(user => <option key={user.id} value={user.id}>{user.name} — {user.email} ({user.role})</option>)}
               </select>
               <select className="ptdt-select" value={memberForm.accountRole} onChange={event => setMemberForm({ ...memberForm, accountRole: event.target.value as CommercialAccountRole })}>
-                {roleOptions.map(role => <option key={role} value={role}>{role}</option>)}
+                {roleOptions.map(role => <option key={role} value={role}>{accountRoleLabel(role)}</option>)}
               </select>
               <select className="ptdt-select" value={memberForm.status} onChange={event => setMemberForm({ ...memberForm, status: event.target.value as CommercialMembershipStatus })}>
                 {statusOptions.map(status => <option key={status} value={status}>{status}</option>)}
@@ -305,7 +308,7 @@ export default function PlatformAdministration() {
                     <tr key={member.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '12px 14px' }}><strong>{member.user?.name || `User #${member.userId}`}</strong><br/><span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{member.user?.email || '—'}</span></td>
                       <td style={{ padding: '12px 14px' }}><span className="ptdt-chip">{member.user?.role || '—'}</span></td>
-                      <td style={{ padding: '12px 14px', fontWeight: 900 }}>{member.accountRole}</td>
+                      <td style={{ padding: '12px 14px', fontWeight: 900 }}>{accountRoleLabel(member.accountRole)}</td>
                       <td style={{ padding: '12px 14px', color: statusColor(member.status), fontWeight: 900 }}>{member.status}</td>
                       <td style={{ padding: '12px 14px', color: 'var(--text-3)', fontSize: 12 }}>{[
                         member.canManageUsers ? 'Users' : '',
@@ -315,7 +318,7 @@ export default function PlatformAdministration() {
                         member.canUseDynamicCallerId ? 'Caller ID' : '',
                       ].filter(Boolean).join(' · ') || 'Limited'}</td>
                       <td style={{ padding: '12px 14px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {member.status !== 'ACTIVE' && <button className="ptdt-action-btn active" type="button" disabled={pendingMembershipId === member.id} onClick={() => handleStatus(member, 'ACTIVE')}><ShieldCheck size={14}/> {pendingMembershipId === member.id ? 'Saving...' : 'Active'}</button>}
+                        {member.status !== 'ACTIVE' && <button className="ptdt-action-btn active" type="button" disabled={pendingMembershipId === member.id} onClick={() => handleStatus(member, 'ACTIVE')}><ShieldCheck size={14}/> {pendingMembershipId === member.id ? 'Saving...' : 'Reactivate'}</button>}
                         {member.status !== 'SUSPENDED' && <button className="ptdt-action-btn danger" type="button" disabled={pendingMembershipId === member.id} onClick={() => handleStatus(member, 'SUSPENDED')}>{pendingMembershipId === member.id ? 'Saving...' : 'Suspend'}</button>}
                       </td>
                     </tr>
