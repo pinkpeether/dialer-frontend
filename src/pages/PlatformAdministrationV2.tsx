@@ -5,6 +5,7 @@ import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
 
 const platformRoles = new Set(['SUPER_ADMIN', 'ADMIN'])
 const accountRoleOptions: CommercialAccountRole[] = ['OWNER', 'ADMIN', 'BILLING', 'SUPERVISOR', 'AGENT']
+const CACHE_KEY = 'ptdt-platform-administration:last-good'
 
 const accountThemes = [
   { bg: 'rgba(251,11,140,.08)', border: 'rgba(251,11,140,.42)', accent: '#fb0b8c' },
@@ -13,6 +14,33 @@ const accountThemes = [
   { bg: 'rgba(240,185,11,.10)', border: 'rgba(240,185,11,.36)', accent: '#f0b90b' },
   { bg: 'rgba(14,165,233,.08)', border: 'rgba(14,165,233,.34)', accent: '#0ea5e9' },
 ]
+
+type PlatformAdminCache = {
+  savedAt: string
+  selectedAccountId?: number
+  accounts: AdminCommercialAccount[]
+  users: AdminUser[]
+  members: AccountMembership[]
+}
+
+const readCache = (): PlatformAdminCache | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY)
+    return raw ? JSON.parse(raw) as PlatformAdminCache : null
+  } catch {
+    return null
+  }
+}
+
+const writeCache = (cache: Omit<PlatformAdminCache, 'savedAt'>) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cache, savedAt: new Date().toISOString() }))
+  } catch {
+    // Cache is best-effort only; backend remains source of truth.
+  }
+}
 
 const themeAt = (index: number) => accountThemes[index % accountThemes.length]
 const money = (value: unknown, currency = 'USD') => `${currency} ${Number(value || 0).toFixed(2)}`
@@ -42,12 +70,13 @@ const switchDot: React.CSSProperties = {
 }
 
 export default function PlatformAdministrationV2() {
-  const [accounts, setAccounts] = useState<AdminCommercialAccount[]>([])
-  const [users, setUsers] = useState<AdminUser[]>([])
-  const [members, setMembers] = useState<AccountMembership[]>([])
-  const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>()
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const cached = useMemo(() => readCache(), [])
+  const [accounts, setAccounts] = useState<AdminCommercialAccount[]>(cached?.accounts ?? [])
+  const [users, setUsers] = useState<AdminUser[]>(cached?.users ?? [])
+  const [members, setMembers] = useState<AccountMembership[]>(cached?.members ?? [])
+  const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(cached?.selectedAccountId)
+  const [loading, setLoading] = useState(!cached?.accounts?.length)
+  const [refreshing, setRefreshing] = useState(Boolean(cached?.accounts?.length))
   const [saving, setSaving] = useState(false)
   const [pendingMembershipId, setPendingMembershipId] = useState<number | null>(null)
   const [message, setMessage] = useState('')
@@ -84,34 +113,43 @@ export default function PlatformAdministrationV2() {
     })
   }, [accounts, selectedAccount?.id, selectedMemberUserIds, users])
 
+  const remember = (nextMembers = members, nextSelectedId = selectedAccount?.id) => {
+    writeCache({ selectedAccountId: nextSelectedId, accounts, users, members: nextMembers })
+  }
+
   const loadMembers = async (accountId: number) => {
     const nextMembers = await administrationApi.listPlatformAccountMembers(accountId)
     setMembers(nextMembers)
+    writeCache({ selectedAccountId: accountId, accounts, users, members: nextMembers })
     return nextMembers
   }
 
   const loadData = async (accountId?: number, mode: 'initial' | 'refresh' = 'refresh') => {
-    if (mode === 'initial') setLoading(true)
+    if (mode === 'initial' && !accounts.length) setLoading(true)
     else setRefreshing(true)
     setError('')
     setMessage('')
 
     try {
       const overview = await administrationApi.getPlatformOverview()
-      const resolvedAccountId = accountId || overview.accounts[0]?.id
+      const resolvedAccountId = accountId || selectedAccountId || overview.accounts[0]?.id
+      const nextMembers = resolvedAccountId ? await administrationApi.listPlatformAccountMembers(resolvedAccountId) : []
+      const nextUsers = overview.assignableCustomerUsers || overview.users
       setAccounts(overview.accounts)
-      setUsers(overview.assignableCustomerUsers || overview.users)
+      setUsers(nextUsers)
       setSelectedAccountId(resolvedAccountId)
-      if (resolvedAccountId) await loadMembers(resolvedAccountId)
+      setMembers(nextMembers)
+      writeCache({ selectedAccountId: resolvedAccountId, accounts: overview.accounts, users: nextUsers, members: nextMembers })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load platform administration')
+      const detail = err instanceof Error ? err.message : 'Failed to load platform administration'
+      setError(accounts.length ? `Showing cached administration data. ${detail}` : detail)
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
   }
 
-  useEffect(() => { void loadData(undefined, 'initial') }, [])
+  useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.length ? 'refresh' : 'initial') }, [])
 
   const selectAccount = (accountId: number) => {
     if (accountId === selectedAccount?.id) return
@@ -142,9 +180,10 @@ export default function PlatformAdministrationV2() {
       canUseDynamicCallerId: form.canUseDynamicCallerId,
     })
       .then(async () => {
-        await loadMembers(selectedAccount.id)
+        const nextMembers = await loadMembers(selectedAccount.id)
         setForm(prev => ({ ...prev, userId: '' }))
         setMessage('Account membership assigned.')
+        remember(nextMembers, selectedAccount.id)
       })
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to assign member'))
       .finally(() => setSaving(false))
@@ -158,7 +197,10 @@ export default function PlatformAdministrationV2() {
 
     void administrationApi.updatePlatformMembership(member.id, { status: nextStatus })
       .then(async () => {
-        if (selectedAccount) await loadMembers(selectedAccount.id)
+        if (selectedAccount) {
+          const nextMembers = await loadMembers(selectedAccount.id)
+          remember(nextMembers, selectedAccount.id)
+        }
         setMessage(`Membership marked ${nextStatus}.`)
       })
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to update member'))
@@ -188,7 +230,7 @@ export default function PlatformAdministrationV2() {
         </button>
       </div>
 
-      {error && <div className="glass" style={{ padding: 14, marginBottom: 14, color: 'var(--danger)', borderColor: 'rgba(239,68,68,.26)' }}>{error}</div>}
+      {error && <div className="glass" style={{ padding: 14, marginBottom: 14, color: accounts.length ? 'var(--orange)' : 'var(--danger)', borderColor: 'rgba(239,68,68,.26)' }}>{error}</div>}
       {message && <div className="glass" style={{ padding: 14, marginBottom: 14, color: 'var(--green-2)', borderColor: 'rgba(0,167,71,.24)' }}>{message}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px,380px) 1fr', gap: 18, alignItems: 'start' }}>
