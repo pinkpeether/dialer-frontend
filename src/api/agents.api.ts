@@ -39,6 +39,16 @@ export const agentsAPI = {
     return res.data.data
   },
 
+  setActive: async (id: number, isActive: boolean) => {
+    const res = await api.put(`/agents/${id}`, { isActive })
+    return res.data.data
+  },
+
+  finalRemove: async (id: number) => {
+    const res = await api.post(`/agents/${id}/final-remove`)
+    return res.data.data
+  },
+
   updateStatus: async (id: number, status: string) => {
     const res = await api.patch(`/agents/${id}/status`, { status })
     return res.data.data
