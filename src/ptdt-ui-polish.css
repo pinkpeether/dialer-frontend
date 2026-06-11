@@ -1,3 +1,13 @@
+@keyframes ptdtSpin {
+  to { transform: rotate(360deg); }
+}
+
 .ptdt-refresh-active {
   color: var(--green) !important;
+  border-color: rgba(0,167,71,.35) !important;
+  box-shadow: 0 12px 26px rgba(0,167,71,.14) !important;
+}
+
+.ptdt-refresh-active svg {
+  animation: ptdtSpin .85s linear infinite;
 }
