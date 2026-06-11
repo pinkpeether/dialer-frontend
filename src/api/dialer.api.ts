@@ -7,12 +7,12 @@ export const dialerAPI = {
   },
 
   startCampaign: async (campaignId: number) => {
-    const res = await api.post(`/dialer/start/${campaignId}`)
+    const res = await api.post('/dialer/start/' + campaignId)
     return res.data
   },
 
   stopCampaign: async (campaignId: number) => {
-    const res = await api.post(`/dialer/stop/${campaignId}`)
+    const res = await api.post('/dialer/stop/' + campaignId)
     return res.data
   },
 
@@ -21,13 +21,13 @@ export const dialerAPI = {
     return res.data.data
   },
 
-  makeManualCall: async (contactId: number, campaignId: number) => {
-    const res = await api.post('/dialer/call/manual', { contactId, campaignId })
+  makeManualCall: async (contactId: number, campaignId: number, callerIdId?: number | null) => {
+    const res = await api.post('/dialer/call/manual', { contactId, campaignId, callerIdId: callerIdId || undefined })
     return res.data.data
   },
 
-  makeAdhocCall: async (phone: string, note?: string) => {
-    const res = await api.post('/dialer/call/adhoc', { phone, note })
+  makeAdhocCall: async (phone: string, note?: string, callerIdId?: number | null) => {
+    const res = await api.post('/dialer/call/adhoc', { phone, note, callerIdId: callerIdId || undefined })
     return res.data.data
   },
 
