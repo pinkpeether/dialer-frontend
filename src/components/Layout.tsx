@@ -1,14 +1,21 @@
-import { useEffect, useRef } from 'react'
-import { Outlet } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
+import { Outlet, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { useSipStore } from '../store/sip.store'
+import { useAuthStore } from '../store/auth.store'
+import { authAPI } from '../api/auth.api'
+import PtdtDialog from './PtdtDialog'
 
 export default function Layout() {
   const sipConfig = useSipStore(s => s.config)
   const sipStatus = useSipStore(s => s.status)
   const registerSip = useSipStore(s => s.register)
+  const unregisterSip = useSipStore(s => s.unregister)
+  const logout = useAuthStore(s => s.logout)
+  const navigate = useNavigate()
   const autoRegisterKeyRef = useRef('')
   const autoRegisterInFlightRef = useRef(false)
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
 
   useEffect(() => {
     const ready = Boolean(
@@ -42,13 +49,43 @@ export default function Layout() {
       })
   }, [registerSip, sipConfig, sipStatus])
 
+  const requestSignOut = useCallback((event: MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null
+    if (!target?.closest('.sidebar-signout')) return
+    event.preventDefault()
+    event.stopPropagation()
+    setConfirmSignOut(true)
+  }, [])
+
+  const performSignOut = useCallback(async () => {
+    setConfirmSignOut(false)
+    await authAPI.logout().catch(() => undefined)
+    await unregisterSip().catch(() => undefined)
+    logout()
+    navigate('/login', { replace: true })
+  }, [logout, navigate, unregisterSip])
+
   return (
-    <div style={{
-      display: 'flex',
-      minHeight: '100vh',
-      position: 'relative',
-      background: 'var(--bg)',
-    }}>
+    <div
+      onClickCapture={requestSignOut}
+      style={{
+        display: 'flex',
+        minHeight: '100vh',
+        position: 'relative',
+        background: 'var(--bg)',
+      }}
+    >
+      <PtdtDialog
+        dialog={confirmSignOut ? {
+          tone: 'confirm',
+          title: 'Sign out confirmation',
+          message: 'Kya aap waqai PTDT-Dialer se sign out karna chahte hain?',
+          confirmLabel: 'Yes, Sign Out',
+          onConfirm: performSignOut,
+        } : null}
+        onClose={() => setConfirmSignOut(false)}
+      />
+
       {/* PTDT aurora — pink / purple / green orbs */}
       <div className="aurora-bg">
         <div className="aurora-orb-3" />
