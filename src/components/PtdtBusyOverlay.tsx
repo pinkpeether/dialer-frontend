@@ -11,7 +11,13 @@ export default function PtdtBusyOverlay({ active, label = 'Applying changes' }: 
 
   if (!active) return null
   const dots = step === 1 ? '.' : step === 2 ? '..' : '...'
-  const text = label + ' ' + dots
 
-  return <div className="glass" style={{ position: 'fixed', inset: 0, zIndex: 9998, display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,.56)', fontWeight: 900 }}>{text}</div>
+  return (
+    <div className="ptdt-loader-screen">
+      <div className="glass ptdt-loader-box">
+        <div className="eyebrow pink">PTDT-Dialer</div>
+        <div>{label}<span className="ptdt-loader-dots">{dots}</span></div>
+      </div>
+    </div>
+  )
 }
