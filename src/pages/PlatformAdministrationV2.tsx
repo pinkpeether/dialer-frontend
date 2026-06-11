@@ -66,10 +66,10 @@ export default function PlatformAdministrationV2() {
   const selectedIndex = Math.max(0, accounts.findIndex(account => account.id === selectedAccount?.id))
   const selectedTheme = themeAt(selectedIndex)
   const busy = loading || refreshing || saving
+  const selectedMemberUserIds = useMemo(() => new Set(members.map(member => member.userId)), [members])
 
   const assignableUsers = useMemo(() => {
     const selectedId = selectedAccount?.id
-    const selectedMemberIds = new Set(members.map(member => member.userId))
     const otherAccountMemberIds = new Set<number>()
 
     accounts.forEach(account => {
@@ -79,10 +79,10 @@ export default function PlatformAdministrationV2() {
 
     return users.filter(user => {
       if (platformRoles.has(String(user.role).toUpperCase())) return false
-      if (selectedMemberIds.has(user.id)) return true
+      if (selectedMemberUserIds.has(user.id)) return true
       return !otherAccountMemberIds.has(user.id)
     })
-  }, [accounts, members, selectedAccount?.id, users])
+  }, [accounts, selectedAccount?.id, selectedMemberUserIds, users])
 
   const loadMembers = async (accountId: number) => {
     const nextMembers = await administrationApi.listPlatformAccountMembers(accountId)
@@ -241,7 +241,18 @@ export default function PlatformAdministrationV2() {
           <form onSubmit={assignMember} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, marginBottom: 18 }}>
             <select className="ptdt-select" required value={form.userId} onChange={event => setForm({ ...form, userId: event.target.value })}>
               <option value="">Select user</option>
-              {assignableUsers.map(user => <option key={user.id} value={user.id}>{user.name} — {user.email} ({user.role})</option>)}
+              {assignableUsers.map(user => {
+                const isExistingMember = selectedMemberUserIds.has(user.id)
+                return (
+                  <option
+                    key={user.id}
+                    value={user.id}
+                    style={isExistingMember ? { color: '#374151', fontWeight: 800, backgroundColor: '#e5e7eb' } : undefined}
+                  >
+                    {isExistingMember ? '● ' : ''}{user.name} — {user.email} ({user.role})
+                  </option>
+                )
+              })}
             </select>
             <select className="ptdt-select" value={form.accountRole} onChange={event => setForm({ ...form, accountRole: event.target.value as CommercialAccountRole })}>
               {accountRoleOptions.map(role => <option key={role} value={role}>{accountRoleLabel(role)}</option>)}
