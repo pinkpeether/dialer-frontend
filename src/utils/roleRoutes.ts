@@ -1,6 +1,7 @@
 import type { UserRole } from '../store/auth.store'
 
 const AGENT_ROUTES = [
+  '/dashboard',
   '/agent/workspace',
   '/dialer',
   '/live-ai',
@@ -25,11 +26,7 @@ export function normalizeRole(role?: string | null): UserRole | null {
   return null
 }
 
-export function defaultRouteForRole(role?: string | null) {
-  const normalized = normalizeRole(role)
-  if (normalized === 'AGENT') return '/agent/workspace'
-  if (normalized === 'SUPER_ADMIN' || normalized === 'ADMIN') return '/platform/administration'
-  if (normalized === 'CUSTOMER_ADMIN' || normalized === 'MANAGER') return '/billing'
+export function defaultRouteForRole() {
   return '/dashboard'
 }
 
