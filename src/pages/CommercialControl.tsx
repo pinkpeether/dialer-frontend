@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { BadgeDollarSign, BellRing, CreditCard, Plus, RefreshCw, ShieldCheck, WalletCards } from 'lucide-react'
 import { commercialControlApi, type CommercialAccount, type CommercialAddonCode, type CommercialCatalog, type CommercialPlanCode, type CommercialStatus, type CommercialSummary, type PaymentRequest } from '../api/commercialControl.api'
+import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
 
 const money = (value: string | number | null | undefined, currency = 'USD') => {
   const amount = Number(value || 0)
@@ -83,6 +84,7 @@ export default function CommercialControl() {
   const hasVisibleDataRef = useRef(Boolean(cached?.summary))
   const [saving, setSaving] = useState(false)
   const [pendingAddonCode, setPendingAddonCode] = useState<CommercialAddonCode | null>(null)
+  const [busyLabel, setBusyLabel] = useState('Refreshing commercial control data')
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
   const [message, setMessage] = useState('')
@@ -95,6 +97,8 @@ export default function CommercialControl() {
 
   const currentAccountId = selectedAccountId || summary?.account.id || accounts[0]?.id
   const currentCurrency = summary?.account.currency || 'USD'
+  const pageBusy = loading || refreshing || saving || Boolean(pendingAddonCode)
+  const refreshButtonActive = loading || refreshing
 
   const activePlanName = summary?.subscription?.plan?.name || 'No active plan'
   const activeAddonCodes = useMemo(() => new Set(summary?.addons.filter(item => item.status === 'ACTIVE').map(item => item.addon.code) || []), [summary])
@@ -123,7 +127,8 @@ export default function CommercialControl() {
     }
   }, [])
 
-  const loadData = useCallback(async (accountId?: number, options: { silent?: boolean } = {}) => {
+  const loadData = useCallback(async (accountId?: number, options: { silent?: boolean; label?: string } = {}) => {
+    setBusyLabel(options.label || 'Refreshing commercial control data')
     if (options.silent || hasVisibleDataRef.current) {
       setRefreshing(true)
     } else {
@@ -184,20 +189,21 @@ export default function CommercialControl() {
     }
   }, [runStep])
 
-  useEffect(() => { void loadData(cached?.selectedAccountId, { silent: Boolean(cached?.summary) }) }, [cached?.selectedAccountId, cached?.summary, loadData])
+  useEffect(() => { void loadData(cached?.selectedAccountId, { silent: Boolean(cached?.summary), label: 'Refreshing commercial control data' }) }, [cached?.selectedAccountId, cached?.summary, loadData])
 
   useEffect(() => {
     hasVisibleDataRef.current = Boolean(summary)
   }, [summary])
 
-  const withSave = async (fn: () => Promise<void>, successMessage: string) => {
+  const withSave = async (fn: () => Promise<void>, successMessage: string, label = 'Applying commercial control changes') => {
+    setBusyLabel(label)
     setSaving(true)
     setError('')
     setMessage('')
     try {
       await fn()
       setMessage(successMessage)
-      await loadData(currentAccountId)
+      await loadData(currentAccountId, { silent: true, label: 'Refreshing commercial control data' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Action failed')
     } finally {
@@ -205,7 +211,7 @@ export default function CommercialControl() {
     }
   }
 
-  const handleSeed = () => withSave(async () => { await commercialControlApi.seedCatalog() }, 'Commercial catalog seeded and default account ensured.')
+  const handleSeed = () => withSave(async () => { await commercialControlApi.seedCatalog() }, 'Commercial catalog seeded and default account ensured.', 'Seeding commercial catalog')
 
   const handleCreateAccount = (event: FormEvent) => {
     event.preventDefault()
@@ -213,7 +219,7 @@ export default function CommercialControl() {
       const created = await commercialControlApi.createAccount(accountForm)
       setSelectedAccountId(created.id)
       setAccountForm({ name: '', code: '', email: '', phone: '', currency: 'USD' })
-    }, 'Commercial account created.')
+    }, 'Commercial account created.', 'Creating commercial account')
   }
 
   const handlePaymentRequest = (event: FormEvent) => {
@@ -222,25 +228,25 @@ export default function CommercialControl() {
     void withSave(async () => {
       await commercialControlApi.createPaymentRequest({ accountId: currentAccountId, ...paymentForm })
       setPaymentForm(prev => ({ ...prev, paymentReference: '', proofUrl: '', notes: '' }))
-    }, 'Manual payment request submitted for verification.')
+    }, 'Manual payment request submitted for verification.', 'Submitting manual payment request')
   }
 
   const handleTopup = (event: FormEvent) => {
     event.preventDefault()
     if (!currentAccountId) return
-    void withSave(async () => { await commercialControlApi.topUpWallet(currentAccountId, topupForm) }, 'Wallet balance updated.')
+    void withSave(async () => { await commercialControlApi.topUpWallet(currentAccountId, topupForm) }, 'Wallet balance updated.', 'Applying wallet top-up')
   }
 
   const handlePlanActivation = (event: FormEvent) => {
     event.preventDefault()
     if (!currentAccountId) return
-    void withSave(async () => { await commercialControlApi.activatePlan(currentAccountId, planForm) }, 'Subscription plan updated.')
+    void withSave(async () => { await commercialControlApi.activatePlan(currentAccountId, planForm) }, 'Subscription plan updated.', 'Applying subscription plan')
   }
 
   const handleThresholds = (event: FormEvent) => {
     event.preventDefault()
     if (!currentAccountId) return
-    void withSave(async () => { await commercialControlApi.updateThresholds(currentAccountId, thresholdForm) }, 'Low-balance thresholds updated.')
+    void withSave(async () => { await commercialControlApi.updateThresholds(currentAccountId, thresholdForm) }, 'Low-balance thresholds updated.', 'Saving low-balance rules')
   }
 
   const handleAddonToggle = (addonCode: CommercialAddonCode) => {
@@ -258,6 +264,7 @@ export default function CommercialControl() {
         paymentRequests,
       })
     }
+    setBusyLabel('Updating paid add-on')
     setSaving(true)
     setPendingAddonCode(addonCode)
     setError('')
@@ -305,11 +312,18 @@ export default function CommercialControl() {
   }
 
   const handlePaymentStatus = (request: PaymentRequest, status: PaymentRequest['status']) => {
-    void withSave(async () => { await commercialControlApi.updatePaymentRequestStatus(request.id, status) }, `Payment request #${request.id} marked ${status}.`)
+    void withSave(async () => { await commercialControlApi.updatePaymentRequestStatus(request.id, status) }, `Payment request #${request.id} marked ${status}.`, 'Updating payment request status')
+  }
+
+  const handleAccountSwitch = (accountId: number) => {
+    if (!accountId || accountId === currentAccountId) return
+    setSelectedAccountId(accountId)
+    void loadData(accountId, { silent: true, label: 'Switching customer account' })
   }
 
   return (
-    <div className="ptdt-page">
+    <div className="ptdt-page" style={{ opacity: pageBusy ? 0.58 : 1, transition: 'opacity .18s ease' }}>
+      <PtdtBusyOverlay active={pageBusy} label={busyLabel} />
       <div className="ptdt-page-header">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}><CreditCard size={12} /> Phase 4 Sprint 11</div>
@@ -317,9 +331,9 @@ export default function CommercialControl() {
           <p className="ptdt-page-desc">Control customer plan, manual payment verification, wallet balance, low-balance alerts, and paid add-ons like Dynamic Caller ID — without adding card/crypto payment gateways.</p>
         </div>
         <div className="ptdt-toolbar">
-          {refreshing && <span className="ptdt-chip">Refreshing...</span>}
-          <button type="button" className="ptdt-action-btn" onClick={() => void loadData(currentAccountId)} disabled={loading || refreshing}><RefreshCw size={14} /> Refresh</button>
-          <button type="button" className="btn-brand" onClick={handleSeed} disabled={saving} style={{ minHeight: 38, fontSize: 12 }}><ShieldCheck size={14} /> Seed Catalog</button>
+          {refreshing && <span className="ptdt-chip" style={{ color: 'var(--green-2)', borderColor: 'rgba(0,167,71,.32)' }}>Refreshing...</span>}
+          <button type="button" className={`ptdt-action-btn ${refreshButtonActive ? 'ptdt-refresh-active' : ''}`} onClick={() => void loadData(currentAccountId, { silent: true, label: 'Refreshing commercial control data' })} disabled={pageBusy}><RefreshCw size={14} /> Refresh</button>
+          <button type="button" className="btn-brand" onClick={handleSeed} disabled={pageBusy} style={{ minHeight: 38, fontSize: 12 }}><ShieldCheck size={14} /> Seed Catalog</button>
         </div>
       </div>
 
@@ -357,7 +371,7 @@ export default function CommercialControl() {
           <div className="glass" style={{ padding: 16, marginBottom: 18 }}>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               <strong>Account:</strong>
-              <select className="ptdt-select" value={currentAccountId || ''} onChange={e => { const id = Number(e.target.value); setSelectedAccountId(id); void loadData(id) }} style={{ minWidth: 260 }}>
+              <select className="ptdt-select" value={currentAccountId || ''} onChange={e => handleAccountSwitch(Number(e.target.value))} disabled={pageBusy} style={{ minWidth: 260 }}>
                 {accounts.map(account => <option key={account.id} value={account.id}>{account.name} ({account.code})</option>)}
               </select>
               <span className="ptdt-chip">{summary.account.status}</span>
@@ -377,7 +391,7 @@ export default function CommercialControl() {
                 </select>
                 <input className="ptdt-input" value={planForm.monthlyFeeOverride} onChange={e => setPlanForm({ ...planForm, monthlyFeeOverride: e.target.value })} placeholder="Optional monthly fee override" />
                 <input className="ptdt-input" value={planForm.notes} onChange={e => setPlanForm({ ...planForm, notes: e.target.value })} placeholder="Internal notes" />
-                <button className="btn-brand" disabled={saving}>Apply Plan</button>
+                <button className="btn-brand" disabled={pageBusy}>Apply Plan</button>
               </div>
             </form>
 
@@ -387,7 +401,7 @@ export default function CommercialControl() {
                 <input className="ptdt-input" value={topupForm.amount} onChange={e => setTopupForm({ ...topupForm, amount: e.target.value })} placeholder="Amount" required />
                 <input className="ptdt-input" value={topupForm.reference} onChange={e => setTopupForm({ ...topupForm, reference: e.target.value })} placeholder="Payment reference / slip number" />
                 <input className="ptdt-input" value={topupForm.description} onChange={e => setTopupForm({ ...topupForm, description: e.target.value })} placeholder="Description" />
-                <button className="btn-brand" disabled={saving}>Credit Wallet</button>
+                <button className="btn-brand" disabled={pageBusy}>Credit Wallet</button>
               </div>
             </form>
 
@@ -399,7 +413,7 @@ export default function CommercialControl() {
                 <label style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-2)', fontWeight: 800 }}>
                   <input type="checkbox" checked={thresholdForm.hardStopEnabled} onChange={e => setThresholdForm({ ...thresholdForm, hardStopEnabled: e.target.checked })} /> Hard stop at zero balance
                 </label>
-                <button className="btn-brand" disabled={saving}>Save Thresholds</button>
+                <button className="btn-brand" disabled={pageBusy}>Save Thresholds</button>
               </div>
             </form>
           </div>
@@ -423,7 +437,7 @@ export default function CommercialControl() {
                       aria-label={`${item.status === 'ACTIVE' ? 'Disable' : 'Enable'} ${item.addon.name}`}
                       title={pendingAddonCode === item.addon.code ? 'Saving...' : item.status === 'ACTIVE' ? 'Disable' : 'Enable'}
                       onClick={() => handleAddonToggle(item.addon.code)}
-                      disabled={pendingAddonCode === item.addon.code}
+                      disabled={pageBusy}
                       style={switchStyle(item.status === 'ACTIVE', pendingAddonCode === item.addon.code)}
                     >
                       <span style={switchThumbStyle} />
@@ -451,7 +465,7 @@ export default function CommercialControl() {
                 <input className="ptdt-input" value={paymentForm.paymentReference} onChange={e => setPaymentForm({ ...paymentForm, paymentReference: e.target.value })} placeholder="Payment reference" />
                 <input className="ptdt-input" value={paymentForm.proofUrl} onChange={e => setPaymentForm({ ...paymentForm, proofUrl: e.target.value })} placeholder="Proof URL / slip location" />
                 <input className="ptdt-input" value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder="Notes" />
-                <button className="btn-brand" disabled={saving}>Submit Request</button>
+                <button className="btn-brand" disabled={pageBusy}>Submit Request</button>
               </div>
             </form>
 
@@ -462,7 +476,7 @@ export default function CommercialControl() {
                 <input className="ptdt-input" value={accountForm.code} onChange={e => setAccountForm({ ...accountForm, code: e.target.value })} placeholder="Optional account code" />
                 <input className="ptdt-input" value={accountForm.email} onChange={e => setAccountForm({ ...accountForm, email: e.target.value })} placeholder="Billing email" />
                 <input className="ptdt-input" value={accountForm.phone} onChange={e => setAccountForm({ ...accountForm, phone: e.target.value })} placeholder="Billing phone" />
-                <button className="btn-brand" disabled={saving}><Plus size={14} /> Create Account</button>
+                <button className="btn-brand" disabled={pageBusy}><Plus size={14} /> Create Account</button>
               </div>
             </form>
           </div>
@@ -483,9 +497,9 @@ export default function CommercialControl() {
                       <td style={{ padding: '13px 16px' }}>{request.paymentReference || '—'}</td>
                       <td style={{ padding: '13px 16px' }}><span className="mono" style={{ color: stateColor(request.status), fontWeight: 900 }}>{request.status}</span></td>
                       <td style={{ padding: '13px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {request.status !== 'APPROVED' && <button className="ptdt-action-btn active" type="button" onClick={() => handlePaymentStatus(request, 'APPROVED')}>Approve</button>}
-                        {request.status !== 'REJECTED' && <button className="ptdt-action-btn danger" type="button" onClick={() => handlePaymentStatus(request, 'REJECTED')}>Reject</button>}
-                        {request.status !== 'UNDER_REVIEW' && <button className="ptdt-action-btn" type="button" onClick={() => handlePaymentStatus(request, 'UNDER_REVIEW')}>Review</button>}
+                        {request.status !== 'APPROVED' && <button className="ptdt-action-btn active" type="button" disabled={pageBusy} onClick={() => handlePaymentStatus(request, 'APPROVED')}>Approve</button>}
+                        {request.status !== 'REJECTED' && <button className="ptdt-action-btn danger" type="button" disabled={pageBusy} onClick={() => handlePaymentStatus(request, 'REJECTED')}>Reject</button>}
+                        {request.status !== 'UNDER_REVIEW' && <button className="ptdt-action-btn" type="button" disabled={pageBusy} onClick={() => handlePaymentStatus(request, 'UNDER_REVIEW')}>Review</button>}
                       </td>
                     </tr>
                   ))}
