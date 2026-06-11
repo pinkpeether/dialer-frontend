@@ -11,12 +11,15 @@ export default function RoleRoute({ children, roles }: RoleRouteProps) {
   const userRole = useAuthStore(s => s.user?.role)
   const location = useLocation()
   const role = normalizeRole(userRole)
+  const agentDashboardAllowed = role === 'AGENT' && location.pathname === '/dashboard'
 
-  const isAllowed = roles
-    ? Boolean(role && roles.includes(role))
-    : role === 'AGENT'
-      ? canAgentAccessPath(location.pathname)
-      : true
+  const isAllowed = agentDashboardAllowed
+    ? true
+    : roles
+      ? Boolean(role && roles.includes(role))
+      : role === 'AGENT'
+        ? canAgentAccessPath(location.pathname)
+        : true
 
   if (!isAllowed) {
     return <Navigate to="/unauthorized" replace state={{ from: location.pathname }} />
