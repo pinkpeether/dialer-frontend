@@ -11,3 +11,5 @@
 .ptdt-refresh-active svg {
   animation: ptdtSpin .85s linear infinite;
 }
+
+/* PTDT frontend deployment refresh */
