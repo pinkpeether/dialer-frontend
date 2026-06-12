@@ -37,6 +37,12 @@ export type RequestCallerIdPayload = {
   notes?: string | null
 }
 
+export type DynamicCallerIdCallValidation = {
+  allowed: boolean
+  callerId: string | null
+  dynamicCallerIdUsed: boolean
+}
+
 export const dynamicCallerIdApi = {
   getSummary: async (accountId?: number | string | null) => {
     const res = await api.get('/dynamic-caller-id/summary', { params: accountId ? { accountId } : undefined })
@@ -45,6 +51,10 @@ export const dynamicCallerIdApi = {
   list: async (accountId?: number | string | null) => {
     const res = await api.get('/dynamic-caller-id', { params: accountId ? { accountId } : undefined })
     return res.data.data as DynamicCallerIdRecord[]
+  },
+  validateCall: async (callerIdId?: number | string | null) => {
+    const res = await api.post('/dynamic-caller-id/validate-call', { callerIdId: callerIdId || null })
+    return res.data.data as DynamicCallerIdCallValidation
   },
   request: async (payload: RequestCallerIdPayload) => {
     const res = await api.post('/dynamic-caller-id/request', payload)
