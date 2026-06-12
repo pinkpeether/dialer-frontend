@@ -5,6 +5,8 @@ import { dynamicCallerIdApi, type DynamicCallerIdRecord } from '../api/dynamicCa
 
 export const DYNAMIC_CALLER_ID_SELECTION_KEY = 'ptdt-dialer:selected-dynamic-caller-id'
 
+const usableOnly = (items: DynamicCallerIdRecord[]) => items.filter(item => item.isUsable)
+
 export default function DynamicCallerIdDialerSelector() {
   const location = useLocation()
   const [loading, setLoading] = useState(false)
@@ -20,25 +22,42 @@ export default function DynamicCallerIdDialerSelector() {
   const onDialerPage = location.pathname === '/dialer'
   const selectedNumber = useMemo(() => numbers.find(item => String(item.id) === selectedId), [numbers, selectedId])
 
+  const reconcileSavedSelection = (available: DynamicCallerIdRecord[]) => {
+    const saved = typeof window === 'undefined' ? '' : window.localStorage.getItem(DYNAMIC_CALLER_ID_SELECTION_KEY) || ''
+    const stillValid = available.some(item => String(item.id) === saved)
+    if (!stillValid) {
+      setSelectedId('')
+      if (typeof window !== 'undefined') window.localStorage.removeItem(DYNAMIC_CALLER_ID_SELECTION_KEY)
+    }
+  }
+
   const load = async () => {
     if (!onDialerPage) return
     setLoading(true)
     setError('')
     try {
       const summary = await dynamicCallerIdApi.getSummary()
+      const available = summary.availableNumbers || []
       setAddonActive(Boolean(summary.addonActive))
       setBalanceState(summary.balanceState)
-      setNumbers(summary.availableNumbers || [])
-      const saved = typeof window === 'undefined' ? '' : window.localStorage.getItem(DYNAMIC_CALLER_ID_SELECTION_KEY) || ''
-      const stillValid = (summary.availableNumbers || []).some(item => String(item.id) === saved)
-      if (!stillValid) {
-        setSelectedId('')
-        if (typeof window !== 'undefined') window.localStorage.removeItem(DYNAMIC_CALLER_ID_SELECTION_KEY)
-      }
+      setNumbers(available)
+      reconcileSavedSelection(available)
     } catch (err) {
-      setAddonActive(false)
-      setNumbers([])
-      setError(err instanceof Error ? err.message : 'Dynamic Caller ID unavailable')
+      // Platform admins may not have a single customer account context on the Dialer page.
+      // In that case, show all globally usable Dynamic Caller IDs for testing/admin calls.
+      try {
+        const all = await dynamicCallerIdApi.list()
+        const available = usableOnly(all)
+        setAddonActive(available.length > 0)
+        setBalanceState('ADMIN_CONTEXT')
+        setNumbers(available)
+        reconcileSavedSelection(available)
+        setError(available.length ? '' : (err instanceof Error ? err.message : 'Dynamic Caller ID unavailable'))
+      } catch (fallbackErr) {
+        setAddonActive(false)
+        setNumbers([])
+        setError(fallbackErr instanceof Error ? fallbackErr.message : 'Dynamic Caller ID unavailable')
+      }
     } finally {
       setLoading(false)
     }
