@@ -3,11 +3,13 @@ import { sipClient } from '../services/sip/SipClient'
 import { softphoneAudio } from '../services/audio/SoftphoneAudio'
 import api from '../api/axios'
 import { callsAPI } from '../api/calls.api'
+import { dynamicCallerIdApi } from '../api/dynamicCallerId.api'
 import type { SipAccountConfig, SipCallState, SipIncomingCall, SipRuntimeStatus } from '../types/sip'
 
 const STORAGE_KEY = 'ptdt_sip_account_v1'
 const AUDIO_OUTPUT_STORAGE_KEY = 'ptdt_sip_audio_output_v1'
 const AUDIO_INPUT_STORAGE_KEY = 'ptdt_sip_audio_input_v1'
+const DYNAMIC_CALLER_ID_SELECTION_KEY = 'ptdt-dialer:selected-dynamic-caller-id'
 
 const defaultConfig: SipAccountConfig = {
   enabled: false,
@@ -42,6 +44,16 @@ function loadAudioOutputDeviceId() {
 
 function loadAudioInputDeviceId() {
   try { return localStorage.getItem(AUDIO_INPUT_STORAGE_KEY) || 'default' } catch { return 'default' }
+}
+
+function selectedDynamicCallerId() {
+  try { return localStorage.getItem(DYNAMIC_CALLER_ID_SELECTION_KEY) || '' } catch { return '' }
+}
+
+async function validateDynamicCallerIdBeforeSipCall() {
+  const callerIdId = selectedDynamicCallerId()
+  if (!callerIdId) return
+  await dynamicCallerIdApi.validateCall(callerIdId)
 }
 
 // Create a backend call log for a SIP call — best-effort, non-blocking
@@ -254,6 +266,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   call: async (destination) => {
     try {
       set({ error: null })
+      await validateDynamicCallerIdBeforeSipCall()
       const resolvedInputDeviceId = await sipClient.setAudioInputDevice(get().audioInputDeviceId)
       if (resolvedInputDeviceId !== get().audioInputDeviceId) {
         localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, resolvedInputDeviceId)
@@ -339,14 +352,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   transfer: async (destination) => {
     const dest = destination.trim()
     if (!dest) return
-    try {
-      await sipClient.transfer(dest)
-      set({ error: null })
-    } catch (err) {
-      const error = err instanceof Error ? err.message : 'SIP transfer failed'
-      set({ error })
-      throw err
-    }
+    await sipClient.transfer(dest)
   },
 
   hold: async () => {
@@ -356,74 +362,34 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   resume: async () => {
     await sipClient.resume()
-    if (get().muted) sipClient.mute(true)
     set({ onHold: false })
   },
 
   setMuted: (muted) => {
-    if (get().onHold) { set({ muted }); return }
-    sipClient.mute(muted)
+    sipClient.setMuted(muted)
     set({ muted })
   },
 
   setAudioOutputDevice: async (deviceId) => {
-    const normalized = deviceId || 'default'
-    localStorage.setItem(AUDIO_OUTPUT_STORAGE_KEY, normalized)
-    set({ audioOutputDeviceId: normalized, audioOutputError: null })
-    try {
-      await sipClient.setAudioOutputDevice(normalized)
-    } catch (err) {
-      const audioOutputError = err instanceof Error ? err.message : 'Could not switch speaker/audio output.'
-      set({ audioOutputError })
-      throw err
-    }
-  },
-
-  setAudioInputDevice: async (deviceId) => {
-    const normalized = deviceId || 'default'
-    localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, normalized)
-    set({ audioInputDeviceId: normalized, audioInputError: null })
-    try {
-      const resolved = await sipClient.setAudioInputDevice(normalized)
-      if (resolved !== normalized) {
-        localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, resolved)
-        set({ audioInputDeviceId: resolved })
-      }
-      return resolved
-    } catch (err) {
-      const audioInputError = err instanceof Error ? err.message : 'Could not switch microphone/input device.'
-      set({ audioInputError })
-      throw err
-    }
+    await sipClient.setAudioOutputDevice(deviceId)
+    localStorage.setItem(AUDIO_OUTPUT_STORAGE_KEY, deviceId)
+    set({ audioOutputDeviceId: deviceId, audioOutputError: null })
   },
 
   testAudioOutputDevice: async () => {
-    const deviceId = get().audioOutputDeviceId
-    try {
-      await softphoneAudio.playTestTone(deviceId)
-      set({ audioOutputError: null })
-    } catch (err) {
-      const audioOutputError = err instanceof Error ? err.message : 'Could not play test speaker tone.'
-      set({ audioOutputError })
-      throw err
-    }
+    await softphoneAudio.preview(get().audioOutputDeviceId)
+  },
+
+  setAudioInputDevice: async (deviceId) => {
+    const resolvedDeviceId = await sipClient.setAudioInputDevice(deviceId)
+    localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, resolvedDeviceId)
+    set({ audioInputDeviceId: resolvedDeviceId, audioInputError: null })
+    return resolvedDeviceId
   },
 
   clearError: () => set({ error: null, audioOutputError: null, audioInputError: null }),
 
   dismissSipDisposition: () => set({ showSipDisposition: false, pendingSipDisposition: null }),
 
-  resetCallState: () => {
-    void sipClient.hangup().catch(() => undefined)
-    set({
-      activeCall: null,
-      incomingCall: null,
-      muted: false,
-      onHold: false,
-      sipCallId: null,
-      sipCallLogPromise: null,
-      status: get().isConfigured ? 'registered' : 'idle',
-      error: null,
-    })
-  },
+  resetCallState: () => set({ activeCall: null, incomingCall: null, muted: false, onHold: false, sipCallId: null, sipCallLogPromise: null, showSipDisposition: false, pendingSipDisposition: null }),
 }))
