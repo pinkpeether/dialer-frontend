@@ -5,6 +5,7 @@ import { useSipStore } from '../store/sip.store'
 import { useAuthStore } from '../store/auth.store'
 import { authAPI } from '../api/auth.api'
 import PtdtDialog from './PtdtDialog'
+import DynamicCallerIdDialerSelector from './DynamicCallerIdDialerSelector'
 
 export default function Layout() {
   const sipConfig = useSipStore(s => s.config)
@@ -57,12 +58,13 @@ export default function Layout() {
     setConfirmSignOut(true)
   }, [])
 
-  const performSignOut = useCallback(async () => {
+  const performSignOut = useCallback(() => {
+    const token = localStorage.getItem('jd_token')
     setConfirmSignOut(false)
-    await authAPI.logout().catch(() => undefined)
-    await unregisterSip().catch(() => undefined)
     logout()
     navigate('/login', { replace: true })
+    void authAPI.logout(token).catch(() => undefined)
+    void unregisterSip().catch(() => undefined)
   }, [logout, navigate, unregisterSip])
 
   return (
@@ -94,6 +96,7 @@ export default function Layout() {
       <div className="grid-overlay" />
 
       <Sidebar />
+      <DynamicCallerIdDialerSelector />
 
       <main style={{
         flex: 1,

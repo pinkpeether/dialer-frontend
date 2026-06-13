@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Building2, Crown, RefreshCw, UserPlus, Users } from 'lucide-react'
-import { administrationApi, type AccountMembership, type AdminCommercialAccount, type AdminUser, type CommercialAccountRole } from '../api/administration.api'
+import { administrationApi, type AccountMembership, type AdminCommercialAccount, type AdminUser, type CommercialAccountRole, type CommercialMembershipStatus } from '../api/administration.api'
 import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
 
 const platformRoles = new Set(['SUPER_ADMIN', 'ADMIN'])
@@ -94,7 +94,7 @@ export default function PlatformAdministrationV2() {
   const selectedAccount = accounts.find(account => account.id === selectedAccountId) || accounts[0]
   const selectedIndex = Math.max(0, accounts.findIndex(account => account.id === selectedAccount?.id))
   const selectedTheme = themeAt(selectedIndex)
-  const busy = loading || refreshing || saving
+  const initialLoading = loading && accounts.length === 0
   const selectedMemberUserIds = useMemo(() => new Set(members.map(member => member.userId)), [members])
 
   const assignableUsers = useMemo(() => {
@@ -112,10 +112,6 @@ export default function PlatformAdministrationV2() {
       return !otherAccountMemberIds.has(user.id)
     })
   }, [accounts, selectedAccount?.id, selectedMemberUserIds, users])
-
-  const remember = (nextMembers = members, nextSelectedId = selectedAccount?.id) => {
-    writeCache({ selectedAccountId: nextSelectedId, accounts, users, members: nextMembers })
-  }
 
   const loadMembers = async (accountId: number) => {
     const nextMembers = await administrationApi.listPlatformAccountMembers(accountId)
@@ -149,7 +145,8 @@ export default function PlatformAdministrationV2() {
     }
   }
 
-  useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.length ? 'refresh' : 'initial') }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.length ? 'refresh' : 'initial') }, [])
 
   const selectAccount = (accountId: number) => {
     if (accountId === selectedAccount?.id) return
@@ -179,31 +176,41 @@ export default function PlatformAdministrationV2() {
       canViewReports: form.canViewReports,
       canUseDynamicCallerId: form.canUseDynamicCallerId,
     })
-      .then(async () => {
-        const nextMembers = await loadMembers(selectedAccount.id)
+      .then(membership => {
+        const nextMembers = [membership, ...members.filter(item => item.id !== membership.id && item.userId !== membership.userId)]
+        setMembers(nextMembers)
+        writeCache({ selectedAccountId: selectedAccount.id, accounts, users, members: nextMembers })
         setForm(prev => ({ ...prev, userId: '' }))
         setMessage('Account membership assigned.')
-        remember(nextMembers, selectedAccount.id)
+        void loadMembers(selectedAccount.id).catch(() => undefined)
       })
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to assign member'))
       .finally(() => setSaving(false))
   }
 
   const toggleMember = (member: AccountMembership) => {
-    const nextStatus = member.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+    const nextStatus: CommercialMembershipStatus = member.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+    const previousMembers = members
+    const optimisticMembers = members.map(item => item.id === member.id ? { ...item, status: nextStatus } : item)
+    setMembers(optimisticMembers)
+    writeCache({ selectedAccountId: selectedAccount?.id, accounts, users, members: optimisticMembers })
     setSaving(true)
     setPendingMembershipId(member.id)
     setError('')
 
     void administrationApi.updatePlatformMembership(member.id, { status: nextStatus })
-      .then(async () => {
-        if (selectedAccount) {
-          const nextMembers = await loadMembers(selectedAccount.id)
-          remember(nextMembers, selectedAccount.id)
-        }
+      .then(updated => {
+        const nextMembers = optimisticMembers.map(item => item.id === updated.id ? updated : item)
+        setMembers(nextMembers)
+        writeCache({ selectedAccountId: selectedAccount?.id, accounts, users, members: nextMembers })
         setMessage(`Membership marked ${nextStatus}.`)
+        if (selectedAccount) void loadMembers(selectedAccount.id).catch(() => undefined)
       })
-      .catch(err => setError(err instanceof Error ? err.message : 'Failed to update member'))
+      .catch(err => {
+        setMembers(previousMembers)
+        writeCache({ selectedAccountId: selectedAccount?.id, accounts, users, members: previousMembers })
+        setError(err instanceof Error ? err.message : 'Failed to update member')
+      })
       .finally(() => {
         setSaving(false)
         setPendingMembershipId(null)
@@ -211,8 +218,8 @@ export default function PlatformAdministrationV2() {
   }
 
   return (
-    <div className="ptdt-page" style={{ opacity: busy ? 0.58 : 1, transition: 'opacity .18s ease' }}>
-      <PtdtBusyOverlay active={busy} label={loading || refreshing ? 'Refreshing administration data' : 'Applying administration changes'} />
+    <div className="ptdt-page">
+      <PtdtBusyOverlay active={initialLoading} label="Loading administration data" />
 
       <div className="ptdt-page-header">
         <div>
@@ -223,7 +230,7 @@ export default function PlatformAdministrationV2() {
         <button
           type="button"
           className={`ptdt-action-btn ${loading || refreshing ? 'ptdt-refresh-active' : ''}`}
-          disabled={busy}
+          disabled={loading || refreshing}
           onClick={() => void loadData(selectedAccount?.id, 'refresh')}
         >
           <RefreshCw size={14} /> Refresh
@@ -236,7 +243,7 @@ export default function PlatformAdministrationV2() {
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px,380px) 1fr', gap: 18, alignItems: 'start' }}>
         <div style={{ display: 'grid', gap: 12 }}>
           <div className="eyebrow green"><Building2 size={12} /> Commercial Accounts</div>
-          {loading ? (
+          {initialLoading ? (
             <div className="glass" style={{ padding: 18, borderRadius: 18 }}>Loading accounts...</div>
           ) : accounts.map((account, index) => {
             const theme = themeAt(index)
@@ -299,7 +306,7 @@ export default function PlatformAdministrationV2() {
             <select className="ptdt-select" value={form.accountRole} onChange={event => setForm({ ...form, accountRole: event.target.value as CommercialAccountRole })}>
               {accountRoleOptions.map(role => <option key={role} value={role}>{accountRoleLabel(role)}</option>)}
             </select>
-            <button className="btn-brand" type="submit" disabled={busy || !selectedAccount}><UserPlus size={14} /> Assign Member</button>
+            <button className="btn-brand" type="submit" disabled={saving || !selectedAccount}><UserPlus size={14} /> {saving ? 'Assigning...' : 'Assign Member'}</button>
           </form>
 
           <div style={{ overflowX: 'auto' }}>
@@ -308,12 +315,19 @@ export default function PlatformAdministrationV2() {
               <tbody>{members.length === 0 ? <tr><td colSpan={5} style={{ padding: 24, color: 'var(--text-3)' }}>No users assigned to this commercial account yet.</td></tr> : members.map(member => {
                 const active = member.status === 'ACTIVE'
                 return (
-                  <tr key={member.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <tr
+                    key={member.id}
+                    style={{
+                      borderBottom: '1px solid var(--border)',
+                      opacity: pendingMembershipId === member.id ? 0.52 : 1,
+                      transition: 'opacity .18s ease',
+                    }}
+                  >
                     <td style={{ padding: 12 }}><strong>{member.user?.name || `User #${member.userId}`}</strong><br /><span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{member.user?.email || '—'}</span></td>
                     <td style={{ padding: 12 }}><span className="ptdt-chip">{member.user?.role || '—'}</span></td>
                     <td style={{ padding: 12, fontWeight: 900 }}>{accountRoleLabel(member.accountRole)}</td>
                     <td style={{ padding: 12, color: statusColor(member.status), fontWeight: 900 }}>{member.status}</td>
-                    <td style={{ padding: 12 }}><button type="button" role="switch" aria-checked={active} disabled={pendingMembershipId === member.id || busy} onClick={() => toggleMember(member)} style={switchBox(active, pendingMembershipId === member.id)}><span style={switchDot} /></button></td>
+                    <td style={{ padding: 12 }}><button type="button" role="switch" aria-checked={active} disabled={pendingMembershipId === member.id} onClick={() => toggleMember(member)} style={switchBox(active, pendingMembershipId === member.id)}><span style={switchDot} /></button></td>
                   </tr>
                 )
               })}</tbody>

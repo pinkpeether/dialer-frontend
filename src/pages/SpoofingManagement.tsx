@@ -1,83 +1,576 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { PhoneCall, Plus, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
-import { spoofingApi } from '../api/spoofing.api'
-import type { CallerIdPayload, CallerIdRecord } from '../api/spoofing.api'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { PhoneCall, RefreshCw, Trash2 } from 'lucide-react'
+import { dynamicCallerIdApi, type DynamicCallerIdRecord, type DynamicCallerIdStatus } from '../api/dynamicCallerId.api'
+import { commercialControlApi, type CommercialAccount } from '../api/commercialControl.api'
+import { useAuthStore } from '../store/auth.store'
 
-const emptyForm: CallerIdPayload = { displayNumber: '', displayName: '', provider: 'generic', providerRef: '', scope: 'all', userId: null, campaignId: null }
+const emptyForm = { displayNumber: '' }
+const CACHE_KEY = 'ptdt-dynamic-caller-id:last-good'
+
+const statusColor = (status: string) => {
+  if (status === 'ACTIVE') return 'var(--green-2)'
+  if (status === 'SUSPENDED' || status === 'REJECTED') return 'var(--danger)'
+  if (status === 'INACTIVE') return 'var(--text-3)'
+  return 'var(--orange)'
+}
+
+const statusLabel = (status: string) => {
+  if (status === 'ACTIVE') return 'ACTIVATED'
+  if (status === 'INACTIVE') return 'INACTIVATED'
+  return status
+}
+
+const accountLabel = (account?: CommercialAccount) => {
+  if (!account) return 'Commercial account scope'
+  return `${account.name} (${account.code || account.id})`
+}
+
+type DynamicCallerIdCache = {
+  savedAt: string
+  accounts: CommercialAccount[]
+  selectedAccountId: string
+  records: DynamicCallerIdRecord[]
+  summary: {
+    addonActive?: boolean
+    availableNumbers?: DynamicCallerIdRecord[]
+    account?: { id?: number; name: string; code: string }
+  } | null
+}
+
+const readCache = (): DynamicCallerIdCache | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY)
+    return raw ? JSON.parse(raw) as DynamicCallerIdCache : null
+  } catch {
+    return null
+  }
+}
+
+const writeCache = (cache: Omit<DynamicCallerIdCache, 'savedAt'>) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cache, savedAt: new Date().toISOString() }))
+  } catch {
+    // Best-effort UI cache only. Backend remains the source of truth.
+  }
+}
 
 export default function SpoofingManagement() {
-  const [numbers, setNumbers] = useState<CallerIdRecord[]>([])
-  const [loading, setLoading] = useState(true)
+  const cached = useMemo(() => readCache(), [])
+  const user = useAuthStore(state => state.user)
+  const isPlatformAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN'
+
+  const [accounts, setAccounts] = useState<CommercialAccount[]>(cached?.accounts ?? [])
+  const [selectedAccountId, setSelectedAccountId] = useState(cached?.selectedAccountId ?? '')
+  const [records, setRecords] = useState<DynamicCallerIdRecord[]>(cached?.records ?? [])
+  const [summary, setSummary] = useState<{
+    addonActive?: boolean
+    availableNumbers?: DynamicCallerIdRecord[]
+    account?: { id?: number; name: string; code: string }
+  } | null>(cached?.summary ?? null)
+
+  const [loading, setLoading] = useState(!cached?.records.length)
+  const [refreshing, setRefreshing] = useState(Boolean(cached?.records.length))
   const [saving, setSaving] = useState(false)
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState<CallerIdPayload>(emptyForm)
+  const [pendingRecordId, setPendingRecordId] = useState<number | null>(null)
+  const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [messageTone, setMessageTone] = useState<'success' | 'danger'>('success')
 
-  const loadData = async () => {
-    setLoading(true); setError('')
-    try { setNumbers(await spoofingApi.getAll()) }
-    catch (err) { setError(err instanceof Error ? err.message : 'Failed to load caller IDs') }
-    finally { setLoading(false) }
+  const selectedAccount = useMemo(
+    () => accounts.find(item => String(item.id) === selectedAccountId),
+    [accounts, selectedAccountId],
+  )
+
+  const visibleRecords = useMemo(
+    () => records.filter(item => item.approvalStatus !== 'REJECTED'),
+    [records],
+  )
+
+  const activeCount = useMemo(
+    () => visibleRecords.filter(item => item.isUsable).length,
+    [visibleRecords],
+  )
+
+  const addonActive = Boolean(summary?.addonActive || activeCount > 0)
+
+  const loadData = async (preferredAccountId = selectedAccountId, options: { silent?: boolean } = {}) => {
+    if (options.silent || records.length > 0) setRefreshing(true)
+    else setLoading(true)
+    setError('')
+
+    try {
+      let accountId = preferredAccountId
+      let nextAccounts = accounts
+
+      if (isPlatformAdmin) {
+        nextAccounts = await commercialControlApi.listAccounts()
+        setAccounts(nextAccounts)
+
+        if (!accountId && nextAccounts.length > 0) {
+          accountId = String(nextAccounts[0].id)
+          setSelectedAccountId(accountId)
+        }
+      }
+
+      const scopedAccountId = isPlatformAdmin ? accountId : undefined
+      const nextSummary = await dynamicCallerIdApi.getSummary(scopedAccountId || undefined).catch(() => null)
+      const nextRecords = await dynamicCallerIdApi.list(scopedAccountId || undefined)
+
+      setSummary(nextSummary)
+      setRecords(nextRecords)
+      writeCache({
+        accounts: nextAccounts,
+        selectedAccountId: accountId,
+        records: nextRecords,
+        summary: nextSummary,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load Dynamic Caller ID data')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }
 
-  useEffect(() => { void loadData() }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void loadData(undefined, { silent: Boolean(cached?.records.length) }) }, [])
 
-  const handleCreate = async (e: FormEvent) => {
-    e.preventDefault(); setSaving(true); setError('')
-    try { await spoofingApi.create(form); setForm(emptyForm); setShowForm(false); await loadData() }
-    catch (err) { setError(err instanceof Error ? err.message : 'Failed to create caller ID') }
-    finally { setSaving(false) }
+  const changeAccount = (value: string) => {
+    setSelectedAccountId(value)
+    setForm(emptyForm)
+    void loadData(value)
   }
-  const handleVerify = async (id: number) => { setError(''); try { await spoofingApi.verify(id); await loadData() } catch (err) { setError(err instanceof Error ? err.message : 'Failed to verify caller ID') } }
-  const handleToggle = async (record: CallerIdRecord) => { setError(''); try { await spoofingApi.update(record.id, { isActive: !record.isActive }); await loadData() } catch (err) { setError(err instanceof Error ? err.message : 'Failed to update caller ID') } }
-  const handleDelete = async (id: number) => { if (!window.confirm('Delete this caller ID?')) return; setError(''); try { await spoofingApi.delete(id); await loadData() } catch (err) { setError(err instanceof Error ? err.message : 'Failed to delete caller ID') } }
+
+  const submitRequest = async (event: FormEvent) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    setMessage('')
+    setMessageTone('success')
+
+    try {
+      if (isPlatformAdmin) {
+        if (!selectedAccountId) throw new Error('Please select a commercial account first.')
+        await dynamicCallerIdApi.adminCreate({
+          accountId: selectedAccountId,
+          displayNumber: form.displayNumber,
+          provider: 'illyvoip',
+          status: 'INACTIVE',
+        })
+        setMessage('Dynamic Caller ID added. Activate it when ready.')
+      } else {
+        await dynamicCallerIdApi.request({
+          displayNumber: form.displayNumber,
+          provider: 'illyvoip',
+        })
+        setMessage('Dynamic Caller ID request submitted. PTDT Super Admin must activate it before use.')
+      }
+
+      setForm(emptyForm)
+      await loadData(selectedAccountId, { silent: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit Dynamic Caller ID')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const updateStatus = async (record: DynamicCallerIdRecord, status: DynamicCallerIdStatus) => {
+    const previousRecords = records
+    const optimisticRecords = records
+      .map(item => item.id === record.id
+        ? {
+          ...item,
+          approvalStatus: status,
+          isActive: status === 'ACTIVE',
+          isVerified: status === 'ACTIVE' ? true : item.isVerified,
+          isUsable: status === 'ACTIVE',
+        }
+        : item)
+      .filter(item => item.approvalStatus !== 'REJECTED')
+
+    setRecords(optimisticRecords)
+    writeCache({ accounts, selectedAccountId, records: optimisticRecords, summary })
+    setPendingRecordId(record.id)
+    setSaving(true)
+    setError('')
+    setMessage('')
+    setMessageTone(status === 'INACTIVE' || status === 'SUSPENDED' || status === 'REJECTED' ? 'danger' : 'success')
+
+    try {
+      const updated = await dynamicCallerIdApi.setStatus(record.id, status)
+      const nextRecords = optimisticRecords
+        .map(item => item.id === updated.id ? updated : item)
+        .filter(item => item.approvalStatus !== 'REJECTED')
+      setRecords(nextRecords)
+      writeCache({ accounts, selectedAccountId, records: nextRecords, summary })
+      setMessage(
+        status === 'REJECTED'
+          ? `Caller ID ${record.displayNumber} removed from active view.`
+          : `Caller ID ${record.displayNumber} marked ${statusLabel(status)}.`,
+      )
+      void loadData(selectedAccountId, { silent: true })
+    } catch (err) {
+      setRecords(previousRecords)
+      writeCache({ accounts, selectedAccountId, records: previousRecords, summary })
+      setError(err instanceof Error ? err.message : 'Failed to update Dynamic Caller ID status')
+    } finally {
+      setSaving(false)
+      setPendingRecordId(null)
+    }
+  }
+
+  const activationPill = (record: DynamicCallerIdRecord) => {
+    const active = record.approvalStatus === 'ACTIVE'
+    const inactive = record.approvalStatus === 'INACTIVE'
+
+    return (
+      <div
+        style={{
+          width: 264,
+          maxWidth: '100%',
+          height: 44,
+          borderRadius: 999,
+          padding: 4,
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 3,
+          background: active
+            ? 'linear-gradient(90deg, rgba(0,167,71,.18), rgba(0,229,160,.16))'
+            : 'linear-gradient(90deg, rgba(148,163,184,.16), rgba(148,163,184,.10))',
+          border: active ? '1px solid rgba(0,167,71,.35)' : '1px solid rgba(15,23,42,.18)',
+          boxShadow: active ? '0 12px 28px rgba(0,167,71,.18)' : 'inset 0 1px 2px rgba(15,23,42,.08)',
+        }}
+      >
+        <button
+          type="button"
+          disabled={pendingRecordId === record.id || active}
+          onClick={() => void updateStatus(record, 'ACTIVE')}
+          style={{
+            border: 0,
+            borderRadius: 999,
+            cursor: pendingRecordId === record.id || active ? 'default' : 'pointer',
+            fontWeight: 900,
+            fontSize: 12,
+            letterSpacing: '.02em',
+            color: active ? '#fff' : 'rgba(15,23,42,.22)',
+            background: active ? 'linear-gradient(180deg, #00c853, #009d3a)' : 'transparent',
+            boxShadow: active ? '0 8px 18px rgba(0,167,71,.28)' : 'none',
+            textShadow: active ? '0 1px 0 rgba(0,0,0,.18)' : '0 1px 0 rgba(255,255,255,.55)',
+          }}
+        >
+          ACTIVATED
+        </button>
+
+        <button
+          type="button"
+          disabled={pendingRecordId === record.id || inactive}
+          onClick={() => void updateStatus(record, 'INACTIVE')}
+          style={{
+            border: 0,
+            borderRadius: 999,
+            cursor: pendingRecordId === record.id || inactive ? 'default' : 'pointer',
+            fontWeight: 900,
+            fontSize: 12,
+            letterSpacing: '.02em',
+            color: inactive ? '#fff' : 'rgba(15,23,42,.22)',
+            background: inactive ? 'linear-gradient(180deg, #6b7280, #404040)' : 'transparent',
+            boxShadow: inactive ? '0 8px 18px rgba(15,23,42,.22)' : 'none',
+            textShadow: inactive ? '0 1px 0 rgba(0,0,0,.18)' : '0 1px 0 rgba(255,255,255,.55)',
+          }}
+        >
+          INACTIVATED
+        </button>
+      </div>
+    )
+  }
+
+  const suspendedButton = (record: DynamicCallerIdRecord) => {
+    const active = record.approvalStatus === 'SUSPENDED'
+
+    return (
+      <button
+        className="ptdt-action-btn danger"
+        type="button"
+        disabled={pendingRecordId === record.id || active}
+        onClick={() => void updateStatus(record, 'SUSPENDED')}
+        style={{
+          minHeight: 44,
+          borderRadius: 999,
+          padding: '0 18px',
+          gap: 10,
+          fontWeight: 900,
+          fontSize: 12,
+        }}
+      >
+        <span
+          style={{
+            width: 38,
+            height: 20,
+            borderRadius: 999,
+            padding: 2,
+            background: active ? 'rgba(239,68,68,.28)' : 'rgba(148,163,184,.22)',
+            border: '1px solid rgba(239,68,68,.18)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: active ? 'flex-end' : 'flex-start',
+          }}
+        >
+          <span
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: '50%',
+              background: active ? 'var(--danger)' : 'rgba(71,85,105,.72)',
+            }}
+          />
+        </span>
+        SUSPENDED
+      </button>
+    )
+  }
 
   return (
     <div className="ptdt-page">
       <div className="ptdt-page-header">
         <div>
-          <div className="eyebrow pink" style={{ marginBottom: 12 }}><PhoneCall size={12} /> Admin</div>
-          <h1 className="ptdt-page-title">Caller ID <span className="gradient-brand-text">Management</span></h1>
-          <p className="ptdt-page-desc">Manage approved outbound caller IDs for global, campaign, or user scope. Carrier/SIP-provider support is still required for actual outbound presentation.</p>
+          <div className="eyebrow pink" style={{ marginBottom: 12 }}>
+            <PhoneCall size={12} /> Commercial Add-on
+          </div>
+          <h1 className="ptdt-page-title">
+            Dynamic <span className="gradient-brand-text">Caller ID</span>
+          </h1>
+          <p className="ptdt-page-desc">
+            Customer-requested, PTDT-approved caller ID pool. Numbers may be saved with or without +.
+            Only ACTIVATED caller IDs can be selected for outbound calls.
+          </p>
         </div>
+
         <div className="ptdt-toolbar">
-          <button type="button" className="ptdt-action-btn" onClick={() => void loadData()} disabled={loading}><RefreshCw size={14} /> Refresh</button>
-          <button type="button" className="btn-brand" onClick={() => setShowForm(value => !value)} style={{ minHeight: 38, fontSize: 12 }}><Plus size={14} /> {showForm ? 'Cancel' : 'Add Caller ID'}</button>
+          {refreshing && <span className="ptdt-chip">Refreshing...</span>}
+          <button
+            type="button"
+            className="ptdt-action-btn"
+            onClick={() => void loadData(selectedAccountId)}
+            disabled={loading || refreshing || saving}
+          >
+            <RefreshCw size={14} /> Refresh
+          </button>
         </div>
       </div>
 
-      {error && <div className="glass" style={{ color: 'var(--danger)', marginBottom: 14, padding: 14, borderColor: 'rgba(239,68,68,.28)' }}>{error}</div>}
-
-      {showForm && (
-        <form onSubmit={handleCreate} className="glass" style={{ padding: 18, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 18 }}>
-          <input className="ptdt-input" value={form.displayNumber} onChange={e => setForm({ ...form, displayNumber: e.target.value })} placeholder="E.164 number, e.g. +14155552671" required />
-          <input className="ptdt-input" value={form.displayName || ''} onChange={e => setForm({ ...form, displayName: e.target.value })} placeholder="Display name / label" />
-          <select className="ptdt-select" value={form.scope} onChange={e => setForm({ ...form, scope: e.target.value as CallerIdPayload['scope'], userId: null, campaignId: null })}>
-            <option value="all">Global</option><option value="campaign">Campaign</option><option value="user">User</option>
-          </select>
-          {form.scope === 'campaign' && <input className="ptdt-input" type="number" value={form.campaignId ?? ''} onChange={e => setForm({ ...form, campaignId: e.target.value ? Number(e.target.value) : null })} placeholder="Campaign ID" required />}
-          {form.scope === 'user' && <input className="ptdt-input" type="number" value={form.userId ?? ''} onChange={e => setForm({ ...form, userId: e.target.value ? Number(e.target.value) : null })} placeholder="User ID" required />}
-          <input className="ptdt-input" value={form.provider || ''} onChange={e => setForm({ ...form, provider: e.target.value })} placeholder="Provider, e.g. generic/illyvoip/custom-sip" />
-          <button type="submit" className="btn-brand" disabled={saving}>{saving ? 'Saving...' : 'Save Caller ID'}</button>
-        </form>
+      {error && (
+        <div className="glass" style={{ color: 'var(--danger)', marginBottom: 14, padding: 14, borderColor: 'rgba(239,68,68,.28)' }}>
+          {error}
+        </div>
       )}
+
+      {message && (
+        <div
+          className="glass"
+          style={{
+            color: messageTone === 'danger' ? 'var(--danger)' : 'var(--green-2)',
+            marginBottom: 14,
+            padding: 14,
+            borderColor: messageTone === 'danger' ? 'rgba(239,68,68,.28)' : 'rgba(0,167,71,.24)',
+          }}
+        >
+          {message}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 18 }}>
+        <div className="glass" style={{ padding: 18 }}>
+          <div className="eyebrow green">Add-on</div>
+          <h2 style={{ margin: '8px 0', color: addonActive ? 'var(--green-2)' : 'var(--danger)' }}>
+            {addonActive ? 'ACTIVE' : 'INACTIVE'}
+          </h2>
+          <p style={{ margin: 0, color: 'var(--text-3)' }}>
+            {summary?.account ? `${summary.account.name} (${summary.account.code})` : accountLabel(selectedAccount)}
+          </p>
+        </div>
+
+        <div className="glass" style={{ padding: 18 }}>
+          <div className="eyebrow pink">Usable Caller IDs</div>
+          <h2 style={{ margin: '8px 0' }}>{activeCount}</h2>
+          <p style={{ margin: 0, color: 'var(--text-3)' }}>ACTIVATED only</p>
+        </div>
+
+        <div className="glass" style={{ padding: 18 }}>
+          <div className="eyebrow purple">Control</div>
+          <h2 style={{ margin: '8px 0' }}>{isPlatformAdmin ? 'PTDT Admin' : 'Customer Request'}</h2>
+          <p style={{ margin: 0, color: 'var(--text-3)' }}>
+            {isPlatformAdmin ? 'Add, activate, suspend, remove.' : 'Submit request; PTDT activates.'}
+          </p>
+        </div>
+      </div>
+
+      <form
+        onSubmit={submitRequest}
+        className="glass"
+        style={{
+          padding: 22,
+          marginBottom: 18,
+          borderColor: 'rgba(0,167,71,.22)',
+          background: 'linear-gradient(135deg, rgba(0,229,160,.08), rgba(251,10,139,.035), rgba(255,255,255,.82))',
+          boxShadow: '0 16px 44px rgba(15,23,42,.08)',
+        }}
+      >
+        <div className="eyebrow green" style={{ marginBottom: 12 }}>Commercial Account</div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isPlatformAdmin ? 'minmax(280px, 1.05fr) minmax(260px, 1fr) auto' : 'minmax(260px, 1fr) auto',
+            gap: 14,
+            alignItems: 'center',
+          }}
+        >
+          {isPlatformAdmin && (
+            <div style={{ position: 'relative' }}>
+              <select
+                className="ptdt-input"
+                value={selectedAccountId}
+                onChange={event => changeAccount(event.target.value)}
+                disabled={loading || saving}
+                required
+                style={{
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  paddingRight: 48,
+                  fontFamily: 'Inter, Montserrat, system-ui, sans-serif',
+                  fontWeight: 800,
+                  letterSpacing: 0,
+                  fontStretch: 'normal',
+                  color: 'var(--text-1)',
+                }}
+              >
+                <option value="">Select commercial account</option>
+                {accounts.map(account => (
+                  <option key={account.id} value={account.id}>
+                    {accountLabel(account)}
+                  </option>
+                ))}
+              </select>
+
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  right: 16,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  pointerEvents: 'none',
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  display: 'grid',
+                  placeItems: 'center',
+                  background: 'rgba(15,23,42,.04)',
+                  color: 'var(--text-2)',
+                  fontWeight: 900,
+                }}
+              >
+                ▾
+              </span>
+            </div>
+          )}
+
+          <input
+            className="ptdt-input"
+            value={form.displayNumber}
+            onChange={event => setForm({ ...form, displayNumber: event.target.value })}
+            placeholder="Caller ID, e.g. 14155552671 or +14155552671"
+            required
+            style={{
+              fontFamily: 'Inter, Montserrat, system-ui, sans-serif',
+              fontWeight: 650,
+              letterSpacing: 0,
+              fontStretch: 'normal',
+            }}
+          />
+
+          <button type="submit" className="btn-brand" disabled={saving} style={{ minHeight: 54, paddingInline: 28, whiteSpace: 'nowrap' }}>
+            {saving ? 'Saving...' : isPlatformAdmin ? 'Add Caller ID' : 'Submit Request'}
+          </button>
+        </div>
+      </form>
 
       <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{ overflowX: 'auto' }}>
-          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
-            <thead><tr style={{ background: 'var(--bg-glass)' }}>{['Number', 'Label', 'Scope', 'Provider', 'Active', 'Verified', 'Actions'].map(h => <th key={h} style={{ padding: '13px 16px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>)}</tr></thead>
+          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1220 }}>
+            <thead>
+              <tr style={{ background: 'var(--bg-glass)' }}>
+                {['Number', 'Account', 'Status', 'Usable', 'Actions'].map(header => (
+                  <th key={header} style={{ padding: '13px 16px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+
             <tbody>
-              {loading ? <tr><td colSpan={7} style={{ padding: 30, color: 'var(--text-3)' }}>Loading caller IDs...</td></tr> : numbers.length === 0 ? <tr><td colSpan={7} style={{ padding: 30, color: 'var(--text-3)' }}>No caller IDs configured yet.</td></tr> : numbers.map(record => (
-                <tr className="table-row" key={record.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td className="mono" style={{ padding: '13px 16px', fontWeight: 900 }}>{record.displayNumber}</td>
-                  <td style={{ padding: '13px 16px' }}>{record.displayName || '—'}</td>
-                  <td style={{ padding: '13px 16px' }}><span className="ptdt-chip">{record.scope}</span></td>
-                  <td style={{ padding: '13px 16px' }}>{record.provider || 'generic'}</td>
-                  <td style={{ padding: '13px 16px' }}><button type="button" className={`ptdt-action-btn ${record.isActive ? 'active' : ''}`} onClick={() => void handleToggle(record)}>{record.isActive ? 'Active' : 'Inactive'}</button></td>
-                  <td style={{ padding: '13px 16px' }}><span className={`badge ${record.isVerified ? 'badge-answered' : 'badge-pending'}`}>{record.isVerified ? 'Verified' : 'Pending'}</span></td>
-                  <td style={{ padding: '13px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {!record.isVerified && <button className="ptdt-action-btn active" type="button" onClick={() => void handleVerify(record.id)}><ShieldCheck size={14} /> Verify</button>}
-                    <button className="ptdt-action-btn danger" type="button" onClick={() => void handleDelete(record.id)}><Trash2 size={14} /> Delete</button>
+              {loading && visibleRecords.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: 30, color: 'var(--text-3)' }}>
+                    Loading Dynamic Caller IDs...
+                  </td>
+                </tr>
+              ) : visibleRecords.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: 30, color: 'var(--text-3)' }}>
+                    No Dynamic Caller IDs configured yet.
+                  </td>
+                </tr>
+              ) : visibleRecords.map(record => (
+                <tr
+                  className="table-row"
+                  key={record.id}
+                  style={{
+                    borderBottom: '1px solid var(--border)',
+                    opacity: pendingRecordId === record.id ? 0.52 : 1,
+                    transition: 'opacity .18s ease',
+                  }}
+                >
+                  <td className="mono" style={{ padding: '18px 16px', fontWeight: 900, fontSize: 17 }}>
+                    {record.displayNumber}
+                  </td>
+
+                  <td style={{ padding: '18px 16px', fontSize: 13, lineHeight: 1.35, fontWeight: 650 }}>
+                    {selectedAccount ? accountLabel(selectedAccount) : record.commercialAccountId ? `#${record.commercialAccountId}` : '—'}
+                  </td>
+
+                  <td style={{ padding: '18px 16px' }}>
+                    <span className="badge" style={{ color: statusColor(record.approvalStatus), border: `1px solid ${statusColor(record.approvalStatus)}`, fontWeight: 900 }}>
+                      {statusLabel(record.approvalStatus)}
+                    </span>
+                  </td>
+
+                  <td style={{ padding: '18px 16px' }}>
+                    {record.isUsable ? <span className="badge badge-answered">YES</span> : <span className="badge badge-pending">NO</span>}
+                  </td>
+
+                  <td style={{ padding: '16px 16px', minWidth: 550 }}>
+                    {isPlatformAdmin ? (
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'nowrap' }}>
+                        {activationPill(record)}
+                        {suspendedButton(record)}
+                        <button
+                          className="ptdt-action-btn danger"
+                          type="button"
+                          disabled={pendingRecordId === record.id}
+                          onClick={() => void updateStatus(record, 'REJECTED')}
+                          style={{ minHeight: 44, borderRadius: 999, paddingInline: 18, fontWeight: 900, fontSize: 12 }}
+                        >
+                          <Trash2 size={16} /> Remove
+                        </button>
+                      </div>
+                    ) : (
+                      'PTDT activation required'
+                    )}
                   </td>
                 </tr>
               ))}

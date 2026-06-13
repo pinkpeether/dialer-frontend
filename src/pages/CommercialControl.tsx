@@ -84,6 +84,7 @@ export default function CommercialControl() {
   const hasVisibleDataRef = useRef(Boolean(cached?.summary))
   const [saving, setSaving] = useState(false)
   const [pendingAddonCode, setPendingAddonCode] = useState<CommercialAddonCode | null>(null)
+  const [pendingPaymentRequestId, setPendingPaymentRequestId] = useState<number | null>(null)
   const [busyLabel, setBusyLabel] = useState('Refreshing commercial control data')
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
@@ -97,7 +98,8 @@ export default function CommercialControl() {
 
   const currentAccountId = selectedAccountId || summary?.account.id || accounts[0]?.id
   const currentCurrency = summary?.account.currency || 'USD'
-  const pageBusy = loading || refreshing || saving || Boolean(pendingAddonCode)
+  const initialLoading = loading && !summary
+  const pageBusy = initialLoading || saving
   const refreshButtonActive = loading || refreshing
 
   const activePlanName = summary?.subscription?.plan?.name || 'No active plan'
@@ -265,7 +267,6 @@ export default function CommercialControl() {
       })
     }
     setBusyLabel('Updating paid add-on')
-    setSaving(true)
     setPendingAddonCode(addonCode)
     setError('')
     setMessage('')
@@ -306,13 +307,33 @@ export default function CommercialControl() {
         setError(err instanceof Error ? err.message : 'Add-on update failed')
       })
       .finally(() => {
-        setSaving(false)
         setPendingAddonCode(null)
       })
   }
 
   const handlePaymentStatus = (request: PaymentRequest, status: PaymentRequest['status']) => {
-    void withSave(async () => { await commercialControlApi.updatePaymentRequestStatus(request.id, status) }, `Payment request #${request.id} marked ${status}.`, 'Updating payment request status')
+    const previousRequests = paymentRequests
+    const optimisticRequests = paymentRequests.map(item => item.id === request.id ? { ...item, status } : item)
+    setPaymentRequests(optimisticRequests)
+    writeCache({ selectedAccountId: currentAccountId, catalog, summary, accounts, paymentRequests: optimisticRequests })
+    setPendingPaymentRequestId(request.id)
+    setError('')
+    setMessage('')
+
+    void commercialControlApi.updatePaymentRequestStatus(request.id, status)
+      .then(updated => {
+        const nextRequests = optimisticRequests.map(item => item.id === updated.id ? updated : item)
+        setPaymentRequests(nextRequests)
+        writeCache({ selectedAccountId: currentAccountId, catalog, summary, accounts, paymentRequests: nextRequests })
+        setMessage(`Payment request #${request.id} marked ${status}.`)
+        void loadData(currentAccountId, { silent: true, label: 'Refreshing commercial control data' })
+      })
+      .catch(err => {
+        setPaymentRequests(previousRequests)
+        writeCache({ selectedAccountId: currentAccountId, catalog, summary, accounts, paymentRequests: previousRequests })
+        setError(err instanceof Error ? err.message : 'Payment request update failed')
+      })
+      .finally(() => setPendingPaymentRequestId(null))
   }
 
   const handleAccountSwitch = (accountId: number) => {
@@ -322,8 +343,8 @@ export default function CommercialControl() {
   }
 
   return (
-    <div className="ptdt-page" style={{ opacity: pageBusy ? 0.58 : 1, transition: 'opacity .18s ease' }}>
-      <PtdtBusyOverlay active={pageBusy} label={busyLabel} />
+    <div className="ptdt-page">
+      <PtdtBusyOverlay active={initialLoading} label={busyLabel} />
       <div className="ptdt-page-header">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}><CreditCard size={12} /> Phase 4 Sprint 11</div>
@@ -341,9 +362,9 @@ export default function CommercialControl() {
       {warning && <div className="glass" style={{ color: 'var(--orange)', marginBottom: 14, padding: 14, borderColor: 'rgba(240,185,11,.28)' }}>{warning}</div>}
       {message && <div className="glass" style={{ color: 'var(--green-2)', marginBottom: 14, padding: 14, borderColor: 'rgba(0,229,160,.28)' }}>{message}</div>}
 
-      {loading && <div className="glass" style={{ ...cardStyle, color: 'var(--text-3)' }}>Loading commercial control data...</div>}
+      {initialLoading && <div className="glass" style={{ ...cardStyle, color: 'var(--text-3)' }}>Loading commercial control data...</div>}
 
-      {!loading && summary && (
+      {!initialLoading && summary && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 18 }}>
             <div className="glass" style={cardStyle}>
@@ -437,7 +458,7 @@ export default function CommercialControl() {
                       aria-label={`${item.status === 'ACTIVE' ? 'Disable' : 'Enable'} ${item.addon.name}`}
                       title={pendingAddonCode === item.addon.code ? 'Saving...' : item.status === 'ACTIVE' ? 'Disable' : 'Enable'}
                       onClick={() => handleAddonToggle(item.addon.code)}
-                      disabled={pageBusy}
+                      disabled={Boolean(pendingAddonCode)}
                       style={switchStyle(item.status === 'ACTIVE', pendingAddonCode === item.addon.code)}
                     >
                       <span style={switchThumbStyle} />
@@ -488,7 +509,14 @@ export default function CommercialControl() {
                 <thead><tr style={{ background: 'var(--bg-glass)' }}>{['ID', 'Account', 'Amount', 'Plan', 'Add-ons', 'Reference', 'Status', 'Actions'].map(h => <th key={h} style={{ padding: '13px 16px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>)}</tr></thead>
                 <tbody>
                   {paymentRequests.length === 0 ? <tr><td colSpan={8} style={{ padding: 22, color: 'var(--text-3)' }}>No payment requests yet.</td></tr> : paymentRequests.map(request => (
-                    <tr key={request.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <tr
+                      key={request.id}
+                      style={{
+                        borderBottom: '1px solid var(--border)',
+                        opacity: pendingPaymentRequestId === request.id ? 0.52 : 1,
+                        transition: 'opacity .18s ease',
+                      }}
+                    >
                       <td className="mono" style={{ padding: '13px 16px' }}>#{request.id}</td>
                       <td style={{ padding: '13px 16px' }}>{request.account?.name || summary.account.name}</td>
                       <td style={{ padding: '13px 16px', fontWeight: 900 }}>{money(request.amount, request.currency)}</td>
@@ -497,9 +525,9 @@ export default function CommercialControl() {
                       <td style={{ padding: '13px 16px' }}>{request.paymentReference || '—'}</td>
                       <td style={{ padding: '13px 16px' }}><span className="mono" style={{ color: stateColor(request.status), fontWeight: 900 }}>{request.status}</span></td>
                       <td style={{ padding: '13px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {request.status !== 'APPROVED' && <button className="ptdt-action-btn active" type="button" disabled={pageBusy} onClick={() => handlePaymentStatus(request, 'APPROVED')}>Approve</button>}
-                        {request.status !== 'REJECTED' && <button className="ptdt-action-btn danger" type="button" disabled={pageBusy} onClick={() => handlePaymentStatus(request, 'REJECTED')}>Reject</button>}
-                        {request.status !== 'UNDER_REVIEW' && <button className="ptdt-action-btn" type="button" disabled={pageBusy} onClick={() => handlePaymentStatus(request, 'UNDER_REVIEW')}>Review</button>}
+                        {request.status !== 'APPROVED' && <button className="ptdt-action-btn active" type="button" disabled={pendingPaymentRequestId === request.id} onClick={() => handlePaymentStatus(request, 'APPROVED')}>Approve</button>}
+                        {request.status !== 'REJECTED' && <button className="ptdt-action-btn danger" type="button" disabled={pendingPaymentRequestId === request.id} onClick={() => handlePaymentStatus(request, 'REJECTED')}>Reject</button>}
+                        {request.status !== 'UNDER_REVIEW' && <button className="ptdt-action-btn" type="button" disabled={pendingPaymentRequestId === request.id} onClick={() => handlePaymentStatus(request, 'UNDER_REVIEW')}>Review</button>}
                       </td>
                     </tr>
                   ))}
