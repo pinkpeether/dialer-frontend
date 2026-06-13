@@ -159,14 +159,14 @@ export default function SpoofingManagement() {
     return (
       <div
         style={{
-          width: 420,
+          width: 330,
           maxWidth: '100%',
-          height: 58,
+          height: 44,
           borderRadius: 999,
-          padding: 5,
+          padding: 4,
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: 4,
+          gap: 3,
           background: active
             ? 'linear-gradient(90deg, rgba(0,167,71,.18), rgba(0,229,160,.16))'
             : 'linear-gradient(90deg, rgba(148,163,184,.16), rgba(148,163,184,.10))',
@@ -183,6 +183,7 @@ export default function SpoofingManagement() {
             borderRadius: 999,
             cursor: saving || active ? 'default' : 'pointer',
             fontWeight: 900,
+            fontSize: 12,
             letterSpacing: '.02em',
             color: active ? '#fff' : 'rgba(15,23,42,.22)',
             background: active ? 'linear-gradient(180deg, #00c853, #009d3a)' : 'transparent',
@@ -202,6 +203,7 @@ export default function SpoofingManagement() {
             borderRadius: 999,
             cursor: saving || inactive ? 'default' : 'pointer',
             fontWeight: 900,
+            fontSize: 12,
             letterSpacing: '.02em',
             color: inactive ? '#fff' : 'rgba(15,23,42,.22)',
             background: inactive ? 'linear-gradient(180deg, #6b7280, #404040)' : 'transparent',
@@ -225,19 +227,20 @@ export default function SpoofingManagement() {
         disabled={saving || active}
         onClick={() => void updateStatus(record, 'SUSPENDED')}
         style={{
-          minHeight: 52,
+          minHeight: 44,
           borderRadius: 999,
-          padding: '0 22px',
-          gap: 12,
+          padding: '0 18px',
+          gap: 10,
           fontWeight: 900,
+          fontSize: 12,
         }}
       >
         <span
           style={{
-            width: 44,
-            height: 24,
+            width: 38,
+            height: 20,
             borderRadius: 999,
-            padding: 3,
+            padding: 2,
             background: active ? 'rgba(239,68,68,.28)' : 'rgba(148,163,184,.22)',
             border: '1px solid rgba(239,68,68,.18)',
             display: 'inline-flex',
@@ -247,8 +250,8 @@ export default function SpoofingManagement() {
         >
           <span
             style={{
-              width: 16,
-              height: 16,
+              width: 14,
+              height: 14,
               borderRadius: '50%',
               background: active ? 'var(--danger)' : 'rgba(71,85,105,.72)',
             }}
@@ -415,7 +418,7 @@ export default function SpoofingManagement() {
 
       <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{ overflowX: 'auto' }}>
-          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1040 }}>
+          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1220 }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
                 {['Number', 'Account', 'Status', 'Usable', 'Actions'].map(header => (
@@ -459,9 +462,9 @@ export default function SpoofingManagement() {
                     {record.isUsable ? <span className="badge badge-answered">YES</span> : <span className="badge badge-pending">NO</span>}
                   </td>
 
-                  <td style={{ padding: '18px 16px' }}>
+                  <td style={{ padding: '16px 16px', minWidth: 620 }}>
                     {isPlatformAdmin ? (
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'nowrap' }}>
                         {activationPill(record)}
                         {suspendedButton(record)}
                         <button
@@ -469,7 +472,7 @@ export default function SpoofingManagement() {
                           type="button"
                           disabled={saving}
                           onClick={() => void updateStatus(record, 'REJECTED')}
-                          style={{ minHeight: 52, borderRadius: 999, paddingInline: 22, fontWeight: 900 }}
+                          style={{ minHeight: 44, borderRadius: 999, paddingInline: 18, fontWeight: 900, fontSize: 12 }}
                         >
                           <Trash2 size={16} /> Remove
                         </button>
