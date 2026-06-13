@@ -5,6 +5,7 @@ import { commercialControlApi, type CommercialAccount } from '../api/commercialC
 import { useAuthStore } from '../store/auth.store'
 
 const emptyForm = { displayNumber: '' }
+const CACHE_KEY = 'ptdt-dynamic-caller-id:last-good'
 
 const statusColor = (status: string) => {
   if (status === 'ACTIVE') return 'var(--green-2)'
@@ -24,24 +25,59 @@ const accountLabel = (account?: CommercialAccount) => {
   return `${account.name} (${account.code || account.id})`
 }
 
+type DynamicCallerIdCache = {
+  savedAt: string
+  accounts: CommercialAccount[]
+  selectedAccountId: string
+  records: DynamicCallerIdRecord[]
+  summary: {
+    addonActive?: boolean
+    availableNumbers?: DynamicCallerIdRecord[]
+    account?: { id?: number; name: string; code: string }
+  } | null
+}
+
+const readCache = (): DynamicCallerIdCache | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY)
+    return raw ? JSON.parse(raw) as DynamicCallerIdCache : null
+  } catch {
+    return null
+  }
+}
+
+const writeCache = (cache: Omit<DynamicCallerIdCache, 'savedAt'>) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cache, savedAt: new Date().toISOString() }))
+  } catch {
+    // Best-effort UI cache only. Backend remains the source of truth.
+  }
+}
+
 export default function SpoofingManagement() {
+  const cached = useMemo(() => readCache(), [])
   const user = useAuthStore(state => state.user)
   const isPlatformAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN'
 
-  const [accounts, setAccounts] = useState<CommercialAccount[]>([])
-  const [selectedAccountId, setSelectedAccountId] = useState('')
-  const [records, setRecords] = useState<DynamicCallerIdRecord[]>([])
+  const [accounts, setAccounts] = useState<CommercialAccount[]>(cached?.accounts ?? [])
+  const [selectedAccountId, setSelectedAccountId] = useState(cached?.selectedAccountId ?? '')
+  const [records, setRecords] = useState<DynamicCallerIdRecord[]>(cached?.records ?? [])
   const [summary, setSummary] = useState<{
     addonActive?: boolean
     availableNumbers?: DynamicCallerIdRecord[]
     account?: { id?: number; name: string; code: string }
-  } | null>(null)
+  } | null>(cached?.summary ?? null)
 
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!cached?.records.length)
+  const [refreshing, setRefreshing] = useState(Boolean(cached?.records.length))
   const [saving, setSaving] = useState(false)
+  const [pendingRecordId, setPendingRecordId] = useState<number | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [messageTone, setMessageTone] = useState<'success' | 'danger'>('success')
 
   const selectedAccount = useMemo(
     () => accounts.find(item => String(item.id) === selectedAccountId),
@@ -60,15 +96,17 @@ export default function SpoofingManagement() {
 
   const addonActive = Boolean(summary?.addonActive || activeCount > 0)
 
-  const loadData = async (preferredAccountId = selectedAccountId) => {
-    setLoading(true)
+  const loadData = async (preferredAccountId = selectedAccountId, options: { silent?: boolean } = {}) => {
+    if (options.silent || records.length > 0) setRefreshing(true)
+    else setLoading(true)
     setError('')
 
     try {
       let accountId = preferredAccountId
+      let nextAccounts = accounts
 
       if (isPlatformAdmin) {
-        const nextAccounts = await commercialControlApi.listAccounts()
+        nextAccounts = await commercialControlApi.listAccounts()
         setAccounts(nextAccounts)
 
         if (!accountId && nextAccounts.length > 0) {
@@ -83,15 +121,22 @@ export default function SpoofingManagement() {
 
       setSummary(nextSummary)
       setRecords(nextRecords)
+      writeCache({
+        accounts: nextAccounts,
+        selectedAccountId: accountId,
+        records: nextRecords,
+        summary: nextSummary,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load Dynamic Caller ID data')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void loadData() }, [])
+  useEffect(() => { void loadData(undefined, { silent: Boolean(cached?.records.length) }) }, [])
 
   const changeAccount = (value: string) => {
     setSelectedAccountId(value)
@@ -104,6 +149,7 @@ export default function SpoofingManagement() {
     setSaving(true)
     setError('')
     setMessage('')
+    setMessageTone('success')
 
     try {
       if (isPlatformAdmin) {
@@ -124,7 +170,7 @@ export default function SpoofingManagement() {
       }
 
       setForm(emptyForm)
-      await loadData(selectedAccountId)
+      await loadData(selectedAccountId, { silent: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit Dynamic Caller ID')
     } finally {
@@ -133,22 +179,47 @@ export default function SpoofingManagement() {
   }
 
   const updateStatus = async (record: DynamicCallerIdRecord, status: DynamicCallerIdStatus) => {
+    const previousRecords = records
+    const optimisticRecords = records
+      .map(item => item.id === record.id
+        ? {
+          ...item,
+          approvalStatus: status,
+          isActive: status === 'ACTIVE',
+          isVerified: status === 'ACTIVE' ? true : item.isVerified,
+          isUsable: status === 'ACTIVE',
+        }
+        : item)
+      .filter(item => item.approvalStatus !== 'REJECTED')
+
+    setRecords(optimisticRecords)
+    writeCache({ accounts, selectedAccountId, records: optimisticRecords, summary })
+    setPendingRecordId(record.id)
     setSaving(true)
     setError('')
     setMessage('')
+    setMessageTone(status === 'INACTIVE' || status === 'SUSPENDED' || status === 'REJECTED' ? 'danger' : 'success')
 
     try {
-      await dynamicCallerIdApi.setStatus(record.id, status)
+      const updated = await dynamicCallerIdApi.setStatus(record.id, status)
+      const nextRecords = optimisticRecords
+        .map(item => item.id === updated.id ? updated : item)
+        .filter(item => item.approvalStatus !== 'REJECTED')
+      setRecords(nextRecords)
+      writeCache({ accounts, selectedAccountId, records: nextRecords, summary })
       setMessage(
         status === 'REJECTED'
           ? `Caller ID ${record.displayNumber} removed from active view.`
           : `Caller ID ${record.displayNumber} marked ${statusLabel(status)}.`,
       )
-      await loadData(selectedAccountId)
+      void loadData(selectedAccountId, { silent: true })
     } catch (err) {
+      setRecords(previousRecords)
+      writeCache({ accounts, selectedAccountId, records: previousRecords, summary })
       setError(err instanceof Error ? err.message : 'Failed to update Dynamic Caller ID status')
     } finally {
       setSaving(false)
+      setPendingRecordId(null)
     }
   }
 
@@ -159,7 +230,7 @@ export default function SpoofingManagement() {
     return (
       <div
         style={{
-          width: 330,
+          width: 264,
           maxWidth: '100%',
           height: 44,
           borderRadius: 999,
@@ -176,12 +247,12 @@ export default function SpoofingManagement() {
       >
         <button
           type="button"
-          disabled={saving || active}
+          disabled={pendingRecordId === record.id || active}
           onClick={() => void updateStatus(record, 'ACTIVE')}
           style={{
             border: 0,
             borderRadius: 999,
-            cursor: saving || active ? 'default' : 'pointer',
+            cursor: pendingRecordId === record.id || active ? 'default' : 'pointer',
             fontWeight: 900,
             fontSize: 12,
             letterSpacing: '.02em',
@@ -196,12 +267,12 @@ export default function SpoofingManagement() {
 
         <button
           type="button"
-          disabled={saving || inactive}
+          disabled={pendingRecordId === record.id || inactive}
           onClick={() => void updateStatus(record, 'INACTIVE')}
           style={{
             border: 0,
             borderRadius: 999,
-            cursor: saving || inactive ? 'default' : 'pointer',
+            cursor: pendingRecordId === record.id || inactive ? 'default' : 'pointer',
             fontWeight: 900,
             fontSize: 12,
             letterSpacing: '.02em',
@@ -224,7 +295,7 @@ export default function SpoofingManagement() {
       <button
         className="ptdt-action-btn danger"
         type="button"
-        disabled={saving || active}
+        disabled={pendingRecordId === record.id || active}
         onClick={() => void updateStatus(record, 'SUSPENDED')}
         style={{
           minHeight: 44,
@@ -279,11 +350,12 @@ export default function SpoofingManagement() {
         </div>
 
         <div className="ptdt-toolbar">
+          {refreshing && <span className="ptdt-chip">Refreshing...</span>}
           <button
             type="button"
             className="ptdt-action-btn"
             onClick={() => void loadData(selectedAccountId)}
-            disabled={loading || saving}
+            disabled={loading || refreshing || saving}
           >
             <RefreshCw size={14} /> Refresh
           </button>
@@ -297,7 +369,15 @@ export default function SpoofingManagement() {
       )}
 
       {message && (
-        <div className="glass" style={{ color: 'var(--green-2)', marginBottom: 14, padding: 14, borderColor: 'rgba(0,167,71,.24)' }}>
+        <div
+          className="glass"
+          style={{
+            color: messageTone === 'danger' ? 'var(--danger)' : 'var(--green-2)',
+            marginBottom: 14,
+            padding: 14,
+            borderColor: messageTone === 'danger' ? 'rgba(239,68,68,.28)' : 'rgba(0,167,71,.24)',
+          }}
+        >
           {message}
         </div>
       )}
@@ -363,7 +443,8 @@ export default function SpoofingManagement() {
                   paddingRight: 48,
                   fontFamily: 'Inter, Montserrat, system-ui, sans-serif',
                   fontWeight: 800,
-                  letterSpacing: '-.015em',
+                  letterSpacing: 0,
+                  fontStretch: 'normal',
                   color: 'var(--text-1)',
                 }}
               >
@@ -407,6 +488,8 @@ export default function SpoofingManagement() {
             style={{
               fontFamily: 'Inter, Montserrat, system-ui, sans-serif',
               fontWeight: 650,
+              letterSpacing: 0,
+              fontStretch: 'normal',
             }}
           />
 
@@ -430,7 +513,7 @@ export default function SpoofingManagement() {
             </thead>
 
             <tbody>
-              {loading ? (
+              {loading && visibleRecords.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ padding: 30, color: 'var(--text-3)' }}>
                     Loading Dynamic Caller IDs...
@@ -443,12 +526,20 @@ export default function SpoofingManagement() {
                   </td>
                 </tr>
               ) : visibleRecords.map(record => (
-                <tr className="table-row" key={record.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                <tr
+                  className="table-row"
+                  key={record.id}
+                  style={{
+                    borderBottom: '1px solid var(--border)',
+                    opacity: pendingRecordId === record.id ? 0.52 : 1,
+                    transition: 'opacity .18s ease',
+                  }}
+                >
                   <td className="mono" style={{ padding: '18px 16px', fontWeight: 900, fontSize: 17 }}>
                     {record.displayNumber}
                   </td>
 
-                  <td style={{ padding: '18px 16px' }}>
+                  <td style={{ padding: '18px 16px', fontSize: 13, lineHeight: 1.35, fontWeight: 650 }}>
                     {selectedAccount ? accountLabel(selectedAccount) : record.commercialAccountId ? `#${record.commercialAccountId}` : '—'}
                   </td>
 
@@ -462,7 +553,7 @@ export default function SpoofingManagement() {
                     {record.isUsable ? <span className="badge badge-answered">YES</span> : <span className="badge badge-pending">NO</span>}
                   </td>
 
-                  <td style={{ padding: '16px 16px', minWidth: 620 }}>
+                  <td style={{ padding: '16px 16px', minWidth: 550 }}>
                     {isPlatformAdmin ? (
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'nowrap' }}>
                         {activationPill(record)}
@@ -470,7 +561,7 @@ export default function SpoofingManagement() {
                         <button
                           className="ptdt-action-btn danger"
                           type="button"
-                          disabled={saving}
+                          disabled={pendingRecordId === record.id}
                           onClick={() => void updateStatus(record, 'REJECTED')}
                           style={{ minHeight: 44, borderRadius: 999, paddingInline: 18, fontWeight: 900, fontSize: 12 }}
                         >
