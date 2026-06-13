@@ -52,8 +52,8 @@ export default function SpoofingManagement() {
     setMessage('')
     try {
       if (isPlatformAdmin && form.accountId) {
-        await dynamicCallerIdApi.adminCreate({ ...form, accountId: form.accountId, status: 'ACTIVE' })
-        setMessage('Dynamic Caller ID added and activated for the selected customer account.')
+        await dynamicCallerIdApi.adminCreate({ ...form, accountId: form.accountId, status: 'INACTIVE' })
+        setMessage('Dynamic Caller ID added. Activate it when ready.')
       } else {
         await dynamicCallerIdApi.request(form)
         setMessage('Dynamic Caller ID request submitted. PTDT Super Admin must approve/activate it before use.')
@@ -93,7 +93,7 @@ export default function SpoofingManagement() {
         </div>
         <div className="ptdt-toolbar">
           <button type="button" className="ptdt-action-btn" onClick={() => void loadData()} disabled={loading || saving}><RefreshCw size={14} /> Refresh</button>
-          <button type="button" className="btn-brand" onClick={() => setShowForm(value => !value)} style={{ minHeight: 38, fontSize: 12 }}><Plus size={14} /> {showForm ? 'Cancel' : isPlatformAdmin ? 'Add / Activate Caller ID' : 'Request Caller ID'}</button>
+          <button type="button" className="btn-brand" onClick={() => setShowForm(value => !value)} style={{ minHeight: 38, fontSize: 12 }}><Plus size={14} /> {showForm ? 'Cancel' : isPlatformAdmin ? 'Add Caller ID' : 'Request Caller ID'}</button>
         </div>
       </div>
 
@@ -103,17 +103,17 @@ export default function SpoofingManagement() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 18 }}>
         <div className="glass" style={{ padding: 18 }}><div className="eyebrow green">Add-on</div><h2 style={{ margin: '8px 0', color: summary?.addonActive ? 'var(--green-2)' : 'var(--danger)' }}>{summary?.addonActive ? 'ACTIVE' : 'INACTIVE'}</h2><p style={{ margin: 0, color: 'var(--text-3)' }}>{summary?.account ? `${summary.account.name} (${summary.account.code})` : 'Commercial account scope'}</p></div>
         <div className="glass" style={{ padding: 18 }}><div className="eyebrow pink">Usable Caller IDs</div><h2 style={{ margin: '8px 0' }}>{activeCount}</h2><p style={{ margin: 0, color: 'var(--text-3)' }}>ACTIVE + VERIFIED only</p></div>
-        <div className="glass" style={{ padding: 18 }}><div className="eyebrow purple">Control</div><h2 style={{ margin: '8px 0' }}>{isPlatformAdmin ? 'PTDT Admin' : 'Customer Request'}</h2><p style={{ margin: 0, color: 'var(--text-3)' }}>{isPlatformAdmin ? 'Approve, activate, suspend, reject.' : 'Submit request; PTDT approves.'}</p></div>
+        <div className="glass" style={{ padding: 18 }}><div className="eyebrow purple">Control</div><h2 style={{ margin: '8px 0' }}>{isPlatformAdmin ? 'PTDT Admin' : 'Customer Request'}</h2><p style={{ margin: 0, color: 'var(--text-3)' }}>{isPlatformAdmin ? 'Add, activate, suspend, remove.' : 'Submit request; PTDT approves.'}</p></div>
       </div>
 
       {showForm && (
         <form onSubmit={submitRequest} className="glass" style={{ padding: 18, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 18 }}>
           {isPlatformAdmin && <input className="ptdt-input" value={form.accountId} onChange={e => setForm({ ...form, accountId: e.target.value })} placeholder="Commercial Account ID" required />}
-          <input className="ptdt-input" value={form.displayNumber} onChange={e => setForm({ ...form, displayNumber: e.target.value })} placeholder="E.164 number, e.g. +14155552671" required />
+          <input className="ptdt-input" value={form.displayNumber} onChange={e => setForm({ ...form, displayNumber: e.target.value })} placeholder="Caller ID, e.g. 923321026110 or +923321026110" required />
           <input className="ptdt-input" value={form.displayName} onChange={e => setForm({ ...form, displayName: e.target.value })} placeholder="Display label" />
           <input className="ptdt-input" value={form.provider} onChange={e => setForm({ ...form, provider: e.target.value })} placeholder="Provider, e.g. illivoip" />
           <input className="ptdt-input" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Verification notes" />
-          <button type="submit" className="btn-brand" disabled={saving}>{saving ? 'Saving...' : isPlatformAdmin ? 'Add & Activate' : 'Submit Request'}</button>
+          <button type="submit" className="btn-brand" disabled={saving}>{saving ? 'Saving...' : isPlatformAdmin ? 'Add Caller ID' : 'Submit Request'}</button>
         </form>
       )}
 
