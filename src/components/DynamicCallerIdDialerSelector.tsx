@@ -63,6 +63,7 @@ export default function DynamicCallerIdDialerSelector() {
     }
   }
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load() }, [onDialerPage])
 
   const handleSelect = (value: string) => {

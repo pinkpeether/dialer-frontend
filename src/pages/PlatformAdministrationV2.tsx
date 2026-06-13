@@ -149,7 +149,8 @@ export default function PlatformAdministrationV2() {
     }
   }
 
-  useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.length ? 'refresh' : 'initial') }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.length ? 'refresh' : 'initial') }, [])
 
   const selectAccount = (accountId: number) => {
     if (accountId === selectedAccount?.id) return

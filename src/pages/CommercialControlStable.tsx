@@ -30,7 +30,7 @@ function writeCache(selectedAccountId: number | undefined, data: CommercialData)
   try {
     if (selectedAccountId) window.localStorage.setItem(SELECTED_KEY, String(selectedAccountId))
     window.localStorage.setItem(CACHE_KEY, JSON.stringify({ selectedAccountId, data, savedAt: new Date().toISOString() }))
-  } catch {}
+  } catch { /* ignore localStorage cache write failures */ }
 }
 
 async function fetchCommercialData(accountId?: number): Promise<CommercialData> {

@@ -42,6 +42,7 @@ export default function SpoofingManagement() {
     }
   }
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void loadData() }, [])
 
   const submitRequest = async (event: FormEvent) => {

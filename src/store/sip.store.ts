@@ -366,7 +366,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   },
 
   setMuted: (muted) => {
-    sipClient.setMuted(muted)
+    sipClient.mute(muted)
     set({ muted })
   },
 
@@ -377,7 +377,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   },
 
   testAudioOutputDevice: async () => {
-    await softphoneAudio.preview(get().audioOutputDeviceId)
+    await softphoneAudio.playTestTone(get().audioOutputDeviceId)
   },
 
   setAudioInputDevice: async (deviceId) => {

@@ -47,7 +47,7 @@ const writeSwr = <T>(key: string, data: T) => {
   const record: SwrRecord<T> = { savedAt: Date.now(), data }
   swrMemory.set(key, record)
   if (typeof window === 'undefined') return
-  try { window.localStorage.setItem(cacheKey(key), JSON.stringify(record)) } catch {}
+  try { window.localStorage.setItem(cacheKey(key), JSON.stringify(record)) } catch { /* ignore localStorage cache write failures */ }
 }
 
 const removeSwr = (key: string) => {
