@@ -1,17 +1,22 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { PhoneCall, Plus, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
+import { PhoneCall, RefreshCw, Trash2 } from 'lucide-react'
 import { dynamicCallerIdApi, type DynamicCallerIdRecord, type DynamicCallerIdStatus } from '../api/dynamicCallerId.api'
 import { commercialControlApi, type CommercialAccount } from '../api/commercialControl.api'
 import { useAuthStore } from '../store/auth.store'
 
 const emptyForm = { displayNumber: '' }
-const statusOptions: DynamicCallerIdStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED']
 
 const statusColor = (status: string) => {
   if (status === 'ACTIVE') return 'var(--green-2)'
   if (status === 'SUSPENDED' || status === 'REJECTED') return 'var(--danger)'
   if (status === 'INACTIVE') return 'var(--text-3)'
   return 'var(--orange)'
+}
+
+const statusLabel = (status: string) => {
+  if (status === 'ACTIVE') return 'ACTIVATED'
+  if (status === 'INACTIVE') return 'INACTIVATED'
+  return status
 }
 
 const accountLabel = (account?: CommercialAccount) => {
@@ -34,7 +39,6 @@ export default function SpoofingManagement() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -91,7 +95,6 @@ export default function SpoofingManagement() {
 
   const changeAccount = (value: string) => {
     setSelectedAccountId(value)
-    setShowForm(false)
     setForm(emptyForm)
     void loadData(value)
   }
@@ -121,7 +124,6 @@ export default function SpoofingManagement() {
       }
 
       setForm(emptyForm)
-      setShowForm(false)
       await loadData(selectedAccountId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit Dynamic Caller ID')
@@ -140,7 +142,7 @@ export default function SpoofingManagement() {
       setMessage(
         status === 'REJECTED'
           ? `Caller ID ${record.displayNumber} removed from active view.`
-          : `Caller ID ${record.displayNumber} marked ${status}.`,
+          : `Caller ID ${record.displayNumber} marked ${statusLabel(status)}.`,
       )
       await loadData(selectedAccountId)
     } catch (err) {
@@ -150,47 +152,109 @@ export default function SpoofingManagement() {
     }
   }
 
-  const actionButton = (record: DynamicCallerIdRecord, status: DynamicCallerIdStatus) => {
-    const active = record.approvalStatus === status
-    const danger = status === 'SUSPENDED'
+  const activationPill = (record: DynamicCallerIdRecord) => {
+    const active = record.approvalStatus === 'ACTIVE'
+    const inactive = record.approvalStatus === 'INACTIVE'
+
+    return (
+      <div
+        style={{
+          width: 420,
+          maxWidth: '100%',
+          height: 58,
+          borderRadius: 999,
+          padding: 5,
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 4,
+          background: active
+            ? 'linear-gradient(90deg, rgba(0,167,71,.18), rgba(0,229,160,.16))'
+            : 'linear-gradient(90deg, rgba(148,163,184,.16), rgba(148,163,184,.10))',
+          border: active ? '1px solid rgba(0,167,71,.35)' : '1px solid rgba(15,23,42,.18)',
+          boxShadow: active ? '0 12px 28px rgba(0,167,71,.18)' : 'inset 0 1px 2px rgba(15,23,42,.08)',
+        }}
+      >
+        <button
+          type="button"
+          disabled={saving || active}
+          onClick={() => void updateStatus(record, 'ACTIVE')}
+          style={{
+            border: 0,
+            borderRadius: 999,
+            cursor: saving || active ? 'default' : 'pointer',
+            fontWeight: 900,
+            letterSpacing: '.02em',
+            color: active ? '#fff' : 'rgba(15,23,42,.22)',
+            background: active ? 'linear-gradient(180deg, #00c853, #009d3a)' : 'transparent',
+            boxShadow: active ? '0 8px 18px rgba(0,167,71,.28)' : 'none',
+            textShadow: active ? '0 1px 0 rgba(0,0,0,.18)' : '0 1px 0 rgba(255,255,255,.55)',
+          }}
+        >
+          ACTIVATED
+        </button>
+
+        <button
+          type="button"
+          disabled={saving || inactive}
+          onClick={() => void updateStatus(record, 'INACTIVE')}
+          style={{
+            border: 0,
+            borderRadius: 999,
+            cursor: saving || inactive ? 'default' : 'pointer',
+            fontWeight: 900,
+            letterSpacing: '.02em',
+            color: inactive ? '#fff' : 'rgba(15,23,42,.22)',
+            background: inactive ? 'linear-gradient(180deg, #6b7280, #404040)' : 'transparent',
+            boxShadow: inactive ? '0 8px 18px rgba(15,23,42,.22)' : 'none',
+            textShadow: inactive ? '0 1px 0 rgba(0,0,0,.18)' : '0 1px 0 rgba(255,255,255,.55)',
+          }}
+        >
+          INACTIVATED
+        </button>
+      </div>
+    )
+  }
+
+  const suspendedButton = (record: DynamicCallerIdRecord) => {
+    const active = record.approvalStatus === 'SUSPENDED'
 
     return (
       <button
-        key={status}
-        className={`ptdt-action-btn ${status === 'ACTIVE' ? 'active' : ''} ${danger ? 'danger' : ''}`}
+        className="ptdt-action-btn danger"
         type="button"
         disabled={saving || active}
-        onClick={() => void updateStatus(record, status)}
-        style={{ gap: 8 }}
+        onClick={() => void updateStatus(record, 'SUSPENDED')}
+        style={{
+          minHeight: 52,
+          borderRadius: 999,
+          padding: '0 22px',
+          gap: 12,
+          fontWeight: 900,
+        }}
       >
         <span
           style={{
-            width: 32,
-            height: 17,
+            width: 44,
+            height: 24,
             borderRadius: 999,
-            background: active
-              ? danger
-                ? 'rgba(239,68,68,.24)'
-                : 'rgba(0,167,71,.24)'
-              : 'rgba(148,163,184,.18)',
-            border: '1px solid var(--border)',
+            padding: 3,
+            background: active ? 'rgba(239,68,68,.28)' : 'rgba(148,163,184,.22)',
+            border: '1px solid rgba(239,68,68,.18)',
             display: 'inline-flex',
-            justifyContent: active ? 'flex-end' : 'flex-start',
             alignItems: 'center',
-            padding: 2,
+            justifyContent: active ? 'flex-end' : 'flex-start',
           }}
         >
           <span
             style={{
-              width: 10,
-              height: 10,
+              width: 16,
+              height: 16,
               borderRadius: '50%',
-              background: active ? statusColor(status) : 'var(--text-3)',
+              background: active ? 'var(--danger)' : 'rgba(71,85,105,.72)',
             }}
           />
         </span>
-        {status === 'ACTIVE' ? <ShieldCheck size={14} /> : null}
-        {status}
+        SUSPENDED
       </button>
     )
   }
@@ -207,7 +271,7 @@ export default function SpoofingManagement() {
           </h1>
           <p className="ptdt-page-desc">
             Customer-requested, PTDT-approved caller ID pool. Numbers may be saved with or without +.
-            Only ACTIVE caller IDs can be selected for outbound calls.
+            Only ACTIVATED caller IDs can be selected for outbound calls.
           </p>
         </div>
 
@@ -219,15 +283,6 @@ export default function SpoofingManagement() {
             disabled={loading || saving}
           >
             <RefreshCw size={14} /> Refresh
-          </button>
-
-          <button
-            type="button"
-            className="btn-brand"
-            onClick={() => setShowForm(value => !value)}
-            style={{ minHeight: 38, fontSize: 12 }}
-          >
-            <Plus size={14} /> {showForm ? 'Cancel' : isPlatformAdmin ? 'Add Caller ID' : 'Request Caller ID'}
           </button>
         </div>
       </div>
@@ -258,7 +313,7 @@ export default function SpoofingManagement() {
         <div className="glass" style={{ padding: 18 }}>
           <div className="eyebrow pink">Usable Caller IDs</div>
           <h2 style={{ margin: '8px 0' }}>{activeCount}</h2>
-          <p style={{ margin: 0, color: 'var(--text-3)' }}>ACTIVE only</p>
+          <p style={{ margin: 0, color: 'var(--text-3)' }}>ACTIVATED only</p>
         </div>
 
         <div className="glass" style={{ padding: 18 }}>
@@ -270,48 +325,97 @@ export default function SpoofingManagement() {
         </div>
       </div>
 
-      {isPlatformAdmin && (
-        <div className="glass" style={{ padding: 16, marginBottom: 18, display: 'grid', gridTemplateColumns: 'minmax(260px, 420px)', gap: 10 }}>
-          <div className="eyebrow green">Commercial Account</div>
-          <select
-            className="ptdt-input"
-            value={selectedAccountId}
-            onChange={event => changeAccount(event.target.value)}
-            disabled={loading || saving}
-          >
-            <option value="">Select commercial account</option>
-            {accounts.map(account => (
-              <option key={account.id} value={account.id}>
-                {accountLabel(account)}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      <form
+        onSubmit={submitRequest}
+        className="glass"
+        style={{
+          padding: 22,
+          marginBottom: 18,
+          borderColor: 'rgba(0,167,71,.22)',
+          background: 'linear-gradient(135deg, rgba(0,229,160,.08), rgba(251,10,139,.035), rgba(255,255,255,.82))',
+          boxShadow: '0 16px 44px rgba(15,23,42,.08)',
+        }}
+      >
+        <div className="eyebrow green" style={{ marginBottom: 12 }}>Commercial Account</div>
 
-      {showForm && (
-        <form
-          onSubmit={submitRequest}
-          className="glass"
-          style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) auto', gap: 12, marginBottom: 18 }}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isPlatformAdmin ? 'minmax(280px, 1.05fr) minmax(260px, 1fr) auto' : 'minmax(260px, 1fr) auto',
+            gap: 14,
+            alignItems: 'center',
+          }}
         >
+          {isPlatformAdmin && (
+            <div style={{ position: 'relative' }}>
+              <select
+                className="ptdt-input"
+                value={selectedAccountId}
+                onChange={event => changeAccount(event.target.value)}
+                disabled={loading || saving}
+                required
+                style={{
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  paddingRight: 48,
+                  fontFamily: 'Inter, Montserrat, system-ui, sans-serif',
+                  fontWeight: 800,
+                  letterSpacing: '-.015em',
+                  color: 'var(--text-1)',
+                }}
+              >
+                <option value="">Select commercial account</option>
+                {accounts.map(account => (
+                  <option key={account.id} value={account.id}>
+                    {accountLabel(account)}
+                  </option>
+                ))}
+              </select>
+
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  right: 16,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  pointerEvents: 'none',
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  display: 'grid',
+                  placeItems: 'center',
+                  background: 'rgba(15,23,42,.04)',
+                  color: 'var(--text-2)',
+                  fontWeight: 900,
+                }}
+              >
+                ▾
+              </span>
+            </div>
+          )}
+
           <input
             className="ptdt-input"
             value={form.displayNumber}
             onChange={event => setForm({ ...form, displayNumber: event.target.value })}
-            placeholder="Caller ID, e.g. 923321026110 or +923321026110"
+            placeholder="Caller ID, e.g. 14155552671 or +14155552671"
             required
+            style={{
+              fontFamily: 'Inter, Montserrat, system-ui, sans-serif',
+              fontWeight: 650,
+            }}
           />
 
-          <button type="submit" className="btn-brand" disabled={saving}>
+          <button type="submit" className="btn-brand" disabled={saving} style={{ minHeight: 54, paddingInline: 28, whiteSpace: 'nowrap' }}>
             {saving ? 'Saving...' : isPlatformAdmin ? 'Add Caller ID' : 'Submit Request'}
           </button>
-        </form>
-      )}
+        </div>
+      </form>
 
       <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{ overflowX: 'auto' }}>
-          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1040 }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
                 {['Number', 'Account', 'Status', 'Usable', 'Actions'].map(header => (
@@ -337,37 +441,39 @@ export default function SpoofingManagement() {
                 </tr>
               ) : visibleRecords.map(record => (
                 <tr className="table-row" key={record.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td className="mono" style={{ padding: '13px 16px', fontWeight: 900 }}>
+                  <td className="mono" style={{ padding: '18px 16px', fontWeight: 900, fontSize: 17 }}>
                     {record.displayNumber}
                   </td>
 
-                  <td style={{ padding: '13px 16px' }}>
+                  <td style={{ padding: '18px 16px' }}>
                     {selectedAccount ? accountLabel(selectedAccount) : record.commercialAccountId ? `#${record.commercialAccountId}` : '—'}
                   </td>
 
-                  <td style={{ padding: '13px 16px' }}>
-                    <span className="badge" style={{ color: statusColor(record.approvalStatus), border: `1px solid ${statusColor(record.approvalStatus)}` }}>
-                      {record.approvalStatus}
+                  <td style={{ padding: '18px 16px' }}>
+                    <span className="badge" style={{ color: statusColor(record.approvalStatus), border: `1px solid ${statusColor(record.approvalStatus)}`, fontWeight: 900 }}>
+                      {statusLabel(record.approvalStatus)}
                     </span>
                   </td>
 
-                  <td style={{ padding: '13px 16px' }}>
+                  <td style={{ padding: '18px 16px' }}>
                     {record.isUsable ? <span className="badge badge-answered">YES</span> : <span className="badge badge-pending">NO</span>}
                   </td>
 
-                  <td style={{ padding: '13px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <td style={{ padding: '18px 16px' }}>
                     {isPlatformAdmin ? (
-                      <>
-                        {statusOptions.map(status => actionButton(record, status))}
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                        {activationPill(record)}
+                        {suspendedButton(record)}
                         <button
                           className="ptdt-action-btn danger"
                           type="button"
                           disabled={saving}
                           onClick={() => void updateStatus(record, 'REJECTED')}
+                          style={{ minHeight: 52, borderRadius: 999, paddingInline: 22, fontWeight: 900 }}
                         >
-                          <Trash2 size={14} /> Remove
+                          <Trash2 size={16} /> Remove
                         </button>
-                      </>
+                      </div>
                     ) : (
                       'PTDT activation required'
                     )}
