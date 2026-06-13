@@ -50,10 +50,27 @@ function selectedDynamicCallerId() {
   try { return localStorage.getItem(DYNAMIC_CALLER_ID_SELECTION_KEY) || '' } catch { return '' }
 }
 
-async function validateDynamicCallerIdBeforeSipCall() {
-  const callerIdId = selectedDynamicCallerId()
-  if (!callerIdId) return
+async function validateDynamicCallerIdBeforeSipCall(callerIdId: string) {
   await dynamicCallerIdApi.validateCall(callerIdId)
+}
+
+async function initiateBackendDynamicCallerIdCall(destination: string, config: SipAccountConfig) {
+  const callerIdId = selectedDynamicCallerId()
+  if (!callerIdId) return false
+
+  const agentExtension = (config.username || '').trim()
+  if (!agentExtension) {
+    throw new Error('SIP username/extension is required for backend-originated Dynamic Caller ID calls.')
+  }
+
+  await validateDynamicCallerIdBeforeSipCall(callerIdId)
+  await api.post('/dialer/call/backend-adhoc', {
+    phone: destination.trim(),
+    callerIdId,
+    agentExtension,
+    note: 'Dynamic Caller ID backend originated call',
+  })
+  return true
 }
 
 // Create a backend call log for a SIP call — best-effort, non-blocking
@@ -266,7 +283,13 @@ export const useSipStore = create<SipStore>((set, get) => ({
   call: async (destination) => {
     try {
       set({ error: null })
-      await validateDynamicCallerIdBeforeSipCall()
+      const config = get().config
+      const backendOriginated = await initiateBackendDynamicCallerIdCall(destination, config)
+      if (backendOriginated) {
+        set({ status: sipClient.isRegistered() ? 'registered' : get().status, error: null })
+        return
+      }
+
       const resolvedInputDeviceId = await sipClient.setAudioInputDevice(get().audioInputDeviceId)
       if (resolvedInputDeviceId !== get().audioInputDeviceId) {
         localStorage.setItem(AUDIO_INPUT_STORAGE_KEY, resolvedInputDeviceId)
