@@ -11,7 +11,7 @@ export const authAPI = {
     return res.data.data
   },
 
-  logout: async () => {
-    await api.post('/auth/logout')
+  logout: async (token?: string | null) => {
+    await api.post('/auth/logout', undefined, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
   },
 }

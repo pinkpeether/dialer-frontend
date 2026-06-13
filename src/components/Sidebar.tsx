@@ -187,10 +187,11 @@ export default function Sidebar() {
   const handleLogout = () => {
     const ok = typeof window === 'undefined' ? true : window.confirm('Kya aap waqai PTDT-Dialer se sign out karna chahte hain?')
     if (!ok) return
-    void authAPI.logout().catch(() => undefined)
-    void unregisterSip().catch(() => undefined)
+    const token = localStorage.getItem('jd_token')
     logout()
     navigate('/login', { replace: true })
+    void authAPI.logout(token).catch(() => undefined)
+    void unregisterSip().catch(() => undefined)
   }
 
   useEffect(() => {

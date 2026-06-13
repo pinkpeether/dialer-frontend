@@ -58,12 +58,13 @@ export default function Layout() {
     setConfirmSignOut(true)
   }, [])
 
-  const performSignOut = useCallback(async () => {
+  const performSignOut = useCallback(() => {
+    const token = localStorage.getItem('jd_token')
     setConfirmSignOut(false)
-    await authAPI.logout().catch(() => undefined)
-    await unregisterSip().catch(() => undefined)
     logout()
     navigate('/login', { replace: true })
+    void authAPI.logout(token).catch(() => undefined)
+    void unregisterSip().catch(() => undefined)
   }, [logout, navigate, unregisterSip])
 
   return (
