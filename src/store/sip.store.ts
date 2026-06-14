@@ -54,9 +54,9 @@ async function validateDynamicCallerIdBeforeSipCall(callerIdId: string) {
   await dynamicCallerIdApi.validateCall(callerIdId)
 }
 
-async function initiateBackendDynamicCallerIdCall(destination: string, config: SipAccountConfig) {
+async function initiateBackendDynamicCallerIdCall(destination: string, config: SipAccountConfig): Promise<BackendOriginatedCallRef | null> {
   const callerIdId = selectedDynamicCallerId()
-  if (!callerIdId) return false
+  if (!callerIdId) return null
 
   const agentExtension = (config.username || '').trim()
   if (!agentExtension) {
@@ -64,13 +64,24 @@ async function initiateBackendDynamicCallerIdCall(destination: string, config: S
   }
 
   await validateDynamicCallerIdBeforeSipCall(callerIdId)
-  await api.post('/dialer/call/backend-adhoc', {
+  const res = await api.post('/dialer/call/backend-adhoc', {
     phone: destination.trim(),
     callerIdId,
     agentExtension,
     note: 'Dynamic Caller ID backend originated call',
   })
-  return true
+
+  const data = res.data?.data ?? res.data ?? {}
+  return {
+    callId: data.callId ?? data.callRecord?.id ?? null,
+    providerCallId: data.providerCallId ?? data.callSid ?? data.providerCall?.id ?? null,
+    phone: destination.trim(),
+    agentExtension,
+  }
+}
+
+async function hangupBackendDynamicCallerIdCall(ref: BackendOriginatedCallRef): Promise<void> {
+  await api.post('/dialer/call/backend-hangup', ref)
 }
 
 // Create a backend call log for a SIP call — best-effort, non-blocking
@@ -99,6 +110,13 @@ export type SipDispositionContext = {
   remoteIdentity: string
 }
 
+type BackendOriginatedCallRef = {
+  callId: number | string | null
+  providerCallId: string | null
+  phone: string
+  agentExtension: string
+}
+
 interface SipStore {
   config: SipAccountConfig
   status: SipRuntimeStatus
@@ -118,6 +136,7 @@ interface SipStore {
   sipCallLogPromise: Promise<number | null> | null
   showSipDisposition: boolean
   pendingSipDisposition: SipDispositionContext | null
+  backendOriginatedCall: BackendOriginatedCallRef | null
 
   saveConfig: (config: SipAccountConfig) => void
   clearConfig: () => void
@@ -161,6 +180,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   sipCallLogPromise: null,
   showSipDisposition: false,
   pendingSipDisposition: null,
+  backendOriginatedCall: null,
 
   saveConfig: (config) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
@@ -192,6 +212,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       sipCallLogPromise: null,
       showSipDisposition: false,
       pendingSipDisposition: null,
+      backendOriginatedCall: null,
     })
   },
 
@@ -277,6 +298,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       onHold: false,
       sipCallId: null,
       sipCallLogPromise: null,
+      backendOriginatedCall: null,
     })
   },
 
@@ -286,7 +308,11 @@ export const useSipStore = create<SipStore>((set, get) => ({
       const config = get().config
       const backendOriginated = await initiateBackendDynamicCallerIdCall(destination, config)
       if (backendOriginated) {
-        set({ status: sipClient.isRegistered() ? 'registered' : get().status, error: null })
+        set({
+          status: sipClient.isRegistered() ? 'registered' : get().status,
+          error: null,
+          backendOriginatedCall: backendOriginated,
+        })
         return
       }
 
@@ -352,18 +378,27 @@ export const useSipStore = create<SipStore>((set, get) => ({
   },
 
   reject: async () => {
-    await sipClient.reject()
-    set({ incomingCall: null, onHold: false, status: get().isConfigured ? 'registered' : 'idle' })
+    const backendRef = get().backendOriginatedCall
+    await Promise.allSettled([
+      sipClient.reject(),
+      backendRef ? hangupBackendDynamicCallerIdCall(backendRef) : Promise.resolve(),
+    ])
+    set({ incomingCall: null, onHold: false, backendOriginatedCall: null, status: get().isConfigured ? 'registered' : 'idle' })
   },
 
   hangup: async () => {
-    await sipClient.hangup()
+    const backendRef = get().backendOriginatedCall
+    await Promise.allSettled([
+      sipClient.hangup(),
+      backendRef ? hangupBackendDynamicCallerIdCall(backendRef) : Promise.resolve(),
+    ])
     set({
       activeCall: null,
       incomingCall: null,
       muted: false,
       onHold: false,
       sipCallLogPromise: null,
+      backendOriginatedCall: null,
       status: get().isConfigured ? 'registered' : 'idle',
     })
   },
@@ -414,5 +449,5 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   dismissSipDisposition: () => set({ showSipDisposition: false, pendingSipDisposition: null }),
 
-  resetCallState: () => set({ activeCall: null, incomingCall: null, muted: false, onHold: false, sipCallId: null, sipCallLogPromise: null, showSipDisposition: false, pendingSipDisposition: null }),
+  resetCallState: () => set({ activeCall: null, incomingCall: null, muted: false, onHold: false, sipCallId: null, sipCallLogPromise: null, showSipDisposition: false, pendingSipDisposition: null, backendOriginatedCall: null }),
 }))
