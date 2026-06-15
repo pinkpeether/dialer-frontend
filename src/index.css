@@ -834,6 +834,9 @@ html[data-performance-mode="on"] *::after {
 }
 .ptdt-toggle:not(.on) span:first-child,
 .ptdt-toggle.on span:last-child { color: #fff; }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 .ptdt-kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

@@ -442,6 +442,43 @@ export default function SpoofingManagement() {
               >
                 ▾
               </span>
+
+              {accountsLoading && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 10,
+                    right: 10,
+                    top: 'calc(100% + 8px)',
+                    zIndex: 3,
+                    minHeight: 40,
+                    borderRadius: 14,
+                    border: '1px solid rgba(0,167,71,.24)',
+                    background: 'linear-gradient(135deg, rgba(236,253,245,.98), rgba(255,255,255,.98))',
+                    boxShadow: '0 14px 32px rgba(15,23,42,.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '9px 12px',
+                    color: 'var(--green-2)',
+                    fontSize: 12,
+                    fontWeight: 900,
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(0,167,71,.22)',
+                      borderTopColor: 'var(--green-2)',
+                      animation: 'spin .75s linear infinite',
+                    }}
+                  />
+                  Fetching commercial accounts...
+                </div>
+              )}
             </div>
           )}
 
@@ -456,24 +493,31 @@ export default function SpoofingManagement() {
               fontWeight: 650,
               letterSpacing: 0,
               fontStretch: 'normal',
+              opacity: accountsLoading ? 0.45 : 1,
+              transition: 'opacity .18s ease',
             }}
           />
 
-          <button type="submit" className="btn-brand" disabled={saving} style={{ minHeight: 54, paddingInline: 28, whiteSpace: 'nowrap' }}>
+          <button
+            type="submit"
+            className="btn-brand"
+            disabled={saving || accountsLoading}
+            style={{ minHeight: 54, paddingInline: 28, whiteSpace: 'nowrap', opacity: accountsLoading ? 0.55 : 1 }}
+          >
             {saving ? 'Saving...' : isPlatformAdmin ? 'Add Caller ID' : 'Submit Request'}
           </button>
         </div>
       </form>
 
-      <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
+      <div className="glass" style={{ overflow: 'hidden', padding: 0, opacity: accountsLoading ? 0.42 : 1, transition: 'opacity .18s ease' }}>
         <div style={{ overflowX: 'auto' }}>
           <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1460 }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
                 <th style={{ padding: '15px 18px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>CID Number</th>
                 <th style={{ padding: '15px 18px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Commercial Account</th>
-                <th style={{ padding: '15px 18px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Status</th>
-                <th style={{ padding: '15px 18px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Usable</th>
+                <th style={{ padding: '15px 18px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Status</th>
+                <th style={{ padding: '15px 18px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Usable</th>
                 <th style={{ padding: '15px 18px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ color: 'var(--green-2)' }}>Activate</span>/Inactivate
                 </th>
@@ -522,13 +566,13 @@ export default function SpoofingManagement() {
                     {selectedAccount ? accountLabel(selectedAccount) : record.commercialAccountId ? `#${record.commercialAccountId}` : '—'}
                   </td>
 
-                  <td style={{ padding: '22px 18px' }}>
+                  <td style={{ padding: '22px 18px', textAlign: 'center' }}>
                     <span className="badge" style={{ color: statusColor(record.approvalStatus), border: `1px solid ${statusColor(record.approvalStatus)}`, fontWeight: 900 }}>
                       {statusLabel(record.approvalStatus)}
                     </span>
                   </td>
 
-                  <td style={{ padding: '22px 18px' }}>
+                  <td style={{ padding: '22px 18px', textAlign: 'center' }}>
                     {record.isUsable ? <span className="badge badge-answered">YES</span> : <span className="badge badge-pending">NO</span>}
                   </td>
 
