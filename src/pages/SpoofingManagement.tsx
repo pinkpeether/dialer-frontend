@@ -347,13 +347,20 @@ export default function SpoofingManagement() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 18 }}>
+      <div
+        className="dynamic-cid-summary-grid"
+        style={{
+          display: 'grid',
+          gap: 14,
+          marginBottom: 18,
+        }}
+      >
         <div className="glass" style={{ padding: 18 }}>
           <div className="eyebrow green">Add-on</div>
           <h2 style={{ margin: '8px 0', color: addonActive ? 'var(--green-2)' : 'var(--danger)' }}>
             {addonActive ? 'ACTIVE' : 'INACTIVE'}
           </h2>
-          <p style={{ margin: 0, color: 'var(--text-3)' }}>
+          <p style={{ margin: 0, color: 'var(--pink)', fontWeight: 650 }}>
             {summary?.account ? `${summary.account.name} (${summary.account.code})` : accountLabel(selectedAccount)}
           </p>
         </div>
@@ -361,13 +368,13 @@ export default function SpoofingManagement() {
         <div className="glass" style={{ padding: 18 }}>
           <div className="eyebrow pink">Usable Caller IDs</div>
           <h2 style={{ margin: '8px 0' }}>{activeCount}</h2>
-          <p style={{ margin: 0, color: 'var(--text-3)' }}>ACTIVATED only</p>
+          <p style={{ margin: 0, color: 'var(--pink)', fontWeight: 650 }}>ACTIVATED only</p>
         </div>
 
         <div className="glass" style={{ padding: 18 }}>
           <div className="eyebrow purple">Control</div>
           <h2 style={{ margin: '8px 0' }}>{isPlatformAdmin ? 'PTDT Admin' : 'Customer Request'}</h2>
-          <p style={{ margin: 0, color: 'var(--text-3)' }}>
+          <p style={{ margin: 0, color: 'var(--pink)', fontWeight: 650 }}>
             {isPlatformAdmin ? 'Add, activate, suspend, remove.' : 'Submit request; PTDT activates.'}
           </p>
         </div>
