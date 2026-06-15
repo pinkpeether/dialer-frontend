@@ -1183,7 +1183,11 @@ export default function Calls() {
         defaultNotes={selectedForDisposition?.notes}
         defaultCallbackAt={selectedForDisposition?.callbackAt}
         onClose={() => setSelectedForDisposition(null)}
-        onSaved={() => { void queryClient.invalidateQueries({ queryKey: ['calls'] }) }}
+        onSaved={() => {
+          setSelectedForDisposition(null)
+          void queryClient.invalidateQueries({ queryKey: ['calls'], exact: false })
+          void queryClient.refetchQueries({ queryKey: ['calls'], exact: false, type: 'active' })
+        }}
       />
     </div>
   )
