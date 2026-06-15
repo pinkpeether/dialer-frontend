@@ -415,19 +415,32 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   reject: async () => {
     const backendRef = get().backendOriginatedCall
-    await Promise.allSettled([
-      sipClient.reject(),
-      backendRef ? hangupBackendDynamicCallerIdCall(backendRef) : Promise.resolve(),
-    ])
+
+    /*
+      Backend-originated Dynamic Caller ID calls must cancel the Asterisk/PSTN
+      leg before clearing the browser SIP leg. Otherwise the customer-side
+      provider leg can remain alive until trunk timeout.
+    */
+    if (backendRef) {
+      await hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
+    }
+
+    await sipClient.reject().catch(() => undefined)
     set({ incomingCall: null, onHold: false, backendOriginatedCall: null, status: get().isConfigured ? 'registered' : 'idle' })
   },
 
   hangup: async () => {
     const backendRef = get().backendOriginatedCall
-    await Promise.allSettled([
-      sipClient.hangup(),
-      backendRef ? hangupBackendDynamicCallerIdCall(backendRef) : Promise.resolve(),
-    ])
+
+    /*
+      Hard-stop backend/PSTN first while Asterisk bridge channels still exist,
+      then clear the browser SIP leg.
+    */
+    if (backendRef) {
+      await hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
+    }
+
+    await sipClient.hangup().catch(() => undefined)
     set({
       activeCall: null,
       incomingCall: null,
