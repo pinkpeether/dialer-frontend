@@ -280,6 +280,7 @@ export default function SpoofingManagement() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: checked ? 'flex-end' : 'flex-start',
+        margin: '0 auto',
         cursor: pendingRecordId === record.id ? 'wait' : 'pointer',
         opacity: pendingRecordId === record.id ? 0.7 : 1,
         transition: 'background .18s ease, box-shadow .18s ease, opacity .18s ease',
