@@ -95,6 +95,18 @@ async function hangupBackendDynamicCallerIdCall(ref: BackendOriginatedCallRef): 
   return backendHangupInFlight
 }
 
+let lastBackendOriginatedCallForDisposition: BackendOriginatedCallRef | null = null
+
+function backendOriginatedDispositionContext(ref: BackendOriginatedCallRef): SipDispositionContext | null {
+  if (!ref.callId) return null
+
+  return {
+    callId: ref.callId,
+    saveMode: 'backend',
+    remoteIdentity: ref.phone || 'Dynamic Caller ID call',
+  }
+}
+
 // Create a backend call log for a SIP call — best-effort, non-blocking
 async function logSipCallToBackend(callState: SipCallState): Promise<number | null> {
   try {
@@ -256,6 +268,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
             is only the internal agent leg, so it must not be logged as a second IN call.
           */
           if (backendOriginatedCall) {
+            lastBackendOriginatedCallForDisposition = backendOriginatedCall
             set({
               sipCallId: null,
               sipCallLogPromise: null,
@@ -279,10 +292,14 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
           /*
             For Dynamic Caller ID backend-originated calls, this SIP session is the
-            internal agent leg. Do not create/update a separate SIP call record and
-            do not show disposition for this duplicate leg.
+            internal agent leg. Do not create a duplicate SIP call record. Open the
+            disposition modal against the real backend OUT call id instead.
           */
-          if (backendOriginatedCall) {
+          const backendDispositionRef = backendOriginatedCall ?? lastBackendOriginatedCallForDisposition
+          if (backendDispositionRef) {
+            const dispositionContext = backendOriginatedDispositionContext(backendDispositionRef)
+            lastBackendOriginatedCallForDisposition = null
+
             set({
               activeCall: null,
               incomingCall: null,
@@ -290,8 +307,8 @@ export const useSipStore = create<SipStore>((set, get) => ({
               onHold: false,
               sipCallId: null,
               sipCallLogPromise: null,
-              showSipDisposition: false,
-              pendingSipDisposition: null,
+              showSipDisposition: Boolean(dispositionContext),
+              pendingSipDisposition: dispositionContext,
               backendOriginatedCall: null,
             })
             return
@@ -355,6 +372,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       const config = get().config
       const backendOriginated = await initiateBackendDynamicCallerIdCall(destination, config)
       if (backendOriginated) {
+        lastBackendOriginatedCallForDisposition = backendOriginated
         set({
           status: sipClient.isRegistered() ? 'registered' : get().status,
           error: null,
@@ -432,6 +450,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       and must not block the user's reject action.
     */
     if (backendRef) {
+      lastBackendOriginatedCallForDisposition = backendRef
       void hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
     }
 
@@ -447,6 +466,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       in the background and is protected against repeated-click spam.
     */
     if (backendRef) {
+      lastBackendOriginatedCallForDisposition = backendRef
       void hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
     }
 
