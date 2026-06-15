@@ -236,6 +236,7 @@ interface CallRow {
   callbackAt?: string | null
   durationSeconds: number
   startedAt: string
+  isDynamicCallerIdBackendCall: boolean
 }
 
 interface PagedResponse {
@@ -364,12 +365,34 @@ function normalizeCall(item: unknown, index: number): CallRow {
     stringValue(row.from) ||
     'Unknown number'
 
-  return {
-    id: stringValue(row.id, `call-${index}`),
-    direction: normalizeDirection(row.direction || row.type),
+  const campaignName = stringValue(row.campaignName) || nestedName(campaign) || null
+  const direction = normalizeDirection(row.direction || row.type)
+  const source = stringValue(row.source).toLowerCase()
+  const providerCallId = stringValue(row.providerCallId).toLowerCase()
+  const dynamicText = [
     remoteName,
     remoteNumber,
-    campaignName: stringValue(row.campaignName) || nestedName(campaign) || null,
+    stringValue(row.notes),
+    nestedName(contact),
+    stringValue(row.name),
+  ].join(' ').toLowerCase()
+
+  const isDynamicCallerIdBackendCall =
+    campaignName === '__adhoc__' &&
+    direction === 'outgoing' &&
+    (
+      dynamicText.includes('dynamic caller id') ||
+      source.includes('sip_trunk') ||
+      providerCallId.startsWith('ami_') ||
+      providerCallId.startsWith('pending_ami_')
+    )
+
+  return {
+    id: stringValue(row.id, `call-${index}`),
+    direction,
+    remoteName,
+    remoteNumber,
+    campaignName,
     agentName: stringValue(row.agentName) || nestedName(agent) || null,
     status: normalizeStatus(row.status || row.disposition),
     disposition: normalizeDisposition(row.disposition),
@@ -377,6 +400,7 @@ function normalizeCall(item: unknown, index: number): CallRow {
     callbackAt: stringValue(row.callbackAt) || nestedString(contact, 'callbackAt') || null,
     durationSeconds: numberValue(row.durationSeconds ?? row.duration),
     startedAt: stringValue(row.startedAt || row.createdAt || row.updatedAt),
+    isDynamicCallerIdBackendCall,
   }
 }
 
@@ -420,6 +444,30 @@ function statusPill(status: CallStatus) {
   if (status === 'queued') return { label: 'QUEUED', color: brand.cyan }
   if (status === 'in_progress') return { label: 'IN PROGRESS', color: brand.purple }
   return { label: 'UNKNOWN', color: brand.faint }
+}
+
+function visibleStatusPill(call: CallRow) {
+  if (call.isDynamicCallerIdBackendCall && call.status === 'unknown') {
+    return { label: 'AWAITING DISPOSITION', color: brand.gold }
+  }
+  return statusPill(call.status)
+}
+
+function visibleCampaignName(call: CallRow) {
+  if (call.isDynamicCallerIdBackendCall) return 'Manual Dynamic CID Call'
+  if (call.campaignName === '__adhoc__') return 'Manual Ad-hoc Call'
+  if (call.campaignName === '__sip__') return 'SIP Internal Leg'
+  return call.campaignName || '-'
+}
+
+function visibleDuration(call: CallRow) {
+  if (call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0) return 'Pending'
+  return fmtDuration(call.durationSeconds)
+}
+
+function visibleDurationDetail(call: CallRow) {
+  if (call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0) return 'Pending tracking'
+  return fmtDuration(call.durationSeconds)
 }
 
 function callHistoryErrorMessage(err: unknown) {
@@ -929,7 +977,7 @@ export default function Calls() {
           )}
 
           {!loading && !error && filteredItems.map((call) => {
-            const pill = statusPill(call.status)
+            const pill = visibleStatusPill(call)
             const hasName = Boolean(call.remoteName)
             const isExpanded = expandedId === call.id
             const currentDisposition = dispositionLabel(call.disposition)
@@ -973,16 +1021,16 @@ export default function Calls() {
                     </div>
                   </div>
 
-                  <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {call.campaignName || '-'}
+                  <div style={{ fontSize: 11, color: call.isDynamicCallerIdBackendCall ? brand.green : brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: call.isDynamicCallerIdBackendCall ? 850 : 500 }}>
+                    {visibleCampaignName(call)}
                   </div>
 
                   <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {call.agentName || '-'}
                   </div>
 
-                  <div style={{ fontSize: 11, textAlign: 'right', color: brand.ink }}>
-                    {fmtDuration(call.durationSeconds)}
+                  <div style={{ fontSize: 11, textAlign: 'right', color: call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0 ? brand.gold : brand.ink, fontWeight: call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0 ? 850 : 500 }}>
+                    {visibleDuration(call)}
                   </div>
 
                   <div style={{ fontSize: 11, textAlign: 'right', color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1049,13 +1097,13 @@ export default function Calls() {
                   }}>
                     <DetailField label="Full Number" value={call.remoteNumber} />
                     <DetailField label="Contact Name" value={call.remoteName || '-'} />
-                    <DetailField label="Campaign" value={call.campaignName || '-'} />
+                    <DetailField label="Campaign" value={visibleCampaignName(call)} color={call.isDynamicCallerIdBackendCall ? brand.green : undefined} />
                     <DetailField label="Agent" value={call.agentName || '-'} />
                     <DetailField label="Status" value={pill.label} color={pill.color} />
                     <DetailField label="Disposition" value={currentDisposition || '-'} color={currentDisposition ? brand.green : undefined} />
                     <DetailField label="Notes" value={call.notes || '-'} />
                     <DetailField label="Direction" value={call.direction === 'incoming' ? 'Inbound' : 'Outbound'} />
-                    <DetailField label="Duration" value={fmtDuration(call.durationSeconds)} />
+                    <DetailField label="Duration" value={visibleDurationDetail(call)} color={call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0 ? brand.gold : undefined} />
                     <DetailField label="Started At" value={fmtDateTime(call.startedAt)} />
                     <DetailField label="Call ID" value={String(call.id)} mono />
                   </div>
