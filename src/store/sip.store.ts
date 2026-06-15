@@ -80,8 +80,19 @@ async function initiateBackendDynamicCallerIdCall(destination: string, config: S
   }
 }
 
+let backendHangupInFlight: Promise<void> | null = null
+
 async function hangupBackendDynamicCallerIdCall(ref: BackendOriginatedCallRef): Promise<void> {
-  await api.post('/dialer/call/backend-hangup', ref)
+  if (backendHangupInFlight) return backendHangupInFlight
+
+  backendHangupInFlight = api
+    .post('/dialer/call/backend-hangup', ref, { timeout: 15000 })
+    .then(() => undefined)
+    .finally(() => {
+      backendHangupInFlight = null
+    })
+
+  return backendHangupInFlight
 }
 
 // Create a backend call log for a SIP call — best-effort, non-blocking
@@ -415,27 +426,25 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   reject: async () => {
     const backendRef = get().backendOriginatedCall
+    if (backendRef) set({ backendOriginatedCall: null })
 
-    /*
-      Backend-originated Dynamic Caller ID calls must cancel the Asterisk/PSTN
-      leg before clearing the browser SIP leg. Otherwise the customer-side
-      provider leg can remain alive until trunk timeout.
-    */
     if (backendRef) {
       await hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
     }
 
     await sipClient.reject().catch(() => undefined)
-    set({ incomingCall: null, onHold: false, backendOriginatedCall: null, status: get().isConfigured ? 'registered' : 'idle' })
+    set({ incomingCall: null, onHold: false, status: get().isConfigured ? 'registered' : 'idle' })
   },
 
   hangup: async () => {
     const backendRef = get().backendOriginatedCall
 
     /*
-      Hard-stop backend/PSTN first while Asterisk bridge channels still exist,
-      then clear the browser SIP leg.
+      Clear backendOriginatedCall immediately so repeated Hangup clicks do not
+      spam /backend-hangup while the first request is still running.
     */
+    if (backendRef) set({ backendOriginatedCall: null })
+
     if (backendRef) {
       await hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
     }
@@ -447,7 +456,6 @@ export const useSipStore = create<SipStore>((set, get) => ({
       muted: false,
       onHold: false,
       sipCallLogPromise: null,
-      backendOriginatedCall: null,
       status: get().isConfigured ? 'registered' : 'idle',
     })
   },
