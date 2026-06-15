@@ -921,8 +921,8 @@ export default function Calls() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px 136px',
-            minWidth: 1010,
+            gridTemplateColumns: '82px 86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px 136px',
+            minWidth: 1110,
             padding: '10px 12px',
             fontSize: 10.5,
             color: brand.faint,
@@ -932,6 +932,7 @@ export default function Calls() {
             fontWeight: 850,
           }}
         >
+          <div style={{ color: brand.red, fontWeight: 950 }}>Call ID</div>
           <div>Direction</div>
           <div>Contact</div>
           <div>Campaign</div>
@@ -989,8 +990,8 @@ export default function Calls() {
                   onClick={() => setExpandedId(isExpanded ? null : call.id)}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px 136px',
-                    minWidth: 1010,
+                    gridTemplateColumns: '82px 86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px 136px',
+                    minWidth: 1110,
                     padding: '11px 12px',
                     fontSize: 12,
                     borderTop: '1px solid var(--border)',
@@ -1000,6 +1001,18 @@ export default function Calls() {
                     transition: 'background 0.15s ease',
                   }}
                 >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 950,
+                      color: brand.red,
+                      letterSpacing: 0.4,
+                      fontFamily: 'var(--font-mono)',
+                    }}
+                  >
+                    {call.id}
+                  </div>
+
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {directionIcon(call.direction)}
                     <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.7, color: pill.color }}>
@@ -1093,7 +1106,7 @@ export default function Calls() {
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                     gap: 14,
-                    minWidth: 1010,
+                    minWidth: 1110,
                   }}>
                     <DetailField label="Full Number" value={call.remoteNumber} />
                     <DetailField label="Contact Name" value={call.remoteName || '-'} />
