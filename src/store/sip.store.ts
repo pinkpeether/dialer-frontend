@@ -236,7 +236,23 @@ export const useSipStore = create<SipStore>((set, get) => ({
         onIncomingCall: (incomingCall) => set({ incomingCall, status: 'incoming' }),
 
         onCallStarted: (activeCall) => {
+          const backendOriginatedCall = get().backendOriginatedCall
           set({ activeCall, incomingCall: null, status: 'in_call', onHold: false })
+
+          /*
+            Dynamic Caller ID backend-originated calls create a real OUT call record
+            through /dialer/call/backend-adhoc. The SIP invite received by the browser
+            is only the internal agent leg, so it must not be logged as a second IN call.
+          */
+          if (backendOriginatedCall) {
+            set({
+              sipCallId: null,
+              sipCallLogPromise: null,
+              showSipDisposition: false,
+              pendingSipDisposition: null,
+            })
+            return
+          }
 
           // 12A — log call to backend async, store the returned callId
           const sipCallLogPromise = logSipCallToBackend(activeCall)
@@ -248,7 +264,27 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
         onCallEnded: (endedAtMs) => {
           const endedAt = new Date(endedAtMs ?? Date.now())
-          const { activeCall, sipCallId, sipCallLogPromise } = get()
+          const { activeCall, sipCallId, sipCallLogPromise, backendOriginatedCall } = get()
+
+          /*
+            For Dynamic Caller ID backend-originated calls, this SIP session is the
+            internal agent leg. Do not create/update a separate SIP call record and
+            do not show disposition for this duplicate leg.
+          */
+          if (backendOriginatedCall) {
+            set({
+              activeCall: null,
+              incomingCall: null,
+              muted: false,
+              onHold: false,
+              sipCallId: null,
+              sipCallLogPromise: null,
+              showSipDisposition: false,
+              pendingSipDisposition: null,
+              backendOriginatedCall: null,
+            })
+            return
+          }
 
           // 12A — open disposition modal with real callId if available
           if (activeCall) {

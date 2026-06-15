@@ -564,10 +564,24 @@ export default function Calls() {
 
   const filteredItems = useMemo(() => {
     if (!data?.items) return []
-    const query = search.trim().toLowerCase()
-    if (!query) return data.items
 
-    return data.items.filter((item) => {
+    const withoutInternalSipLegs = data.items.filter((item) => {
+      const remoteName = String(item.remoteName || '').toLowerCase()
+      const remoteNumber = String(item.remoteNumber || '').toLowerCase()
+      const campaignName = String(item.campaignName || '').toLowerCase()
+
+      const isDynamicCallerIdInternalSipLeg = item.direction === 'incoming' &&
+        campaignName.includes('__sip__') &&
+        (remoteName.startsWith('sip ') || remoteName.startsWith('sip:') || remoteNumber.startsWith('sip:')) &&
+        (remoteName.includes('@') || remoteNumber.includes('@'))
+
+      return !isDynamicCallerIdInternalSipLeg
+    })
+
+    const query = search.trim().toLowerCase()
+    if (!query) return withoutInternalSipLegs
+
+    return withoutInternalSipLegs.filter((item) => {
       return [
         item.remoteName,
         item.remoteNumber,
