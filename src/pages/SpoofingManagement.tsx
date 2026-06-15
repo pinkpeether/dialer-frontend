@@ -61,17 +61,19 @@ export default function SpoofingManagement() {
   const user = useAuthStore(state => state.user)
   const isPlatformAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN'
 
-  const [accounts, setAccounts] = useState<CommercialAccount[]>(cached?.accounts ?? [])
-  const [selectedAccountId, setSelectedAccountId] = useState(cached?.selectedAccountId ?? '')
-  const [records, setRecords] = useState<DynamicCallerIdRecord[]>(cached?.records ?? [])
+  const [accounts, setAccounts] = useState<CommercialAccount[]>(isPlatformAdmin ? [] : cached?.accounts ?? [])
+  const [accountsLoaded, setAccountsLoaded] = useState(!isPlatformAdmin && Boolean(cached?.accounts?.length))
+  const [accountsLoading, setAccountsLoading] = useState(false)
+  const [selectedAccountId, setSelectedAccountId] = useState(isPlatformAdmin ? '' : cached?.selectedAccountId ?? '')
+  const [records, setRecords] = useState<DynamicCallerIdRecord[]>(isPlatformAdmin ? [] : cached?.records ?? [])
   const [summary, setSummary] = useState<{
     addonActive?: boolean
     availableNumbers?: DynamicCallerIdRecord[]
     account?: { id?: number; name: string; code: string }
-  } | null>(cached?.summary ?? null)
+  } | null>(isPlatformAdmin ? null : cached?.summary ?? null)
 
-  const [loading, setLoading] = useState(!cached?.records.length)
-  const [refreshing, setRefreshing] = useState(Boolean(cached?.records.length))
+  const [loading, setLoading] = useState(!isPlatformAdmin && !cached?.records.length)
+  const [refreshing, setRefreshing] = useState(!isPlatformAdmin && Boolean(cached?.records.length))
   const [saving, setSaving] = useState(false)
   const [pendingRecordId, setPendingRecordId] = useState<number | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -96,23 +98,44 @@ export default function SpoofingManagement() {
 
   const addonActive = Boolean(summary?.addonActive || activeCount > 0)
 
+  const loadAccounts = async () => {
+    if (!isPlatformAdmin || accountsLoading || accountsLoaded) return
+    setAccountsLoading(true)
+    setError('')
+
+    try {
+      const nextAccounts = await commercialControlApi.listAccounts()
+      setAccounts(nextAccounts)
+      setAccountsLoaded(true)
+      writeCache({ accounts: nextAccounts, selectedAccountId, records, summary })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load commercial accounts')
+    } finally {
+      setAccountsLoading(false)
+    }
+  }
+
   const loadData = async (preferredAccountId = selectedAccountId, options: { silent?: boolean } = {}) => {
+    if (isPlatformAdmin && !preferredAccountId) {
+      setLoading(false)
+      setRefreshing(false)
+      setRecords([])
+      setSummary(null)
+      return
+    }
+
     if (options.silent || records.length > 0) setRefreshing(true)
     else setLoading(true)
     setError('')
 
     try {
-      let accountId = preferredAccountId
+      const accountId = preferredAccountId
       let nextAccounts = accounts
 
-      if (isPlatformAdmin) {
+      if (isPlatformAdmin && !accountsLoaded) {
         nextAccounts = await commercialControlApi.listAccounts()
         setAccounts(nextAccounts)
-
-        if (!accountId && nextAccounts.length > 0) {
-          accountId = String(nextAccounts[0].id)
-          setSelectedAccountId(accountId)
-        }
+        setAccountsLoaded(true)
       }
 
       const scopedAccountId = isPlatformAdmin ? accountId : undefined
@@ -141,6 +164,12 @@ export default function SpoofingManagement() {
   const changeAccount = (value: string) => {
     setSelectedAccountId(value)
     setForm(emptyForm)
+    if (!value) {
+      setRecords([])
+      setSummary(null)
+      writeCache({ accounts, selectedAccountId: '', records: [], summary: null })
+      return
+    }
     void loadData(value)
   }
 
@@ -223,115 +252,50 @@ export default function SpoofingManagement() {
     }
   }
 
-  const activationPill = (record: DynamicCallerIdRecord) => {
-    const active = record.approvalStatus === 'ACTIVE'
-    const inactive = record.approvalStatus === 'INACTIVE'
-
-    return (
-      <div
+  const statusSwitch = (
+    record: DynamicCallerIdRecord,
+    checked: boolean,
+    tone: 'green' | 'red',
+    onToggle: () => void,
+  ) => (
+    <button
+      type="button"
+      aria-pressed={checked}
+      disabled={pendingRecordId === record.id}
+      onClick={onToggle}
+      style={{
+        width: 74,
+        height: 38,
+        borderRadius: 999,
+        border: checked
+          ? tone === 'green' ? '1px solid rgba(0,167,71,.42)' : '1px solid rgba(255,26,65,.42)'
+          : '1px solid rgba(15,23,42,.16)',
+        background: checked
+          ? tone === 'green' ? 'linear-gradient(135deg, #18c964, #00a747)' : 'linear-gradient(135deg, #ff4963, #ff123f)'
+          : 'linear-gradient(135deg, #777, #5f6368)',
+        boxShadow: checked
+          ? tone === 'green' ? '0 12px 26px rgba(0,167,71,.22)' : '0 12px 26px rgba(239,68,68,.20)'
+          : 'inset 0 1px 2px rgba(15,23,42,.16)',
+        padding: 4,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: checked ? 'flex-end' : 'flex-start',
+        cursor: pendingRecordId === record.id ? 'wait' : 'pointer',
+        opacity: pendingRecordId === record.id ? 0.7 : 1,
+        transition: 'background .18s ease, box-shadow .18s ease, opacity .18s ease',
+      }}
+    >
+      <span
         style={{
-          width: 264,
-          maxWidth: '100%',
-          height: 44,
-          borderRadius: 999,
-          padding: 4,
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 3,
-          background: active
-            ? 'linear-gradient(90deg, rgba(0,167,71,.18), rgba(0,229,160,.16))'
-            : 'linear-gradient(90deg, rgba(148,163,184,.16), rgba(148,163,184,.10))',
-          border: active ? '1px solid rgba(0,167,71,.35)' : '1px solid rgba(15,23,42,.18)',
-          boxShadow: active ? '0 12px 28px rgba(0,167,71,.18)' : 'inset 0 1px 2px rgba(15,23,42,.08)',
+          width: 30,
+          height: 30,
+          borderRadius: '50%',
+          background: '#fff',
+          boxShadow: '0 5px 14px rgba(15,23,42,.22)',
         }}
-      >
-        <button
-          type="button"
-          disabled={pendingRecordId === record.id || active}
-          onClick={() => void updateStatus(record, 'ACTIVE')}
-          style={{
-            border: 0,
-            borderRadius: 999,
-            cursor: pendingRecordId === record.id || active ? 'default' : 'pointer',
-            fontWeight: 900,
-            fontSize: 12,
-            letterSpacing: '.02em',
-            color: active ? '#fff' : 'rgba(15,23,42,.22)',
-            background: active ? 'linear-gradient(180deg, #00c853, #009d3a)' : 'transparent',
-            boxShadow: active ? '0 8px 18px rgba(0,167,71,.28)' : 'none',
-            textShadow: active ? '0 1px 0 rgba(0,0,0,.18)' : '0 1px 0 rgba(255,255,255,.55)',
-          }}
-        >
-          ACTIVATED
-        </button>
-
-        <button
-          type="button"
-          disabled={pendingRecordId === record.id || inactive}
-          onClick={() => void updateStatus(record, 'INACTIVE')}
-          style={{
-            border: 0,
-            borderRadius: 999,
-            cursor: pendingRecordId === record.id || inactive ? 'default' : 'pointer',
-            fontWeight: 900,
-            fontSize: 12,
-            letterSpacing: '.02em',
-            color: inactive ? '#fff' : 'rgba(15,23,42,.22)',
-            background: inactive ? 'linear-gradient(180deg, #6b7280, #404040)' : 'transparent',
-            boxShadow: inactive ? '0 8px 18px rgba(15,23,42,.22)' : 'none',
-            textShadow: inactive ? '0 1px 0 rgba(0,0,0,.18)' : '0 1px 0 rgba(255,255,255,.55)',
-          }}
-        >
-          INACTIVATED
-        </button>
-      </div>
-    )
-  }
-
-  const suspendedButton = (record: DynamicCallerIdRecord) => {
-    const active = record.approvalStatus === 'SUSPENDED'
-
-    return (
-      <button
-        className="ptdt-action-btn danger"
-        type="button"
-        disabled={pendingRecordId === record.id || active}
-        onClick={() => void updateStatus(record, 'SUSPENDED')}
-        style={{
-          minHeight: 44,
-          borderRadius: 999,
-          padding: '0 18px',
-          gap: 10,
-          fontWeight: 900,
-          fontSize: 12,
-        }}
-      >
-        <span
-          style={{
-            width: 38,
-            height: 20,
-            borderRadius: 999,
-            padding: 2,
-            background: active ? 'rgba(239,68,68,.28)' : 'rgba(148,163,184,.22)',
-            border: '1px solid rgba(239,68,68,.18)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: active ? 'flex-end' : 'flex-start',
-          }}
-        >
-          <span
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: '50%',
-              background: active ? 'var(--danger)' : 'rgba(71,85,105,.72)',
-            }}
-          />
-        </span>
-        SUSPENDED
-      </button>
-    )
-  }
+      />
+    </button>
+  )
 
   return (
     <div className="ptdt-page">
@@ -435,7 +399,9 @@ export default function SpoofingManagement() {
                 className="ptdt-input"
                 value={selectedAccountId}
                 onChange={event => changeAccount(event.target.value)}
-                disabled={loading || saving}
+                onFocus={() => void loadAccounts()}
+                onMouseDown={() => void loadAccounts()}
+                disabled={loading || saving || accountsLoading}
                 required
                 style={{
                   appearance: 'none',
@@ -448,7 +414,7 @@ export default function SpoofingManagement() {
                   color: 'var(--text-1)',
                 }}
               >
-                <option value="">Select commercial account</option>
+                <option value="">{accountsLoading ? 'Loading commercial accounts...' : 'Select commercial account'}</option>
                 {accounts.map(account => (
                   <option key={account.id} value={account.id}>
                     {accountLabel(account)}
@@ -501,27 +467,40 @@ export default function SpoofingManagement() {
 
       <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
         <div style={{ overflowX: 'auto' }}>
-          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1220 }}>
+          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1460 }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
-                {['Number', 'Account', 'Status', 'Usable', 'Actions'].map(header => (
-                  <th key={header} style={{ padding: '13px 16px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                    {header}
-                  </th>
-                ))}
+                <th style={{ padding: '15px 18px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>CID Number</th>
+                <th style={{ padding: '15px 18px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Commercial Account</th>
+                <th style={{ padding: '15px 18px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Status</th>
+                <th style={{ padding: '15px 18px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Usable</th>
+                <th style={{ padding: '15px 18px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ color: 'var(--green-2)' }}>Activate</span>/Inactivate
+                </th>
+                <th style={{ padding: '15px 18px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
+                  <div>Suspension</div>
+                  <div><span style={{ color: 'var(--danger)' }}>Yes</span> / No</div>
+                </th>
+                <th style={{ padding: '15px 18px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Actions</th>
               </tr>
             </thead>
 
             <tbody>
               {loading && visibleRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: 30, color: 'var(--text-3)' }}>
+                  <td colSpan={7} style={{ padding: 30, color: 'var(--text-3)' }}>
                     Loading Dynamic Caller IDs...
+                  </td>
+                </tr>
+              ) : isPlatformAdmin && !selectedAccountId ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: 30, color: 'var(--text-3)' }}>
+                    Select commercial account to load Dynamic Caller IDs.
                   </td>
                 </tr>
               ) : visibleRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: 30, color: 'var(--text-3)' }}>
+                  <td colSpan={7} style={{ padding: 30, color: 'var(--text-3)' }}>
                     No Dynamic Caller IDs configured yet.
                   </td>
                 </tr>
@@ -535,41 +514,63 @@ export default function SpoofingManagement() {
                     transition: 'opacity .18s ease',
                   }}
                 >
-                  <td className="mono" style={{ padding: '18px 16px', fontWeight: 900, fontSize: 17 }}>
+                  <td className="mono" style={{ padding: '22px 18px', fontWeight: 900, fontSize: 17, whiteSpace: 'nowrap' }}>
                     {record.displayNumber}
                   </td>
 
-                  <td style={{ padding: '18px 16px', fontSize: 13, lineHeight: 1.35, fontWeight: 650 }}>
+                  <td style={{ padding: '22px 18px', fontSize: 14, lineHeight: 1.35, fontWeight: 800, whiteSpace: 'nowrap' }}>
                     {selectedAccount ? accountLabel(selectedAccount) : record.commercialAccountId ? `#${record.commercialAccountId}` : '—'}
                   </td>
 
-                  <td style={{ padding: '18px 16px' }}>
+                  <td style={{ padding: '22px 18px' }}>
                     <span className="badge" style={{ color: statusColor(record.approvalStatus), border: `1px solid ${statusColor(record.approvalStatus)}`, fontWeight: 900 }}>
                       {statusLabel(record.approvalStatus)}
                     </span>
                   </td>
 
-                  <td style={{ padding: '18px 16px' }}>
+                  <td style={{ padding: '22px 18px' }}>
                     {record.isUsable ? <span className="badge badge-answered">YES</span> : <span className="badge badge-pending">NO</span>}
                   </td>
 
-                  <td style={{ padding: '16px 16px', minWidth: 550 }}>
+                  <td style={{ padding: '22px 18px', textAlign: 'center' }}>
                     {isPlatformAdmin ? (
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'nowrap' }}>
-                        {activationPill(record)}
-                        {suspendedButton(record)}
-                        <button
-                          className="ptdt-action-btn danger"
-                          type="button"
-                          disabled={pendingRecordId === record.id}
-                          onClick={() => void updateStatus(record, 'REJECTED')}
-                          style={{ minHeight: 44, borderRadius: 999, paddingInline: 18, fontWeight: 900, fontSize: 12 }}
-                        >
-                          <Trash2 size={16} /> Remove
-                        </button>
-                      </div>
+                      statusSwitch(
+                        record,
+                        record.approvalStatus === 'ACTIVE',
+                        'green',
+                        () => void updateStatus(record, record.approvalStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'),
+                      )
                     ) : (
                       'PTDT activation required'
+                    )}
+                  </td>
+
+                  <td style={{ padding: '22px 18px', textAlign: 'center' }}>
+                    {isPlatformAdmin ? (
+                      statusSwitch(
+                        record,
+                        record.approvalStatus === 'SUSPENDED',
+                        'red',
+                        () => void updateStatus(record, record.approvalStatus === 'SUSPENDED' ? 'INACTIVE' : 'SUSPENDED'),
+                      )
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+
+                  <td style={{ padding: '22px 18px', textAlign: 'center' }}>
+                    {isPlatformAdmin ? (
+                      <button
+                        className="ptdt-action-btn danger"
+                        type="button"
+                        disabled={pendingRecordId === record.id}
+                        onClick={() => void updateStatus(record, 'REJECTED')}
+                        style={{ minHeight: 44, borderRadius: 999, paddingInline: 22, fontWeight: 900, fontSize: 12, whiteSpace: 'nowrap' }}
+                      >
+                        <Trash2 size={16} /> Remove
+                      </button>
+                    ) : (
+                      '—'
                     )}
                   </td>
                 </tr>
