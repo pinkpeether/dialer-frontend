@@ -426,27 +426,28 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   reject: async () => {
     const backendRef = get().backendOriginatedCall
-    if (backendRef) set({ backendOriginatedCall: null })
 
+    /*
+      Keep the browser/SIP leg responsive. Backend/PSTN hangup is best-effort
+      and must not block the user's reject action.
+    */
     if (backendRef) {
-      await hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
+      void hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
     }
 
     await sipClient.reject().catch(() => undefined)
-    set({ incomingCall: null, onHold: false, status: get().isConfigured ? 'registered' : 'idle' })
+    set({ incomingCall: null, onHold: false, backendOriginatedCall: null, status: get().isConfigured ? 'registered' : 'idle' })
   },
 
   hangup: async () => {
     const backendRef = get().backendOriginatedCall
 
     /*
-      Clear backendOriginatedCall immediately so repeated Hangup clicks do not
-      spam /backend-hangup while the first request is still running.
+      Hang up the browser/agent SIP leg immediately. The AMI/PSTN cleanup runs
+      in the background and is protected against repeated-click spam.
     */
-    if (backendRef) set({ backendOriginatedCall: null })
-
     if (backendRef) {
-      await hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
+      void hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
     }
 
     await sipClient.hangup().catch(() => undefined)
@@ -456,6 +457,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       muted: false,
       onHold: false,
       sipCallLogPromise: null,
+      backendOriginatedCall: null,
       status: get().isConfigured ? 'registered' : 'idle',
     })
   },
