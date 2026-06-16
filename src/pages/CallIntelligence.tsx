@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Brain, FileAudio, Search, Sparkles, Wand2, Lightbulb, TrendingUp, Copy, Download } from 'lucide-react'
 import { callIntelligenceAPI } from '../api/callIntelligence.api'
 
@@ -56,32 +56,85 @@ export default function CallIntelligence() {
   const [insighting, setInsighting] = useState(false)
   const [showRawPayload, setShowRawPayload] = useState(false)
 
+  const syncCallIdToUrl = (value: string) => {
+    const normalized = value.trim()
+    const url = new URL(window.location.href)
+
+    if (normalized) url.searchParams.set('callId', normalized)
+    else url.searchParams.delete('callId')
+
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  }
+
+  const loadCallIntelligence = async (targetCallId: string) => {
+    const normalized = targetCallId.trim()
+    if (!normalized) return
+
+    setCallId(normalized)
+    syncCallIdToUrl(normalized)
+    setLoading(true)
+    setError('')
+
+    try {
+      setData(await callIntelligenceAPI.getByCall(normalized))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load call intelligence')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    const urlCallId = new URLSearchParams(window.location.search).get('callId')?.trim()
+    if (!urlCallId) return
+
+    void loadCallIntelligence(urlCallId)
+    // Intentionally run once on mount to rehydrate page state from the URL after refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const load = async () => {
-    if (!callId.trim()) return
-    setLoading(true); setError('')
-    try { setData(await callIntelligenceAPI.getByCall(callId.trim())) }
-    catch (err) { setError(err instanceof Error ? err.message : 'Failed to load call intelligence') }
-    finally { setLoading(false) }
+    await loadCallIntelligence(callId)
   }
 
   const queueTranscript = async () => {
-    if (!callId.trim()) return
-    setTranscribing(true); setError('')
-    try { setData(await callIntelligenceAPI.createTranscript(callId.trim())) }
-    catch (err) { setError(err instanceof Error ? err.message : 'Failed to queue transcription') }
-    finally { setTranscribing(false) }
+    const normalized = callId.trim()
+    if (!normalized) return
+
+    setTranscribing(true)
+    setError('')
+
+    try {
+      setCallId(normalized)
+      syncCallIdToUrl(normalized)
+      setData(await callIntelligenceAPI.createTranscript(normalized))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to queue transcription')
+    } finally {
+      setTranscribing(false)
+    }
   }
 
   const generateInsight = async () => {
-    if (!callId.trim()) return
-    setInsighting(true); setError('')
-    try { setData(await callIntelligenceAPI.createInsight(callId.trim())) }
-    catch (err) { setError(err instanceof Error ? err.message : 'Failed to generate insight') }
-    finally { setInsighting(false) }
+    const normalized = callId.trim()
+    if (!normalized) return
+
+    setInsighting(true)
+    setError('')
+
+    try {
+      setCallId(normalized)
+      syncCallIdToUrl(normalized)
+      setData(await callIntelligenceAPI.createInsight(normalized))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate insight')
+    } finally {
+      setInsighting(false)
+    }
   }
 
-  const call = data?.call
-  const transcript = data?.transcript || data?.data?.transcript || data?.transcriptText || data?.transcription
+  const call = data?.call || data?.data?.call || null
+  const transcript = data?.transcript || data?.transcriptText || data?.transcription || data?.data?.transcript || data?.data?.transcriptText || data?.data?.transcription
   const insight = data?.insight || data?.data?.insight || null
   const summary = data?.summary || data?.data?.summary || insight?.summary || ''
   const sentiment = data?.sentiment || data?.data?.sentiment || insight?.sentiment || ''
