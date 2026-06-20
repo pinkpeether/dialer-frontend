@@ -126,21 +126,40 @@ const AGENT_NAV: NavItem[] = [
 ]
 
 const CONSOLE_GROUPS: NavGroup[] = [
-  { key: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, color: COLORS.purple, items: ['/dashboard', '/supervisor', '/agent/dashboard'] },
-  { key: 'administration', label: 'ADMINISTRATION', icon: Crown, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/platform/administration', '/commercial-control', '/admin/spoofing'] },
-  { key: 'billing', label: 'BILLING', icon: Building2, color: COLORS.gold, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], items: ['/billing'] },
-  { key: 'dialer', label: 'DIALER', icon: Phone, color: COLORS.green, items: ['/dialer', '/sms', '/advanced-dialing'] },
-  { key: 'contacts', label: 'CONTACTS', icon: BookUser, color: COLORS.teal, items: ['/contacts', '/contact-management-pro'] },
-  { key: 'campaigns', label: 'CAMPAIGNS', icon: Megaphone, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], items: ['/campaigns', '/campaign-management-pro'] },
-  { key: 'calls', label: 'CALLS', icon: History, color: COLORS.gold, items: ['/calls', '/callbacks', '/call-controls', '/call-intelligence'] },
+  { key: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, color: COLORS.purple, items:['/dashboard', '/supervisor', '/agent/dashboard'] },
+  { key: 'administration', label: 'ADMINISTRATION', icon: Crown, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/platform/administration', '/commercial-control'] },
+
   { key: 'ai-dialer', label: 'AI DIALER', icon: Radio, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/ai-dialer', '/ai-dialer/logs'] },
+  { key: 'dialer', label: 'DIALER', icon: Phone, color: COLORS.green, items: ['/dialer', '/sms', '/advanced-dialing'] },
+  { key: 'agents', label: 'AGENTS', icon: Users, color: COLORS.indigo, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], items: ['/agents', '/agent-management-pro'] },
+  { key: 'campaigns', label: 'CAMPAIGNS', icon: Megaphone, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], items: ['/campaigns', '/campaign-management-pro'] },
+  { key: 'spoofing', label: 'SPOOFING MANAGEMENT', icon: PhoneCall, color: COLORS.cyan, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/admin/spoofing'] },
+
+  { key: 'calls', label: 'CALLS', icon: History, color: COLORS.gold, items: ['/calls', '/callbacks', '/call-controls', '/call-intelligence'] },
+  { key: 'contacts', label: 'CONTACTS', icon: BookUser, color: COLORS.teal, items: ['/contacts', '/contact-management-pro'] },
+
   { key: 'monitoring', label: 'MONITORING', icon: Activity, color: COLORS.cyan, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/monitoring', '/live-monitoring-advanced', '/ops'] },
-  { key: 'reports', label: 'REPORTS', icon: BarChart3, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/reports', '/reports-analytics-pro'] },
+  { key: 'reports', label: 'REPORTS', icon: BarChart3, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/reports', '/reports-analytics-pro']},
+
   { key: 'recordings', label: 'RECORDINGS', icon: Radio, color: COLORS.green, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/recordings', '/recording-storage-pro'] },
   { key: 'settings', label: 'SETTINGS', icon: Settings2, color: COLORS.slate, items: ['/settings', '/audit-logs', '/security-admin-pro', '/settings/system', '/notifications-alerts-pro'] },
 ]
 
-const CONSOLE_STANDALONE = ['/agents', '/deployment-platform-pro', '/dnc', '/support/diagnostics', '/live-ai', '/sip-settings', '/ui-ux-pro']
+const CONSOLE_STANDALONE = ['/billing', '/deployment-platform-pro', '/dnc', '/support/diagnostics', '/live-ai', '/sip-settings', '/ui-ux-pro']
+
+const CONSOLE_SECTION_LABELS: Record<string, string> = {
+  dashboard: 'MAIN ADMIN',
+  'ai-dialer': 'MAIN DIALING',
+  calls: 'CALLING INFO',
+  monitoring: 'ANALYTICS',
+  recordings: 'RECORDINGS',
+  settings: 'SETTINGS',
+}
+
+const getConsoleSectionLabel = (groupKey: string, normalizedRole?: string) => {
+  if (normalizedRole === 'AGENT') return ''
+  return CONSOLE_SECTION_LABELS[groupKey] || ''
+}
 
 const AGENT_GROUPS: NavGroup[] = [
   { key: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, color: COLORS.purple, items: ['/dashboard'] },
@@ -244,8 +263,10 @@ export default function Sidebar() {
             const groupColor = group.color || COLORS.pink
             const isOpen = !!expandedGroups[group.key]
             const isGroupActive = group.navItems.some(item => isPathActive(item.to))
+            const sectionLabel = getConsoleSectionLabel(group.key, normalizedRole)
             return (
-              <div key={group.key} style={{ display: 'grid', gap: 5 }}>
+              <div key={group.key} style={{ display: 'grid', gap: sectionLabel ? 8 : 5, marginTop: sectionLabel ? (group.key === 'dashboard' ? 0 : 16) : 0 }}>
+                {sectionLabel && <div className="mono" style={{ fontSize: 11.2, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1.55, padding: '3px 12px 1px', fontWeight: 950 }}>{sectionLabel}</div>}
                 <button type="button" onClick={() => toggleGroup(group.key)} style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '9px 12px', borderRadius: 14, border: `1px solid ${hexToRgba(groupColor, isOpen ? 0.52 : isGroupActive ? 0.35 : 0.18)}`, background: isOpen ? `linear-gradient(135deg, ${hexToRgba(groupColor, 0.32)}, ${hexToRgba(groupColor, 0.16)})` : isGroupActive ? `linear-gradient(135deg, ${hexToRgba(groupColor, 0.18)}, ${hexToRgba(groupColor, 0.08)})` : `linear-gradient(135deg, ${hexToRgba(groupColor, 0.09)}, ${hexToRgba(groupColor, 0.04)})`, color: groupColor, cursor: 'pointer', textAlign: 'left', boxShadow: isOpen ? `0 6px 18px ${hexToRgba(groupColor, 0.28)}` : `0 1px 4px ${hexToRgba(groupColor, 0.08)}`, transition: 'all .25s ease' }}>
                   <span className="sidebar-icon-shell" style={{ color: groupColor, background: hexToRgba(groupColor, isOpen ? 0.2 : 0.1) }}><Icon size={16.5} /></span>
                   <span style={{ flex: 1, fontSize: 12.5, fontWeight: 900, lineHeight: 1.25, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{group.label}</span>
