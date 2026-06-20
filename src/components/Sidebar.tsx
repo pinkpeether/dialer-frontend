@@ -131,7 +131,8 @@ const CONSOLE_GROUPS: NavGroup[] = [
   { key: 'dialer', label: 'DIALER', icon: Phone, color: COLORS.green, items: ['/dialer', '/sms', '/advanced-dialing'] },
   { key: 'contacts', label: 'CONTACTS', icon: BookUser, color: COLORS.teal, items: ['/contacts', '/contact-management-pro'] },
   { key: 'campaigns', label: 'CAMPAIGNS', icon: Megaphone, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], items: ['/campaigns', '/campaign-management-pro'] },
-  { key: 'calls', label: 'CALLS', icon: History, color: COLORS.gold, items: ['/calls', '/callbacks', '/call-controls', '/call-intelligence', '/ai-calls'] },
+  { key: 'calls', label: 'CALLS', icon: History, color: COLORS.gold, items: ['/calls', '/callbacks', '/call-controls', '/call-intelligence'] },
+  { key: 'ai-dialer', label: 'AI DIALER', icon: Radio, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/ai-dialer', '/ai-dialer/logs'] },
   { key: 'monitoring', label: 'MONITORING', icon: Activity, color: COLORS.cyan, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/monitoring', '/live-monitoring-advanced', '/ops'] },
   { key: 'reports', label: 'REPORTS', icon: BarChart3, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/reports', '/reports-analytics-pro'] },
   { key: 'recordings', label: 'RECORDINGS', icon: Radio, color: COLORS.green, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/recordings', '/recording-storage-pro'] },
@@ -252,7 +253,7 @@ export default function Sidebar() {
                 {isOpen && <div style={{ display: 'grid', gap: 4, paddingLeft: 10, marginLeft: 13, borderLeft: `2px solid ${hexToRgba(groupColor, 0.32)}` }}>
                   {group.navItems.map(item => {
                     const ItemIcon = item.icon
-                    return <NavLink key={item.to} to={item.to} end={item.to === '/settings'} style={{ textDecoration: 'none' }} onClick={closeMobileNav}>{({ isActive }) => <motion.div whileHover={{ x: isActive ? 0 : 3 }} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '7px 10px', borderRadius: 12, fontSize: 12.5, fontWeight: 700, background: isActive ? `linear-gradient(135deg, ${hexToRgba(groupColor, 0.22)}, ${hexToRgba(groupColor, 0.10)})` : 'transparent', color: isActive ? groupColor : hexToRgba(groupColor, 0.65), border: isActive ? `1px solid ${hexToRgba(groupColor, 0.35)}` : '1px solid transparent' }}><span className="sidebar-icon-shell"><ItemIcon size={15.5} /></span><span style={{ lineHeight: 1.25, flex: 1 }}>{item.label}</span></motion.div>}</NavLink>
+                    return <NavLink key={item.to} to={item.to} end={item.to === '/settings' || item.to === '/ai-dialer'} style={{ textDecoration: 'none' }} onClick={closeMobileNav}>{({ isActive }) => <motion.div whileHover={{ x: isActive ? 0 : 3 }} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '7px 10px', borderRadius: 12, fontSize: 12.5, fontWeight: 700, background: isActive ? `linear-gradient(135deg, ${hexToRgba(groupColor, 0.22)}, ${hexToRgba(groupColor, 0.10)})` : 'transparent', color: isActive ? groupColor : hexToRgba(groupColor, 0.65), border: isActive ? `1px solid ${hexToRgba(groupColor, 0.35)}` : '1px solid transparent' }}><span className="sidebar-icon-shell"><ItemIcon size={15.5} /></span><span style={{ lineHeight: 1.25, flex: 1 }}>{item.label}</span></motion.div>}</NavLink>
                   })}
                 </div>}
               </div>
@@ -264,7 +265,7 @@ export default function Sidebar() {
             {standaloneItems.map(item => {
               const Icon = item.icon
               const iconColor = item.color || COLORS.pink
-              return <NavLink key={item.to} to={item.to} end={item.to === '/settings'} style={{ textDecoration: 'none' }} onClick={closeMobileNav}>{({ isActive }) => <motion.div whileHover={{ x: isActive ? 0 : 3 }} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 10px', borderRadius: 18, fontSize: 13.3, fontWeight: 800, background: isActive ? `linear-gradient(135deg, ${hexToRgba(iconColor, 0.26)}, ${hexToRgba(iconColor, 0.12)})` : 'transparent', color: isActive ? iconColor : hexToRgba(iconColor, 0.8), border: isActive ? `1px solid ${hexToRgba(iconColor, 0.3)}` : '1px solid transparent' }}><span className="sidebar-icon-shell"><Icon size={16.5} /></span><span style={{ lineHeight: 1.25, flex: 1 }}>{item.label}</span></motion.div>}</NavLink>
+              return <NavLink key={item.to} to={item.to} end={item.to === '/settings' || item.to === '/ai-dialer'} style={{ textDecoration: 'none' }} onClick={closeMobileNav}>{({ isActive }) => <motion.div whileHover={{ x: isActive ? 0 : 3 }} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 10px', borderRadius: 18, fontSize: 13.3, fontWeight: 800, background: isActive ? `linear-gradient(135deg, ${hexToRgba(iconColor, 0.26)}, ${hexToRgba(iconColor, 0.12)})` : 'transparent', color: isActive ? iconColor : hexToRgba(iconColor, 0.8), border: isActive ? `1px solid ${hexToRgba(iconColor, 0.3)}` : '1px solid transparent' }}><span className="sidebar-icon-shell"><Icon size={16.5} /></span><span style={{ lineHeight: 1.25, flex: 1 }}>{item.label}</span></motion.div>}</NavLink>
             })}
           </>}
         </nav>

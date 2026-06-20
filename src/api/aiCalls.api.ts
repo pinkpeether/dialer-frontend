@@ -50,6 +50,25 @@ export type AiCallLogsListResponse = {
   rawIncluded?: boolean
 }
 
+export type StartAiCallInput = {
+  toNumber: string
+  fromNumber?: string
+  transferDestination: string
+  assistantId?: string
+  notes?: string
+}
+
+export type StartAiCallResponse = {
+  success?: boolean
+  message?: string
+  callId?: number | string | null
+  displayCallId?: string | null
+  status?: string | null
+  toNumber?: string | null
+  fromNumber?: string | null
+  transferDestination?: string | null
+}
+
 export const aiCallsAPI = {
   getLogs: async (params?: AiCallLogsListParams): Promise<AiCallLogsListResponse> => {
     const res = await api.get('/ai-calls/logs', { params })
@@ -58,6 +77,11 @@ export const aiCallsAPI = {
 
   getLog: async (id: number | string): Promise<AiCallLog> => {
     const res = await api.get(`/ai-calls/logs/${id}`)
+    return res.data.data ?? res.data
+  },
+
+  startOutboundCall: async (payload: StartAiCallInput): Promise<StartAiCallResponse> => {
+    const res = await api.post('/ai-calls/outbound', payload)
     return res.data.data ?? res.data
   },
 }
