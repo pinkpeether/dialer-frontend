@@ -17,7 +17,12 @@ export type CallControlAction =
 export type CallControlPayload = {
   callId?: number | string
   providerCallId?: string
+  target?: string
+  transferTo?: string
+  destination?: string
+  toNumber?: string
   targetNumber?: string
+  agentExtension?: string
   supervisorPhone?: string
   room?: string
   message?: string

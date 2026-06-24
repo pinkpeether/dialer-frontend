@@ -4,6 +4,7 @@ import { Activity, Clock, Hash, Mic, MicOff, PauseCircle, PhoneForwarded, PhoneO
 import AudioDeviceSelect from './AudioDeviceSelect'
 import { useAudioDevices, useMicrophoneMeter } from '../hooks/useAudioDevices'
 import { useToast } from '../hooks/useToast'
+import { callControlAPI } from '../api/callControl.api'
 import { useSipStore } from '../store/sip.store'
 
 const brand = {
@@ -47,6 +48,8 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
   const hold = useSipStore(s => s.hold)
   const resume = useSipStore(s => s.resume)
   const transfer = useSipStore(s => s.transfer)
+  const sipCallId = useSipStore(s => s.sipCallId)
+  const backendOriginatedCall = useSipStore(s => s.backendOriginatedCall)
   const sendDTMF = useSipStore(s => s.sendDTMF)
 
   const sipAudioOutputDeviceId = useSipStore(s => s.audioOutputDeviceId)
@@ -148,24 +151,68 @@ export default function SipActiveCallOverlay({ mode = 'floating' }: SipActiveCal
 
   const handleTransfer = useCallback(() => {
     const dest = transferTarget.trim()
-    if (!dest) return
+    if (!dest || isTransferring) return
 
     setMessage(null)
     setIsTransferring(true)
 
-    void transfer(dest)
-      .then(() => {
-        setIsTransferring(false)
+    const runTransfer = async () => {
+      const backendRef = backendOriginatedCall as {
+        callId?: number | string | null
+        providerCallId?: string | null
+        agentExtension?: string | null
+      } | null
+
+      const activeMeta = activeCall as unknown as {
+        callId?: number | string | null
+        id?: number | string | null
+        providerCallId?: string | null
+        agentExtension?: string | null
+      } | null
+
+      const callId = sipCallId || backendRef?.callId || activeMeta?.callId || activeMeta?.id || undefined
+      const providerCallId = backendRef?.providerCallId || activeMeta?.providerCallId || undefined
+      const agentExtension = backendRef?.agentExtension || activeMeta?.agentExtension || undefined
+
+      try {
+        const backendResult = await callControlAPI.runAction('transfer', {
+          callId,
+          providerCallId,
+          target: dest,
+          transferTo: dest,
+          destination: dest,
+          toNumber: dest,
+          targetNumber: dest,
+          agentExtension,
+        })
+
+        const backendStatus = typeof backendResult?.status === 'string'
+          ? backendResult.status
+          : ''
+
+        if (backendStatus && backendStatus !== 'COMPLETED') {
+          throw new Error('Backend transfer route did not complete')
+        }
+
+        setTransferTarget('')
+        toast.success(`Call transfer requested to ${dest}`)
+      } catch {
+        await transfer(dest)
         setTransferTarget('')
         toast.success(`Call transferred to ${dest}`)
-      })
+      }
+    }
+
+    void runTransfer()
       .catch((err) => {
         const msg = err instanceof Error ? err.message : 'Could not transfer call'
         setMessage(msg)
-        setIsTransferring(false)
         toast.error(msg)
       })
-  }, [transferTarget, transfer, toast])
+      .finally(() => {
+        setIsTransferring(false)
+      })
+  }, [activeCall, backendOriginatedCall, isTransferring, sipCallId, transferTarget, transfer, toast])
 
   const handleDTMF = useCallback((digit: string) => {
     setDtmfLog((prev) => (prev + digit).slice(-16))
