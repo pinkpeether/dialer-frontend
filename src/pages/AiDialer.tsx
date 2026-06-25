@@ -137,7 +137,8 @@ const pageCss = `
   line-height: .92;
   letter-spacing: -0.055em;
   font-weight: 950;
-  color: var(--text);
+  color: var(--green-2);
+  text-shadow: 0 14px 32px rgba(0, 167, 71, .18);
 }
 
 .ptdt-ai-timer-label {
@@ -146,6 +147,11 @@ const pageCss = `
   font-weight: 900;
   letter-spacing: .16em;
   text-transform: uppercase;
+}
+
+.ptdt-ai-ready-ref {
+  color: var(--green-2) !important;
+  text-shadow: 0 8px 18px rgba(0, 167, 71, .15);
 }
 
 .ptdt-ai-status-pill {
@@ -175,6 +181,11 @@ const pageCss = `
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 18px;
+}
+
+.ptdt-ai-meta-title {
+  color: var(--green-2);
+  font-weight: 950;
 }
 
 .ptdt-ai-dialpad-controls {
@@ -238,6 +249,41 @@ const pageCss = `
 
 .ptdt-ai-timeline-row.waiting {
   color: var(--text-3);
+}
+
+.ptdt-ai-logs-btn {
+  min-height: 50px;
+  border-radius: 999px;
+  padding: 8px 18px 8px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--green-2);
+  background: linear-gradient(180deg, rgba(0,167,71,.14), rgba(0,167,71,.06));
+  border: 1px solid rgba(0,167,71,.26);
+  box-shadow: 0 14px 28px rgba(0, 167, 71, .12), inset 0 1px 0 rgba(255,255,255,.45);
+  font-size: 14px;
+  font-weight: 950;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.ptdt-ai-logs-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px rgba(0, 167, 71, .16), inset 0 1px 0 rgba(255,255,255,.50);
+}
+
+.ptdt-ai-logs-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(180deg, #21e783, #008a4f);
+  box-shadow: 0 10px 20px rgba(0, 167, 71, .18);
+  flex: 0 0 auto;
 }
 
 @media (max-width: 1080px) {
@@ -678,16 +724,16 @@ export default function AiDialer() {
 
               <div style={{ textAlign: 'right' }}>
                 <div className="ptdt-ai-timer-label">Call ID</div>
-                <div className="mono" style={{ fontSize: 22, fontWeight: 950, color: 'var(--text)' }}>
+                <div className={`mono ${activeCallId ? '' : 'ptdt-ai-ready-ref'}`} style={{ fontSize: 22, fontWeight: 950, color: 'var(--text)' }}>
                   {result?.displayCallId || (activeCallId ? `#${activeCallId}` : 'Ready')}
                 </div>
               </div>
             </div>
 
             <div className="ptdt-ai-call-meta">
-              <div style={statStyle}><b>Customer</b><br /><span>{maskPhone(result?.toNumber || customerNumber)}</span></div>
-              <div style={statStyle}><b>Transfer</b><br /><span>{maskPhone(result?.transferDestination || transferTo)}</span></div>
-              <div style={statStyle}><b>Result</b><br /><span>{liveLog?.callSuccessful === true ? 'Successful' : liveLog?.callSuccessful === false ? 'Review needed' : 'Pending'}</span></div>
+              <div style={statStyle}><b className="ptdt-ai-meta-title">Customer</b><br /><span>{maskPhone(result?.toNumber || customerNumber)}</span></div>
+              <div style={statStyle}><b className="ptdt-ai-meta-title">Transfer</b><br /><span>{maskPhone(result?.transferDestination || transferTo)}</span></div>
+              <div style={statStyle}><b className="ptdt-ai-meta-title">Result</b><br /><span>{liveLog?.callSuccessful === true ? 'Successful' : liveLog?.callSuccessful === false ? 'Review needed' : 'Pending'}</span></div>
             </div>
 
             <div className="ptdt-ai-dialpad-controls">
@@ -742,8 +788,9 @@ export default function AiDialer() {
             )}
 
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
-              <Link to="/ai-dialer/logs" className="ptdt-primary-btn" style={{ textDecoration: 'none', justifyContent: 'center' }}>
-                <ListFilter size={15} /> Open AI Call Logs
+              <Link to="/ai-dialer/logs" className="ptdt-ai-logs-btn" style={{ textDecoration: 'none' }}>
+                <span className="ptdt-ai-logs-icon"><ListFilter size={15} /></span>
+                Open AI Call Logs
               </Link>
               <Link to="/call-controls" className="ptdt-action-btn" style={{ textDecoration: 'none' }}>
                 <RefreshCw size={15} /> Full Call Controls
