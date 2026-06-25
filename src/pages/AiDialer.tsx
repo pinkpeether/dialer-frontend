@@ -46,6 +46,54 @@ const pageCss = `
   align-items: center;
 }
 
+.ptdt-ai-dialer-input::placeholder,
+.ptdt-ai-dialer-textarea::placeholder {
+  color: var(--text-3);
+  opacity: .5;
+  font-weight: 650;
+}
+
+.ptdt-ai-start-call-btn {
+  min-height: 62px;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 28px 8px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: #fff;
+  background: linear-gradient(180deg, #21e783 0%, #00b96b 54%, #008a4f 100%);
+  box-shadow: 0 18px 34px rgba(0, 167, 71, .24), inset 0 1px 0 rgba(255,255,255,.35);
+  font-size: clamp(18px, 2vw, 26px);
+  font-weight: 950;
+  letter-spacing: -0.03em;
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease, filter .16s ease;
+}
+
+.ptdt-ai-start-call-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 42px rgba(0, 167, 71, .30), inset 0 1px 0 rgba(255,255,255,.38);
+}
+
+.ptdt-ai-start-call-btn:disabled {
+  cursor: not-allowed;
+  filter: saturate(.72);
+}
+
+.ptdt-ai-start-call-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 112, 62, .32);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.32);
+  flex: 0 0 auto;
+}
+
 .ptdt-ai-live-console {
   position: relative;
   overflow: hidden;
@@ -558,29 +606,29 @@ export default function AiDialer() {
           <div className="ptdt-ai-dialer-form">
             <label style={labelStyle}>
               Customer Number
-              <input style={inputStyle} value={customerNumber} onChange={event => setCustomerNumber(event.target.value)} placeholder="+15512943079" inputMode="tel" autoComplete="off" />
+              <input className="ptdt-ai-dialer-input" style={inputStyle} value={customerNumber} onChange={event => setCustomerNumber(event.target.value)} placeholder="+15512943079" inputMode="tel" autoComplete="off" />
             </label>
 
             <label style={labelStyle}>
               Caller ID
-              <input style={inputStyle} value={callerId} onChange={event => setCallerId(event.target.value)} placeholder="Leave blank to use configured Caller ID" inputMode="tel" autoComplete="off" />
+              <input className="ptdt-ai-dialer-input" style={inputStyle} value={callerId} onChange={event => setCallerId(event.target.value)} placeholder="Leave blank to use configured Caller ID" inputMode="tel" autoComplete="off" />
             </label>
             <div style={hintStyle}>Only approved Caller IDs will be accepted by the Voice Service.</div>
 
             <label style={labelStyle}>
               Transfer To
-              <input style={inputStyle} value={transferTo} onChange={event => setTransferTo(event.target.value)} placeholder="+16467763005" inputMode="tel" autoComplete="off" />
+              <input className="ptdt-ai-dialer-input" style={inputStyle} value={transferTo} onChange={event => setTransferTo(event.target.value)} placeholder="+16467763005" inputMode="tel" autoComplete="off" />
             </label>
             <div style={hintStyle}>Only approved transfer destinations will be accepted.</div>
 
             <label style={labelStyle}>
               Assistant
-              <input style={inputStyle} value={assistantId} onChange={event => setAssistantId(event.target.value)} placeholder="default" autoComplete="off" />
+              <input className="ptdt-ai-dialer-input" style={inputStyle} value={assistantId} onChange={event => setAssistantId(event.target.value)} placeholder="default" autoComplete="off" />
             </label>
 
             <label style={labelStyle}>
               Notes
-              <textarea value={notes} onChange={event => setNotes(event.target.value)} placeholder="Optional private note for this AI call" style={{ ...inputStyle, height: 88, borderRadius: 16, paddingTop: 12, resize: 'vertical' }} />
+              <textarea className="ptdt-ai-dialer-textarea" value={notes} onChange={event => setNotes(event.target.value)} placeholder="Optional private note for this AI call" style={{ ...inputStyle, height: 88, borderRadius: 16, paddingTop: 12, resize: 'vertical' }} />
             </label>
 
             {validation.length > 0 && (
@@ -596,8 +644,9 @@ export default function AiDialer() {
             )}
 
             <div className="ptdt-ai-dialer-actions">
-              <button type="button" className="ptdt-primary-btn" onClick={startCall} disabled={!canSubmit} style={{ opacity: canSubmit ? 1 : 0.55 }}>
-                {submitting ? <><Clock size={15} /> Starting...</> : <><PhoneCall size={15} /> Start AI Call</>}
+              <button type="button" className="ptdt-ai-start-call-btn" onClick={startCall} disabled={!canSubmit} style={{ opacity: canSubmit ? 1 : 0.68 }}>
+                <span className="ptdt-ai-start-call-icon">{submitting ? <Clock size={24} /> : <PhoneCall size={24} />}</span>
+                <span>Start AI Call</span>
               </button>
               <Link to="/ai-dialer/logs" className="ptdt-action-btn" style={{ textDecoration: 'none' }}>View Logs</Link>
             </div>
