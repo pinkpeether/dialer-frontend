@@ -285,6 +285,12 @@ export default function Sidebar() {
       .filter(group => group.navItems.length > 0)
   }, [isVisibleForRole, itemMap, normalizedRole])
 
+  const activeGroupKey = useMemo(() => {
+    const activeGroup = groups.find(group => group.navItems.some(item => isPathActive(item.to)))
+    if (!activeGroup || activeGroup.key === 'dashboard') return ''
+    return activeGroup.key
+  }, [groups, isPathActive])
+
   const standaloneItems = useMemo(() => {
     if (normalizedRole === 'AGENT') return []
     return CONSOLE_STANDALONE.map(to => itemMap[to]).filter(Boolean).filter(item => isVisibleForRole(item.roles))
@@ -302,6 +308,10 @@ export default function Sidebar() {
     void authAPI.logout(token).catch(() => undefined)
     void unregisterSip().catch(() => undefined)
   }
+
+  useEffect(() => {
+    setExpandedGroups(activeGroupKey ? { [activeGroupKey]: true } : {})
+  }, [activeGroupKey])
 
   useEffect(() => {
     const next = performanceMode ? 'on' : 'off'
@@ -350,7 +360,7 @@ export default function Sidebar() {
             const Icon = group.icon
             const groupColor = group.color || COLORS.pink
             const isGroupActive = group.navItems.some(item => isPathActive(item.to))
-            const isOpen = Boolean(expandedGroups[group.key] || isGroupActive)
+            const isOpen = Boolean(expandedGroups[group.key])
             const sectionLabel = getConsoleSectionLabel(group.key, normalizedRole)
             const isFeaturedDialerGroup = group.key === 'ai-dialer' || group.key === 'dialer'
 
