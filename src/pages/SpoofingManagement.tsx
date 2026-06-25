@@ -186,14 +186,12 @@ export default function SpoofingManagement() {
         await dynamicCallerIdApi.adminCreate({
           accountId: selectedAccountId,
           displayNumber: form.displayNumber,
-          provider: 'illyvoip',
           status: 'INACTIVE',
         })
         setMessage('Dynamic Caller ID added. Activate it when ready.')
       } else {
         await dynamicCallerIdApi.request({
           displayNumber: form.displayNumber,
-          provider: 'illyvoip',
         })
         setMessage('Dynamic Caller ID request submitted. PTDT Super Admin must activate it before use.')
       }
