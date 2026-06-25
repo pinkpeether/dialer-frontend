@@ -297,6 +297,150 @@ const pageCss = `
   flex: 0 0 auto;
 }
 
+.ptdt-ai-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(5, 8, 18, .58);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+.ptdt-ai-confirm-modal {
+  position: relative;
+  width: min(560px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(251, 10, 139, .22);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(251, 10, 139, .18), transparent 42%),
+    radial-gradient(circle at top right, rgba(0, 167, 71, .14), transparent 40%),
+    var(--bg-glass-hi);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255,255,255,.38);
+  padding: clamp(18px, 4vw, 26px);
+}
+
+.ptdt-ai-confirm-modal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,.12), transparent 42%);
+}
+
+.ptdt-ai-confirm-content {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 18px;
+}
+
+.ptdt-ai-confirm-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: start;
+}
+
+.ptdt-ai-confirm-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--pink), #8b5cf6);
+  box-shadow: 0 16px 32px rgba(251, 10, 139, .22);
+}
+
+.ptdt-ai-confirm-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-glass);
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.ptdt-ai-confirm-title {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 950;
+  letter-spacing: -0.045em;
+}
+
+.ptdt-ai-confirm-message {
+  margin: 6px 0 0;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 750;
+}
+
+.ptdt-ai-confirm-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ptdt-ai-confirm-detail {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-glass);
+  padding: 12px;
+}
+
+.ptdt-ai-confirm-detail b {
+  display: block;
+  color: var(--text-3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  margin-bottom: 5px;
+}
+
+.ptdt-ai-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ptdt-ai-confirm-start {
+  border: 0;
+  border-radius: 999px;
+  min-height: 46px;
+  padding: 0 18px 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fff;
+  background: linear-gradient(180deg, #21e783, #008a4f);
+  box-shadow: 0 16px 32px rgba(0, 167, 71, .22), inset 0 1px 0 rgba(255,255,255,.34);
+  font-size: 14px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.ptdt-ai-confirm-start span {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 112, 62, .30);
+}
+
 @media (max-width: 1080px) {
   .ptdt-ai-dialer-grid {
     grid-template-columns: minmax(0, 1fr) !important;
@@ -317,7 +461,8 @@ const pageCss = `
   }
 
   .ptdt-ai-console-top,
-  .ptdt-ai-call-meta {
+  .ptdt-ai-call-meta,
+  .ptdt-ai-confirm-details {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
@@ -505,6 +650,7 @@ export default function AiDialer() {
   const [controlLoading, setControlLoading] = useState<CallControlAction | null>(null)
   const [controlMessage, setControlMessage] = useState('')
   const [controlError, setControlError] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const validation = useMemo(() => {
     return [
@@ -558,7 +704,19 @@ export default function AiDialer() {
     }
   }, [liveLog?.callStatus, result?.callId])
 
-  const startCall = useCallback(async () => {
+  useEffect(() => {
+    if (!confirmOpen) return undefined
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setConfirmOpen(false)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [confirmOpen])
+
+  const executeStartCall = useCallback(async () => {
+    setConfirmOpen(false)
     setError('')
     setResult(null)
     setLiveLog(null)
@@ -570,9 +728,6 @@ export default function AiDialer() {
       setError(validation[0])
       return
     }
-
-    const confirmed = window.confirm('This will start a real AI call. Continue?')
-    if (!confirmed) return
 
     setSubmitting(true)
     setStartedAt(Date.now())
@@ -595,6 +750,17 @@ export default function AiDialer() {
       setSubmitting(false)
     }
   }, [assistantId, callerId, customerNumber, notes, transferTo, validation])
+
+  const startCall = useCallback(() => {
+    setError('')
+
+    if (validation.length > 0) {
+      setError(validation[0])
+      return
+    }
+
+    setConfirmOpen(true)
+  }, [validation])
 
   const runControl = useCallback(async (action: CallControlAction, requiresConfirm?: boolean) => {
     setControlError('')
@@ -811,6 +977,50 @@ export default function AiDialer() {
           </div>
         </section>
       </div>
+
+      {confirmOpen && (
+        <div
+          className="ptdt-ai-confirm-backdrop"
+          role="presentation"
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) setConfirmOpen(false)
+          }}
+        >
+          <div className="ptdt-ai-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="ptdt-ai-confirm-title">
+            <div className="ptdt-ai-confirm-content">
+              <div className="ptdt-ai-confirm-top">
+                <span className="ptdt-ai-confirm-icon"><PhoneCall size={23} /></span>
+                <div>
+                  <h2 id="ptdt-ai-confirm-title" className="ptdt-ai-confirm-title">Start AI Call?</h2>
+                  <p className="ptdt-ai-confirm-message">
+                    This will start a real AI call to the selected customer. Please confirm before the Voice Service begins dialing.
+                  </p>
+                </div>
+                <button type="button" className="ptdt-ai-confirm-close" onClick={() => setConfirmOpen(false)} aria-label="Close confirmation dialog">×</button>
+              </div>
+
+              <div className="ptdt-ai-confirm-details">
+                <div className="ptdt-ai-confirm-detail">
+                  <b>Customer</b>
+                  <span className="mono">{maskPhone(customerNumber)}</span>
+                </div>
+                <div className="ptdt-ai-confirm-detail">
+                  <b>Transfer</b>
+                  <span className="mono">{transferTo.trim() ? maskPhone(transferTo) : 'No transfer'}</span>
+                </div>
+              </div>
+
+              <div className="ptdt-ai-confirm-actions">
+                <button type="button" className="ptdt-action-btn" onClick={() => setConfirmOpen(false)}>Cancel</button>
+                <button type="button" className="ptdt-ai-confirm-start" onClick={executeStartCall} disabled={submitting}>
+                  <span>{submitting ? <Clock size={16} /> : <PhoneCall size={16} />}</span>
+                  {submitting ? 'Starting…' : 'Start Call'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
