@@ -114,9 +114,43 @@ function getErrorMessage(error: unknown) {
   const lower = message.toLowerCase()
 
   if (lower.includes('disabled')) return 'AI call launch is currently disabled.'
-  if (lower.includes('retell') || lower.includes('provider') || lower.includes('rawpayload')) return 'Unable to start AI call.'
+  if (
+    lower.includes('provider') ||
+    lower.includes('rawpayload') ||
+    lower.includes('gateway') ||
+    lower.includes('trunk') ||
+    lower.includes('sip') ||
+    lower.includes('pstn') ||
+    lower.includes('webhook') ||
+    lower.includes('setup') ||
+    lower.includes('internal')
+  ) return 'Unable to start AI call.'
 
   return message
+}
+
+function getDisplayStatus(status?: string | null) {
+  const value = String(status || 'queued').trim()
+  const key = value.toLowerCase().replace(/[\s-]+/g, '_')
+
+  if (!key) return 'Queued'
+  if (key === 'queued' || key === 'pending') return 'Queued'
+  if (key === 'started' || key === 'initiated' || key === 'ringing') return 'Starting'
+  if (key === 'in_progress' || key === 'active') return 'In progress'
+  if (key === 'completed' || key === 'ended' || key === 'done') return 'Completed'
+  if (key === 'failed' || key === 'error') return 'Unable to start'
+
+  if (
+    key.includes('provider') ||
+    key.includes('gateway') ||
+    key.includes('trunk') ||
+    key.includes('sip') ||
+    key.includes('pstn') ||
+    key.includes('setup') ||
+    key.includes('internal')
+  ) return 'Request received'
+
+  return value.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())
 }
 
 export default function AiDialer() {
@@ -267,7 +301,7 @@ export default function AiDialer() {
                 <h2 style={{ margin: 0, fontSize: 17, fontWeight: 950 }}>AI Call Started</h2>
               </div>
               <div style={statStyle}><b>Call ID</b><br /><span className="mono">{result.displayCallId || (result.callId ? `#${result.callId}` : 'Pending')}</span></div>
-              <div style={statStyle}><b>Status</b><br /><span>{result.status || 'queued'}</span></div>
+              <div style={statStyle}><b>Status</b><br /><span>{getDisplayStatus(result.status)}</span></div>
               <div style={statStyle}><b>Customer</b><br /><span>{result.toNumber || '—'}</span></div>
               <Link to="/ai-dialer/logs" className="ptdt-primary-btn" style={{ textDecoration: 'none', justifyContent: 'center' }}>Open AI Call Logs</Link>
             </div>
