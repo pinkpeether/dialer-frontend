@@ -171,7 +171,6 @@ const AGENT_GROUPS: NavGroup[] = [
   { key: 'settings', label: 'SETTINGS', icon: Settings2, color: COLORS.slate, items: ['/notifications-alerts-pro', '/settings'] },
 ]
 
-
 const SIDEBAR_FEATURED_CSS = `
 .ptdt-sidebar-group-btn {
   position: relative;
@@ -256,7 +255,6 @@ const SIDEBAR_FEATURED_CSS = `
   }
 }
 `
-
 
 const isMobileViewport = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
 
@@ -351,10 +349,11 @@ export default function Sidebar() {
           {groups.map(group => {
             const Icon = group.icon
             const groupColor = group.color || COLORS.pink
-            const isOpen = !!expandedGroups[group.key]
             const isGroupActive = group.navItems.some(item => isPathActive(item.to))
+            const isOpen = Boolean(expandedGroups[group.key] || isGroupActive)
             const sectionLabel = getConsoleSectionLabel(group.key, normalizedRole)
             const isFeaturedDialerGroup = group.key === 'ai-dialer' || group.key === 'dialer'
+
             return (
               <div key={group.key} style={{ display: 'grid', gap: sectionLabel ? 8 : 5, marginTop: sectionLabel ? (group.key === 'dashboard' ? 0 : 16) : 0 }}>
                 {sectionLabel && <div className="mono" style={{ fontSize: 11.2, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1.55, padding: '3px 12px 1px', fontWeight: 950 }}>{sectionLabel}</div>}
