@@ -53,7 +53,7 @@ export type AiCallLogsListResponse = {
 export type StartAiCallInput = {
   toNumber: string
   fromNumber?: string
-  transferDestination: string
+  transferDestination?: string
   assistantId?: string
   notes?: string
 }
