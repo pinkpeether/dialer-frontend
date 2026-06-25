@@ -246,7 +246,7 @@ export default function SmsConsole() {
               <div className="ptdt-pro-table-toolbar">
                 <div>
                   <div className="ptdt-pro-table-title">Queued Result</div>
-                  <div className="ptdt-pro-table-subtitle">Provider response after queue submission.</div>
+                  <div className="ptdt-pro-table-subtitle">Delivery response after queue submission.</div>
                 </div>
               </div>
               <div style={{ display: 'grid', gap: 10 }}>
@@ -289,7 +289,7 @@ export default function SmsConsole() {
               <div className="ptdt-pro-table-toolbar">
                 <div>
                   <div className="ptdt-pro-table-title">Delivery Snapshot</div>
-                  <div className="ptdt-pro-table-subtitle">Latest provider-reported delivery response.</div>
+                  <div className="ptdt-pro-table-subtitle">Latest delivery response.</div>
                 </div>
               </div>
               <div className="ptdt-pro-grid two" style={{ gap: 12 }}>

@@ -56,9 +56,9 @@ export default function StorageOverviewPanel() {
           <div className="eyebrow pink" style={{ marginBottom: 10 }}>
             <Database size={12} /> Storage Overview
           </div>
-          <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Provider & Capacity</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Storage & Capacity</h2>
           <p style={{ color: 'var(--text-3)', marginTop: 8 }}>
-            Provider: {overview?.provider || '—'} · Bucket: {overview?.bucket || '—'}
+            Storage: {overview?.provider || '—'} · Bucket: {overview?.bucket || '—'}
           </p>
         </div>
         <button type="button" className="ptdt-action-btn" onClick={() => void load()} disabled={loading}>

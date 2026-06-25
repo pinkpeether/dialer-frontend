@@ -408,7 +408,7 @@ export default function AiCallLogs() {
             <Brain size={12} /> AI Voice Layer
           </div>
           <h1 className="ptdt-page-title">AI Call <span className="gradient-brand-text">Logs</span></h1>
-          <p className="ptdt-page-desc">Review AI call logs stored from secure call result webhooks. Raw payload is not shown by default.</p>
+          <p className="ptdt-page-desc">Review AI call logs stored from secure call result updates. Detailed technical data is hidden by default.</p>
         </div>
 
         <div className="ptdt-toolbar">

@@ -204,7 +204,7 @@ export default function CallIntelligence() {
             {[
               ['Call ID', call?.id ?? (callId || '—')],
               ['Recording', call?.recordingUrl ? 'Available' : 'Not available'],
-              ['Recording SID', call?.recordingSid || '—'],
+              ['Recording Ref', call?.recordingSid || '—'],
               ['Disposition', call?.disposition || '—'],
               ['Duration', call?.duration ? `${call.duration}s` : '—'],
             ].map(([label, value]) => (
@@ -293,7 +293,7 @@ export default function CallIntelligence() {
             disabled={!data}
             style={{ marginBottom: 12 }}
           >
-            {showRawPayload ? 'Hide Raw Payload' : 'Show Raw Payload'}
+            {showRawPayload ? 'Hide Technical Details' : 'Show Technical Details'}
           </button>
 
           {showRawPayload && (
