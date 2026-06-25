@@ -257,7 +257,7 @@ export default function AiDialer() {
 
             <label style={labelStyle}>
               Notes
-              <textarea value={notes} onChange={event => setNotes(event.target.value)} placeholder="Optional internal note for this AI call" style={{ ...inputStyle, height: 88, borderRadius: 16, paddingTop: 12, resize: 'vertical' }} />
+              <textarea value={notes} onChange={event => setNotes(event.target.value)} placeholder="Optional private note for this AI call" style={{ ...inputStyle, height: 88, borderRadius: 16, paddingTop: 12, resize: 'vertical' }} />
             </label>
 
             {validation.length > 0 && (

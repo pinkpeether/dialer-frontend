@@ -29,19 +29,19 @@ export default function BillingAdminPanel({ billing }: { billing: BillingData | 
   return (
     <div className="glass" style={{ padding: 18 }}>
       <div style={{ marginBottom: 14 }}>
-        <h2 style={{ margin: 0 }}>Billing / Provider Overview</h2>
+        <h2 style={{ margin: 0 }}>Billing / Voice Service Overview</h2>
         <p style={{ margin: '6px 0 0', color: 'var(--text-3)', lineHeight: 1.6 }}>
-          SIP trunk, provider adapter, AI, Railway and Supabase readiness in one admin view.
+          Call gateway, AI, Railway and Supabase readiness in one admin view.
         </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-        <Panel label="Call Provider" lines={[
+        <Panel label="Call Gateway" lines={[
           `Status: ${providerStatus}`,
-          `Provider: ${billing?.sipTrunk?.provider || 'not-set'}`,
+          `Gateway: ${billing?.sipTrunk?.provider || 'not-set'}`,
           `Account: ${providerAccountPreview}`,
         ]} />
-        <Panel label="Provider Adapter" lines={[
+        <Panel label="Gateway Control" lines={[
           providerStatus,
           `Balance: ${providerBalance}`,
           `Caller ID: ${providerCallerId}`,
@@ -58,7 +58,7 @@ export default function BillingAdminPanel({ billing }: { billing: BillingData | 
           `Project: ${billing?.supabase?.projectRef?.preview || 'not provided'}`,
           `Bucket: ${billing?.supabase?.storageBucket || 'not provided'}`,
         ]} />
-        <Panel label="SIP Trunk Credit" lines={[
+        <Panel label="Voice Service Credit" lines={[
           `Balance: ${billing?.sipTrunk?.balanceUsd || 'not provided'}`,
           `Low threshold: ${billing?.sipTrunk?.lowBalanceThresholdUsd || '10'}`,
         ]} />

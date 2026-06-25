@@ -375,7 +375,7 @@ export default function Recordings() {
         <HealthCard icon={<Database size={16} />} label="Storage Status" value={health?.storageStatus || 'UNKNOWN'} color={storageColor} />
         <HealthCard icon={<Mic2 size={16} />} label="Total Recordings" value={health?.totalRecordings ?? recordings.length} />
         <HealthCard icon={<ShieldCheck size={16} />} label="Access TTL" value={`${health?.accessTtlSeconds ?? 300}s`} />
-        <HealthCard icon={<AlertTriangle size={16} />} label="Missing SID" value={health?.missingRecordingSid ?? 0} color={(health?.missingRecordingSid || 0) > 0 ? '#f0b90b' : 'var(--green-2)'} />
+        <HealthCard icon={<AlertTriangle size={16} />} label="Missing Recording Ref" value={health?.missingRecordingSid ?? 0} color={(health?.missingRecordingSid || 0) > 0 ? '#f0b90b' : 'var(--green-2)'} />
       </div>
 
       <div className="glass" style={{ padding: 18, marginBottom: 18 }}>
@@ -388,7 +388,7 @@ export default function Recordings() {
               onKeyDown={e => {
                 if (e.key === 'Enter') void load()
               }}
-              placeholder="Search phone, contact, campaign, agent, or recording SID..."
+              placeholder="Search phone, contact, campaign, agent, or recording ref..."
               style={{ ...inputStyle, paddingLeft: 42, borderRadius: 999 }}
             />
           </label>
@@ -467,7 +467,7 @@ export default function Recordings() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
-                {['Time', 'Call ID', 'Contact', 'Phone', 'Agent', 'Campaign', 'Duration', 'Provider', 'Recording SID', 'Action'].map(h => (
+                {['Time', 'Call ID', 'Contact', 'Phone', 'Agent', 'Campaign', 'Duration', 'Storage', 'Recording Ref', 'Action'].map(h => (
                   <th key={h} style={{ padding: '13px 16px', textAlign: 'left', fontSize: 10.5, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                     {h}
                   </th>

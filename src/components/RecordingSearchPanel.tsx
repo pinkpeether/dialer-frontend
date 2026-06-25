@@ -126,7 +126,7 @@ export default function RecordingSearchPanel() {
           </div>
           <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Recording Search</h2>
           <p style={{ color: 'var(--text-3)', marginTop: 8 }}>
-            Filter by phone, campaign, agent, provider, date range, duration, and transcript presence.
+            Filter by phone, campaign, agent, source, date range, duration, and transcript presence.
           </p>
         </div>
         <button type="button" className="ptdt-action-btn" onClick={() => void exportCsv()}>
@@ -145,7 +145,7 @@ export default function RecordingSearchPanel() {
         </select>
         <input type="number" value={filters.minDuration || ''} onChange={event => updateFilter('minDuration', event.target.value ? Number(event.target.value) : undefined)} placeholder="Min duration sec" style={fieldStyle} />
         <input type="number" value={filters.maxDuration || ''} onChange={event => updateFilter('maxDuration', event.target.value ? Number(event.target.value) : undefined)} placeholder="Max duration sec" style={fieldStyle} />
-        <input value={filters.source || ''} onChange={event => updateFilter('source', event.target.value || undefined)} placeholder="Source/provider" style={fieldStyle} />
+        <input value={filters.source || ''} onChange={event => updateFilter('source', event.target.value || undefined)} placeholder="Source" style={fieldStyle} />
         <button type="button" className="btn-brand" onClick={() => void applySearch()} disabled={loading}>
           {loading ? 'Searching...' : 'Search'}
         </button>
@@ -169,7 +169,7 @@ export default function RecordingSearchPanel() {
                 <td style={{ padding: '12px 10px', verticalAlign: 'top' }}>
                   <div style={{ fontWeight: 700 }}>#{item.id}</div>
                   <div style={{ color: 'var(--text-3)', fontSize: 12 }}>{item.status || '—'} / {item.disposition || '—'}</div>
-                  <div style={{ color: 'var(--text-3)', fontSize: 11.5 }}>{item.recordingSid || 'No SID'}</div>
+                  <div style={{ color: 'var(--text-3)', fontSize: 11.5 }}>{item.recordingSid || 'No recording ref'}</div>
                 </td>
                 <td style={{ padding: '12px 10px', verticalAlign: 'top' }}>
                   <div>{item.contact?.name || 'Unknown'}</div>
