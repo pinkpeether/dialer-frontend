@@ -14,6 +14,26 @@ type ActiveCall = {
   campaign?: { name?: string | null } | null
 }
 
+function displayCallStatus(status?: string | null) {
+  const key = String(status || '').trim().toLowerCase().replace(/[\s-]+/g, '_')
+  if (!key) return 'Unknown'
+  if (key === 'active' || key === 'in_progress' || key === 'connected') return 'Active'
+  if (key === 'ringing' || key === 'queued' || key === 'pending') return 'Starting'
+  if (key === 'completed' || key === 'ended') return 'Completed'
+  if (key === 'failed' || key === 'error') return 'Unable to complete'
+  if (
+    key.includes('provider') ||
+    key.includes('adapter') ||
+    key.includes('gateway') ||
+    key.includes('trunk') ||
+    key.includes('sip') ||
+    key.includes('pbx') ||
+    key.includes('setup') ||
+    key.includes('internal')
+  ) return 'Request received'
+  return key.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())
+}
+
 export default function CallControls() {
   const [calls, setCalls] = useState<ActiveCall[]>([])
   const [capabilities, setCapabilities] = useState<Record<string, unknown> | null>(null)
@@ -77,14 +97,14 @@ export default function CallControls() {
           <div className="ptdt-pro-kpi-note">Supervisor-call-control surface</div>
         </div>
         <div className="ptdt-pro-kpi">
-          <div className="ptdt-pro-kpi-label">Provider</div>
-          <div className="ptdt-pro-kpi-value" style={{ fontSize: '1.6rem' }}>{String(capabilities?.provider || 'universal-sip')}</div>
-          <div className="ptdt-pro-kpi-note">Current routed control adapter</div>
+          <div className="ptdt-pro-kpi-label">Call Gateway</div>
+          <div className="ptdt-pro-kpi-value" style={{ fontSize: '1.6rem' }}>Voice Service</div>
+          <div className="ptdt-pro-kpi-note">Current routed call-control path</div>
         </div>
         <div className="ptdt-pro-kpi">
-          <div className="ptdt-pro-kpi-label">Provider Adapter</div>
+          <div className="ptdt-pro-kpi-label">Gateway Control</div>
           <div className="ptdt-pro-kpi-value" style={{ fontSize: '1.6rem' }}>{capabilities?.providerAdapterConfigured ? 'Configured' : 'Not configured'}</div>
-          <div className="ptdt-pro-kpi-note">Server-side provider control readiness</div>
+          <div className="ptdt-pro-kpi-note">Server-side call-control readiness</div>
         </div>
       </div>
 
@@ -118,7 +138,7 @@ export default function CallControls() {
                     <Radio size={16} />
                     Call #{call.id} · {call.contact?.name || call.remoteNumber || call.contact?.phone || 'Unknown'}
                   </span>
-                  <span className="mono">{call.status}</span>
+                  <span className="mono">{displayCallStatus(call.status)}</span>
                 </button>
               )
             })}

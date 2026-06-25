@@ -32,6 +32,65 @@ type ActionResult = {
   processedAt?: string
 }
 
+function displayAction(action?: string) {
+  const key = String(action || '').toLowerCase()
+  const labels: Record<string, string> = {
+    hold: 'Hold',
+    resume: 'Resume',
+    transfer: 'Transfer',
+    conference: 'Conference',
+    whisper: 'Whisper',
+    barge: 'Barge-In',
+    mute: 'Mute',
+    unmute: 'Unmute',
+    voicemaildrop: 'Voicemail Drop',
+    dtmf: 'Send DTMF',
+    noisecancellation: 'Noise Guard',
+    hangup: 'Hangup',
+  }
+  return labels[key] || 'Call control'
+}
+
+function displayStatus(status?: string) {
+  const key = String(status || '').trim().toLowerCase().replace(/[\s-]+/g, '_')
+  if (!key) return 'Request received'
+  if (key === 'completed' || key === 'success' || key === 'ok') return 'Completed'
+  if (key === 'queued' || key === 'pending' || key === 'accepted') return 'Request received'
+  if (key === 'running' || key === 'in_progress' || key === 'processing') return 'In progress'
+  if (key === 'failed' || key === 'error') return 'Unable to complete'
+  if (
+    key.includes('provider') ||
+    key.includes('adapter') ||
+    key.includes('gateway') ||
+    key.includes('trunk') ||
+    key.includes('sip') ||
+    key.includes('pbx') ||
+    key.includes('setup') ||
+    key.includes('internal')
+  ) return 'Request received'
+  return key.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())
+}
+
+function displayMessage(message?: string) {
+  const value = String(message || '').trim()
+  const lower = value.toLowerCase()
+  if (!value) return 'Your call-control request was received.'
+  if (
+    lower.includes('provider') ||
+    lower.includes('adapter') ||
+    lower.includes('gateway') ||
+    lower.includes('trunk') ||
+    lower.includes('sip') ||
+    lower.includes('pbx') ||
+    lower.includes('sid') ||
+    lower.includes('raw') ||
+    lower.includes('payload') ||
+    lower.includes('setup') ||
+    lower.includes('internal')
+  ) return 'Your call-control request was received.'
+  return value
+}
+
 const actionButtons: Array<{
   action: CallControlAction
   label: string
@@ -136,7 +195,7 @@ const inputStyle: React.CSSProperties = {
             Supervisor controls, transfer, hold and voicemail drop
           </h2>
           <p style={{ color: 'var(--text-3)', marginTop: 8, maxWidth: 760 }}>
-            Provider-aware control panel for active calls. Use provider or PBX call references where available while SIP/PBX controls continue to expand.
+            Supervisor tools for active calls. Use Call ID or Call Gateway reference where available while call-control coverage continues to expand.
           </p>
         </div>
 
@@ -167,8 +226,8 @@ const inputStyle: React.CSSProperties = {
         </label>
 
         <label>
-          <span className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--text-3)', marginBottom: 6 }}>PROVIDER CALL SID</span>
-          <input style={inputStyle} value={providerCallId} onChange={e => setProviderCallId(e.target.value)} placeholder="Provider call ID / PBX ref" />
+          <span className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--text-3)', marginBottom: 6 }}>CALL GATEWAY REF</span>
+          <input style={inputStyle} value={providerCallId} onChange={e => setProviderCallId(e.target.value)} placeholder="Call Gateway reference" />
         </label>
 
         <label>
@@ -192,13 +251,13 @@ const inputStyle: React.CSSProperties = {
         </label>
 
         <label>
-          <span className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--text-3)', marginBottom: 6 }}>CONFERENCE SID</span>
-          <input style={inputStyle} value={conferenceSid} onChange={e => setConferenceSid(e.target.value)} placeholder="CF..." />
+          <span className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--text-3)', marginBottom: 6 }}>CONFERENCE REF</span>
+          <input style={inputStyle} value={conferenceSid} onChange={e => setConferenceSid(e.target.value)} placeholder="Conference reference" />
         </label>
 
         <label>
-          <span className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--text-3)', marginBottom: 6 }}>PARTICIPANT CALL SID</span>
-          <input style={inputStyle} value={participantCallSid} onChange={e => setParticipantCallSid(e.target.value)} placeholder="CA..." />
+          <span className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--text-3)', marginBottom: 6 }}>PARTICIPANT REF</span>
+          <input style={inputStyle} value={participantCallSid} onChange={e => setParticipantCallSid(e.target.value)} placeholder="Participant reference" />
         </label>
       </div>
 
@@ -248,15 +307,12 @@ const inputStyle: React.CSSProperties = {
       {result && (
         <div style={{ marginTop: 18, border: '1px solid var(--border)', borderRadius: 18, padding: 14, background: 'var(--bg-glass-hi)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-            <strong>{result.action}</strong>
-            <span className="mono" style={{ color: result.status === 'COMPLETED' ? 'var(--green-2)' : 'var(--text-3)' }}>
-              {result.status}
+            <strong>{displayAction(result.action)}</strong>
+            <span className="mono" style={{ color: displayStatus(result.status) === 'Completed' ? 'var(--green-2)' : 'var(--text-3)' }}>
+              {displayStatus(result.status)}
             </span>
           </div>
-          <p style={{ color: 'var(--text-2)', marginBottom: 10 }}>{result.message}</p>
-          <pre style={{ overflowX: 'auto', fontSize: 12, color: 'var(--text-3)', whiteSpace: 'pre-wrap' }}>
-            {JSON.stringify(result.details || {}, null, 2)}
-          </pre>
+          <p style={{ color: 'var(--text-2)', marginBottom: 0 }}>{displayMessage(result.message)}</p>
         </div>
       )}
     </div>
