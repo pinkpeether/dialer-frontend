@@ -184,8 +184,19 @@ const pageCss = `
 }
 
 .ptdt-ai-meta-title {
-  color: var(--green-2);
   font-weight: 950;
+}
+
+.ptdt-ai-meta-title.customer {
+  color: var(--pink);
+}
+
+.ptdt-ai-meta-title.transfer {
+  color: var(--green-2);
+}
+
+.ptdt-ai-meta-title.result {
+  color: #8b5cf6;
 }
 
 .ptdt-ai-dialpad-controls {
@@ -499,11 +510,11 @@ export default function AiDialer() {
     return [
       validateE164(customerNumber, 'Customer number'),
       validateE164(callerId, 'Caller ID', false),
-      validateE164(transferTo, 'Transfer number'),
+      validateE164(transferTo, 'Transfer number', false),
     ].filter(Boolean)
   }, [customerNumber, callerId, transferTo])
 
-  const canSubmit = validation.length === 0 && Boolean(customerNumber.trim()) && Boolean(transferTo.trim()) && !submitting
+  const canSubmit = validation.length === 0 && Boolean(customerNumber.trim()) && !submitting
   const hasStarted = Boolean(result || submitting || startedAt)
   const activeCallId = result?.callId || liveLog?.id || ''
   const displayStatus = hasStarted ? getDisplayStatus(liveLog?.callStatus || result?.status) : 'Ready'
@@ -567,10 +578,11 @@ export default function AiDialer() {
     setStartedAt(Date.now())
 
     try {
+      const transferDestination = cleanText(transferTo)
       const response = await aiCallsAPI.startOutboundCall({
         toNumber: cleanText(customerNumber),
         fromNumber: cleanText(callerId) || undefined,
-        transferDestination: cleanText(transferTo),
+        ...(transferDestination ? { transferDestination } : {}),
         assistantId: cleanText(assistantId) || 'default',
         notes: cleanText(notes) || undefined,
       })
@@ -663,9 +675,9 @@ export default function AiDialer() {
 
             <label style={labelStyle}>
               Transfer To
-              <input className="ptdt-ai-dialer-input" style={inputStyle} value={transferTo} onChange={event => setTransferTo(event.target.value)} placeholder="+16467763005" inputMode="tel" autoComplete="off" />
+              <input className="ptdt-ai-dialer-input" style={inputStyle} value={transferTo} onChange={event => setTransferTo(event.target.value)} placeholder="Optional transfer number" inputMode="tel" autoComplete="off" />
             </label>
-            <div style={hintStyle}>Only approved transfer destinations will be accepted.</div>
+            <div style={hintStyle}>Optional. If provided, only approved transfer destinations will be accepted.</div>
 
             <label style={labelStyle}>
               Assistant
@@ -731,9 +743,9 @@ export default function AiDialer() {
             </div>
 
             <div className="ptdt-ai-call-meta">
-              <div style={statStyle}><b className="ptdt-ai-meta-title">Customer</b><br /><span>{maskPhone(result?.toNumber || customerNumber)}</span></div>
-              <div style={statStyle}><b className="ptdt-ai-meta-title">Transfer</b><br /><span>{maskPhone(result?.transferDestination || transferTo)}</span></div>
-              <div style={statStyle}><b className="ptdt-ai-meta-title">Result</b><br /><span>{liveLog?.callSuccessful === true ? 'Successful' : liveLog?.callSuccessful === false ? 'Review needed' : 'Pending'}</span></div>
+              <div style={statStyle}><b className="ptdt-ai-meta-title customer">Customer</b><br /><span>{maskPhone(result?.toNumber || customerNumber)}</span></div>
+              <div style={statStyle}><b className="ptdt-ai-meta-title transfer">Transfer</b><br /><span>{maskPhone(result?.transferDestination || transferTo)}</span></div>
+              <div style={statStyle}><b className="ptdt-ai-meta-title result">Result</b><br /><span>{liveLog?.callSuccessful === true ? 'Successful' : liveLog?.callSuccessful === false ? 'Review needed' : 'Pending'}</span></div>
             </div>
 
             <div className="ptdt-ai-dialpad-controls">
