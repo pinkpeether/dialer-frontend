@@ -55,17 +55,10 @@ export default function CallDispositionModal({
     return () => window.removeEventListener('keydown', handleEscape)
   }, [open, onClose])
 
-  if (!open || callId === null) return null
+  if (!open || saveMode === 'preview' || callId === null || callId === undefined || callId === '') return null
 
   const handleSubmit = async (payload: DispositionSubmitPayload) => {
     setError(null)
-
-    if (saveMode === 'preview') {
-      toast.success('Disposition preview completed')
-      onSaved?.()
-      onClose()
-      return
-    }
 
     try {
       // Backend owns contact status updates and callback scheduling for CALLBACK dispositions.

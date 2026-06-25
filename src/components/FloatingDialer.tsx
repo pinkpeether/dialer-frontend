@@ -728,14 +728,9 @@ export default function FloatingDialer({
         });
       }
 
-      if (!isEmbedded) {
-        onDispositionRequested?.({
-          callId: null,
-          name: contactName || null,
-          phone: number || null,
-          saveMode: "preview",
-        });
-      }
+      // Do not open a preview disposition for outgoing SIP calls here.
+      // A backend-backed disposition is requested by the call record flow.
+      // Opening a preview here causes a duplicate modal before the real saved disposition.
       sipCallEstablishedRef.current = false;
       sipOutboundRoutingSeenRef.current = false;
       sipPublicNumberCallRef.current = false;
@@ -837,14 +832,8 @@ export default function FloatingDialer({
         saveRecent(updated);
         return updated;
       });
-      if (!isEmbedded) {
-        onDispositionRequested?.({
-          callId: null,
-          name: null,
-          phone,
-          saveMode: "preview",
-        });
-      }
+      // Do not open a preview disposition for SIP calls without a backend call record.
+      // The backend-backed disposition request will open the saved disposition modal.
     }
 
     if (sipStatus === "error" || sipStatus === "registration_failed") {
@@ -3040,15 +3029,11 @@ export default function FloatingDialer({
         onRedial={handleRedialRecentCall}
       />
       <CallDispositionModal
-        open={!isEmbedded && showSipDisposition}
+        open={!isEmbedded && showSipDisposition && pendingSipDisposition?.saveMode !== 'preview'}
         callId={pendingSipDisposition?.callId ?? null}
         contactName={pendingSipDisposition?.remoteIdentity ?? null}
         saveMode={pendingSipDisposition?.saveMode ?? 'preview'}
-        helperText={
-          pendingSipDisposition?.saveMode === 'preview'
-            ? 'This SIP call was not logged to the backend. Disposition is for your session only.'
-            : null
-        }
+        helperText={null}
         onClose={dismissSipDisposition}
         onSaved={dismissSipDisposition}
       />
