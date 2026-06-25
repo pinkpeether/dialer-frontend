@@ -102,13 +102,13 @@ const actionButtons: Array<{
   { action: 'transfer', label: 'Transfer', icon: Shuffle, tone: 'neutral' },
   { action: 'conference', label: 'Conference', icon: Users, tone: 'neutral' },
   { action: 'whisper', label: 'Whisper', icon: Ear, tone: 'neutral' },
-  { action: 'barge', label: 'Barge-In', icon: Radio, tone: 'warning' },
   { action: 'mute', label: 'Mute', icon: MicOff, tone: 'neutral' },
-  { action: 'unmute', label: 'Unmute', icon: Mic, tone: 'success' },
   { action: 'voicemailDrop', label: 'Voicemail Drop', icon: Voicemail, tone: 'neutral' },
   { action: 'dtmf', label: 'Send DTMF', icon: Hash, tone: 'neutral' },
   { action: 'noiseCancellation', label: 'Noise Guard', icon: Wand2, tone: 'neutral' },
   { action: 'hangup', label: 'Hangup', icon: PhoneOff, tone: 'danger' },
+  { action: 'barge', label: 'Barge-In', icon: Radio, tone: 'warning' },
+  { action: 'unmute', label: 'Unmute', icon: Mic, tone: 'success' },
 ]
 
 const toneStyle = (tone: string): React.CSSProperties => {
@@ -182,7 +182,7 @@ const inputStyle: React.CSSProperties = {
         borderRadius: 24,
         padding: compact ? 18 : 24,
         width: '100%',
-        maxWidth: compact ? '100%' : 1180,
+        maxWidth: '100%',
         margin: '0 auto',
       }}
     >
@@ -270,7 +270,7 @@ const inputStyle: React.CSSProperties = {
         />
       </label>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
         {actionButtons.map(item => {
           const Icon = item.icon
           const active = loadingAction === item.action
@@ -285,8 +285,10 @@ const inputStyle: React.CSSProperties = {
               style={{
                 justifyContent: 'center',
                 gap: 8,
-                minHeight: 48,
+                minHeight: 58,
                 minWidth: 0,
+                fontSize: 15,
+                fontWeight: 850,
                 ...toneStyle(item.tone),
                 opacity: loadingAction && !active ? 0.55 : 1,
               }}

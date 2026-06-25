@@ -108,7 +108,12 @@ export default function CallControls() {
         </div>
       </div>
 
-      <div className="glass-hi" style={{ borderRadius: 24, padding: 18, marginBottom: 22 }}>
+      <AdvancedCallControlPanel
+        defaultCallId={selected?.id}
+        defaultProviderCallId={selected?.providerCallId || undefined}
+      />
+
+      <div className="glass-hi" style={{ borderRadius: 24, padding: 18, marginTop: 22, marginBottom: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
           <PhoneCall size={18} color="var(--pink)" />
           <h2 style={{ fontFamily: 'var(--font-display)', margin: 0 }}>Live Calls</h2>
@@ -146,10 +151,7 @@ export default function CallControls() {
         )}
       </div>
 
-      <AdvancedCallControlPanel
-        defaultCallId={selected?.id}
-        defaultProviderCallId={selected?.providerCallId || undefined}
-      />
+
     </div>
   )
 }
