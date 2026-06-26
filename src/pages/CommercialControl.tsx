@@ -328,11 +328,7 @@ export default function CommercialControl() {
     <div className="ptdt-page">
       <PtdtBusyOverlay active={initialLoading} label={busyLabel} />
       {archiveConfirmOpen && (
-        <div
-          role="presentation"
-          onMouseDown={event => { if (event.target === event.currentTarget) setArchiveConfirmOpen(false) }}
-          style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(10,12,20,.50)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}
-        >
+        <div role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setArchiveConfirmOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(10,12,20,.50)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
           <div role="dialog" aria-modal="true" aria-labelledby="archive-account-title" onMouseDown={event => event.stopPropagation()} className="glass" style={{ width: 'min(560px, 96vw)', padding: 24, borderRadius: 24, border: '1px solid rgba(251,11,140,.28)', boxShadow: '0 28px 80px rgba(15,23,42,.32)' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
               <div style={{ width: 48, height: 48, borderRadius: 16, display: 'grid', placeItems: 'center', color: 'var(--pink)', background: 'linear-gradient(135deg, rgba(251,11,140,.16), rgba(128,87,215,.12))', border: '1px solid rgba(251,11,140,.25)', flexShrink: 0 }}><Archive size={22} /></div>
@@ -355,6 +351,7 @@ export default function CommercialControl() {
           </div>
         </div>
       )}
+
       <div className="ptdt-page-header">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}><CreditCard size={12} /> Commercial Lifecycle</div>
@@ -382,30 +379,30 @@ export default function CommercialControl() {
             <div className="glass" style={cardStyle}><div className="eyebrow green"><ShieldCheck size={12} /> Dynamic Caller ID</div><div style={{ fontSize: 26, fontWeight: 950, color: summary.callerIdControl.dynamicCallerIdEnabled ? 'var(--green-2)' : 'var(--text-3)', marginTop: 8 }}>{summary.callerIdControl.dynamicCallerIdEnabled ? 'ACTIVE' : 'INACTIVE'}</div><div className="mono" style={{ color: 'var(--text-3)', marginTop: 6 }}>{summary.callerIdControl.activeVerifiedCallerIds} active verified IDs</div></div>
           </div>
 
-          <div className="glass" style={{ padding: 16, marginBottom: 18 }}>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              <strong>Account:</strong>
-              <select className="ptdt-select" value={currentAccountId || ''} onChange={e => handleAccountSwitch(Number(e.target.value))} disabled={pageBusy} style={{ minWidth: 260 }}>{accounts.map(account => <option key={account.id} value={account.id}>{account.name} ({account.code})</option>)}</select>
-              <span className="ptdt-chip" style={{ color: stateColor(currentLifecycleStatus) }}>{statusLabel(currentLifecycleStatus)}</span>
-              <span className="ptdt-chip">{summary.account.currency}</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1.15fr) minmax(320px, .85fr)', gap: 24, alignItems: 'stretch', marginBottom: 24 }}>
+            <div className="glass" style={{ padding: 18, borderRadius: 18, display: 'grid', alignContent: 'start', gap: 12 }}>
+              <strong style={{ fontSize: 18 }}>Account:</strong>
+              <select className="ptdt-select" value={currentAccountId || ''} onChange={e => handleAccountSwitch(Number(e.target.value))} disabled={pageBusy}>{accounts.map(account => <option key={account.id} value={account.id}>{account.name} ({account.code})</option>)}</select>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <span className="ptdt-chip" style={{ color: stateColor(currentLifecycleStatus) }}>{statusLabel(currentLifecycleStatus)}</span>
+                <span className="ptdt-chip">{summary.account.currency}</span>
+              </div>
             </div>
+
+            <form onSubmit={handleLifecycle} className="glass" style={{ ...cardStyle, borderColor: lifecycleForm.status === 'ARCHIVED' ? 'rgba(239,68,68,.35)' : 'rgba(251,11,140,.22)', display: 'grid', alignContent: 'start', gap: 10 }}>
+              <div className="eyebrow pink"><Archive size={12} /> Account Lifecycle</div>
+              <h3 style={{ margin: '2px 0 0' }}>Customer Account Status</h3>
+              <select className="ptdt-select" value={lifecycleForm.status} onChange={e => setLifecycleForm({ ...lifecycleForm, status: e.target.value as LifecycleStatusValue })}>{lifecycleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+              <input className="ptdt-input" value={lifecycleForm.notes} onChange={e => setLifecycleForm({ ...lifecycleForm, notes: e.target.value })} placeholder="Private lifecycle notes" />
+              <p style={{ margin: 0, color: lifecycleForm.status === 'ARCHIVED' ? 'var(--danger)' : 'var(--text-3)', fontSize: 12.5, lineHeight: 1.5 }}>{lifecycleOptions.find(option => option.value === lifecycleForm.status)?.help}</p>
+              <button className="btn-brand" disabled={pageBusy}>Apply Lifecycle</button>
+            </form>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 18 }}>
-            <form onSubmit={handleLifecycle} className="glass" style={{ ...cardStyle, borderColor: lifecycleForm.status === 'ARCHIVED' ? 'rgba(239,68,68,.35)' : undefined }}>
-              <div className="eyebrow pink"><Archive size={12} /> Account Lifecycle</div>
-              <h3 style={{ marginTop: 8 }}>Customer Account Status</h3>
-              <div style={{ display: 'grid', gap: 10 }}>
-                <select className="ptdt-select" value={lifecycleForm.status} onChange={e => setLifecycleForm({ ...lifecycleForm, status: e.target.value as LifecycleStatusValue })}>{lifecycleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
-                <input className="ptdt-input" value={lifecycleForm.notes} onChange={e => setLifecycleForm({ ...lifecycleForm, notes: e.target.value })} placeholder="Private lifecycle notes" />
-                <p style={{ margin: 0, color: lifecycleForm.status === 'ARCHIVED' ? 'var(--danger)' : 'var(--text-3)', fontSize: 12.5, lineHeight: 1.5 }}>{lifecycleOptions.find(option => option.value === lifecycleForm.status)?.help}</p>
-                <button className="btn-brand" disabled={pageBusy}>Apply Lifecycle</button>
-              </div>
-            </form>
-
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 24, marginBottom: 24 }}>
             <form onSubmit={handlePlanActivation} className="glass" style={cardStyle}>
               <h3 style={{ marginTop: 0 }}>Activate / Change Plan</h3>
-              <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ display: 'grid', gap: 12 }}>
                 <select className="ptdt-select" value={planForm.planCode} onChange={e => setPlanForm({ ...planForm, planCode: e.target.value as CommercialPlanCode })}>{planOptions.map(plan => <option key={plan.value} value={plan.value}>{plan.label}</option>)}</select>
                 <select className="ptdt-select" value={planForm.status} onChange={e => setPlanForm({ ...planForm, status: e.target.value as PlanStatusValue })}><option value="ACTIVE">Active</option><option value="INACTIVE">Non-Active</option><option value="SUSPENDED">Suspended</option></select>
                 <input className="ptdt-input" value={planForm.monthlyFeeOverride} onChange={e => setPlanForm({ ...planForm, monthlyFeeOverride: e.target.value })} placeholder="Optional monthly fee override" />
@@ -416,12 +413,22 @@ export default function CommercialControl() {
 
             <form onSubmit={handleTopup} className="glass" style={cardStyle}>
               <h3 style={{ marginTop: 0 }}>Manual Wallet Top-up</h3>
-              <div style={{ display: 'grid', gap: 10 }}><input className="ptdt-input" value={topupForm.amount} onChange={e => setTopupForm({ ...topupForm, amount: e.target.value })} placeholder="Amount" required /><input className="ptdt-input" value={topupForm.reference} onChange={e => setTopupForm({ ...topupForm, reference: e.target.value })} placeholder="Payment reference / slip number" /><input className="ptdt-input" value={topupForm.description} onChange={e => setTopupForm({ ...topupForm, description: e.target.value })} placeholder="Description" /><button className="btn-brand" disabled={pageBusy}>Credit Wallet</button></div>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <input className="ptdt-input" value={topupForm.amount} onChange={e => setTopupForm({ ...topupForm, amount: e.target.value })} placeholder="Amount" required />
+                <input className="ptdt-input" value={topupForm.reference} onChange={e => setTopupForm({ ...topupForm, reference: e.target.value })} placeholder="Payment reference / slip number" />
+                <input className="ptdt-input" value={topupForm.description} onChange={e => setTopupForm({ ...topupForm, description: e.target.value })} placeholder="Description" />
+                <button className="btn-brand" disabled={pageBusy}>Credit Wallet</button>
+              </div>
             </form>
 
             <form onSubmit={handleThresholds} className="glass" style={cardStyle}>
               <h3 style={{ marginTop: 0 }}>Low Balance Alerts</h3>
-              <div style={{ display: 'grid', gap: 10 }}><input className="ptdt-input" value={thresholdForm.lowBalanceThreshold} onChange={e => setThresholdForm({ ...thresholdForm, lowBalanceThreshold: e.target.value })} placeholder="Low balance threshold" /><input className="ptdt-input" value={thresholdForm.criticalBalanceThreshold} onChange={e => setThresholdForm({ ...thresholdForm, criticalBalanceThreshold: e.target.value })} placeholder="Critical balance threshold" /><label style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-2)', fontWeight: 800 }}><input type="checkbox" checked={thresholdForm.hardStopEnabled} onChange={e => setThresholdForm({ ...thresholdForm, hardStopEnabled: e.target.checked })} /> Hard stop at zero balance</label><button className="btn-brand" disabled={pageBusy}>Save Thresholds</button></div>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <input className="ptdt-input" value={thresholdForm.lowBalanceThreshold} onChange={e => setThresholdForm({ ...thresholdForm, lowBalanceThreshold: e.target.value })} placeholder="Low balance threshold" />
+                <input className="ptdt-input" value={thresholdForm.criticalBalanceThreshold} onChange={e => setThresholdForm({ ...thresholdForm, criticalBalanceThreshold: e.target.value })} placeholder="Critical balance threshold" />
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-2)', fontWeight: 800 }}><input type="checkbox" checked={thresholdForm.hardStopEnabled} onChange={e => setThresholdForm({ ...thresholdForm, hardStopEnabled: e.target.checked })} /> Hard stop at zero balance</label>
+                <button className="btn-brand" disabled={pageBusy}>Save Thresholds</button>
+              </div>
             </form>
           </div>
 
@@ -443,9 +450,15 @@ export default function CommercialControl() {
             </form>
           </div>
 
-          <div className="glass" style={{ padding: 0, overflow: 'hidden', marginBottom: 18 }}><div style={{ padding: 16, borderBottom: '1px solid var(--border)' }}><strong>Payment Requests</strong></div><div style={{ overflowX: 'auto' }}><table className="ptdt-table" style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse' }}><thead><tr style={{ background: 'var(--bg-glass)' }}>{['ID', 'Account', 'Amount', 'Plan', 'Add-ons', 'Reference', 'Status', 'Actions'].map(h => <th key={h} style={{ padding: '13px 16px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>)}</tr></thead><tbody>{paymentRequests.length === 0 ? <tr><td colSpan={8} style={{ padding: 22, color: 'var(--text-3)' }}>No payment requests yet.</td></tr> : paymentRequests.map(request => <tr key={request.id} style={{ borderBottom: '1px solid var(--border)', opacity: pendingPaymentRequestId === request.id ? 0.52 : 1 }}><td className="mono" style={{ padding: '13px 16px' }}>#{request.id}</td><td style={{ padding: '13px 16px' }}>{request.account?.name || summary.account.name}</td><td style={{ padding: '13px 16px', fontWeight: 900 }}>{money(request.amount, request.currency)}</td><td style={{ padding: '13px 16px' }}>{request.requestedPlan?.name || '—'}</td><td style={{ padding: '13px 16px' }}>{Array.isArray(request.requestedAddons) && request.requestedAddons.length ? request.requestedAddons.join(', ') : '—'}</td><td style={{ padding: '13px 16px' }}>{request.paymentReference || '—'}</td><td style={{ padding: '13px 16px' }}><span className="mono" style={{ color: stateColor(request.status), fontWeight: 900 }}>{request.status}</span></td><td style={{ padding: '13px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>{request.status !== 'APPROVED' && <button className="ptdt-action-btn active" type="button" disabled={pendingPaymentRequestId === request.id} onClick={() => handlePaymentStatus(request, 'APPROVED')}>Approve</button>}{request.status !== 'REJECTED' && <button className="ptdt-action-btn danger" type="button" disabled={pendingPaymentRequestId === request.id} onClick={() => handlePaymentStatus(request, 'REJECTED')}>Reject</button>}{request.status !== 'UNDER_REVIEW' && <button className="ptdt-action-btn" type="button" disabled={pendingPaymentRequestId === request.id} onClick={() => handlePaymentStatus(request, 'UNDER_REVIEW')}>Review</button>}</td></tr>)}</tbody></table></div></div>
+          <div className="glass" style={{ padding: 0, overflow: 'hidden', marginBottom: 18 }}>
+            <div style={{ padding: 16, borderBottom: '1px solid var(--border)' }}><strong>Payment Requests</strong></div>
+            <div style={{ overflowX: 'auto' }}><table className="ptdt-table" style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse' }}><thead><tr style={{ background: 'var(--bg-glass)' }}>{['ID', 'Account', 'Amount', 'Plan', 'Add-ons', 'Reference', 'Status', 'Actions'].map(h => <th key={h} style={{ padding: '13px 16px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>)}</tr></thead><tbody>{paymentRequests.length === 0 ? <tr><td colSpan={8} style={{ padding: 22, color: 'var(--text-3)' }}>No payment requests yet.</td></tr> : paymentRequests.map(request => <tr key={request.id} style={{ borderBottom: '1px solid var(--border)', opacity: pendingPaymentRequestId === request.id ? 0.52 : 1 }}><td className="mono" style={{ padding: '13px 16px' }}>#{request.id}</td><td style={{ padding: '13px 16px' }}>{request.account?.name || summary.account.name}</td><td style={{ padding: '13px 16px', fontWeight: 900 }}>{money(request.amount, request.currency)}</td><td style={{ padding: '13px 16px' }}>{request.requestedPlan?.name || '—'}</td><td style={{ padding: '13px 16px' }}>{Array.isArray(request.requestedAddons) && request.requestedAddons.length ? request.requestedAddons.join(', ') : '—'}</td><td style={{ padding: '13px 16px' }}>{request.paymentReference || '—'}</td><td style={{ padding: '13px 16px' }}><span className="mono" style={{ color: stateColor(request.status), fontWeight: 900 }}>{request.status}</span></td><td style={{ padding: '13px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>{request.status !== 'APPROVED' && <button className="ptdt-action-btn active" type="button" disabled={pendingPaymentRequestId === request.id} onClick={() => handlePaymentStatus(request, 'APPROVED')}>Approve</button>}{request.status !== 'REJECTED' && <button className="ptdt-action-btn danger" type="button" disabled={pendingPaymentRequestId === request.id} onClick={() => handlePaymentStatus(request, 'REJECTED')}>Reject</button>}{request.status !== 'UNDER_REVIEW' && <button className="ptdt-action-btn" type="button" disabled={pendingPaymentRequestId === request.id} onClick={() => handlePaymentStatus(request, 'UNDER_REVIEW')}>Review</button>}</td></tr>)}</tbody></table></div>
+          </div>
 
-          <div className="glass" style={{ padding: 0, overflow: 'hidden' }}><div style={{ padding: 16, borderBottom: '1px solid var(--border)' }}><strong>Latest Wallet Ledger</strong></div><div style={{ overflowX: 'auto' }}><table className="ptdt-table" style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse' }}><thead><tr style={{ background: 'var(--bg-glass)' }}>{['Date', 'Type', 'Direction', 'Amount', 'Balance After', 'Description'].map(h => <th key={h} style={{ padding: '13px 16px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>)}</tr></thead><tbody>{summary.latestTransactions.length === 0 ? <tr><td colSpan={6} style={{ padding: 22, color: 'var(--text-3)' }}>No wallet transactions yet.</td></tr> : summary.latestTransactions.map(tx => <tr key={tx.id} style={{ borderBottom: '1px solid var(--border)' }}><td style={{ padding: '13px 16px' }}>{new Date(tx.createdAt).toLocaleString()}</td><td style={{ padding: '13px 16px' }}>{tx.type}</td><td style={{ padding: '13px 16px' }}>{tx.direction}</td><td style={{ padding: '13px 16px', fontWeight: 900 }}>{money(tx.amount, currentCurrency)}</td><td style={{ padding: '13px 16px' }}>{money(tx.balanceAfter, currentCurrency)}</td><td style={{ padding: '13px 16px' }}>{tx.description || '—'}</td></tr>)}</tbody></table></div></div>
+          <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: 16, borderBottom: '1px solid var(--border)' }}><strong>Latest Wallet Ledger</strong></div>
+            <div style={{ overflowX: 'auto' }}><table className="ptdt-table" style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse' }}><thead><tr style={{ background: 'var(--bg-glass)' }}>{['Date', 'Type', 'Direction', 'Amount', 'Balance After', 'Description'].map(h => <th key={h} style={{ padding: '13px 16px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>)}</tr></thead><tbody>{summary.latestTransactions.length === 0 ? <tr><td colSpan={6} style={{ padding: 22, color: 'var(--text-3)' }}>No wallet transactions yet.</td></tr> : summary.latestTransactions.map(tx => <tr key={tx.id} style={{ borderBottom: '1px solid var(--border)' }}><td style={{ padding: '13px 16px' }}>{new Date(tx.createdAt).toLocaleString()}</td><td style={{ padding: '13px 16px' }}>{tx.type}</td><td style={{ padding: '13px 16px' }}>{tx.direction}</td><td style={{ padding: '13px 16px', fontWeight: 900 }}>{money(tx.amount, currentCurrency)}</td><td style={{ padding: '13px 16px' }}>{money(tx.balanceAfter, currentCurrency)}</td><td style={{ padding: '13px 16px' }}>{tx.description || '—'}</td></tr>)}</tbody></table></div>
+          </div>
         </>
       )}
     </div>
