@@ -45,6 +45,7 @@ import ProductionReview       from './pages/ProductionReview'
 import ReportsAnalyticsPro    from './pages/ReportsAnalyticsPro'
 import SmsConsole             from './pages/SmsConsole'
 import CommercialControl     from './pages/CommercialControl'
+import CustomerOnboarding    from './pages/CustomerOnboarding'
 import PlatformAdministration from './pages/PlatformAdministration'
 import CustomerBillingPortal  from './pages/CustomerBillingPortal'
 import Unauthorized           from './pages/Unauthorized'
@@ -127,6 +128,7 @@ export default function App() {
             <Route path="/production/review"   element={<RoleRoute roles={platformAdminRoles}><ProductionReview /></RoleRoute>} />
             <Route path="/admin/spoofing" element={<RoleRoute roles={platformAdminRoles}><SpoofingManagement /></RoleRoute>} />
             <Route path="/commercial-control" element={<RoleRoute roles={platformAdminRoles}><CommercialControl /></RoleRoute>} />
+            <Route path="/customer-onboarding" element={<RoleRoute roles={platformAdminRoles}><CustomerOnboarding /></RoleRoute>} />
             <Route path="/platform/administration" element={<RoleRoute roles={platformAdminRoles}><PlatformAdministration /></RoleRoute>} />
             <Route path="/billing" element={<RoleRoute roles={billingRoles}><CustomerBillingPortal /></RoleRoute>} />
             <Route path="/unauthorized"       element={<Unauthorized />} />
