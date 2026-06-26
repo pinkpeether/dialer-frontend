@@ -18,11 +18,62 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
 }
 
+const compactSelectStyle: React.CSSProperties = {
+  ...inputStyle,
+  width: 180,
+  maxWidth: '100%',
+}
+
 const fieldGrid: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
   gap: 12,
 }
+
+const fieldLabelStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  marginBottom: 6,
+  color: 'var(--text-2)',
+  fontSize: 12,
+  fontWeight: 850,
+}
+
+const requiredMarkStyle: React.CSSProperties = {
+  color: 'var(--danger)',
+  fontWeight: 950,
+}
+
+const currencies = [
+  ['USD', 'USD — US Dollar'],
+  ['CAD', 'CAD — Canadian Dollar'],
+  ['GBP', 'GBP — British Pound'],
+  ['EUR', 'EUR — Euro'],
+  ['AED', 'AED — UAE Dirham'],
+  ['SAR', 'SAR — Saudi Riyal'],
+  ['PKR', 'PKR — Pakistani Rupee'],
+  ['INR', 'INR — Indian Rupee'],
+  ['AUD', 'AUD — Australian Dollar'],
+  ['NZD', 'NZD — New Zealand Dollar'],
+  ['SGD', 'SGD — Singapore Dollar'],
+  ['MYR', 'MYR — Malaysian Ringgit'],
+  ['JPY', 'JPY — Japanese Yen'],
+  ['CNY', 'CNY — Chinese Yuan'],
+  ['HKD', 'HKD — Hong Kong Dollar'],
+  ['CHF', 'CHF — Swiss Franc'],
+  ['SEK', 'SEK — Swedish Krona'],
+  ['NOK', 'NOK — Norwegian Krone'],
+  ['DKK', 'DKK — Danish Krone'],
+  ['ZAR', 'ZAR — South African Rand'],
+  ['TRY', 'TRY — Turkish Lira'],
+  ['BRL', 'BRL — Brazilian Real'],
+  ['MXN', 'MXN — Mexican Peso'],
+]
+
+const FieldLabel = ({ children, required = false }: { children: React.ReactNode; required?: boolean }) => (
+  <label style={fieldLabelStyle}>{children}{required && <span style={requiredMarkStyle}>*</span>}</label>
+)
 
 const errorMessage = (err: unknown) => (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Something went wrong'
 
@@ -167,33 +218,33 @@ export default function CustomerOnboarding() {
 
         <div className="eyebrow pink" style={{ margin: '18px 0 10px' }}>Customer / Company</div>
         <div style={fieldGrid}>
-          <input style={inputStyle} value={form.accountName} onChange={event => setField('accountName', event.target.value)} placeholder="Customer / company name" required />
-          <input style={inputStyle} value={form.accountCode} onChange={event => setField('accountCode', event.target.value)} placeholder="Optional account code" />
-          <input style={inputStyle} value={form.billingEmail} onChange={event => setField('billingEmail', event.target.value)} placeholder="Billing email" type="email" />
-          <input style={inputStyle} value={form.billingPhone} onChange={event => setField('billingPhone', event.target.value)} placeholder="Billing phone" />
-          <input style={inputStyle} value={form.currency} onChange={event => setField('currency', event.target.value.toUpperCase().slice(0, 3))} placeholder="Currency" />
+          <div><FieldLabel required>Customer / company name</FieldLabel><input style={inputStyle} value={form.accountName} onChange={event => setField('accountName', event.target.value)} placeholder="Customer / company name" required /></div>
+          <div><FieldLabel>Account code</FieldLabel><input style={inputStyle} value={form.accountCode} onChange={event => setField('accountCode', event.target.value)} placeholder="Optional account code" /></div>
+          <div><FieldLabel>Billing email</FieldLabel><input style={inputStyle} value={form.billingEmail} onChange={event => setField('billingEmail', event.target.value)} placeholder="Billing email" type="email" /></div>
+          <div><FieldLabel>Billing phone</FieldLabel><input style={inputStyle} value={form.billingPhone} onChange={event => setField('billingPhone', event.target.value)} placeholder="Billing phone" /></div>
+          <div><FieldLabel required>Currency</FieldLabel><select className="ptdt-select" style={compactSelectStyle} value={form.currency} onChange={event => setField('currency', event.target.value)} required>{currencies.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></div>
         </div>
 
         <div className="eyebrow green" style={{ margin: '18px 0 10px' }}>Customer Admin Login</div>
         <div style={fieldGrid}>
-          <input style={inputStyle} value={form.adminName} onChange={event => setField('adminName', event.target.value)} placeholder="Customer Admin full name" required />
-          <input style={inputStyle} value={form.adminEmail} onChange={event => setField('adminEmail', event.target.value)} placeholder="Customer Admin login email" type="email" required />
-          <input style={inputStyle} value={form.adminPassword} onChange={event => setField('adminPassword', event.target.value)} placeholder="Temporary password" type="password" required />
-          <input style={inputStyle} value={form.adminPhone} onChange={event => setField('adminPhone', event.target.value)} placeholder="Admin phone" />
-          <input style={inputStyle} value={form.adminExtension} onChange={event => setField('adminExtension', event.target.value)} placeholder="Extension" />
+          <div><FieldLabel required>Customer Admin full name</FieldLabel><input style={inputStyle} value={form.adminName} onChange={event => setField('adminName', event.target.value)} placeholder="Customer Admin full name" required /></div>
+          <div><FieldLabel required>Customer Admin login email</FieldLabel><input style={inputStyle} value={form.adminEmail} onChange={event => setField('adminEmail', event.target.value)} placeholder="Customer Admin login email" type="email" required /></div>
+          <div><FieldLabel required>Temporary password</FieldLabel><input style={inputStyle} value={form.adminPassword} onChange={event => setField('adminPassword', event.target.value)} placeholder="Temporary password" type="password" required /></div>
+          <div><FieldLabel>Admin phone</FieldLabel><input style={inputStyle} value={form.adminPhone} onChange={event => setField('adminPhone', event.target.value)} placeholder="Admin phone" /></div>
+          <div><FieldLabel>Extension</FieldLabel><input style={inputStyle} value={form.adminExtension} onChange={event => setField('adminExtension', event.target.value)} placeholder="Extension" /></div>
         </div>
 
         <div className="eyebrow purple" style={{ margin: '18px 0 10px' }}>Plan / Wallet</div>
         <div style={fieldGrid}>
-          <select className="ptdt-select" value={form.planCode} onChange={event => setField('planCode', event.target.value)}>
+          <div><FieldLabel>Plan</FieldLabel><select className="ptdt-select" value={form.planCode} onChange={event => setField('planCode', event.target.value)}>
             <option value="">No plan yet</option>
             {catalog?.plans.map(plan => <option key={plan.code} value={plan.code}>{plan.name}</option>)}
-          </select>
-          <select className="ptdt-select" value={form.subscriptionStatus} onChange={event => setField('subscriptionStatus', event.target.value)} disabled={!form.planCode}>
+          </select></div>
+          <div><FieldLabel>Subscription status</FieldLabel><select className="ptdt-select" value={form.subscriptionStatus} onChange={event => setField('subscriptionStatus', event.target.value)} disabled={!form.planCode}>
             <option value="TRIAL">Trial</option>
             <option value="ACTIVE">Active</option>
-          </select>
-          <input style={inputStyle} value={form.initialWalletBalance} onChange={event => setField('initialWalletBalance', event.target.value)} placeholder="Opening wallet balance" inputMode="decimal" />
+          </select></div>
+          <div><FieldLabel>Opening wallet balance</FieldLabel><input style={inputStyle} value={form.initialWalletBalance} onChange={event => setField('initialWalletBalance', event.target.value)} placeholder="Opening wallet balance" inputMode="decimal" /></div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
