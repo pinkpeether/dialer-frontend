@@ -45,8 +45,8 @@ const switchKnob: React.CSSProperties = {
 
 const roleLabel = (role: unknown) => {
   if (role === 'CUSTOMER_ADMIN') return 'Customer Admin'
-  if (role === 'MANAGER') return 'Manager'
   if (role === 'SUPERVISOR') return 'Supervisor'
+  if (role === 'MANAGER') return 'Customer Admin'
   return 'Agent'
 }
 
@@ -60,7 +60,6 @@ export default function TeamUsersV3() {
     const base = [
       { value: 'AGENT', label: 'Agent' },
       { value: 'SUPERVISOR', label: 'Supervisor' },
-      { value: 'MANAGER', label: 'Manager' },
     ]
     return isPlatformAdmin ? [...base, { value: 'CUSTOMER_ADMIN', label: 'Customer Admin' }] : base
   }, [isPlatformAdmin, isSupervisor])
