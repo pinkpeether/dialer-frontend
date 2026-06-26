@@ -137,6 +137,7 @@ export default function CommercialControl() {
   const currentCurrency = summary?.account.currency || 'USD'
   const currentLifecycleStatus = normalizeLifecycleStatus(summary?.account.status || summary?.subscription?.status)
   const currentPlanStatus = normalizePlanStatus(summary?.subscription?.status || summary?.account.status)
+  const currentPlanDisplayStatus = currentLifecycleStatus === 'ARCHIVED' ? 'Suspended / Archived' : statusLabel(currentPlanStatus)
   const initialLoading = loading && !summary
   const pageBusy = initialLoading || saving
   const refreshButtonActive = loading || refreshing
@@ -375,7 +376,7 @@ export default function CommercialControl() {
       {!initialLoading && summary && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 18 }}>
-            <div className="glass" style={cardStyle}><div className="eyebrow green"><BadgeDollarSign size={12} /> Current Plan</div><div style={{ fontSize: 26, fontWeight: 950, color: 'var(--text)', marginTop: 8 }}>{activePlanName}</div><div className="mono" style={{ color: stateColor(currentPlanStatus), marginTop: 6, fontWeight: 900 }}>{statusLabel(currentPlanStatus)}</div></div>
+            <div className="glass" style={cardStyle}><div className="eyebrow green"><BadgeDollarSign size={12} /> Current Plan</div><div style={{ fontSize: 26, fontWeight: 950, color: 'var(--text)', marginTop: 8 }}>{activePlanName}</div><div className="mono" style={{ color: currentLifecycleStatus === 'ARCHIVED' ? 'var(--danger)' : stateColor(currentPlanStatus), marginTop: 6, fontWeight: 900 }}>{currentPlanDisplayStatus}</div></div>
             <div className="glass" style={cardStyle}><div className="eyebrow pink"><WalletCards size={12} /> Calling Wallet</div><div style={{ fontSize: 26, fontWeight: 950, color: 'var(--text)', marginTop: 8 }}>{money(summary.wallet?.availableBalance, currentCurrency)}</div><div className="mono" style={{ color: stateColor(summary.balanceState), marginTop: 6, fontWeight: 900 }}>{summary.balanceState.replace(/_/g, ' ')}</div></div>
             <div className="glass" style={cardStyle}><div className="eyebrow purple"><BellRing size={12} /> Low Balance Rules</div><div style={{ fontSize: 16, fontWeight: 850, color: 'var(--text)', marginTop: 8 }}>Low: {money(summary.account.lowBalanceThreshold, currentCurrency)}</div><div style={{ fontSize: 16, fontWeight: 850, color: 'var(--text)', marginTop: 6 }}>Critical: {money(summary.account.criticalBalanceThreshold, currentCurrency)}</div></div>
             <div className="glass" style={cardStyle}><div className="eyebrow green"><ShieldCheck size={12} /> Dynamic Caller ID</div><div style={{ fontSize: 26, fontWeight: 950, color: summary.callerIdControl.dynamicCallerIdEnabled ? 'var(--green-2)' : 'var(--text-3)', marginTop: 8 }}>{summary.callerIdControl.dynamicCallerIdEnabled ? 'ACTIVE' : 'INACTIVE'}</div><div className="mono" style={{ color: 'var(--text-3)', marginTop: 6 }}>{summary.callerIdControl.activeVerifiedCallerIds} active verified IDs</div></div>
