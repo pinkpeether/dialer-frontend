@@ -34,6 +34,20 @@ select,
   -moz-appearance: none !important;
   cursor: pointer;
   padding-right: 46px !important;
+  background-color: var(--bg-glass-hi) !important;
+  background-image: var(--ptdt-control-arrow-svg) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+  background-size: 18px 18px !important;
+}
+
+select[class*='ptdt-input'],
+select.ptdt-input {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  padding-right: 46px !important;
+  background-color: var(--bg-glass-hi) !important;
   background-image: var(--ptdt-control-arrow-svg) !important;
   background-repeat: no-repeat !important;
   background-position: right 14px center !important;
