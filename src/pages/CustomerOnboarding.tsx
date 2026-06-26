@@ -1,11 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Building2, CheckCircle2, Crown, RefreshCw, UserPlus } from 'lucide-react'
 import { agentsAPI } from '../api/agents.api'
 import { administrationApi } from '../api/administration.api'
-import { commercialControlApi, type CommercialCatalog, type CommercialPlanCode } from '../api/commercialControl.api'
+import { commercialControlApi, type CommercialPlanCode } from '../api/commercialControl.api'
 import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
 
 const card = { padding: 18, borderRadius: 18 } as const
+
+type SubscriptionStatusValue = '' | 'ACTIVE' | 'INACTIVE'
 
 const inputStyle: React.CSSProperties = {
   padding: '11px 14px',
@@ -71,15 +73,19 @@ const currencies = [
   ['MXN', 'MXN — Mexican Peso'],
 ]
 
-const FieldLabel = ({ children, required = false }: { children: React.ReactNode; required?: boolean }) => (
+const planOptions: Array<{ value: CommercialPlanCode; label: string }> = [
+  { value: 'STANDARD', label: 'Standard' },
+  { value: 'PREMIUM', label: 'Premium' },
+  { value: 'ENTERPRISE', label: 'Enterprise' },
+]
+
+const FieldLabel = ({ children, required = false }: { children: ReactNode; required?: boolean }) => (
   <label style={fieldLabelStyle}>{children}{required && <span style={requiredMarkStyle}>*</span>}</label>
 )
 
 const errorMessage = (err: unknown) => (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Something went wrong'
 
 export default function CustomerOnboarding() {
-  const [catalog, setCatalog] = useState<CommercialCatalog | null>(null)
-  const [loadingCatalog, setLoadingCatalog] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -96,20 +102,12 @@ export default function CustomerOnboarding() {
     adminPhone: '',
     adminExtension: '',
     planCode: '' as CommercialPlanCode | '',
-    subscriptionStatus: 'TRIAL' as 'TRIAL' | 'ACTIVE',
+    subscriptionStatus: '' as SubscriptionStatusValue,
     initialWalletBalance: '0',
   })
 
-  useEffect(() => {
-    let mounted = true
-    commercialControlApi.getCatalog()
-      .then(nextCatalog => { if (mounted) setCatalog(nextCatalog) })
-      .catch(err => { if (mounted) setError(errorMessage(err)) })
-      .finally(() => { if (mounted) setLoadingCatalog(false) })
-    return () => { mounted = false }
-  }, [])
-
   const setField = (key: keyof typeof form, value: string) => setForm(prev => ({ ...prev, [key]: value }))
+  const setPlan = (value: string) => setForm(prev => ({ ...prev, planCode: value as CommercialPlanCode | '', subscriptionStatus: value ? (prev.subscriptionStatus || 'ACTIVE') : '' }))
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -151,7 +149,7 @@ export default function CustomerOnboarding() {
       if (form.planCode) {
         await commercialControlApi.activatePlan(account.id, {
           planCode: form.planCode,
-          status: form.subscriptionStatus,
+          status: form.subscriptionStatus || 'INACTIVE',
           notes: 'Activated during Customer Admin onboarding',
         })
       }
@@ -169,7 +167,7 @@ export default function CustomerOnboarding() {
       setForm({
         accountName: '', accountCode: '', billingEmail: '', billingPhone: '', currency: 'USD',
         adminName: '', adminEmail: '', adminPassword: '', adminPhone: '', adminExtension: '',
-        planCode: '', subscriptionStatus: 'TRIAL', initialWalletBalance: '0',
+        planCode: '', subscriptionStatus: '', initialWalletBalance: '0',
       })
     } catch (err) {
       setError(errorMessage(err))
@@ -187,7 +185,7 @@ export default function CustomerOnboarding() {
           <h1 className="ptdt-page-title">Customer Admin <span className="gradient-brand-text">Onboarding</span></h1>
           <p className="ptdt-page-desc">Create a new customer account and its first Customer Admin login in one guided flow. Manager role is intentionally not used.</p>
         </div>
-        <button type="button" className={`ptdt-action-btn ${loadingCatalog ? 'ptdt-refresh-active' : ''}`} onClick={() => window.location.reload()} disabled={busy || loadingCatalog}><RefreshCw size={14} /> Refresh</button>
+        <button type="button" className="ptdt-action-btn" onClick={() => window.location.reload()} disabled={busy}><RefreshCw size={14} /> Refresh</button>
       </div>
 
       {error && <div className="glass" style={{ padding: 14, marginBottom: 14, color: 'var(--danger)', borderColor: 'rgba(239,68,68,.28)' }}>{error}</div>}
@@ -236,13 +234,14 @@ export default function CustomerOnboarding() {
 
         <div className="eyebrow purple" style={{ margin: '18px 0 10px' }}>Plan / Wallet</div>
         <div style={fieldGrid}>
-          <div><FieldLabel>Plan</FieldLabel><select className="ptdt-select" value={form.planCode} onChange={event => setField('planCode', event.target.value)}>
-            <option value="">No plan yet</option>
-            {catalog?.plans.map(plan => <option key={plan.code} value={plan.code}>{plan.name}</option>)}
+          <div><FieldLabel>Plan</FieldLabel><select className="ptdt-select" value={form.planCode} onChange={event => setPlan(event.target.value)}>
+            <option value="">Select plan</option>
+            {planOptions.map(plan => <option key={plan.value} value={plan.value}>{plan.label}</option>)}
           </select></div>
           <div><FieldLabel>Subscription status</FieldLabel><select className="ptdt-select" value={form.subscriptionStatus} onChange={event => setField('subscriptionStatus', event.target.value)} disabled={!form.planCode}>
-            <option value="TRIAL">Trial</option>
-            <option value="ACTIVE">Active</option>
+            {!form.planCode && <option value="" aria-label="Blank subscription status" />}
+            {form.planCode && <option value="ACTIVE">Active</option>}
+            {form.planCode && <option value="INACTIVE">Non-Active</option>}
           </select></div>
           <div><FieldLabel>Opening wallet balance</FieldLabel><input style={inputStyle} value={form.initialWalletBalance} onChange={event => setField('initialWalletBalance', event.target.value)} placeholder="Opening wallet balance" inputMode="decimal" /></div>
         </div>
