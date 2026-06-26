@@ -90,6 +90,7 @@ select::-ms-expand {
 }
 
 body:has(.ptdt-refresh-active)::before,
+body:has(.ptdt-page-header .ptdt-chip)::before,
 body:has(.dynamic-cid-summary-grid + form button.btn-brand:disabled)::before,
 body:has(.ptdt-page button.btn-brand:disabled)::before {
   content: '';
@@ -103,6 +104,7 @@ body:has(.ptdt-page button.btn-brand:disabled)::before {
 }
 
 body:has(.ptdt-refresh-active)::after,
+body:has(.ptdt-page-header .ptdt-chip)::after,
 body:has(.dynamic-cid-summary-grid + form button.btn-brand:disabled)::after,
 body:has(.ptdt-page button.btn-brand:disabled)::after {
   content: 'Applying changes...\A Please wait while we contact the server.';
@@ -126,13 +128,6 @@ body:has(.ptdt-page button.btn-brand:disabled)::after {
   background-image:
     radial-gradient(circle at center 42px, transparent 0 19px, rgba(251,11,140,.28) 20px 22px, transparent 23px),
     linear-gradient(145deg, var(--bg-glass-hi), var(--bg-glass));
-}
-
-body:has(.ptdt-refresh-active):has([style*='z-index: 9999'])::before,
-body:has(.ptdt-refresh-active):has([style*='z-index: 9999'])::after,
-body:has(.ptdt-page button.btn-brand:disabled):has([style*='z-index: 9999'])::before,
-body:has(.ptdt-page button.btn-brand:disabled):has([style*='z-index: 9999'])::after {
-  display: none;
 }
 
 [data-theme='dark'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
