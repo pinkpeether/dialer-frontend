@@ -105,6 +105,7 @@ const NAV: NavItem[] = [
   { to: '/notifications-alerts-pro', icon: BellRing, label: 'Notifications & Alerts', color: COLORS.orange },
   { to: '/audit-logs', icon: ClipboardList, label: 'Audit Logs', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.gold },
   { to: '/platform/administration', icon: Crown, label: 'Platform Administration', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.pink },
+  { to: '/customer-onboarding', icon: Building2, label: 'Customer Onboarding', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.purple },
   { to: '/commercial-control', icon: CreditCard, label: 'Commercial Control', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.green },
   { to: '/billing', icon: Building2, label: 'Billing & Plan', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], color: COLORS.gold },
   { to: '/admin/spoofing', icon: PhoneCall, label: 'Dynamic Caller ID', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.cyan },
@@ -126,23 +127,18 @@ const AGENT_NAV: NavItem[] = [
 ]
 
 const CONSOLE_GROUPS: NavGroup[] = [
-  { key: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, color: COLORS.green, items:['/dashboard', '/supervisor', '/agent/dashboard'] },
-  { key: 'administration', label: 'ADMINISTRATION', icon: Crown, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/platform/administration', '/commercial-control'] },
-
+  { key: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, color: COLORS.green, items: ['/dashboard', '/supervisor', '/agent/dashboard'] },
+  { key: 'administration', label: 'ADMINISTRATION', icon: Crown, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/platform/administration', '/customer-onboarding', '/commercial-control'] },
   { key: 'ai-dialer', label: 'AI DIALER', icon: Radio, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/ai-dialer', '/ai-dialer/logs'] },
   { key: 'dialer', label: 'DIALER', icon: Phone, color: COLORS.green, items: ['/dialer', '/advanced-dialing'] },
   { key: 'agents', label: 'AGENTS', icon: Users, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], items: ['/agents', '/agent-management-pro'] },
   { key: 'campaigns', label: 'CAMPAIGNS', icon: Megaphone, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], items: ['/campaigns', '/campaign-management-pro'] },
   { key: 'spoofing', label: 'SPOOFING MANAGEMENT', icon: PhoneCall, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/admin/spoofing'] },
-
   { key: 'sms', label: 'SMS MANAGEMENT', icon: MessageSquareText, color: COLORS.green, items: ['/sms'] },
-
   { key: 'calls', label: 'CALLS', icon: History, color: COLORS.green, items: ['/calls', '/callbacks', '/call-controls', '/call-intelligence'] },
   { key: 'contacts', label: 'CONTACTS', icon: BookUser, color: COLORS.green, items: ['/contacts', '/contact-management-pro'] },
-
   { key: 'monitoring', label: 'MONITORING', icon: Activity, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/monitoring', '/live-monitoring-advanced', '/ops'] },
-  { key: 'reports', label: 'REPORTS', icon: BarChart3, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/reports', '/reports-analytics-pro']},
-
+  { key: 'reports', label: 'REPORTS', icon: BarChart3, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/reports', '/reports-analytics-pro'] },
   { key: 'recordings', label: 'RECORDINGS', icon: Radio, color: COLORS.green, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/recordings', '/recording-storage-pro'] },
   { key: 'settings', label: 'SETTINGS', icon: Settings2, color: COLORS.slate, items: ['/settings', '/audit-logs', '/security-admin-pro', '/settings/system', '/notifications-alerts-pro'] },
 ]
@@ -151,6 +147,7 @@ const CONSOLE_STANDALONE = ['/billing', '/deployment-platform-pro', '/dnc', '/su
 
 const CONSOLE_SECTION_LABELS: Record<string, string> = {
   dashboard: 'MAIN ADMIN',
+  administration: 'PLATFORM SETUP',
   'ai-dialer': 'MAIN DIALING',
   calls: 'CALLING INFO',
   monitoring: 'ANALYTICS',
@@ -176,30 +173,10 @@ const SIDEBAR_FEATURED_CSS = `
   position: relative;
   overflow: hidden;
 }
-
 .ptdt-sidebar-group-btn > * {
   position: relative;
   z-index: 2;
 }
-
-.ptdt-sidebar-group-btn-featured {
-  isolation: isolate;
-}
-
-.ptdt-sidebar-group-btn-featured::before {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  border: 1px solid rgba(255,255,255,0.20);
-  box-shadow:
-    inset 0 0 14px rgba(255,255,255,0.10),
-    0 0 16px rgba(251,11,140,0.22),
-    0 0 22px rgba(42,233,123,0.10);
-}
-
 .ptdt-sidebar-group-btn-featured::after {
   content: "";
   position: absolute;
@@ -209,50 +186,19 @@ const SIDEBAR_FEATURED_CSS = `
   width: 46%;
   z-index: 1;
   pointer-events: none;
-  background: linear-gradient(
-    105deg,
-    transparent 0%,
-    rgba(251,11,140,0.00) 18%,
-    rgba(255,255,255,0.18) 36%,
-    rgba(255,255,255,0.82) 50%,
-    rgba(42,233,123,0.22) 62%,
-    rgba(251,11,140,0.00) 82%,
-    transparent 100%
-  );
-  filter: blur(0.2px);
+  background: linear-gradient(105deg, transparent 0%, rgba(255,255,255,0.18) 36%, rgba(255,255,255,0.82) 50%, rgba(42,233,123,0.22) 62%, transparent 100%);
   transform: skewX(-18deg);
   mix-blend-mode: screen;
   animation: ptdt-sidebar-rider-sweep 3.25s ease-in-out infinite;
 }
-
 @keyframes ptdt-sidebar-rider-sweep {
   0% { left: -82%; opacity: 0; }
-  14% { opacity: 0; }
   25% { opacity: 0.92; }
   55% { left: 124%; opacity: 0.92; }
-  72% { opacity: 0; }
   100% { left: 124%; opacity: 0; }
 }
-
-/* Performance Mode globally suppresses animations; keep only this tiny sidebar sweep alive. */
-@media (prefers-reduced-motion: no-preference) {
-  html[data-performance-mode="on"] .ptdt-sidebar-group-btn-featured::after {
-    animation: ptdt-sidebar-rider-sweep 3.25s ease-in-out infinite !important;
-  }
-
-  html[data-performance-mode="on"] .ptdt-sidebar-group-btn-featured,
-  html[data-performance-mode="on"] .ptdt-sidebar-group-btn-featured::before,
-  html[data-performance-mode="on"] .ptdt-sidebar-group-btn-featured::after {
-    transition-duration: 0.25s !important;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .ptdt-sidebar-group-btn-featured::after,
-  html[data-performance-mode="on"] .ptdt-sidebar-group-btn-featured::after {
-    animation: none !important;
-    opacity: 0;
-  }
+  .ptdt-sidebar-group-btn-featured::after { animation: none !important; opacity: 0; }
 }
 `
 
