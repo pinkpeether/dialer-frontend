@@ -10,13 +10,37 @@ const money = (value: string | number | null | undefined, currency = 'USD') => {
 
 const stateColor = (state?: string) => {
   if (state === 'HEALTHY' || state === 'ACTIVE' || state === 'APPROVED') return 'var(--green-2)'
-  if (state === 'LOW_BALANCE' || state === 'TRIAL' || state === 'UNDER_REVIEW') return 'var(--orange)'
+  if (state === 'LOW_BALANCE' || state === 'UNDER_REVIEW') return 'var(--orange)'
   if (state === 'CRITICAL_BALANCE' || state === 'HARD_STOP' || state === 'SUSPENDED' || state === 'REJECTED') return 'var(--danger)'
   return 'var(--text-3)'
 }
 
 const cardStyle = { padding: 18, borderRadius: 18 } as const
 const CACHE_KEY = 'ptdt-commercial-control:last-good'
+
+type PlanStatusValue = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+
+const planOptions: Array<{ value: CommercialPlanCode; label: string }> = [
+  { value: 'STANDARD', label: 'Standard' },
+  { value: 'PREMIUM', label: 'Premium' },
+  { value: 'ENTERPRISE', label: 'Enterprise' },
+]
+
+const normalizePlanStatus = (status?: string | null): PlanStatusValue => {
+  if (status === 'ACTIVE') return 'ACTIVE'
+  if (status === 'SUSPENDED') return 'SUSPENDED'
+  return 'INACTIVE'
+}
+
+const planStatusLabel = (status?: string | null) => {
+  const normalized = normalizePlanStatus(status)
+  if (normalized === 'ACTIVE') return 'Active'
+  if (normalized === 'SUSPENDED') return 'Suspended'
+  return 'Non-Active'
+}
+
+const isAllowedPlanCode = (code?: string | null): code is CommercialPlanCode => Boolean(code && planOptions.some(plan => plan.value === code))
+const normalizePlanCode = (code?: string | null, fallback: CommercialPlanCode = 'STANDARD'): CommercialPlanCode => isAllowedPlanCode(code) ? code : fallback
 
 const switchStyle = (active: boolean, pending: boolean) => ({
   width: 74,
@@ -93,11 +117,12 @@ export default function CommercialControl() {
   const [accountForm, setAccountForm] = useState({ name: '', code: '', email: '', phone: '', currency: 'USD' })
   const [paymentForm, setPaymentForm] = useState({ amount: '100', requestedPlanCode: 'PREMIUM' as CommercialPlanCode | '', requestedAddonCodes: ['DYNAMIC_CALLER_ID'] as CommercialAddonCode[], paymentMethod: 'Manual Bank Transfer', paymentReference: '', proofUrl: '', notes: '' })
   const [topupForm, setTopupForm] = useState({ amount: '100', reference: '', description: 'Manual wallet top-up approved by PTDT Admin' })
-  const [planForm, setPlanForm] = useState({ planCode: 'PREMIUM' as CommercialPlanCode, status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'TRIAL', monthlyFeeOverride: '', notes: '' })
+  const [planForm, setPlanForm] = useState({ planCode: 'PREMIUM' as CommercialPlanCode, status: 'ACTIVE' as PlanStatusValue, monthlyFeeOverride: '', notes: '' })
   const [thresholdForm, setThresholdForm] = useState({ lowBalanceThreshold: '10', criticalBalanceThreshold: '3', hardStopEnabled: true })
 
   const currentAccountId = selectedAccountId || summary?.account.id || accounts[0]?.id
   const currentCurrency = summary?.account.currency || 'USD'
+  const currentPlanStatus = normalizePlanStatus(summary?.subscription?.status || summary?.account.status)
   const initialLoading = loading && !summary
   const pageBusy = initialLoading || saving
   const refreshButtonActive = loading || refreshing
@@ -178,6 +203,12 @@ export default function CommercialControl() {
         criticalBalanceThreshold: String(summaryRes.account.criticalBalanceThreshold || '3'),
         hardStopEnabled: Boolean(summaryRes.account.hardStopEnabled),
       })
+      setPlanForm(prev => ({
+        ...prev,
+        planCode: normalizePlanCode(summaryRes.subscription?.plan?.code, normalizePlanCode(prev.planCode)),
+        status: normalizePlanStatus(summaryRes.subscription?.status || summaryRes.account.status),
+        monthlyFeeOverride: '',
+      }))
     } catch (err) {
       const detail = err instanceof Error ? err.message : 'Failed to load commercial control data'
       if (hasVisibleDataRef.current) {
@@ -370,7 +401,7 @@ export default function CommercialControl() {
             <div className="glass" style={cardStyle}>
               <div className="eyebrow green"><BadgeDollarSign size={12} /> Current Plan</div>
               <div style={{ fontSize: 26, fontWeight: 950, color: 'var(--text)', marginTop: 8 }}>{activePlanName}</div>
-              <div className="mono" style={{ color: stateColor(summary.subscription?.status), marginTop: 6, fontWeight: 900 }}>{summary.subscription?.status || 'INACTIVE'}</div>
+              <div className="mono" style={{ color: stateColor(currentPlanStatus), marginTop: 6, fontWeight: 900 }}>{planStatusLabel(currentPlanStatus)}</div>
             </div>
             <div className="glass" style={cardStyle}>
               <div className="eyebrow pink"><WalletCards size={12} /> Calling Wallet</div>
@@ -395,7 +426,7 @@ export default function CommercialControl() {
               <select className="ptdt-select" value={currentAccountId || ''} onChange={e => handleAccountSwitch(Number(e.target.value))} disabled={pageBusy} style={{ minWidth: 260 }}>
                 {accounts.map(account => <option key={account.id} value={account.id}>{account.name} ({account.code})</option>)}
               </select>
-              <span className="ptdt-chip">{summary.account.status}</span>
+              <span className="ptdt-chip">{planStatusLabel(currentPlanStatus)}</span>
               <span className="ptdt-chip">{summary.account.currency}</span>
             </div>
           </div>
@@ -405,10 +436,12 @@ export default function CommercialControl() {
               <h3 style={{ marginTop: 0 }}>Activate / Change Plan</h3>
               <div style={{ display: 'grid', gap: 10 }}>
                 <select className="ptdt-select" value={planForm.planCode} onChange={e => setPlanForm({ ...planForm, planCode: e.target.value as CommercialPlanCode })}>
-                  {catalog?.plans.map(plan => <option key={plan.code} value={plan.code}>{plan.name} — {money(plan.monthlyFee, currentCurrency)}</option>)}
+                  {planOptions.map(plan => <option key={plan.value} value={plan.value}>{plan.label}</option>)}
                 </select>
-                <select className="ptdt-select" value={planForm.status} onChange={e => setPlanForm({ ...planForm, status: e.target.value as typeof planForm.status })}>
-                  <option value="ACTIVE">ACTIVE</option><option value="TRIAL">TRIAL</option><option value="INACTIVE">INACTIVE</option><option value="SUSPENDED">SUSPENDED</option>
+                <select className="ptdt-select" value={planForm.status} onChange={e => setPlanForm({ ...planForm, status: e.target.value as PlanStatusValue })}>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Non-Active</option>
+                  <option value="SUSPENDED">Suspended</option>
                 </select>
                 <input className="ptdt-input" value={planForm.monthlyFeeOverride} onChange={e => setPlanForm({ ...planForm, monthlyFeeOverride: e.target.value })} placeholder="Optional monthly fee override" />
                 <input className="ptdt-input" value={planForm.notes} onChange={e => setPlanForm({ ...planForm, notes: e.target.value })} placeholder="Private notes" />
@@ -477,7 +510,7 @@ export default function CommercialControl() {
                 <input className="ptdt-input" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="Amount" required />
                 <select className="ptdt-select" value={paymentForm.requestedPlanCode} onChange={e => setPaymentForm({ ...paymentForm, requestedPlanCode: e.target.value as CommercialPlanCode | '' })}>
                   <option value="">No plan change</option>
-                  {catalog?.plans.map(plan => <option key={plan.code} value={plan.code}>{plan.name}</option>)}
+                  {planOptions.map(plan => <option key={plan.value} value={plan.value}>{plan.label}</option>)}
                 </select>
                 <select className="ptdt-select" value={paymentForm.requestedAddonCodes[0] || ''} onChange={e => setPaymentForm({ ...paymentForm, requestedAddonCodes: e.target.value ? [e.target.value as CommercialAddonCode] : [] })}>
                   <option value="">No add-on</option>
