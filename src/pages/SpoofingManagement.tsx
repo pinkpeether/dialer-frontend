@@ -25,6 +25,9 @@ const accountLabel = (account?: CommercialAccount) => {
   return `${account.name} (${account.code || account.id})`
 }
 
+const isArchivedAccount = (account?: CommercialAccount | null) => String(account?.status || '').toUpperCase() === 'ARCHIVED'
+const operationalAccounts = (accounts: CommercialAccount[] = []) => accounts.filter(account => !isArchivedAccount(account))
+
 type DynamicCallerIdCache = {
   savedAt: string
   accounts: CommercialAccount[]
@@ -41,7 +44,11 @@ const readCache = (): DynamicCallerIdCache | null => {
   if (typeof window === 'undefined') return null
   try {
     const raw = window.localStorage.getItem(CACHE_KEY)
-    return raw ? JSON.parse(raw) as DynamicCallerIdCache : null
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as DynamicCallerIdCache
+    const accounts = operationalAccounts(parsed.accounts || [])
+    const selectedAccountId = accounts.some(account => String(account.id) === String(parsed.selectedAccountId)) ? String(parsed.selectedAccountId) : ''
+    return { ...parsed, accounts, selectedAccountId }
   } catch {
     return null
   }
@@ -50,7 +57,9 @@ const readCache = (): DynamicCallerIdCache | null => {
 const writeCache = (cache: Omit<DynamicCallerIdCache, 'savedAt'>) => {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cache, savedAt: new Date().toISOString() }))
+    const accounts = operationalAccounts(cache.accounts || [])
+    const selectedAccountId = accounts.some(account => String(account.id) === String(cache.selectedAccountId)) ? cache.selectedAccountId : ''
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cache, accounts, selectedAccountId, savedAt: new Date().toISOString() }))
   } catch {
     // Best-effort UI cache only. Backend remains the source of truth.
   }
@@ -104,10 +113,17 @@ export default function SpoofingManagement() {
     setError('')
 
     try {
-      const nextAccounts = await commercialControlApi.listAccounts()
+      const nextAccounts = operationalAccounts(await commercialControlApi.listAccounts())
       setAccounts(nextAccounts)
       setAccountsLoaded(true)
-      writeCache({ accounts: nextAccounts, selectedAccountId, records, summary })
+      if (selectedAccountId && !nextAccounts.some(account => String(account.id) === selectedAccountId)) {
+        setSelectedAccountId('')
+        setRecords([])
+        setSummary(null)
+        writeCache({ accounts: nextAccounts, selectedAccountId: '', records: [], summary: null })
+      } else {
+        writeCache({ accounts: nextAccounts, selectedAccountId, records, summary })
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load commercial accounts')
     } finally {
@@ -129,13 +145,22 @@ export default function SpoofingManagement() {
     setError('')
 
     try {
-      const accountId = preferredAccountId
+      let accountId = preferredAccountId
       let nextAccounts = accounts
 
       if (isPlatformAdmin && !accountsLoaded) {
-        nextAccounts = await commercialControlApi.listAccounts()
+        nextAccounts = operationalAccounts(await commercialControlApi.listAccounts())
         setAccounts(nextAccounts)
         setAccountsLoaded(true)
+      }
+
+      if (isPlatformAdmin && accountId && !nextAccounts.some(account => String(account.id) === String(accountId))) {
+        accountId = ''
+        setSelectedAccountId('')
+        setRecords([])
+        setSummary(null)
+        writeCache({ accounts: nextAccounts, selectedAccountId: '', records: [], summary: null })
+        return
       }
 
       const scopedAccountId = isPlatformAdmin ? accountId : undefined
@@ -402,7 +427,7 @@ export default function SpoofingManagement() {
           {isPlatformAdmin && (
             <div style={{ position: 'relative' }}>
               <select
-                className="ptdt-input"
+                className="ptdt-select"
                 value={selectedAccountId}
                 onChange={event => changeAccount(event.target.value)}
                 onFocus={() => void loadAccounts()}
@@ -410,9 +435,6 @@ export default function SpoofingManagement() {
                 disabled={loading || saving || accountsLoading}
                 required
                 style={{
-                  appearance: 'none',
-                  WebkitAppearance: 'none',
-                  paddingRight: 48,
                   fontFamily: 'Inter, Montserrat, system-ui, sans-serif',
                   fontWeight: 800,
                   letterSpacing: 0,
@@ -420,34 +442,13 @@ export default function SpoofingManagement() {
                   color: 'var(--text-1)',
                 }}
               >
-                <option value="">{accountsLoading ? 'Loading commercial accounts...' : 'Select commercial account'}</option>
+                <option value="">{accountsLoading ? 'Loading commercial accounts...' : accounts.length ? 'Select commercial account' : 'No active commercial accounts available'}</option>
                 {accounts.map(account => (
                   <option key={account.id} value={account.id}>
                     {accountLabel(account)}
                   </option>
                 ))}
               </select>
-
-              <span
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  right: 16,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  pointerEvents: 'none',
-                  width: 24,
-                  height: 24,
-                  borderRadius: '50%',
-                  display: 'grid',
-                  placeItems: 'center',
-                  background: 'rgba(15,23,42,.04)',
-                  color: 'var(--text-2)',
-                  fontWeight: 900,
-                }}
-              >
-                ▾
-              </span>
 
               {accountsLoading && (
                 <div
