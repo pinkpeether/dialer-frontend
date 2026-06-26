@@ -112,16 +112,33 @@ export type AddAccountMemberPayload = {
 }
 
 const administrationRequestConfig = { timeout: 45000 }
+const isArchivedAccount = (account?: { status?: string | null }) => String(account?.status || '').toUpperCase() === 'ARCHIVED'
+const withoutArchivedAccounts = (overview: PlatformAdministrationOverview): PlatformAdministrationOverview => {
+  const accounts = overview.accounts.filter(account => !isArchivedAccount(account))
+  return {
+    ...overview,
+    accounts,
+    stats: {
+      ...overview.stats,
+      accounts: accounts.length,
+      activeAccounts: accounts.filter(account => account.status === 'ACTIVE').length,
+    },
+  }
+}
 
 export const administrationApi = {
   getMe: async () => {
     const res = await api.get('/administration/me', administrationRequestConfig)
-    return res.data.data as AdministrationMe
+    const data = res.data.data as AdministrationMe
+    return {
+      ...data,
+      memberships: data.memberships.filter(membership => !isArchivedAccount(membership.account)),
+    }
   },
 
   getPlatformOverview: async () => {
     const res = await api.get('/administration/platform/overview', administrationRequestConfig)
-    return res.data.data as PlatformAdministrationOverview
+    return withoutArchivedAccounts(res.data.data as PlatformAdministrationOverview)
   },
 
   listPlatformAccountMembers: async (accountId: number) => {
