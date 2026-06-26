@@ -53,14 +53,17 @@ const roleLabel = (role: unknown) => {
 export default function TeamUsersV3() {
   const currentUser = useAuthStore(state => state.user)
   const isPlatformAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN'
+  const isSupervisor = currentUser?.role === 'SUPERVISOR'
   const roleOptions = useMemo(() => {
+    if (isSupervisor) return [{ value: 'AGENT', label: 'Agent' }]
+
     const base = [
       { value: 'AGENT', label: 'Agent' },
       { value: 'SUPERVISOR', label: 'Supervisor' },
       { value: 'MANAGER', label: 'Manager' },
     ]
     return isPlatformAdmin ? [...base, { value: 'CUSTOMER_ADMIN', label: 'Customer Admin' }] : base
-  }, [isPlatformAdmin])
+  }, [isPlatformAdmin, isSupervisor])
 
   const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const [busy, setBusy] = useState(false)
@@ -84,7 +87,7 @@ export default function TeamUsersV3() {
     event.preventDefault()
     await withBusy(async () => {
       try {
-        await createAgent(form as never)
+        await createAgent((isSupervisor ? { ...form, role: 'AGENT' } : form) as never)
         setForm({ name: '', email: '', password: '', role: 'AGENT', extension: '', phone: '' })
         setShowForm(false)
         setDialog({ tone: 'success', title: 'Team user created', message: 'The user has been created successfully.' })
@@ -140,7 +143,7 @@ export default function TeamUsersV3() {
           <p className="ptdt-page-desc">Create and manage users for the selected customer account scope.</p>
         </div>
         <button className="btn-brand" type="button" onClick={() => setShowForm(prev => !prev)}>
-          {showForm ? <X size={15} /> : <Plus size={15} />} {showForm ? 'Cancel' : 'New Customer User'}
+          {showForm ? <X size={15} /> : <Plus size={15} />} {showForm ? 'Cancel' : 'New Team User'}
         </button>
       </div>
 
@@ -159,7 +162,7 @@ export default function TeamUsersV3() {
 
       {showForm && (
         <form onSubmit={createUser} className="glass" style={{ padding: 24, marginBottom: 18 }}>
-          <h3 style={{ marginTop: 0 }}>New Customer User</h3>
+          <h3 style={{ marginTop: 0 }}>New Team User</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
             {[
               ['name', 'Full Name', 'text'],
@@ -168,10 +171,11 @@ export default function TeamUsersV3() {
               ['extension', 'Extension', 'text'],
               ['phone', 'Phone', 'text'],
             ].map(([key, label, type]) => <input key={key} type={type} placeholder={label} value={(form as Record<string, string>)[key]} onChange={event => setForm(prev => ({ ...prev, [key]: event.target.value }))} required={['name', 'email', 'password'].includes(key)} style={inputStyle} />)}
-            <select value={form.role} onChange={event => setForm(prev => ({ ...prev, role: event.target.value }))} style={inputStyle}>
+            <select value={isSupervisor ? 'AGENT' : form.role} onChange={event => setForm(prev => ({ ...prev, role: event.target.value }))} style={inputStyle}>
               {roleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </div>
+          {isSupervisor && <p style={{ margin: '10px 0 0', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 800 }}>Supervisor accounts can create Agent users only.</p>}
           <button className="btn-brand" style={{ marginTop: 14 }} type="submit">Create User</button>
         </form>
       )}
