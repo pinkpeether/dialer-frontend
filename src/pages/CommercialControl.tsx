@@ -124,6 +124,7 @@ export default function CommercialControl() {
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
   const [message, setMessage] = useState('')
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
 
   const [accountForm, setAccountForm] = useState({ name: '', code: '', email: '', phone: '', currency: 'USD' })
   const [paymentForm, setPaymentForm] = useState({ amount: '100', requestedPlanCode: 'PREMIUM' as CommercialPlanCode | '', requestedAddonCodes: ['DYNAMIC_CALLER_ID'] as CommercialAddonCode[], paymentMethod: 'Manual Bank Transfer', paymentReference: '', proofUrl: '', notes: '' })
@@ -208,6 +209,12 @@ export default function CommercialControl() {
 
   useEffect(() => { void loadData(cached?.selectedAccountId, { silent: Boolean(cached?.summary), label: 'Refreshing commercial control data' }) }, [cached?.selectedAccountId, cached?.summary, loadData])
   useEffect(() => { hasVisibleDataRef.current = Boolean(summary) }, [summary])
+  useEffect(() => {
+    if (!archiveConfirmOpen) return
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setArchiveConfirmOpen(false) }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [archiveConfirmOpen])
 
   const withSave = async (fn: () => Promise<void>, successMessage: string, label = 'Applying commercial control changes') => {
     setBusyLabel(label)
@@ -252,17 +259,25 @@ export default function CommercialControl() {
     if (!currentAccountId) return
     void withSave(async () => { await commercialControlApi.activatePlan(currentAccountId, planForm) }, 'Subscription plan updated.', 'Applying subscription plan')
   }
-  const handleLifecycle = (event: FormEvent) => {
-    event.preventDefault()
+  const applyLifecycle = () => {
     if (!currentAccountId) return
-    if (lifecycleForm.status === 'ARCHIVED') {
-      const ok = window.confirm('Archive this customer account? Team memberships will become inactive. Continue?')
-      if (!ok) return
-    }
     void withSave(async () => {
       const nextSummary = await updateLifecycle(currentAccountId, lifecycleForm.status, lifecycleForm.notes)
       setSummary(nextSummary)
     }, `Customer account set to ${statusLabel(lifecycleForm.status)}.`, 'Updating customer lifecycle')
+  }
+  const handleLifecycle = (event: FormEvent) => {
+    event.preventDefault()
+    if (!currentAccountId) return
+    if (lifecycleForm.status === 'ARCHIVED') {
+      setArchiveConfirmOpen(true)
+      return
+    }
+    applyLifecycle()
+  }
+  const confirmArchiveLifecycle = () => {
+    setArchiveConfirmOpen(false)
+    applyLifecycle()
   }
   const handleThresholds = (event: FormEvent) => {
     event.preventDefault()
@@ -311,6 +326,34 @@ export default function CommercialControl() {
   return (
     <div className="ptdt-page">
       <PtdtBusyOverlay active={initialLoading} label={busyLabel} />
+      {archiveConfirmOpen && (
+        <div
+          role="presentation"
+          onMouseDown={event => { if (event.target === event.currentTarget) setArchiveConfirmOpen(false) }}
+          style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(10,12,20,.50)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}
+        >
+          <div role="dialog" aria-modal="true" aria-labelledby="archive-account-title" onMouseDown={event => event.stopPropagation()} className="glass" style={{ width: 'min(560px, 96vw)', padding: 24, borderRadius: 24, border: '1px solid rgba(251,11,140,.28)', boxShadow: '0 28px 80px rgba(15,23,42,.32)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 16, display: 'grid', placeItems: 'center', color: 'var(--pink)', background: 'linear-gradient(135deg, rgba(251,11,140,.16), rgba(128,87,215,.12))', border: '1px solid rgba(251,11,140,.25)', flexShrink: 0 }}><Archive size={22} /></div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="eyebrow pink">PTDT Customer Lifecycle</div>
+                <h2 id="archive-account-title" style={{ margin: '8px 0 8px', fontSize: 26, lineHeight: 1.12 }}>Archive customer account?</h2>
+                <p style={{ margin: 0, color: 'var(--text-2)', lineHeight: 1.6 }}>This will retire the selected customer account and make its team memberships inactive. The customer data remains preserved for records and audit history.</p>
+              </div>
+              <button type="button" aria-label="Close archive confirmation" onClick={() => setArchiveConfirmOpen(false)} style={{ width: 34, height: 34, border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-glass)', color: 'var(--text-2)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ display: 'grid', gap: 10, marginTop: 18, padding: 14, borderRadius: 16, border: '1px solid rgba(239,68,68,.24)', background: 'rgba(239,68,68,.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}><span style={{ color: 'var(--text-3)', fontWeight: 850 }}>Customer</span><strong>{summary?.account.name || 'Selected account'}</strong></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}><span style={{ color: 'var(--text-3)', fontWeight: 850 }}>Account Code</span><strong className="mono">{summary?.account.code || '—'}</strong></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}><span style={{ color: 'var(--text-3)', fontWeight: 850 }}>New Status</span><strong style={{ color: 'var(--danger)' }}>Archived</strong></div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20, flexWrap: 'wrap' }}>
+              <button type="button" className="ptdt-action-btn" onClick={() => setArchiveConfirmOpen(false)}>Cancel</button>
+              <button type="button" className="btn-brand" onClick={confirmArchiveLifecycle} disabled={pageBusy} style={{ minHeight: 40 }}>Archive Account</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="ptdt-page-header">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}><CreditCard size={12} /> Commercial Lifecycle</div>
