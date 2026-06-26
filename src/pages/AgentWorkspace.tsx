@@ -82,7 +82,7 @@ export default function AgentWorkspace() {
               minWidth: 164,
               borderRadius: 24,
               padding: '13px 16px',
-              background: sipReady ? 'rgba(0,167,71,0.10)' : 'rgba(120,120,130,0.10)',
+              background: sipReady ? 'rgba(0,167,71,0.10)' : 'var(--bg-glass-hi)',
               border: `1px solid ${sipReady ? 'rgba(0,167,71,0.28)' : 'var(--border)'}`,
               color: sipReady ? 'var(--green-2)' : 'var(--text-3)',
             }}
@@ -111,7 +111,7 @@ export default function AgentWorkspace() {
         style={{
           borderRadius: 30,
           border: '1px solid var(--border)',
-          background: 'linear-gradient(145deg,rgba(255,255,255,0.78),rgba(255,255,255,0.50))',
+          background: 'var(--bg-glass-hi)',
           boxShadow: 'var(--shadow-sm)',
           padding: 22,
           marginBottom: 20,
@@ -169,7 +169,7 @@ export default function AgentWorkspace() {
               style={{
                 textAlign: 'left',
                 border: '1px solid var(--border)',
-                background: 'rgba(255,255,255,0.72)',
+                background: 'var(--bg-glass-hi)',
                 borderRadius: 24,
                 padding: 18,
                 minHeight: 164,
