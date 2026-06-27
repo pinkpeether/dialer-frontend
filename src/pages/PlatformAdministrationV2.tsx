@@ -46,6 +46,8 @@ const themeAt = (index: number) => accountThemes[index % accountThemes.length]
 const money = (value: unknown, currency = 'USD') => `${currency} ${Number(value || 0).toFixed(2)}`
 const accountRoleLabel = (role: string) => role === 'ADMIN' ? 'Account Admin' : role
 const statusColor = (status: string) => status === 'ACTIVE' ? 'var(--green-2)' : status === 'SUSPENDED' ? 'var(--danger)' : 'var(--text-3)'
+const overlayMinimumMs = 760
+const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms))
 
 const switchBox = (active: boolean, pending: boolean): React.CSSProperties => ({
   width: 66,
@@ -102,7 +104,6 @@ export default function PlatformAdministrationV2() {
   const selectedAccount = accounts.find(account => account.id === selectedAccountId)
   const selectedIndex = Math.max(0, accounts.findIndex(account => account.id === selectedAccount?.id))
   const selectedTheme = themeAt(selectedIndex)
-  const initialLoading = loading && accounts.length === 0
   const pageBusy = accountSwitching || accountsLoading
   const selectedMemberUserIds = useMemo(() => new Set(members.map(member => member.userId)), [members])
 
@@ -197,8 +198,11 @@ export default function PlatformAdministrationV2() {
     setAccountsLoading(true)
     setError('')
     setMessage('')
-    void administrationApi.getPlatformOverview({ silent: true, signal: controller.signal })
-      .then(overview => {
+    void Promise.all([
+      administrationApi.getPlatformOverview({ silent: true, signal: controller.signal }),
+      wait(overlayMinimumMs),
+    ])
+      .then(([overview]) => {
         if (controller.signal.aborted) return
         const nextUsers = overview.assignableCustomerUsers || overview.users
         setAccounts(overview.accounts)
@@ -242,7 +246,10 @@ export default function PlatformAdministrationV2() {
     setError('')
     setAccountSwitching(true)
     setRefreshing(true)
-    void loadMembers(accountId, { silent: true, signal: controller.signal })
+    void Promise.all([
+      loadMembers(accountId, { silent: true, signal: controller.signal }),
+      wait(overlayMinimumMs),
+    ])
       .then(() => {
         if (controller.signal.aborted) return
         endGlobalRequestOverlay(switchOverlayRef.current, true)
@@ -346,9 +353,7 @@ export default function PlatformAdministrationV2() {
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px,380px) 1fr', gap: 18, alignItems: 'start' }}>
         <div style={{ display: 'grid', gap: 12 }}>
           <div className="eyebrow green"><Building2 size={12} /> Commercial Accounts</div>
-          {initialLoading ? (
-            <div className="glass" style={{ padding: 18, borderRadius: 18 }}>Loading accounts...</div>
-          ) : accounts.length === 0 ? (
+          {accounts.length === 0 ? (
             <button
               type="button"
               className="glass"
@@ -356,9 +361,9 @@ export default function PlatformAdministrationV2() {
               disabled={pageBusy}
               style={{ padding: 18, borderRadius: 18, textAlign: 'left', cursor: pageBusy ? 'progress' : 'pointer', borderColor: 'rgba(0,167,71,.26)' }}
             >
-              <div className="mono" style={{ color: 'var(--green-2)', fontSize: 11, fontWeight: 900, letterSpacing: 1.2 }}>LOAD ACCOUNTS</div>
-              <h3 style={{ margin: '8px 0 4px', color: 'var(--text)' }}>{accountsLoading ? 'Loading commercial accounts...' : 'Click to load commercial accounts'}</h3>
-              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: 12 }}>The page is ready. Load customer accounts when you need to manage one.</p>
+              <div className="mono" style={{ color: 'var(--green-2)', fontSize: 11, fontWeight: 900, letterSpacing: 1.2 }}>COMMERCIAL ACCOUNTS</div>
+              <h3 style={{ margin: '8px 0 4px', color: 'var(--text)' }}>Select commercial account</h3>
+              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: 12 }}>Click here to load accounts. PTDT will show the global loading overlay while backend data is prepared.</p>
             </button>
           ) : accounts.map((account, index) => {
             const theme = themeAt(index)
