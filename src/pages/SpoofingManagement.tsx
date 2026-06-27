@@ -122,19 +122,19 @@ export default function SpoofingManagement() {
     accountSwitchTimerRef.current = null
   }
 
-  const beginAccountSwitchOverlay = () => {
+  const beginProgressOverlay = (initialMessage = 'Applying changes...', followupMessage = 'Almost done...') => {
     clearAccountSwitchTimer()
-    setAccountSwitchMessage('Applying changes...')
+    setAccountSwitchMessage(initialMessage)
     setAccountSwitchPhase('working')
     accountSwitchTimerRef.current = window.setTimeout(() => {
-      setAccountSwitchMessage('Almost done...')
+      setAccountSwitchMessage(followupMessage)
       accountSwitchTimerRef.current = null
     }, 900)
   }
 
-  const completeAccountSwitchOverlay = () => {
+  const completeProgressOverlay = (successMessage = 'Account loaded') => {
     clearAccountSwitchTimer()
-    setAccountSwitchMessage('Account loaded')
+    setAccountSwitchMessage(successMessage)
     setAccountSwitchPhase('success')
     accountSwitchTimerRef.current = window.setTimeout(() => {
       setAccountSwitchPhase('idle')
@@ -142,13 +142,14 @@ export default function SpoofingManagement() {
     }, 650)
   }
 
-  const failAccountSwitchOverlay = () => {
+  const failProgressOverlay = () => {
     clearAccountSwitchTimer()
     setAccountSwitchPhase('idle')
   }
 
   const loadAccounts = async () => {
     if (!isPlatformAdmin || accountsLoading || accountsLoaded) return
+    beginProgressOverlay('Fetching commercial accounts...', 'Preparing account list...')
     setAccountsLoading(true)
     setError('')
 
@@ -164,8 +165,10 @@ export default function SpoofingManagement() {
       } else {
         writeCache({ accounts: nextAccounts, selectedAccountId, records, summary })
       }
+      completeProgressOverlay('Accounts ready')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load commercial accounts')
+      failProgressOverlay()
     } finally {
       setAccountsLoading(false)
     }
@@ -215,10 +218,10 @@ export default function SpoofingManagement() {
         records: nextRecords,
         summary: nextSummary,
       })
-      if (options.accountSwitch) completeAccountSwitchOverlay()
+      if (options.accountSwitch) completeProgressOverlay('Account loaded')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load Dynamic Caller ID data')
-      if (options.accountSwitch) failAccountSwitchOverlay()
+      if (options.accountSwitch) failProgressOverlay()
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -237,7 +240,7 @@ export default function SpoofingManagement() {
       writeCache({ accounts, selectedAccountId: '', records: [], summary: null })
       return
     }
-    beginAccountSwitchOverlay()
+    beginProgressOverlay('Applying changes...', 'Almost done...')
     void loadData(value, { accountSwitch: true })
   }
 
@@ -486,50 +489,13 @@ export default function SpoofingManagement() {
                   color: 'var(--text-1)',
                 }}
               >
-                <option value="">{accountsLoading ? 'Loading commercial accounts...' : accounts.length ? 'Select commercial account' : 'No active commercial accounts available'}</option>
+                <option value="">{accounts.length ? 'Select commercial account' : 'No active commercial accounts available'}</option>
                 {accounts.map(account => (
                   <option key={account.id} value={account.id}>
                     {accountLabel(account)}
                   </option>
                 ))}
               </select>
-
-              {accountsLoading && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: 10,
-                    right: 10,
-                    top: 'calc(100% + 8px)',
-                    zIndex: 3,
-                    minHeight: 40,
-                    borderRadius: 14,
-                    border: '1px solid rgba(0,167,71,.24)',
-                    background: 'linear-gradient(135deg, rgba(236,253,245,.98), rgba(255,255,255,.98))',
-                    boxShadow: '0 14px 32px rgba(15,23,42,.12)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '9px 12px',
-                    color: 'var(--green-2)',
-                    fontSize: 12,
-                    fontWeight: 900,
-                  }}
-                >
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: '50%',
-                      border: '2px solid rgba(0,167,71,.22)',
-                      borderTopColor: 'var(--green-2)',
-                      animation: 'spin .75s linear infinite',
-                    }}
-                  />
-                  Fetching commercial accounts...
-                </div>
-              )}
             </div>
           )}
 
@@ -692,12 +658,12 @@ export default function SpoofingManagement() {
               </div>
             )}
             <div className="dynamic-cid-progress-title">
-              {accountSwitchPhase === 'success' ? 'Success' : accountSwitchMessage}
+              {accountSwitchMessage}
             </div>
             <div className="dynamic-cid-progress-copy">
               {accountSwitchPhase === 'success'
                 ? 'Commercial account data is ready.'
-                : 'Please wait while PTDT loads this account from the backend.'}
+                : 'Please wait while PTDT completes this backend request.'}
             </div>
           </div>
         </div>
