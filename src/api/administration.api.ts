@@ -133,14 +133,18 @@ const withoutArchivedAccounts = (overview: PlatformAdministrationOverview): Plat
 }
 
 export const administrationApi = {
-  getMe: async () => {
-    const res = await api.get('/administration/me', administrationRequestConfig)
-    const data = res.data.data as AdministrationMe
-    return {
-      ...data,
-      memberships: data.memberships.filter(membership => !isArchivedAccount(membership.account)),
-    }
-  },
+  getMe: async (options?: AdministrationSwrOptions) => swr(
+    swrKey('administration-me', { type: 'current-user' }),
+    async ({ silent }) => {
+      const res = await api.get('/administration/me', administrationGetConfig(silent))
+      const data = res.data.data as AdministrationMe
+      return {
+        ...data,
+        memberships: data.memberships.filter(membership => !isArchivedAccount(membership.account)),
+      }
+    },
+    options,
+  ),
 
   getPlatformOverview: async (options?: AdministrationSwrOptions) => swr(
     swrKey('administration-platform', { type: 'overview' }),
@@ -163,24 +167,28 @@ export const administrationApi = {
   addPlatformAccountMember: async (accountId: number, payload: AddAccountMemberPayload) => {
     const res = await api.post(`/administration/platform/accounts/${accountId}/members`, payload, administrationRequestConfig)
     clearSwrByPrefix('administration-platform')
+    clearSwrByPrefix('administration-me')
     return res.data.data as AccountMembership
   },
 
   updatePlatformMembership: async (membershipId: number, payload: Partial<AddAccountMemberPayload>) => {
     const res = await api.patch(`/administration/platform/memberships/${membershipId}`, payload, administrationRequestConfig)
     clearSwrByPrefix('administration-platform')
+    clearSwrByPrefix('administration-me')
     return res.data.data as AccountMembership
   },
 
   suspendPlatformMembership: async (membershipId: number) => {
     const res = await api.patch(`/administration/platform/memberships/${membershipId}/suspend`, undefined, administrationRequestConfig)
     clearSwrByPrefix('administration-platform')
+    clearSwrByPrefix('administration-me')
     return res.data.data as AccountMembership
   },
 
   removePlatformMembership: async (membershipId: number) => {
     const res = await api.delete(`/administration/platform/memberships/${membershipId}`, administrationRequestConfig)
     clearSwrByPrefix('administration-platform')
+    clearSwrByPrefix('administration-me')
     return res.data.data as { deleted: boolean }
   },
 

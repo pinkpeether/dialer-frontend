@@ -71,7 +71,7 @@ export default function CustomerBillingPortal() {
     setError('')
     setWarning('')
     try {
-      const me = await administrationApi.getMe()
+      const me = await administrationApi.getMe({ silent: Boolean(options.silent || hasVisibleDataRef.current) })
       setMemberships(me.memberships)
       setSelectedMembershipId(prev => {
         const next = prev || me.memberships[0]?.id

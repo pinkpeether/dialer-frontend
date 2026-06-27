@@ -15,26 +15,56 @@ const tabs: Array<{ key: TabKey; label: string }> = [
   { key: 'release', label: 'Release Notes' },
 ]
 
+type DeploymentPlatformCache = {
+  savedAt: string
+  overview: Record<string, unknown> | null
+  checklist: Record<string, unknown> | null
+  commands: Record<string, unknown> | null
+}
+
+const CACHE_KEY = 'ptdt-deployment-platform-pro:last-good'
+
+const readCache = (): DeploymentPlatformCache | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY)
+    return raw ? JSON.parse(raw) as DeploymentPlatformCache : null
+  } catch {
+    return null
+  }
+}
+
+const writeCache = (cache: Omit<DeploymentPlatformCache, 'savedAt'>) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cache, savedAt: new Date().toISOString() }))
+  } catch {
+    // Local cache is best-effort; deployment APIs remain the source of truth.
+  }
+}
+
 export default function DeploymentPlatformPro() {
+  const [cached] = useState(() => readCache())
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
-  const [overview, setOverview] = useState<Record<string, unknown> | null>(null)
-  const [checklist, setChecklist] = useState<Record<string, unknown> | null>(null)
-  const [commands, setCommands] = useState<Record<string, unknown> | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [overview, setOverview] = useState<Record<string, unknown> | null>(cached?.overview ?? null)
+  const [checklist, setChecklist] = useState<Record<string, unknown> | null>(cached?.checklist ?? null)
+  const [commands, setCommands] = useState<Record<string, unknown> | null>(cached?.commands ?? null)
+  const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState<string | null>(null)
 
-  const load = async () => {
+  const load = async (options: { silent?: boolean } = {}) => {
     try {
       setLoading(true)
       setError(null)
       const [overviewResult, checklistResult, commandsResult] = await Promise.all([
-        deploymentPlatformProAPI.getOverview(),
-        deploymentPlatformProAPI.getChecklist(),
-        deploymentPlatformProAPI.getSmokeCommands(),
+        deploymentPlatformProAPI.getOverview(options),
+        deploymentPlatformProAPI.getChecklist(options),
+        deploymentPlatformProAPI.getSmokeCommands(options),
       ])
       setOverview(overviewResult)
       setChecklist(checklistResult)
       setCommands(commandsResult)
+      writeCache({ overview: overviewResult, checklist: checklistResult, commands: commandsResult })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load deployment platform data')
     } finally {
@@ -43,7 +73,8 @@ export default function DeploymentPlatformPro() {
   }
 
   useEffect(() => {
-    void load()
+    void load({ silent: Boolean(cached) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

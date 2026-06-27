@@ -1,4 +1,5 @@
 import api from './axios'
+import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
 
 export type CallControlAction =
   | 'hangup'
@@ -32,19 +33,31 @@ export type CallControlPayload = {
   participantCallSid?: string
 }
 
-export const callControlAPI = {
-  capabilities: async () => {
-    const res = await api.get('/call-controls/capabilities')
-    return res.data.data
-  },
+const callControlGetConfig = (silent: boolean) => silent ? silentOverlayConfig() : undefined
+type CallControlSwrOptions = { silent?: boolean }
 
-  activeCalls: async () => {
-    const res = await api.get('/call-controls/active-calls')
-    return res.data.data
-  },
+export const callControlAPI = {
+  capabilities: async (options?: CallControlSwrOptions) => swr(
+    swrKey('call-controls', { type: 'capabilities' }),
+    async ({ silent }) => {
+      const res = await api.get('/call-controls/capabilities', callControlGetConfig(silent))
+      return res.data.data
+    },
+    options,
+  ),
+
+  activeCalls: async (options?: CallControlSwrOptions) => swr(
+    swrKey('call-controls', { type: 'active-calls' }),
+    async ({ silent }) => {
+      const res = await api.get('/call-controls/active-calls', callControlGetConfig(silent))
+      return res.data.data
+    },
+    options,
+  ),
 
   runAction: async (action: CallControlAction, payload: CallControlPayload) => {
     const res = await api.post(`/call-controls/actions/${action}`, payload)
+    clearSwrByPrefix('call-controls')
     return res.data.data
   },
 }

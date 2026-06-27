@@ -14,6 +14,34 @@ type ActiveCall = {
   campaign?: { name?: string | null } | null
 }
 
+type CallControlsCache = {
+  savedAt: string
+  calls: ActiveCall[]
+  capabilities: Record<string, unknown> | null
+  selectedCallId?: number
+}
+
+const CACHE_KEY = 'ptdt-call-controls:last-good'
+
+const readCache = (): CallControlsCache | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY)
+    return raw ? JSON.parse(raw) as CallControlsCache : null
+  } catch {
+    return null
+  }
+}
+
+const writeCache = (cache: Omit<CallControlsCache, 'savedAt'>) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cache, savedAt: new Date().toISOString() }))
+  } catch {
+    // Cache is best-effort; backend remains source of truth.
+  }
+}
+
 function displayCallStatus(status?: string | null) {
   const key = String(status || '').trim().toLowerCase().replace(/[\s-]+/g, '_')
   if (!key) return 'Unknown'
@@ -35,23 +63,27 @@ function displayCallStatus(status?: string | null) {
 }
 
 export default function CallControls() {
-  const [calls, setCalls] = useState<ActiveCall[]>([])
-  const [capabilities, setCapabilities] = useState<Record<string, unknown> | null>(null)
-  const [selected, setSelected] = useState<ActiveCall | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [cached] = useState(() => readCache())
+  const [calls, setCalls] = useState<ActiveCall[]>(cached?.calls ?? [])
+  const [capabilities, setCapabilities] = useState<Record<string, unknown> | null>(cached?.capabilities ?? null)
+  const [selected, setSelected] = useState<ActiveCall | null>(() => cached?.calls.find(call => call.id === cached.selectedCallId) || cached?.calls[0] || null)
+  const [loading, setLoading] = useState(!cached?.calls?.length && !cached?.capabilities)
   const [error, setError] = useState('')
 
-  const load = async () => {
+  const load = async (options: { silent?: boolean } = {}) => {
     setLoading(true)
     setError('')
     try {
       const [caps, active] = await Promise.all([
-        callControlAPI.capabilities(),
-        callControlAPI.activeCalls(),
+        callControlAPI.capabilities(options),
+        callControlAPI.activeCalls(options),
       ])
+      const nextCalls = active.calls || []
+      const nextSelected = nextCalls.find((call: ActiveCall) => call.id === selected?.id) || nextCalls[0] || null
       setCapabilities(caps)
-      setCalls(active.calls || [])
-      setSelected((active.calls || [])[0] || null)
+      setCalls(nextCalls)
+      setSelected(nextSelected)
+      writeCache({ calls: nextCalls, capabilities: caps, selectedCallId: nextSelected?.id })
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to load call controls'
       setError(message)
@@ -61,7 +93,8 @@ export default function CallControls() {
   }
 
   useEffect(() => {
-    void load()
+    void load({ silent: Boolean(cached) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
