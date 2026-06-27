@@ -80,7 +80,7 @@ export const clearSwrByPrefix = (scope: string) => {
 export const swr = async <T>(
   key: string,
   request: (options: { silent: boolean }) => Promise<T>,
-  options: { maxAgeMs?: number } = {},
+  options: { maxAgeMs?: number; silent?: boolean } = {},
 ): Promise<T> => {
   const cached = read<T>(key, options.maxAgeMs)
   if (cached) {
@@ -88,7 +88,7 @@ export const swr = async <T>(
     return cached
   }
 
-  const data = await request({ silent: false })
+  const data = await request({ silent: Boolean(options.silent) })
   writeSwr(key, data)
   return data
 }

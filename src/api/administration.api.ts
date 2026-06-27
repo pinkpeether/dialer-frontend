@@ -1,4 +1,5 @@
 import api from './axios'
+import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
 
 export type PlatformUserRole = 'SUPER_ADMIN' | 'ADMIN' | 'CUSTOMER_ADMIN' | 'MANAGER' | 'SUPERVISOR' | 'AGENT'
 export type CommercialAccountRole = 'OWNER' | 'ADMIN' | 'BILLING' | 'SUPERVISOR' | 'AGENT'
@@ -112,6 +113,11 @@ export type AddAccountMemberPayload = {
 }
 
 const administrationRequestConfig = { timeout: 45000 }
+const administrationGetConfig = (silent: boolean) => (
+  silent ? silentOverlayConfig(administrationRequestConfig) : administrationRequestConfig
+)
+type AdministrationSwrOptions = { silent?: boolean }
+
 const isArchivedAccount = (account?: { status?: string | null }) => String(account?.status || '').toUpperCase() === 'ARCHIVED'
 const withoutArchivedAccounts = (overview: PlatformAdministrationOverview): PlatformAdministrationOverview => {
   const accounts = overview.accounts.filter(account => !isArchivedAccount(account))
@@ -136,33 +142,45 @@ export const administrationApi = {
     }
   },
 
-  getPlatformOverview: async () => {
-    const res = await api.get('/administration/platform/overview', administrationRequestConfig)
-    return withoutArchivedAccounts(res.data.data as PlatformAdministrationOverview)
-  },
+  getPlatformOverview: async (options?: AdministrationSwrOptions) => swr(
+    swrKey('administration-platform', { type: 'overview' }),
+    async ({ silent }) => {
+      const res = await api.get('/administration/platform/overview', administrationGetConfig(silent))
+      return withoutArchivedAccounts(res.data.data as PlatformAdministrationOverview)
+    },
+    options,
+  ),
 
-  listPlatformAccountMembers: async (accountId: number) => {
-    const res = await api.get(`/administration/platform/accounts/${accountId}/members`, administrationRequestConfig)
-    return res.data.data as AccountMembership[]
-  },
+  listPlatformAccountMembers: async (accountId: number, options?: AdministrationSwrOptions) => swr(
+    swrKey('administration-platform', { type: 'members', accountId }),
+    async ({ silent }) => {
+      const res = await api.get(`/administration/platform/accounts/${accountId}/members`, administrationGetConfig(silent))
+      return res.data.data as AccountMembership[]
+    },
+    options,
+  ),
 
   addPlatformAccountMember: async (accountId: number, payload: AddAccountMemberPayload) => {
     const res = await api.post(`/administration/platform/accounts/${accountId}/members`, payload, administrationRequestConfig)
+    clearSwrByPrefix('administration-platform')
     return res.data.data as AccountMembership
   },
 
   updatePlatformMembership: async (membershipId: number, payload: Partial<AddAccountMemberPayload>) => {
     const res = await api.patch(`/administration/platform/memberships/${membershipId}`, payload, administrationRequestConfig)
+    clearSwrByPrefix('administration-platform')
     return res.data.data as AccountMembership
   },
 
   suspendPlatformMembership: async (membershipId: number) => {
     const res = await api.patch(`/administration/platform/memberships/${membershipId}/suspend`, undefined, administrationRequestConfig)
+    clearSwrByPrefix('administration-platform')
     return res.data.data as AccountMembership
   },
 
   removePlatformMembership: async (membershipId: number) => {
     const res = await api.delete(`/administration/platform/memberships/${membershipId}`, administrationRequestConfig)
+    clearSwrByPrefix('administration-platform')
     return res.data.data as { deleted: boolean }
   },
 

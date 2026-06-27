@@ -113,23 +113,25 @@ export default function PlatformAdministrationV2() {
     })
   }, [accounts, selectedAccount?.id, selectedMemberUserIds, users])
 
-  const loadMembers = async (accountId: number) => {
-    const nextMembers = await administrationApi.listPlatformAccountMembers(accountId)
+  const loadMembers = async (accountId: number, options: { silent?: boolean } = {}) => {
+    const nextMembers = await administrationApi.listPlatformAccountMembers(accountId, options)
     setMembers(nextMembers)
     writeCache({ selectedAccountId: accountId, accounts, users, members: nextMembers })
     return nextMembers
   }
 
   const loadData = async (accountId?: number, mode: 'initial' | 'refresh' = 'refresh') => {
+    const hasCachedData = accounts.length > 0
+    const requestOptions = { silent: mode === 'refresh' || hasCachedData }
     if (mode === 'initial' && !accounts.length) setLoading(true)
     else setRefreshing(true)
     setError('')
     setMessage('')
 
     try {
-      const overview = await administrationApi.getPlatformOverview()
+      const overview = await administrationApi.getPlatformOverview(requestOptions)
       const resolvedAccountId = accountId || selectedAccountId || overview.accounts[0]?.id
-      const nextMembers = resolvedAccountId ? await administrationApi.listPlatformAccountMembers(resolvedAccountId) : []
+      const nextMembers = resolvedAccountId ? await administrationApi.listPlatformAccountMembers(resolvedAccountId, requestOptions) : []
       const nextUsers = overview.assignableCustomerUsers || overview.users
       setAccounts(overview.accounts)
       setUsers(nextUsers)
@@ -154,7 +156,7 @@ useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.len
     setMessage('')
     setError('')
     setRefreshing(true)
-    void loadMembers(accountId)
+    void loadMembers(accountId, { silent: true })
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to load members'))
       .finally(() => setRefreshing(false))
   }
@@ -182,7 +184,7 @@ useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.len
         writeCache({ selectedAccountId: selectedAccount.id, accounts, users, members: nextMembers })
         setForm(prev => ({ ...prev, userId: '' }))
         setMessage('Account membership assigned.')
-        void loadMembers(selectedAccount.id).catch(() => undefined)
+        void loadMembers(selectedAccount.id, { silent: true }).catch(() => undefined)
       })
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to assign member'))
       .finally(() => setSaving(false))
@@ -204,7 +206,7 @@ useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.len
         setMembers(nextMembers)
         writeCache({ selectedAccountId: selectedAccount?.id, accounts, users, members: nextMembers })
         setMessage(`Membership marked ${nextStatus}.`)
-        if (selectedAccount) void loadMembers(selectedAccount.id).catch(() => undefined)
+        if (selectedAccount) void loadMembers(selectedAccount.id, { silent: true }).catch(() => undefined)
       })
       .catch(err => {
         setMembers(previousMembers)
