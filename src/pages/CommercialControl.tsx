@@ -114,9 +114,11 @@ export default function CommercialControl() {
   const [accounts, setAccounts] = useState<CommercialAccount[]>(cached?.accounts ?? [])
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>(cached?.paymentRequests ?? [])
   const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(cached?.selectedAccountId)
-  const [loading, setLoading] = useState(!cached?.summary)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(Boolean(cached?.summary))
   const [accountSwitching, setAccountSwitching] = useState(false)
+  const [accountsLoading, setAccountsLoading] = useState(false)
+  const [accountsLoaded, setAccountsLoaded] = useState(Boolean(cached?.accounts?.length))
   const hasVisibleDataRef = useRef(Boolean(cached?.summary))
   const [saving, setSaving] = useState(false)
   const [pendingAddonCode, setPendingAddonCode] = useState<CommercialAddonCode | null>(null)
@@ -134,13 +136,13 @@ export default function CommercialControl() {
   const [thresholdForm, setThresholdForm] = useState({ lowBalanceThreshold: '10', criticalBalanceThreshold: '3', hardStopEnabled: true })
   const [lifecycleForm, setLifecycleForm] = useState({ status: 'ACTIVE' as LifecycleStatusValue, notes: '' })
 
-  const currentAccountId = selectedAccountId || summary?.account.id || accounts[0]?.id
+  const currentAccountId = selectedAccountId || summary?.account.id
   const currentCurrency = summary?.account.currency || 'USD'
   const currentLifecycleStatus = normalizeLifecycleStatus(summary?.account.status || summary?.subscription?.status)
   const currentPlanStatus = normalizePlanStatus(summary?.subscription?.status || summary?.account.status)
   const currentPlanDisplayStatus = currentLifecycleStatus === 'ARCHIVED' ? 'Suspended / Archived' : statusLabel(currentPlanStatus)
   const initialLoading = loading && !summary
-  const pageBusy = initialLoading || saving || accountSwitching
+  const pageBusy = initialLoading || saving || accountSwitching || accountsLoading
   const refreshButtonActive = loading || refreshing
   const activePlanName = summary?.subscription?.plan?.name || 'Plan not selected'
   const activeAddonCodes = useMemo(() => new Set(summary?.addons.filter(item => item.status === 'ACTIVE').map(item => item.addon.code) || []), [summary])
@@ -210,7 +212,10 @@ export default function CommercialControl() {
     }
   }, [runStep])
 
-  useEffect(() => { void loadData(cached?.selectedAccountId, { silent: Boolean(cached?.summary), label: 'Refreshing commercial control data' }) }, [cached?.selectedAccountId, cached?.summary, loadData])
+  useEffect(() => {
+    if (!cached?.summary) return
+    void loadData(cached.selectedAccountId, { silent: true, label: 'Refreshing commercial control data' })
+  }, [cached?.selectedAccountId, cached?.summary, loadData])
   useEffect(() => { hasVisibleDataRef.current = Boolean(summary) }, [summary])
   useEffect(() => {
     if (!archiveConfirmOpen) return
@@ -320,8 +325,22 @@ export default function CommercialControl() {
       .catch(err => { setPaymentRequests(previousRequests); setError(err instanceof Error ? err.message : 'Payment request update failed') })
       .finally(() => setPendingPaymentRequestId(null))
   }
+  const loadAccountChoices = () => {
+    if (accountsLoading || accountsLoaded) return
+    setBusyLabel('Loading commercial accounts')
+    setAccountsLoading(true)
+    setError('')
+    setWarning('')
+    void commercialControlApi.listAccounts({ silent: true })
+      .then(nextAccounts => {
+        setAccounts(nextAccounts)
+        setAccountsLoaded(true)
+      })
+      .catch(err => setError(err instanceof Error ? err.message : 'Failed to load commercial accounts'))
+      .finally(() => setAccountsLoading(false))
+  }
   const handleAccountSwitch = (accountId: number) => {
-    if (!accountId || accountId === currentAccountId || accountSwitching) return
+    if (!accountId || accountId === currentAccountId || accountSwitching || accountsLoading) return
     setSelectedAccountId(accountId)
     setAccountSwitching(true)
     void loadData(accountId, { silent: true, label: 'Switching customer account' })
@@ -330,7 +349,7 @@ export default function CommercialControl() {
 
   return (
     <div className="ptdt-page">
-      <PtdtBusyOverlay active={initialLoading || accountSwitching} label={accountSwitching ? 'Switching customer account' : busyLabel} />
+      <PtdtBusyOverlay active={accountSwitching || accountsLoading} label={accountSwitching ? 'Switching customer account' : busyLabel} />
       {archiveConfirmOpen && (
         <div role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setArchiveConfirmOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(10,12,20,.50)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
           <div role="dialog" aria-modal="true" aria-labelledby="archive-account-title" onMouseDown={event => event.stopPropagation()} className="glass" style={{ width: 'min(560px, 96vw)', padding: 24, borderRadius: 24, border: '1px solid rgba(251,11,140,.28)', boxShadow: '0 28px 80px rgba(15,23,42,.32)' }}>
@@ -372,35 +391,49 @@ export default function CommercialControl() {
       {error && <div className="glass" style={{ color: 'var(--danger)', marginBottom: 14, padding: 14, borderColor: 'rgba(239,68,68,.28)' }}>{error}</div>}
       {warning && <div className="glass" style={{ color: 'var(--orange)', marginBottom: 14, padding: 14, borderColor: 'rgba(240,185,11,.28)' }}>{warning}</div>}
       {message && <div className="glass" style={{ color: 'var(--green-2)', marginBottom: 14, padding: 14, borderColor: 'rgba(0,229,160,.28)' }}>{message}</div>}
-      {initialLoading && <div className="glass" style={{ ...cardStyle, color: 'var(--text-3)' }}>Loading commercial control data...</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1.15fr) minmax(320px, .85fr)', gap: 24, alignItems: 'stretch', marginBottom: 24 }}>
+        <div className="glass" style={{ padding: 18, borderRadius: 18, display: 'grid', alignContent: 'start', gap: 12 }}>
+          <strong style={{ fontSize: 18 }}>Account:</strong>
+          <select
+            className="ptdt-select"
+            value={currentAccountId || ''}
+            onFocus={loadAccountChoices}
+            onMouseDown={loadAccountChoices}
+            onChange={e => handleAccountSwitch(Number(e.target.value))}
+            disabled={pageBusy}
+          >
+            <option value="">{accountsLoading ? 'Loading commercial accounts...' : 'Select commercial account'}</option>
+            {accounts.map(account => <option key={account.id} value={account.id}>{account.name} ({account.code})</option>)}
+          </select>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {summary ? <span className="ptdt-chip" style={{ color: stateColor(currentLifecycleStatus) }}>{statusLabel(currentLifecycleStatus)}</span> : <span className="ptdt-chip">No account loaded</span>}
+            {summary && <span className="ptdt-chip">{summary.account.currency}</span>}
+          </div>
+        </div>
 
-      {!initialLoading && summary && (
+        <form onSubmit={handleLifecycle} className="glass" style={{ ...cardStyle, borderColor: lifecycleForm.status === 'ARCHIVED' ? 'rgba(239,68,68,.35)' : 'rgba(251,11,140,.22)', display: 'grid', alignContent: 'start', gap: 10, opacity: summary ? 1 : .64 }}>
+          <div className="eyebrow pink"><Archive size={12} /> Account Lifecycle</div>
+          <h3 style={{ margin: '2px 0 0' }}>Customer Account Status</h3>
+          <select className="ptdt-select" value={lifecycleForm.status} onChange={e => setLifecycleForm({ ...lifecycleForm, status: e.target.value as LifecycleStatusValue })} disabled={!summary || pageBusy}>{lifecycleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+          <input className="ptdt-input" value={lifecycleForm.notes} onChange={e => setLifecycleForm({ ...lifecycleForm, notes: e.target.value })} placeholder="Private lifecycle notes" disabled={!summary || pageBusy} />
+          <p style={{ margin: 0, color: lifecycleForm.status === 'ARCHIVED' ? 'var(--danger)' : 'var(--text-3)', fontSize: 12.5, lineHeight: 1.5 }}>{summary ? lifecycleOptions.find(option => option.value === lifecycleForm.status)?.help : 'Select a commercial account to manage lifecycle.'}</p>
+          <button className="btn-brand" disabled={!summary || pageBusy}>Apply Lifecycle</button>
+        </form>
+      </div>
+
+      {!summary && (
+        <div className="glass" style={{ ...cardStyle, color: 'var(--text-3)', marginBottom: 18 }}>
+          Select a commercial account to load plan, wallet, add-ons, payment requests, and ledger details.
+        </div>
+      )}
+
+      {summary && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 18 }}>
             <div className="glass" style={cardStyle}><div className="eyebrow green"><BadgeDollarSign size={12} /> Current Plan</div><div style={{ fontSize: 26, fontWeight: 950, color: 'var(--text)', marginTop: 8 }}>{activePlanName}</div><div className="mono" style={{ color: currentLifecycleStatus === 'ARCHIVED' ? 'var(--danger)' : stateColor(currentPlanStatus), marginTop: 6, fontWeight: 900 }}>{currentPlanDisplayStatus}</div></div>
             <div className="glass" style={cardStyle}><div className="eyebrow pink"><WalletCards size={12} /> Calling Wallet</div><div style={{ fontSize: 26, fontWeight: 950, color: 'var(--text)', marginTop: 8 }}>{money(summary.wallet?.availableBalance, currentCurrency)}</div><div className="mono" style={{ color: stateColor(summary.balanceState), marginTop: 6, fontWeight: 900 }}>{summary.balanceState.replace(/_/g, ' ')}</div></div>
             <div className="glass" style={cardStyle}><div className="eyebrow purple"><BellRing size={12} /> Low Balance Rules</div><div style={{ fontSize: 16, fontWeight: 850, color: 'var(--text)', marginTop: 8 }}>Low: {money(summary.account.lowBalanceThreshold, currentCurrency)}</div><div style={{ fontSize: 16, fontWeight: 850, color: 'var(--text)', marginTop: 6 }}>Critical: {money(summary.account.criticalBalanceThreshold, currentCurrency)}</div></div>
             <div className="glass" style={cardStyle}><div className="eyebrow green"><ShieldCheck size={12} /> Dynamic Caller ID</div><div style={{ fontSize: 26, fontWeight: 950, color: summary.callerIdControl.dynamicCallerIdEnabled ? 'var(--green-2)' : 'var(--text-3)', marginTop: 8 }}>{summary.callerIdControl.dynamicCallerIdEnabled ? 'ACTIVE' : 'INACTIVE'}</div><div className="mono" style={{ color: 'var(--text-3)', marginTop: 6 }}>{summary.callerIdControl.activeVerifiedCallerIds} active verified IDs</div></div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1.15fr) minmax(320px, .85fr)', gap: 24, alignItems: 'stretch', marginBottom: 24 }}>
-            <div className="glass" style={{ padding: 18, borderRadius: 18, display: 'grid', alignContent: 'start', gap: 12 }}>
-              <strong style={{ fontSize: 18 }}>Account:</strong>
-              <select className="ptdt-select" value={currentAccountId || ''} onChange={e => handleAccountSwitch(Number(e.target.value))} disabled={pageBusy}>{accounts.map(account => <option key={account.id} value={account.id}>{account.name} ({account.code})</option>)}</select>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <span className="ptdt-chip" style={{ color: stateColor(currentLifecycleStatus) }}>{statusLabel(currentLifecycleStatus)}</span>
-                <span className="ptdt-chip">{summary.account.currency}</span>
-              </div>
-            </div>
-
-            <form onSubmit={handleLifecycle} className="glass" style={{ ...cardStyle, borderColor: lifecycleForm.status === 'ARCHIVED' ? 'rgba(239,68,68,.35)' : 'rgba(251,11,140,.22)', display: 'grid', alignContent: 'start', gap: 10 }}>
-              <div className="eyebrow pink"><Archive size={12} /> Account Lifecycle</div>
-              <h3 style={{ margin: '2px 0 0' }}>Customer Account Status</h3>
-              <select className="ptdt-select" value={lifecycleForm.status} onChange={e => setLifecycleForm({ ...lifecycleForm, status: e.target.value as LifecycleStatusValue })}>{lifecycleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
-              <input className="ptdt-input" value={lifecycleForm.notes} onChange={e => setLifecycleForm({ ...lifecycleForm, notes: e.target.value })} placeholder="Private lifecycle notes" />
-              <p style={{ margin: 0, color: lifecycleForm.status === 'ARCHIVED' ? 'var(--danger)' : 'var(--text-3)', fontSize: 12.5, lineHeight: 1.5 }}>{lifecycleOptions.find(option => option.value === lifecycleForm.status)?.help}</p>
-              <button className="btn-brand" disabled={pageBusy}>Apply Lifecycle</button>
-            </form>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 24, marginBottom: 24 }}>

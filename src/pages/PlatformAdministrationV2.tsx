@@ -75,9 +75,11 @@ export default function PlatformAdministrationV2() {
   const [users, setUsers] = useState<AdminUser[]>(cached?.users ?? [])
   const [members, setMembers] = useState<AccountMembership[]>(cached?.members ?? [])
   const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(cached?.selectedAccountId)
-  const [loading, setLoading] = useState(!cached?.accounts?.length)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(Boolean(cached?.accounts?.length))
   const [accountSwitching, setAccountSwitching] = useState(false)
+  const [accountsLoading, setAccountsLoading] = useState(false)
+  const [accountsLoaded, setAccountsLoaded] = useState(Boolean(cached?.accounts?.length))
   const [saving, setSaving] = useState(false)
   const [pendingMembershipId, setPendingMembershipId] = useState<number | null>(null)
   const [message, setMessage] = useState('')
@@ -92,11 +94,11 @@ export default function PlatformAdministrationV2() {
     canUseDynamicCallerId: true,
   })
 
-  const selectedAccount = accounts.find(account => account.id === selectedAccountId) || accounts[0]
+  const selectedAccount = accounts.find(account => account.id === selectedAccountId)
   const selectedIndex = Math.max(0, accounts.findIndex(account => account.id === selectedAccount?.id))
   const selectedTheme = themeAt(selectedIndex)
   const initialLoading = loading && accounts.length === 0
-  const pageBusy = initialLoading || accountSwitching
+  const pageBusy = accountSwitching || accountsLoading
   const selectedMemberUserIds = useMemo(() => new Set(members.map(member => member.userId)), [members])
 
   const assignableUsers = useMemo(() => {
@@ -137,6 +139,7 @@ export default function PlatformAdministrationV2() {
       const nextUsers = overview.assignableCustomerUsers || overview.users
       setAccounts(overview.accounts)
       setUsers(nextUsers)
+      setAccountsLoaded(true)
       setSelectedAccountId(resolvedAccountId)
       setMembers(nextMembers)
       writeCache({ selectedAccountId: resolvedAccountId, accounts: overview.accounts, users: nextUsers, members: nextMembers })
@@ -150,7 +153,29 @@ export default function PlatformAdministrationV2() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.length ? 'refresh' : 'initial') }, [])
+useEffect(() => {
+  if (!cached?.accounts?.length) return
+  void loadData(cached.selectedAccountId, 'refresh')
+}, [])
+
+  const loadAccountChoices = () => {
+    if (accountsLoading || accountsLoaded) return
+    setAccountsLoading(true)
+    setError('')
+    setMessage('')
+    void administrationApi.getPlatformOverview({ silent: true })
+      .then(overview => {
+        const nextUsers = overview.assignableCustomerUsers || overview.users
+        setAccounts(overview.accounts)
+        setUsers(nextUsers)
+        setMembers([])
+        setSelectedAccountId(undefined)
+        setAccountsLoaded(true)
+        writeCache({ selectedAccountId: undefined, accounts: overview.accounts, users: nextUsers, members: [] })
+      })
+      .catch(err => setError(err instanceof Error ? err.message : 'Failed to load commercial accounts'))
+      .finally(() => setAccountsLoading(false))
+  }
 
   const selectAccount = (accountId: number) => {
     if (accountId === selectedAccount?.id || accountSwitching) return
@@ -227,7 +252,7 @@ useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.len
 
   return (
     <div className="ptdt-page">
-      <PtdtBusyOverlay active={initialLoading || accountSwitching} label={accountSwitching ? 'Switching commercial account' : 'Loading administration data'} />
+      <PtdtBusyOverlay active={accountSwitching || accountsLoading} label={accountSwitching ? 'Switching commercial account' : 'Loading commercial accounts'} />
 
       <div className="ptdt-page-header">
         <div>
@@ -238,7 +263,7 @@ useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.len
         <button
           type="button"
           className={`ptdt-action-btn ${loading || refreshing ? 'ptdt-refresh-active' : ''}`}
-          disabled={loading || refreshing || accountSwitching}
+          disabled={loading || refreshing || accountSwitching || accountsLoading}
           onClick={() => void loadData(selectedAccount?.id, 'refresh')}
         >
           <RefreshCw size={14} /> Refresh
@@ -253,6 +278,18 @@ useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.len
           <div className="eyebrow green"><Building2 size={12} /> Commercial Accounts</div>
           {initialLoading ? (
             <div className="glass" style={{ padding: 18, borderRadius: 18 }}>Loading accounts...</div>
+          ) : accounts.length === 0 ? (
+            <button
+              type="button"
+              className="glass"
+              onClick={loadAccountChoices}
+              disabled={pageBusy}
+              style={{ padding: 18, borderRadius: 18, textAlign: 'left', cursor: pageBusy ? 'progress' : 'pointer', borderColor: 'rgba(0,167,71,.26)' }}
+            >
+              <div className="mono" style={{ color: 'var(--green-2)', fontSize: 11, fontWeight: 900, letterSpacing: 1.2 }}>LOAD ACCOUNTS</div>
+              <h3 style={{ margin: '8px 0 4px', color: 'var(--text)' }}>{accountsLoading ? 'Loading commercial accounts...' : 'Click to load commercial accounts'}</h3>
+              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: 12 }}>The page is ready. Load customer accounts when you need to manage one.</p>
+            </button>
           ) : accounts.map((account, index) => {
             const theme = themeAt(index)
             const selected = account.id === selectedAccount?.id
@@ -291,7 +328,7 @@ useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.len
             <div>
               <div className="eyebrow pink"><Users size={12} /> Account Members</div>
               <h2 style={{ margin: '8px 0 4px' }}>{selectedAccount?.name || 'Select account'}</h2>
-              <p style={{ margin: 0, color: 'var(--text-3)' }}>Selected account users plus unassigned customer users only.</p>
+              <p style={{ margin: 0, color: 'var(--text-3)' }}>{selectedAccount ? 'Selected account users plus unassigned customer users only.' : 'Load commercial accounts, then select an account to view members.'}</p>
             </div>
             <span className="ptdt-chip" style={{ color: selectedTheme.accent, borderColor: selectedTheme.border }}>{members.length} members</span>
           </div>
