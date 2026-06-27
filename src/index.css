@@ -848,17 +848,7 @@ html[data-performance-mode="on"] *::after {
 .dynamic-cid-page {
   position: relative;
 }
-.dynamic-cid-page-content {
-  transition: filter .22s var(--ease), opacity .22s var(--ease), transform .22s var(--ease);
-}
-.dynamic-cid-page-content.is-busy {
-  filter: blur(2px);
-  opacity: .52;
-  transform: scale(.998);
-  pointer-events: none;
-  user-select: none;
-}
-.dynamic-cid-progress-overlay {
+.ptdt-global-progress-overlay {
   position: fixed;
   inset: 0;
   z-index: 1200;
@@ -868,9 +858,9 @@ html[data-performance-mode="on"] *::after {
   background: rgba(8, 12, 24, .42);
   backdrop-filter: blur(7px) saturate(1.08);
   -webkit-backdrop-filter: blur(7px) saturate(1.08);
-  animation: dynamic-cid-overlay-in .18s var(--ease) both;
+  animation: ptdt-global-overlay-in .18s var(--ease) both;
 }
-.dynamic-cid-progress-panel {
+.ptdt-global-progress-panel {
   width: min(360px, calc(100vw - 48px));
   min-height: 238px;
   border-radius: 30px;
@@ -886,7 +876,7 @@ html[data-performance-mode="on"] *::after {
   padding: 32px 28px;
   text-align: center;
 }
-.dynamic-cid-premium-spinner {
+.ptdt-global-premium-spinner {
   position: relative;
   width: 92px;
   height: 92px;
@@ -894,39 +884,39 @@ html[data-performance-mode="on"] *::after {
   display: grid;
   place-items: center;
 }
-.dynamic-cid-premium-spinner::before,
-.dynamic-cid-premium-spinner::after {
+.ptdt-global-premium-spinner::before,
+.ptdt-global-premium-spinner::after {
   content: '';
   position: absolute;
   inset: 9px;
   border-radius: 50%;
   border: 2px solid transparent;
 }
-.dynamic-cid-premium-spinner::before {
+.ptdt-global-premium-spinner::before {
   border-top-color: var(--green-2);
   border-right-color: rgba(0,167,71,.32);
-  animation: dynamic-cid-spin 1s linear infinite;
+  animation: ptdt-global-spin 1s linear infinite;
 }
-.dynamic-cid-premium-spinner::after {
+.ptdt-global-premium-spinner::after {
   inset: 20px;
   border-bottom-color: var(--pink);
   border-left-color: rgba(251,11,140,.28);
-  animation: dynamic-cid-spin 1.35s linear infinite reverse;
+  animation: ptdt-global-spin 1.35s linear infinite reverse;
 }
-.dynamic-cid-premium-spinner span {
+.ptdt-global-premium-spinner span {
   position: absolute;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--green-2);
   box-shadow: 0 0 16px rgba(0,167,71,.45);
-  animation: dynamic-cid-dot-pulse 1.05s ease-in-out infinite;
+  animation: ptdt-global-dot-pulse 1.05s ease-in-out infinite;
 }
-.dynamic-cid-premium-spinner span:nth-child(1) { top: 0; left: 42px; animation-delay: 0s; }
-.dynamic-cid-premium-spinner span:nth-child(2) { top: 42px; right: 0; background: var(--pink); animation-delay: .13s; }
-.dynamic-cid-premium-spinner span:nth-child(3) { bottom: 0; left: 42px; animation-delay: .26s; }
-.dynamic-cid-premium-spinner span:nth-child(4) { top: 42px; left: 0; background: var(--pink); animation-delay: .39s; }
-.dynamic-cid-premium-spinner i {
+.ptdt-global-premium-spinner span:nth-child(1) { top: 0; left: 42px; animation-delay: 0s; }
+.ptdt-global-premium-spinner span:nth-child(2) { top: 42px; right: 0; background: var(--pink); animation-delay: .13s; }
+.ptdt-global-premium-spinner span:nth-child(3) { bottom: 0; left: 42px; animation-delay: .26s; }
+.ptdt-global-premium-spinner span:nth-child(4) { top: 42px; left: 0; background: var(--pink); animation-delay: .39s; }
+.ptdt-global-premium-spinner i {
   position: relative;
   z-index: 1;
   width: 42px;
@@ -941,7 +931,7 @@ html[data-performance-mode="on"] *::after {
   font-weight: 900;
   box-shadow: inset 0 0 0 1px rgba(0,167,71,.12), 0 12px 28px rgba(15,23,42,.12);
 }
-.dynamic-cid-success-mark {
+.ptdt-global-success-mark {
   width: 86px;
   height: 86px;
   border-radius: 50%;
@@ -952,9 +942,9 @@ html[data-performance-mode="on"] *::after {
   box-shadow: 0 20px 46px rgba(0,167,71,.28);
   font-size: 42px;
   font-weight: 950;
-  animation: dynamic-cid-success-pop .32s var(--ease) both;
+  animation: ptdt-global-success-pop .32s var(--ease) both;
 }
-.dynamic-cid-progress-title {
+.ptdt-global-progress-title {
   font-family: var(--font-display);
   font-size: 24px;
   line-height: 1;
@@ -962,26 +952,26 @@ html[data-performance-mode="on"] *::after {
   color: var(--text);
   letter-spacing: 0;
 }
-.dynamic-cid-progress-copy {
+.ptdt-global-progress-copy {
   max-width: 260px;
   color: var(--text-3);
   font-size: 13px;
   line-height: 1.45;
   font-weight: 700;
 }
-@keyframes dynamic-cid-spin {
+@keyframes ptdt-global-spin {
   to { transform: rotate(360deg); }
 }
-@keyframes dynamic-cid-dot-pulse {
+@keyframes ptdt-global-dot-pulse {
   0%, 100% { transform: scale(.72); opacity: .38; }
   50% { transform: scale(1.18); opacity: 1; }
 }
-@keyframes dynamic-cid-success-pop {
+@keyframes ptdt-global-success-pop {
   0% { transform: scale(.78); opacity: 0; }
   70% { transform: scale(1.06); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
-@keyframes dynamic-cid-overlay-in {
+@keyframes ptdt-global-overlay-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }

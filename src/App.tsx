@@ -53,6 +53,7 @@ import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
 import ToastProvider           from './components/ToastProvider'
 import DialerActivityBeacon    from './components/DialerActivityBeacon'
+import GlobalRequestOverlay    from './components/GlobalRequestOverlay'
 import { useAuthStore, type UserRole } from './store/auth.store'
 import { defaultRouteForRole } from './utils/roleRoutes'
 import SpoofingManagement from './pages/SpoofingManagement'
@@ -139,6 +140,7 @@ export default function App() {
         <IncomingCallModal />
         <DialerActivityBeacon />
         <ToastProvider />
+        <GlobalRequestOverlay />
       </HashRouter>
     </ErrorBoundary>
   )

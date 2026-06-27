@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { PhoneCall, RefreshCw, Trash2 } from 'lucide-react'
 import { dynamicCallerIdApi, type DynamicCallerIdRecord, type DynamicCallerIdStatus } from '../api/dynamicCallerId.api'
 import { commercialControlApi, type CommercialAccount } from '../api/commercialControl.api'
@@ -89,9 +89,6 @@ export default function SpoofingManagement() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [messageTone, setMessageTone] = useState<'success' | 'danger'>('success')
-  const [accountSwitchPhase, setAccountSwitchPhase] = useState<'idle' | 'working' | 'success'>('idle')
-  const [accountSwitchMessage, setAccountSwitchMessage] = useState('Applying changes...')
-  const accountSwitchTimerRef = useRef<number | null>(null)
 
   const selectedAccount = useMemo(
     () => accounts.find(item => String(item.id) === selectedAccountId),
@@ -109,47 +106,9 @@ export default function SpoofingManagement() {
   )
 
   const addonActive = Boolean(summary?.addonActive || activeCount > 0)
-  const accountSwitchBusy = accountSwitchPhase === 'working'
-  const accountSwitchOverlayVisible = accountSwitchPhase !== 'idle'
-
-  useEffect(() => () => {
-    if (accountSwitchTimerRef.current) window.clearTimeout(accountSwitchTimerRef.current)
-  }, [])
-
-  const clearAccountSwitchTimer = () => {
-    if (!accountSwitchTimerRef.current) return
-    window.clearTimeout(accountSwitchTimerRef.current)
-    accountSwitchTimerRef.current = null
-  }
-
-  const beginProgressOverlay = (initialMessage = 'Applying changes...', followupMessage = 'Almost done...') => {
-    clearAccountSwitchTimer()
-    setAccountSwitchMessage(initialMessage)
-    setAccountSwitchPhase('working')
-    accountSwitchTimerRef.current = window.setTimeout(() => {
-      setAccountSwitchMessage(followupMessage)
-      accountSwitchTimerRef.current = null
-    }, 900)
-  }
-
-  const completeProgressOverlay = (successMessage = 'Account loaded') => {
-    clearAccountSwitchTimer()
-    setAccountSwitchMessage(successMessage)
-    setAccountSwitchPhase('success')
-    accountSwitchTimerRef.current = window.setTimeout(() => {
-      setAccountSwitchPhase('idle')
-      accountSwitchTimerRef.current = null
-    }, 650)
-  }
-
-  const failProgressOverlay = () => {
-    clearAccountSwitchTimer()
-    setAccountSwitchPhase('idle')
-  }
 
   const loadAccounts = async () => {
     if (!isPlatformAdmin || accountsLoading || accountsLoaded) return
-    beginProgressOverlay('Fetching commercial accounts...', 'Preparing account list...')
     setAccountsLoading(true)
     setError('')
 
@@ -165,10 +124,8 @@ export default function SpoofingManagement() {
       } else {
         writeCache({ accounts: nextAccounts, selectedAccountId, records, summary })
       }
-      completeProgressOverlay('Accounts ready')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load commercial accounts')
-      failProgressOverlay()
     } finally {
       setAccountsLoading(false)
     }
@@ -218,10 +175,8 @@ export default function SpoofingManagement() {
         records: nextRecords,
         summary: nextSummary,
       })
-      if (options.accountSwitch) completeProgressOverlay('Account loaded')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load Dynamic Caller ID data')
-      if (options.accountSwitch) failProgressOverlay()
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -240,7 +195,6 @@ export default function SpoofingManagement() {
       writeCache({ accounts, selectedAccountId: '', records: [], summary: null })
       return
     }
-    beginProgressOverlay('Applying changes...', 'Almost done...')
     void loadData(value, { accountSwitch: true })
   }
 
@@ -330,7 +284,7 @@ export default function SpoofingManagement() {
     <button
       type="button"
       aria-pressed={checked}
-      disabled={pendingRecordId === record.id || accountSwitchBusy}
+      disabled={pendingRecordId === record.id}
       onClick={onToggle}
       style={{
         width: 74,
@@ -350,8 +304,8 @@ export default function SpoofingManagement() {
         alignItems: 'center',
         justifyContent: checked ? 'flex-end' : 'flex-start',
         margin: '0 auto',
-        cursor: pendingRecordId === record.id || accountSwitchBusy ? 'wait' : 'pointer',
-        opacity: pendingRecordId === record.id || accountSwitchBusy ? 0.7 : 1,
+        cursor: pendingRecordId === record.id ? 'wait' : 'pointer',
+        opacity: pendingRecordId === record.id ? 0.7 : 1,
         transition: 'background .18s ease, box-shadow .18s ease, opacity .18s ease',
       }}
     >
@@ -369,7 +323,7 @@ export default function SpoofingManagement() {
 
   return (
     <div className="ptdt-page dynamic-cid-page">
-      <div className={`dynamic-cid-page-content${accountSwitchOverlayVisible ? ' is-busy' : ''}`}>
+      <div className="dynamic-cid-page-content">
         <div className="ptdt-page-header">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
@@ -390,7 +344,7 @@ export default function SpoofingManagement() {
             type="button"
             className="ptdt-action-btn"
             onClick={() => void loadData(selectedAccountId)}
-            disabled={loading || refreshing || saving || accountSwitchBusy}
+            disabled={loading || refreshing || saving}
           >
             <RefreshCw size={14} /> Refresh
           </button>
@@ -479,7 +433,7 @@ export default function SpoofingManagement() {
                 onChange={event => changeAccount(event.target.value)}
                 onFocus={() => void loadAccounts()}
                 onMouseDown={() => void loadAccounts()}
-                disabled={loading || saving || accountsLoading || accountSwitchBusy}
+                disabled={loading || saving || accountsLoading}
                 required
                 style={{
                   fontFamily: 'Inter, Montserrat, system-ui, sans-serif',
@@ -504,7 +458,6 @@ export default function SpoofingManagement() {
             value={form.displayNumber}
             onChange={event => setForm({ ...form, displayNumber: event.target.value })}
             placeholder="Caller ID, e.g. 14155552671 or +14155552671"
-            disabled={accountSwitchBusy}
             required
             style={{
               fontFamily: 'Inter, Montserrat, system-ui, sans-serif',
@@ -519,7 +472,7 @@ export default function SpoofingManagement() {
           <button
             type="submit"
             className="btn-brand"
-            disabled={saving || accountsLoading || accountSwitchBusy}
+            disabled={saving || accountsLoading}
             style={{ minHeight: 54, paddingInline: 28, whiteSpace: 'nowrap', opacity: accountsLoading ? 0.55 : 1 }}
           >
             {saving ? 'Saving...' : isPlatformAdmin ? 'Add Caller ID' : 'Submit Request'}
@@ -625,7 +578,7 @@ export default function SpoofingManagement() {
                       <button
                         className="ptdt-action-btn danger"
                         type="button"
-                        disabled={pendingRecordId === record.id || accountSwitchBusy}
+                        disabled={pendingRecordId === record.id}
                         onClick={() => void updateStatus(record, 'REJECTED')}
                         style={{ minHeight: 44, borderRadius: 999, paddingInline: 22, fontWeight: 900, fontSize: 12, whiteSpace: 'nowrap' }}
                       >
@@ -642,32 +595,6 @@ export default function SpoofingManagement() {
         </div>
       </div>
       </div>
-
-      {accountSwitchOverlayVisible && (
-        <div className={`dynamic-cid-progress-overlay ${accountSwitchPhase === 'success' ? 'is-success' : ''}`} aria-live="polite" aria-busy={accountSwitchBusy}>
-          <div className="dynamic-cid-progress-panel">
-            {accountSwitchPhase === 'success' ? (
-              <div className="dynamic-cid-success-mark">✓</div>
-            ) : (
-              <div className="dynamic-cid-premium-spinner" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-                <span />
-                <i>⟳</i>
-              </div>
-            )}
-            <div className="dynamic-cid-progress-title">
-              {accountSwitchMessage}
-            </div>
-            <div className="dynamic-cid-progress-copy">
-              {accountSwitchPhase === 'success'
-                ? 'Commercial account data is ready.'
-                : 'Please wait while PTDT completes this backend request.'}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
