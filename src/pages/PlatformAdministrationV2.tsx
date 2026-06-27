@@ -91,6 +91,9 @@ export default function PlatformAdministrationV2() {
   const switchAbortRef = useRef<AbortController | null>(null)
   const switchOverlayRef = useRef<number | null>(null)
   const previousAccountIdRef = useRef<number | undefined>(cached?.selectedAccountId)
+  const memberCacheRef = useRef<Map<number, AccountMembership[]>>(
+    new Map(cached?.selectedAccountId ? [[cached.selectedAccountId, cached.members ?? []]] : []),
+  )
   const [form, setForm] = useState({
     userId: '',
     accountRole: 'OWNER' as CommercialAccountRole,
@@ -125,6 +128,7 @@ export default function PlatformAdministrationV2() {
 
   const loadMembers = async (accountId: number, options: { silent?: boolean; signal?: AbortSignal } = {}) => {
     const nextMembers = await administrationApi.listPlatformAccountMembers(accountId, options)
+    memberCacheRef.current.set(accountId, nextMembers)
     setMembers(nextMembers)
     writeCache({ selectedAccountId: accountId, accounts, users, members: nextMembers })
     return nextMembers
@@ -148,6 +152,7 @@ export default function PlatformAdministrationV2() {
       setAccountsLoaded(true)
       setSelectedAccountId(resolvedAccountId)
       setMembers(nextMembers)
+      if (resolvedAccountId) memberCacheRef.current.set(resolvedAccountId, nextMembers)
       writeCache({ selectedAccountId: resolvedAccountId, accounts: overview.accounts, users: nextUsers, members: nextMembers })
     } catch (err) {
       const detail = err instanceof Error ? err.message : 'Failed to load platform administration'
@@ -231,6 +236,19 @@ export default function PlatformAdministrationV2() {
   const selectAccount = (accountId: number) => {
     if (accountId === selectedAccount?.id || accountSwitching) return
     switchAbortRef.current?.abort()
+    if (memberCacheRef.current.has(accountId)) {
+      const cachedMembers = memberCacheRef.current.get(accountId) ?? []
+      setSelectedAccountId(accountId)
+      setMembers(cachedMembers)
+      setMessage('')
+      setError('')
+      writeCache({ selectedAccountId: accountId, accounts, users, members: cachedMembers })
+      setRefreshing(true)
+      void loadMembers(accountId, { silent: true })
+        .catch(() => undefined)
+        .finally(() => setRefreshing(false))
+      return
+    }
     const controller = new AbortController()
     switchAbortRef.current = controller
     previousAccountIdRef.current = selectedAccount?.id
