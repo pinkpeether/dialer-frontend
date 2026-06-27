@@ -77,6 +77,7 @@ export default function PlatformAdministrationV2() {
   const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(cached?.selectedAccountId)
   const [loading, setLoading] = useState(!cached?.accounts?.length)
   const [refreshing, setRefreshing] = useState(Boolean(cached?.accounts?.length))
+  const [accountSwitching, setAccountSwitching] = useState(false)
   const [saving, setSaving] = useState(false)
   const [pendingMembershipId, setPendingMembershipId] = useState<number | null>(null)
   const [message, setMessage] = useState('')
@@ -95,6 +96,7 @@ export default function PlatformAdministrationV2() {
   const selectedIndex = Math.max(0, accounts.findIndex(account => account.id === selectedAccount?.id))
   const selectedTheme = themeAt(selectedIndex)
   const initialLoading = loading && accounts.length === 0
+  const pageBusy = initialLoading || accountSwitching
   const selectedMemberUserIds = useMemo(() => new Set(members.map(member => member.userId)), [members])
 
   const assignableUsers = useMemo(() => {
@@ -151,14 +153,18 @@ export default function PlatformAdministrationV2() {
 useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.length ? 'refresh' : 'initial') }, [])
 
   const selectAccount = (accountId: number) => {
-    if (accountId === selectedAccount?.id) return
+    if (accountId === selectedAccount?.id || accountSwitching) return
     setSelectedAccountId(accountId)
     setMessage('')
     setError('')
+    setAccountSwitching(true)
     setRefreshing(true)
     void loadMembers(accountId, { silent: true })
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to load members'))
-      .finally(() => setRefreshing(false))
+      .finally(() => {
+        setRefreshing(false)
+        setAccountSwitching(false)
+      })
   }
 
   const assignMember = (event: FormEvent) => {
@@ -221,7 +227,7 @@ useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.len
 
   return (
     <div className="ptdt-page">
-      <PtdtBusyOverlay active={initialLoading} label="Loading administration data" />
+      <PtdtBusyOverlay active={initialLoading || accountSwitching} label={accountSwitching ? 'Switching commercial account' : 'Loading administration data'} />
 
       <div className="ptdt-page-header">
         <div>
@@ -232,7 +238,7 @@ useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.len
         <button
           type="button"
           className={`ptdt-action-btn ${loading || refreshing ? 'ptdt-refresh-active' : ''}`}
-          disabled={loading || refreshing}
+          disabled={loading || refreshing || accountSwitching}
           onClick={() => void loadData(selectedAccount?.id, 'refresh')}
         >
           <RefreshCw size={14} /> Refresh
@@ -256,13 +262,14 @@ useEffect(() => { void loadData(cached?.selectedAccountId, cached?.accounts?.len
                 type="button"
                 className="glass"
                 onClick={() => selectAccount(account.id)}
+                disabled={pageBusy}
                 style={{
                   padding: 18,
                   borderRadius: 18,
                   textAlign: 'left',
                   borderColor: selected ? theme.border : 'var(--border)',
                   background: selected ? theme.bg : undefined,
-                  cursor: 'pointer',
+                  cursor: pageBusy ? 'progress' : 'pointer',
                   boxShadow: selected ? `0 18px 34px ${theme.accent}18` : undefined,
                 }}
               >

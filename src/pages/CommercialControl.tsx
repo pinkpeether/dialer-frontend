@@ -116,6 +116,7 @@ export default function CommercialControl() {
   const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(cached?.selectedAccountId)
   const [loading, setLoading] = useState(!cached?.summary)
   const [refreshing, setRefreshing] = useState(Boolean(cached?.summary))
+  const [accountSwitching, setAccountSwitching] = useState(false)
   const hasVisibleDataRef = useRef(Boolean(cached?.summary))
   const [saving, setSaving] = useState(false)
   const [pendingAddonCode, setPendingAddonCode] = useState<CommercialAddonCode | null>(null)
@@ -139,7 +140,7 @@ export default function CommercialControl() {
   const currentPlanStatus = normalizePlanStatus(summary?.subscription?.status || summary?.account.status)
   const currentPlanDisplayStatus = currentLifecycleStatus === 'ARCHIVED' ? 'Suspended / Archived' : statusLabel(currentPlanStatus)
   const initialLoading = loading && !summary
-  const pageBusy = initialLoading || saving
+  const pageBusy = initialLoading || saving || accountSwitching
   const refreshButtonActive = loading || refreshing
   const activePlanName = summary?.subscription?.plan?.name || 'Plan not selected'
   const activeAddonCodes = useMemo(() => new Set(summary?.addons.filter(item => item.status === 'ACTIVE').map(item => item.addon.code) || []), [summary])
@@ -320,14 +321,16 @@ export default function CommercialControl() {
       .finally(() => setPendingPaymentRequestId(null))
   }
   const handleAccountSwitch = (accountId: number) => {
-    if (!accountId || accountId === currentAccountId) return
+    if (!accountId || accountId === currentAccountId || accountSwitching) return
     setSelectedAccountId(accountId)
+    setAccountSwitching(true)
     void loadData(accountId, { silent: true, label: 'Switching customer account' })
+      .finally(() => setAccountSwitching(false))
   }
 
   return (
     <div className="ptdt-page">
-      <PtdtBusyOverlay active={initialLoading} label={busyLabel} />
+      <PtdtBusyOverlay active={initialLoading || accountSwitching} label={accountSwitching ? 'Switching customer account' : busyLabel} />
       {archiveConfirmOpen && (
         <div role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setArchiveConfirmOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(10,12,20,.50)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
           <div role="dialog" aria-modal="true" aria-labelledby="archive-account-title" onMouseDown={event => event.stopPropagation()} className="glass" style={{ width: 'min(560px, 96vw)', padding: 24, borderRadius: 24, border: '1px solid rgba(251,11,140,.28)', boxShadow: '0 28px 80px rgba(15,23,42,.32)' }}>
