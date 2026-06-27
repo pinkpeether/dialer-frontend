@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { Archive, BadgeDollarSign, BellRing, CreditCard, Plus, RefreshCw, ShieldCheck, WalletCards } from 'lucide-react'
 import { commercialControlApi, type CommercialAccount, type CommercialAddonCode, type CommercialCatalog, type CommercialPlanCode, type CommercialStatus, type CommercialSummary, type PaymentRequest } from '../api/commercialControl.api'
 import api from '../api/axios'
-import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
+import { beginGlobalRequestOverlay, endGlobalRequestOverlay } from '../services/globalRequestOverlay'
 
 const money = (value: string | number | null | undefined, currency = 'USD') => `${currency} ${Number(value || 0).toFixed(2)}`
 const cardStyle = { padding: 18, borderRadius: 18 } as const
@@ -123,11 +123,16 @@ export default function CommercialControl() {
   const [saving, setSaving] = useState(false)
   const [pendingAddonCode, setPendingAddonCode] = useState<CommercialAddonCode | null>(null)
   const [pendingPaymentRequestId, setPendingPaymentRequestId] = useState<number | null>(null)
-  const [busyLabel, setBusyLabel] = useState('Refreshing commercial control data')
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
   const [message, setMessage] = useState('')
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
+  const switchAbortRef = useRef<AbortController | null>(null)
+  const switchOverlayRef = useRef<number | null>(null)
+  const switchPreviousAccountIdRef = useRef<number | undefined>(undefined)
+  const accountsAbortRef = useRef<AbortController | null>(null)
+  const accountsOverlayRef = useRef<number | null>(null)
+  const accountsRef = useRef<CommercialAccount[]>(cached?.accounts ?? [])
 
   const [accountForm, setAccountForm] = useState({ name: '', code: '', email: '', phone: '', currency: 'USD' })
   const [paymentForm, setPaymentForm] = useState({ amount: '100', requestedPlanCode: 'PREMIUM' as CommercialPlanCode | '', requestedAddonCodes: ['DYNAMIC_CALLER_ID'] as CommercialAddonCode[], paymentMethod: 'Manual Bank Transfer', paymentReference: '', proofUrl: '', notes: '' })
@@ -162,9 +167,8 @@ export default function CommercialControl() {
     }
   }, [])
 
-  const loadData = useCallback(async (accountId?: number, options: { silent?: boolean; label?: string } = {}) => {
-    setBusyLabel(options.label || 'Refreshing commercial control data')
-    const requestOptions = { silent: Boolean(options.silent || hasVisibleDataRef.current) }
+  const loadData = useCallback(async (accountId?: number, options: { silent?: boolean; signal?: AbortSignal; fastSwitch?: boolean } = {}) => {
+    const requestOptions = { silent: Boolean(options.silent || hasVisibleDataRef.current), signal: options.signal }
     if (options.silent || hasVisibleDataRef.current) setRefreshing(true)
     else setLoading(true)
     setError('')
@@ -176,6 +180,38 @@ export default function CommercialControl() {
         runStep('Summary request failed', () => commercialControlApi.getSummary(accountId, requestOptions)),
       ])
       const resolvedAccountId = summaryRes.account.id
+      if (options.fastSwitch) {
+        const currentAccounts = accountsRef.current
+        const nextAccounts = currentAccounts.some(account => account.id === summaryRes.account.id)
+          ? currentAccounts
+          : [summaryRes.account, ...currentAccounts]
+        setCatalog(catalogRes)
+        setSummary(summaryRes)
+        setAccounts(nextAccounts)
+        setAccountsLoaded(true)
+        setPaymentRequests([])
+        setSelectedAccountId(resolvedAccountId)
+        setThresholdForm({
+          lowBalanceThreshold: String(summaryRes.account.lowBalanceThreshold || '10'),
+          criticalBalanceThreshold: String(summaryRes.account.criticalBalanceThreshold || '3'),
+          hardStopEnabled: Boolean(summaryRes.account.hardStopEnabled),
+        })
+        setPlanForm(prev => ({
+          ...prev,
+          planCode: normalizePlanCode(summaryRes.subscription?.plan?.code, normalizePlanCode(prev.planCode)),
+          status: normalizePlanStatus(summaryRes.subscription?.status || summaryRes.account.status),
+          monthlyFeeOverride: '',
+        }))
+        setLifecycleForm(prev => ({ ...prev, status: normalizeLifecycleStatus(summaryRes.account.status || summaryRes.subscription?.status), notes: '' }))
+        writeCache({ selectedAccountId: resolvedAccountId, catalog: catalogRes, summary: summaryRes, accounts: nextAccounts, paymentRequests: [] })
+        void commercialControlApi.listPaymentRequests(resolvedAccountId, { silent: true })
+          .then(nextPaymentRequests => {
+            setPaymentRequests(nextPaymentRequests)
+            writeCache({ selectedAccountId: resolvedAccountId, catalog: catalogRes, summary: summaryRes, accounts: nextAccounts, paymentRequests: nextPaymentRequests })
+          })
+          .catch(() => undefined)
+        return
+      }
       const [accountsResult, requestsResult] = await Promise.allSettled([
         commercialControlApi.listAccounts(requestOptions),
         commercialControlApi.listPaymentRequests(resolvedAccountId, requestOptions),
@@ -185,6 +221,7 @@ export default function CommercialControl() {
       setCatalog(catalogRes)
       setSummary(summaryRes)
       setAccounts(nextAccounts)
+      setAccountsLoaded(accountsResult.status === 'fulfilled')
       setPaymentRequests(nextPaymentRequests)
       setSelectedAccountId(resolvedAccountId)
       setThresholdForm({
@@ -203,6 +240,7 @@ export default function CommercialControl() {
       if (accountsResult.status === 'rejected') setWarning('Accounts list could not be refreshed. Showing current account only.')
       if (requestsResult.status === 'rejected') setWarning('Payment requests could not be refreshed.')
     } catch (err) {
+      if (options.signal?.aborted) throw err
       const detail = err instanceof Error ? err.message : 'Failed to load commercial control data'
       if (hasVisibleDataRef.current) setWarning(`Showing cached commercial control data. ${detail}`)
       else setError(detail)
@@ -212,27 +250,42 @@ export default function CommercialControl() {
     }
   }, [runStep])
 
-  useEffect(() => {
-    if (!cached?.summary) return
-    void loadData(cached.selectedAccountId, { silent: true, label: 'Refreshing commercial control data' })
-  }, [cached?.selectedAccountId, cached?.summary, loadData])
+  useEffect(() => { void loadData(cached?.selectedAccountId, { silent: true }) }, [cached?.selectedAccountId, loadData])
   useEffect(() => { hasVisibleDataRef.current = Boolean(summary) }, [summary])
+  useEffect(() => { accountsRef.current = accounts }, [accounts])
   useEffect(() => {
     if (!archiveConfirmOpen) return
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setArchiveConfirmOpen(false) }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [archiveConfirmOpen])
+  useEffect(() => {
+    if (!accountSwitching && !accountsLoading) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      switchAbortRef.current?.abort()
+      accountsAbortRef.current?.abort()
+      endGlobalRequestOverlay(switchOverlayRef.current, false)
+      endGlobalRequestOverlay(accountsOverlayRef.current, false)
+      switchOverlayRef.current = null
+      accountsOverlayRef.current = null
+      setSelectedAccountId(switchPreviousAccountIdRef.current)
+      setAccountSwitching(false)
+      setAccountsLoading(false)
+      setRefreshing(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [accountSwitching, accountsLoading])
 
-  const withSave = async (fn: () => Promise<void>, successMessage: string, label = 'Applying commercial control changes') => {
-    setBusyLabel(label)
+  const withSave = async (fn: () => Promise<void>, successMessage: string) => {
     setSaving(true)
     setError('')
     setMessage('')
     try {
       await fn()
       setMessage(successMessage)
-      await loadData(currentAccountId, { silent: true, label: 'Refreshing commercial control data' })
+      await loadData(currentAccountId, { silent: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Action failed')
     } finally {
@@ -240,14 +293,14 @@ export default function CommercialControl() {
     }
   }
 
-  const handleSeed = () => withSave(async () => { await commercialControlApi.seedCatalog() }, 'Commercial catalog seeded and default account ensured.', 'Seeding commercial catalog')
+  const handleSeed = () => withSave(async () => { await commercialControlApi.seedCatalog() }, 'Commercial catalog seeded and default account ensured.')
   const handleCreateAccount = (event: FormEvent) => {
     event.preventDefault()
     void withSave(async () => {
       const created = await commercialControlApi.createAccount(accountForm)
       setSelectedAccountId(created.id)
       setAccountForm({ name: '', code: '', email: '', phone: '', currency: 'USD' })
-    }, 'Commercial account created.', 'Creating commercial account')
+    }, 'Commercial account created.')
   }
   const handlePaymentRequest = (event: FormEvent) => {
     event.preventDefault()
@@ -255,24 +308,24 @@ export default function CommercialControl() {
     void withSave(async () => {
       await commercialControlApi.createPaymentRequest({ accountId: currentAccountId, ...paymentForm })
       setPaymentForm(prev => ({ ...prev, paymentReference: '', proofUrl: '', notes: '' }))
-    }, 'Manual payment request submitted for verification.', 'Submitting manual payment request')
+    }, 'Manual payment request submitted for verification.')
   }
   const handleTopup = (event: FormEvent) => {
     event.preventDefault()
     if (!currentAccountId) return
-    void withSave(async () => { await commercialControlApi.topUpWallet(currentAccountId, topupForm) }, 'Wallet balance updated.', 'Applying wallet top-up')
+    void withSave(async () => { await commercialControlApi.topUpWallet(currentAccountId, topupForm) }, 'Wallet balance updated.')
   }
   const handlePlanActivation = (event: FormEvent) => {
     event.preventDefault()
     if (!currentAccountId) return
-    void withSave(async () => { await commercialControlApi.activatePlan(currentAccountId, planForm) }, 'Subscription plan updated.', 'Applying subscription plan')
+    void withSave(async () => { await commercialControlApi.activatePlan(currentAccountId, planForm) }, 'Subscription plan updated.')
   }
   const applyLifecycle = () => {
     if (!currentAccountId) return
     void withSave(async () => {
       const nextSummary = await updateLifecycle(currentAccountId, lifecycleForm.status, lifecycleForm.notes)
       setSummary(nextSummary)
-    }, `Customer account set to ${statusLabel(lifecycleForm.status)}.`, 'Updating customer lifecycle')
+    }, `Customer account set to ${statusLabel(lifecycleForm.status)}.`)
   }
   const handleLifecycle = (event: FormEvent) => {
     event.preventDefault()
@@ -290,14 +343,13 @@ export default function CommercialControl() {
   const handleThresholds = (event: FormEvent) => {
     event.preventDefault()
     if (!currentAccountId) return
-    void withSave(async () => { await commercialControlApi.updateThresholds(currentAccountId, thresholdForm) }, 'Low-balance thresholds updated.', 'Saving low-balance rules')
+    void withSave(async () => { await commercialControlApi.updateThresholds(currentAccountId, thresholdForm) }, 'Low-balance thresholds updated.')
   }
   const handleAddonToggle = (addonCode: CommercialAddonCode) => {
     if (!currentAccountId || pendingAddonCode) return
     const nextStatus = activeAddonCodes.has(addonCode) ? 'INACTIVE' : 'ACTIVE'
     const previousSummary = summary
     if (previousSummary) setSummary(applyAddonState(previousSummary, addonCode, nextStatus))
-    setBusyLabel('Updating paid add-on')
     setPendingAddonCode(addonCode)
     setError('')
     setMessage('')
@@ -320,36 +372,85 @@ export default function CommercialControl() {
       .then(updated => {
         setPaymentRequests(optimisticRequests.map(item => item.id === updated.id ? updated : item))
         setMessage(`Payment request #${request.id} marked ${status}.`)
-        void loadData(currentAccountId, { silent: true, label: 'Refreshing commercial control data' })
+        void loadData(currentAccountId, { silent: true })
       })
       .catch(err => { setPaymentRequests(previousRequests); setError(err instanceof Error ? err.message : 'Payment request update failed') })
       .finally(() => setPendingPaymentRequestId(null))
   }
   const loadAccountChoices = () => {
     if (accountsLoading || accountsLoaded) return
-    setBusyLabel('Loading commercial accounts')
+    accountsAbortRef.current?.abort()
+    const controller = new AbortController()
+    accountsAbortRef.current = controller
+    accountsOverlayRef.current = beginGlobalRequestOverlay({
+      message: 'Fetching commercial accounts...',
+      followupMessage: 'Preparing account list...',
+      successMessage: 'Accounts ready',
+      detail: 'Press Esc to cancel and return to the current page.',
+      delayMs: 0,
+    })
     setAccountsLoading(true)
     setError('')
     setWarning('')
-    void commercialControlApi.listAccounts({ silent: true })
+    void commercialControlApi.listAccounts({ silent: true, signal: controller.signal })
       .then(nextAccounts => {
+        if (controller.signal.aborted) return
         setAccounts(nextAccounts)
         setAccountsLoaded(true)
+        endGlobalRequestOverlay(accountsOverlayRef.current, true)
       })
-      .catch(err => setError(err instanceof Error ? err.message : 'Failed to load commercial accounts'))
-      .finally(() => setAccountsLoading(false))
+      .catch(err => {
+        if (controller.signal.aborted) {
+          endGlobalRequestOverlay(accountsOverlayRef.current, false)
+          return
+        }
+        setError(err instanceof Error ? err.message : 'Failed to load commercial accounts')
+        endGlobalRequestOverlay(accountsOverlayRef.current, false)
+      })
+      .finally(() => {
+        if (accountsAbortRef.current === controller) accountsAbortRef.current = null
+        accountsOverlayRef.current = null
+        setAccountsLoading(false)
+      })
   }
   const handleAccountSwitch = (accountId: number) => {
     if (!accountId || accountId === currentAccountId || accountSwitching || accountsLoading) return
+    switchAbortRef.current?.abort()
+    const controller = new AbortController()
+    switchAbortRef.current = controller
+    switchPreviousAccountIdRef.current = currentAccountId
+    switchOverlayRef.current = beginGlobalRequestOverlay({
+      message: 'Switching customer account...',
+      followupMessage: 'Loading account controls...',
+      successMessage: 'Account loaded',
+      detail: 'Press Esc to cancel and return to the current page.',
+      delayMs: 0,
+    })
     setSelectedAccountId(accountId)
     setAccountSwitching(true)
-    void loadData(accountId, { silent: true, label: 'Switching customer account' })
-      .finally(() => setAccountSwitching(false))
+    void loadData(accountId, { silent: true, signal: controller.signal, fastSwitch: true })
+      .then(() => {
+        if (controller.signal.aborted) return
+        endGlobalRequestOverlay(switchOverlayRef.current, true)
+      })
+      .catch(err => {
+        if (controller.signal.aborted) {
+          setSelectedAccountId(switchPreviousAccountIdRef.current)
+          endGlobalRequestOverlay(switchOverlayRef.current, false)
+          return
+        }
+        setError(err instanceof Error ? err.message : 'Failed to switch customer account')
+        endGlobalRequestOverlay(switchOverlayRef.current, false)
+      })
+      .finally(() => {
+        if (switchAbortRef.current === controller) switchAbortRef.current = null
+        switchOverlayRef.current = null
+        setAccountSwitching(false)
+      })
   }
 
   return (
     <div className="ptdt-page">
-      <PtdtBusyOverlay active={accountSwitching || accountsLoading} label={accountSwitching ? 'Switching customer account' : busyLabel} />
       {archiveConfirmOpen && (
         <div role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setArchiveConfirmOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(10,12,20,.50)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
           <div role="dialog" aria-modal="true" aria-labelledby="archive-account-title" onMouseDown={event => event.stopPropagation()} className="glass" style={{ width: 'min(560px, 96vw)', padding: 24, borderRadius: 24, border: '1px solid rgba(251,11,140,.28)', boxShadow: '0 28px 80px rgba(15,23,42,.32)' }}>
@@ -422,9 +523,44 @@ export default function CommercialControl() {
       </div>
 
       {!summary && (
-        <div className="glass" style={{ ...cardStyle, color: 'var(--text-3)', marginBottom: 18 }}>
-          Select a commercial account to load plan, wallet, add-ons, payment requests, and ledger details.
-        </div>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 18 }}>
+            <div className="glass" style={cardStyle}><div className="eyebrow green"><BadgeDollarSign size={12} /> Current Plan</div><div style={{ fontSize: 24, fontWeight: 950, color: 'var(--text-3)', marginTop: 8 }}>Ready to load</div><div className="mono" style={{ color: 'var(--text-3)', marginTop: 6, fontWeight: 900 }}>Select an account</div></div>
+            <div className="glass" style={cardStyle}><div className="eyebrow pink"><WalletCards size={12} /> Calling Wallet</div><div style={{ fontSize: 24, fontWeight: 950, color: 'var(--text-3)', marginTop: 8 }}>USD 0.00</div><div className="mono" style={{ color: 'var(--text-3)', marginTop: 6, fontWeight: 900 }}>Pending account</div></div>
+            <div className="glass" style={cardStyle}><div className="eyebrow purple"><BellRing size={12} /> Low Balance Rules</div><div style={{ fontSize: 16, fontWeight: 850, color: 'var(--text-3)', marginTop: 8 }}>Low: pending</div><div style={{ fontSize: 16, fontWeight: 850, color: 'var(--text-3)', marginTop: 6 }}>Critical: pending</div></div>
+            <div className="glass" style={cardStyle}><div className="eyebrow green"><ShieldCheck size={12} /> Dynamic Caller ID</div><div style={{ fontSize: 24, fontWeight: 950, color: 'var(--text-3)', marginTop: 8 }}>READY</div><div className="mono" style={{ color: 'var(--text-3)', marginTop: 6 }}>Account selection required</div></div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 24, marginBottom: 24, opacity: .72 }}>
+            {['Activate / Change Plan', 'Manual Wallet Top-up', 'Low Balance Alerts'].map(title => (
+              <div key={title} className="glass" style={cardStyle}>
+                <h3 style={{ marginTop: 0 }}>{title}</h3>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <div className="ptdt-input" style={{ color: 'var(--text-3)' }}>Waiting for commercial account</div>
+                  <div className="ptdt-input" style={{ color: 'var(--text-3)' }}>Controls will unlock after selection</div>
+                  <button className="btn-brand" disabled>Account Required</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="glass" style={{ ...cardStyle, marginBottom: 18, opacity: .72 }}>
+            <h3 style={{ marginTop: 0 }}>Paid Add-ons</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+              {(catalog?.addons?.length ? catalog.addons.slice(0, 3) : [{ code: 'DYNAMIC_CALLER_ID', name: 'Dynamic Caller ID', monthlyFee: 0, isActive: true }]).map(addon => (
+                <div key={addon.code} style={{ border: '1px solid var(--border)', borderRadius: 16, padding: 14, background: 'var(--bg-glass)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><strong>{addon.name}</strong><span className="mono" style={{ color: 'var(--text-3)', fontWeight: 900 }}>READY</span></div>
+                  <p style={{ color: 'var(--text-3)', fontSize: 12.5, lineHeight: 1.5 }}>Select a commercial account to manage this add-on.</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}><span className="ptdt-chip">{money(addon.monthlyFee)}/mo</span><button type="button" disabled style={switchStyle(false, false)}><span style={switchThumbStyle} /></button></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass" style={{ ...cardStyle, color: 'var(--text-3)', marginBottom: 18 }}>
+            Select a commercial account to populate payment requests, wallet ledger, plan controls, and billing rules.
+          </div>
+        </>
       )}
 
       {summary && (
