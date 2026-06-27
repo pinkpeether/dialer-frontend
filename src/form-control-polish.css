@@ -90,9 +90,7 @@ select::-ms-expand {
 }
 
 body:has(.ptdt-refresh-active)::before,
-body:has(.ptdt-page-header .ptdt-chip)::before,
-body:has(.dynamic-cid-summary-grid + form button.btn-brand:disabled)::before,
-body:has(.ptdt-page button.btn-brand:disabled)::before {
+body:has(.dynamic-cid-summary-grid + form button.btn-brand:disabled)::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -104,9 +102,7 @@ body:has(.ptdt-page button.btn-brand:disabled)::before {
 }
 
 body:has(.ptdt-refresh-active)::after,
-body:has(.ptdt-page-header .ptdt-chip)::after,
-body:has(.dynamic-cid-summary-grid + form button.btn-brand:disabled)::after,
-body:has(.ptdt-page button.btn-brand:disabled)::after {
+body:has(.dynamic-cid-summary-grid + form button.btn-brand:disabled)::after {
   content: 'Applying changes...\A Please wait while we contact the server.';
   white-space: pre-line;
   position: fixed;
