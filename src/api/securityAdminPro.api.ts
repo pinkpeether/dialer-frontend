@@ -1,4 +1,5 @@
 import api from './axios'
+import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
 
 export type SecurityPolicy = {
   ipWhitelistEnabled: boolean
@@ -21,38 +22,50 @@ export type SecurityChecklistItem = {
 
 export const securityAdminProAPI = {
   overview: async () => {
-    const res = await api.get('/security-admin-pro/overview')
-    return res.data.data
+    return swr('security-admin-pro:overview:{}', async ({ silent }) => {
+      const res = await api.get('/security-admin-pro/overview', silent ? silentOverlayConfig() : undefined)
+      return res.data.data
+    })
   },
 
   checklist: async (): Promise<SecurityChecklistItem[]> => {
-    const res = await api.get('/security-admin-pro/checklist')
-    return res.data.data
+    return swr('security-admin-pro:checklist:{}', async ({ silent }) => {
+      const res = await api.get('/security-admin-pro/checklist', silent ? silentOverlayConfig() : undefined)
+      return res.data.data
+    })
   },
 
   getPolicy: async (): Promise<SecurityPolicy> => {
-    const res = await api.get('/security-admin-pro/policy')
-    return res.data.data
+    return swr('security-admin-pro:policy:{}', async ({ silent }) => {
+      const res = await api.get('/security-admin-pro/policy', silent ? silentOverlayConfig() : undefined)
+      return res.data.data
+    })
   },
 
   updatePolicy: async (payload: Partial<SecurityPolicy>): Promise<SecurityPolicy> => {
     const res = await api.put('/security-admin-pro/policy', payload)
+    clearSwrByPrefix('security-admin-pro')
     return res.data.data
   },
 
   singleSessionAudit: async () => {
-    const res = await api.get('/security-admin-pro/single-session-audit')
-    return res.data.data
+    return swr('security-admin-pro:single-session-audit:{}', async ({ silent }) => {
+      const res = await api.get('/security-admin-pro/single-session-audit', silent ? silentOverlayConfig() : undefined)
+      return res.data.data
+    })
   },
 
   disconnectStaleSessions: async () => {
     const res = await api.post('/security-admin-pro/single-session-audit/disconnect-stale')
+    clearSwrByPrefix('security-admin-pro')
     return res.data.data
   },
 
   billing: async () => {
-    const res = await api.get('/security-admin-pro/billing')
-    return res.data.data
+    return swr('security-admin-pro:billing:{}', async ({ silent }) => {
+      const res = await api.get('/security-admin-pro/billing', silent ? silentOverlayConfig() : undefined)
+      return res.data.data
+    })
   },
 
   exportBackup: async () => {
@@ -62,11 +75,15 @@ export const securityAdminProAPI = {
 
   restorePreview: async (payload: unknown) => {
     const res = await api.post('/security-admin-pro/restore/preview', payload)
+    clearSwrByPrefix('security-admin-pro')
     return res.data.data
   },
 
   ipCheck: async (ip: string) => {
-    const res = await api.get('/security-admin-pro/ip-check', { params: { ip } })
-    return res.data.data
+    return swr(swrKey('security-admin-pro:ip-check', { ip }), async ({ silent }) => {
+      const config = { params: { ip } }
+      const res = await api.get('/security-admin-pro/ip-check', silent ? silentOverlayConfig(config) : config)
+      return res.data.data
+    })
   },
 }

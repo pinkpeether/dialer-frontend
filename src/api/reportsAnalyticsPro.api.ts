@@ -1,4 +1,5 @@
 import api from './axios'
+import { silentOverlayConfig, swr, swrKey } from './swrCache'
 
 export type ReportsAnalyticsFilters = {
   from?: string
@@ -39,38 +40,59 @@ const cleanParams = (filters: ReportsAnalyticsFilters = {}) => {
 
 export const reportsAnalyticsProAPI = {
   overview: async (filters?: ReportsAnalyticsFilters) => {
-    const res = await api.get('/reports-analytics-pro/overview', { params: cleanParams(filters) })
-    return res.data.data
+    const params = cleanParams(filters)
+    return swr(swrKey('reports-analytics-pro:overview', params), async ({ silent }) => {
+      const res = await api.get('/reports-analytics-pro/overview', silent ? silentOverlayConfig({ params }) : { params })
+      return res.data.data
+    })
   },
 
   agentPerformance: async (filters?: ReportsAnalyticsFilters) => {
-    const res = await api.get('/reports-analytics-pro/agents/performance', { params: cleanParams(filters) })
-    return res.data.data
+    const params = cleanParams(filters)
+    return swr(swrKey('reports-analytics-pro:agents', params), async ({ silent }) => {
+      const res = await api.get('/reports-analytics-pro/agents/performance', silent ? silentOverlayConfig({ params }) : { params })
+      return res.data.data
+    })
   },
 
   hourly: async (filters?: ReportsAnalyticsFilters) => {
-    const res = await api.get('/reports-analytics-pro/hourly', { params: cleanParams(filters) })
-    return res.data.data
+    const params = cleanParams(filters)
+    return swr(swrKey('reports-analytics-pro:hourly', params), async ({ silent }) => {
+      const res = await api.get('/reports-analytics-pro/hourly', silent ? silentOverlayConfig({ params }) : { params })
+      return res.data.data
+    })
   },
 
   conversions: async (filters?: ReportsAnalyticsFilters) => {
-    const res = await api.get('/reports-analytics-pro/conversions', { params: cleanParams(filters) })
-    return res.data.data
+    const params = cleanParams(filters)
+    return swr(swrKey('reports-analytics-pro:conversions', params), async ({ silent }) => {
+      const res = await api.get('/reports-analytics-pro/conversions', silent ? silentOverlayConfig({ params }) : { params })
+      return res.data.data
+    })
   },
 
   duration: async (filters?: ReportsAnalyticsFilters) => {
-    const res = await api.get('/reports-analytics-pro/duration', { params: cleanParams(filters) })
-    return res.data.data
+    const params = cleanParams(filters)
+    return swr(swrKey('reports-analytics-pro:duration', params), async ({ silent }) => {
+      const res = await api.get('/reports-analytics-pro/duration', silent ? silentOverlayConfig({ params }) : { params })
+      return res.data.data
+    })
   },
 
   missedCalls: async (filters?: ReportsAnalyticsFilters) => {
-    const res = await api.get('/reports-analytics-pro/missed-calls', { params: cleanParams(filters) })
-    return res.data.data
+    const params = cleanParams(filters)
+    return swr(swrKey('reports-analytics-pro:missed-calls', params), async ({ silent }) => {
+      const res = await api.get('/reports-analytics-pro/missed-calls', silent ? silentOverlayConfig({ params }) : { params })
+      return res.data.data
+    })
   },
 
   dailySummaryPreview: async (filters?: ReportsAnalyticsFilters) => {
-    const res = await api.get('/reports-analytics-pro/daily-summary-email/preview', { params: cleanParams(filters) })
-    return res.data.data
+    const params = cleanParams(filters)
+    return swr(swrKey('reports-analytics-pro:daily-preview', params), async ({ silent }) => {
+      const res = await api.get('/reports-analytics-pro/daily-summary-email/preview', silent ? silentOverlayConfig({ params }) : { params })
+      return res.data.data
+    })
   },
 
   sendDailySummary: async (filters?: ReportsAnalyticsFilters) => {

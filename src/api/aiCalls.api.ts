@@ -1,4 +1,5 @@
 import api from './axios'
+import { silentOverlayConfig, swr, swrKey } from './swrCache'
 
 export type AiCallLog = {
   id: number | string
@@ -71,13 +72,18 @@ export type StartAiCallResponse = {
 
 export const aiCallsAPI = {
   getLogs: async (params?: AiCallLogsListParams): Promise<AiCallLogsListResponse> => {
-    const res = await api.get('/ai-calls/logs', { params })
-    return res.data.data ?? res.data
+    return swr(swrKey('ai-calls:logs', params), async ({ silent }) => {
+      const config = { params }
+      const res = await api.get('/ai-calls/logs', silent ? silentOverlayConfig(config) : config)
+      return res.data.data ?? res.data
+    })
   },
 
   getLog: async (id: number | string): Promise<AiCallLog> => {
-    const res = await api.get(`/ai-calls/logs/${id}`)
-    return res.data.data ?? res.data
+    return swr(swrKey('ai-calls:log', { id }), async ({ silent }) => {
+      const res = await api.get(`/ai-calls/logs/${id}`, silent ? silentOverlayConfig() : undefined)
+      return res.data.data ?? res.data
+    })
   },
 
   startOutboundCall: async (payload: StartAiCallInput): Promise<StartAiCallResponse> => {

@@ -1,4 +1,5 @@
 import api from './axios'
+import { silentOverlayConfig, swr, swrKey } from './swrCache'
 
 export type ReportFilters = {
   from?: string
@@ -60,28 +61,34 @@ const dataOf = <T>(response: { data: unknown }): T => {
 
 export const reportsAPI = {
   getSummary: async (filters?: ReportFilters): Promise<ReportSummary> => {
-    const res = await api.get('/reports/summary', { params: filters })
-    return dataOf<ReportSummary>(res)
+    return swr(swrKey('reports:summary', filters), async ({ silent }) => {
+      const config = { params: filters }
+      const res = await api.get('/reports/summary', silent ? silentOverlayConfig(config) : config)
+      return dataOf<ReportSummary>(res)
+    })
   },
 
   getCallTrend: async (filters?: ReportFilters): Promise<ReportTrendRow[]> => {
-    const res = await api.get('/reports/calls', {
-      params: { from: filters?.from, to: filters?.to, granularity: filters?.granularity ?? 'day' },
+    const params = { from: filters?.from, to: filters?.to, granularity: filters?.granularity ?? 'day' }
+    return swr(swrKey('reports:calls', params), async ({ silent }) => {
+      const res = await api.get('/reports/calls', silent ? silentOverlayConfig({ params }) : { params })
+      return dataOf<ReportTrendRow[]>(res)
     })
-    return dataOf<ReportTrendRow[]>(res)
   },
 
   getCampaignBreakdown: async (filters?: ReportFilters): Promise<CampaignReportRow[]> => {
-    const res = await api.get('/reports/campaigns', {
-      params: { from: filters?.from, to: filters?.to },
+    const params = { from: filters?.from, to: filters?.to }
+    return swr(swrKey('reports:campaigns', params), async ({ silent }) => {
+      const res = await api.get('/reports/campaigns', silent ? silentOverlayConfig({ params }) : { params })
+      return dataOf<CampaignReportRow[]>(res)
     })
-    return dataOf<CampaignReportRow[]>(res)
   },
 
   getAgentBreakdown: async (filters?: ReportFilters): Promise<AgentReportRow[]> => {
-    const res = await api.get('/reports/agents', {
-      params: { from: filters?.from, to: filters?.to },
+    const params = { from: filters?.from, to: filters?.to }
+    return swr(swrKey('reports:agents', params), async ({ silent }) => {
+      const res = await api.get('/reports/agents', silent ? silentOverlayConfig({ params }) : { params })
+      return dataOf<AgentReportRow[]>(res)
     })
-    return dataOf<AgentReportRow[]>(res)
   },
 }

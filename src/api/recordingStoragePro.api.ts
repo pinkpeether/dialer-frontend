@@ -1,4 +1,5 @@
 import api from './axios'
+import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
 
 export type RecordingSearchParams = {
   page?: number
@@ -26,18 +27,25 @@ export type RecordingRetentionPolicy = {
 
 export const recordingStorageProAPI = {
   getOverview: async () => {
-    const res = await api.get('/recording-storage-pro/overview')
-    return res.data.data
+    return swr('recording-storage-pro:overview:{}', async ({ silent }) => {
+      const res = await api.get('/recording-storage-pro/overview', silent ? silentOverlayConfig() : undefined)
+      return res.data.data
+    })
   },
 
   search: async (params: RecordingSearchParams) => {
-    const res = await api.get('/recording-storage-pro/search', { params })
-    return res.data.data
+    return swr(swrKey('recording-storage-pro:search', params), async ({ silent }) => {
+      const config = { params }
+      const res = await api.get('/recording-storage-pro/search', silent ? silentOverlayConfig(config) : config)
+      return res.data.data
+    })
   },
 
   getDownloadInfo: async (callId: number) => {
-    const res = await api.get(`/recording-storage-pro/calls/${callId}/download-info`)
-    return res.data.data
+    return swr(swrKey('recording-storage-pro:download-info', { callId }), async ({ silent }) => {
+      const res = await api.get(`/recording-storage-pro/calls/${callId}/download-info`, silent ? silentOverlayConfig() : undefined)
+      return res.data.data
+    })
   },
 
   downloadCsv: async (params: RecordingSearchParams = {}) => {
@@ -46,12 +54,15 @@ export const recordingStorageProAPI = {
   },
 
   getRetentionPolicy: async () => {
-    const res = await api.get('/recording-storage-pro/retention-policy')
-    return res.data.data as RecordingRetentionPolicy
+    return swr('recording-storage-pro:retention-policy:{}', async ({ silent }) => {
+      const res = await api.get('/recording-storage-pro/retention-policy', silent ? silentOverlayConfig() : undefined)
+      return res.data.data as RecordingRetentionPolicy
+    })
   },
 
   updateRetentionPolicy: async (payload: Partial<RecordingRetentionPolicy>) => {
     const res = await api.put('/recording-storage-pro/retention-policy', payload)
+    clearSwrByPrefix('recording-storage-pro')
     return res.data.data as RecordingRetentionPolicy
   },
 
@@ -62,6 +73,7 @@ export const recordingStorageProAPI = {
 
   runPurge: async (payload: { dryRun?: boolean; policyOverride?: Partial<RecordingRetentionPolicy> }) => {
     const res = await api.post('/recording-storage-pro/retention-policy/run-purge', payload)
+    clearSwrByPrefix('recording-storage-pro')
     return res.data.data
   },
 }

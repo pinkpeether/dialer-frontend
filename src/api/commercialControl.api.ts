@@ -1,4 +1,5 @@
 import api from './axios'
+import { silentOverlayConfig } from './swrCache'
 
 export type CommercialPlanCode = 'BASIC' | 'STANDARD' | 'PREMIUM' | 'ELITE' | 'ENTERPRISE'
 export type CommercialAddonCode = 'DYNAMIC_CALLER_ID' | 'SMS' | 'AI_TRANSCRIPTS' | 'AI_INSIGHTS' | 'RECORDINGS' | 'ADVANCED_ANALYTICS' | 'CRM_CONNECTORS'
@@ -18,11 +19,16 @@ export type CommercialSummary = { account: CommercialAccount; wallet: Commercial
 export type CommercialCatalog = { plans: CommercialPlan[]; addons: CommercialAddon[] }
 
 const commercialRequestConfig = { timeout: 45000 }
+const commercialGetConfig = (silent: boolean, config = {}) => {
+  const nextConfig = { ...commercialRequestConfig, ...config }
+  return silent ? silentOverlayConfig(nextConfig) : nextConfig
+}
 const swrMemory = new Map<string, unknown>()
 const swrPrefix = 'ptdt-commercial-control-api-swr:'
 const swrMaxAgeMs = 30 * 60 * 1000
 
 type SwrRecord<T> = { savedAt: number; data: T }
+type CommercialSwrOptions = { silent?: boolean }
 
 const cacheKey = (key: string) => `${swrPrefix}${key}`
 
@@ -64,13 +70,13 @@ const clearCommercialSwr = (accountId?: number) => {
   }
 }
 
-const swr = async <T>(key: string, request: () => Promise<T>): Promise<T> => {
+const swr = async <T>(key: string, request: (silent: boolean) => Promise<T>, options: CommercialSwrOptions = {}): Promise<T> => {
   const cached = readSwr<T>(key)
   if (cached) {
-    void request().then(data => writeSwr(key, data)).catch(() => undefined)
+    void request(true).then(data => writeSwr(key, data)).catch(() => undefined)
     return cached
   }
-  const data = await request()
+  const data = await request(Boolean(options.silent))
   writeSwr(key, data)
   return data
 }
@@ -81,32 +87,32 @@ export const commercialControlApi = {
     clearCommercialSwr()
     return res.data.data as CommercialSummary
   },
-  getCatalog: async () => swr('catalog', async () => {
-    const res = await api.get('/commercial-control/catalog', commercialRequestConfig)
+  getCatalog: async (options?: CommercialSwrOptions) => swr('catalog', async silent => {
+    const res = await api.get('/commercial-control/catalog', commercialGetConfig(silent))
     return res.data.data as CommercialCatalog
-  }),
-  getSummary: async (accountId?: number) => {
+  }, options),
+  getSummary: async (accountId?: number, options?: CommercialSwrOptions) => {
     const key = `summary:${accountId || 'default'}`
-    return swr(key, async () => {
-      const res = await api.get('/commercial-control/summary', { ...commercialRequestConfig, params: accountId ? { accountId } : undefined })
+    return swr(key, async silent => {
+      const res = await api.get('/commercial-control/summary', commercialGetConfig(silent, { params: accountId ? { accountId } : undefined }))
       const data = res.data.data as CommercialSummary
       if (data?.account?.id) writeSwr(`summary:${data.account.id}`, data)
       return data
-    })
+    }, options)
   },
-  listAccounts: async () => swr('accounts', async () => {
-    const res = await api.get('/commercial-control/admin/accounts', commercialRequestConfig)
+  listAccounts: async (options?: CommercialSwrOptions) => swr('accounts', async silent => {
+    const res = await api.get('/commercial-control/admin/accounts', commercialGetConfig(silent))
     return res.data.data as CommercialAccount[]
-  }),
+  }, options),
   createAccount: async (payload: { name: string; code?: string; email?: string; phone?: string; currency?: string; lowBalanceThreshold?: string; criticalBalanceThreshold?: string }) => {
     const res = await api.post('/commercial-control/admin/accounts', payload, commercialRequestConfig)
     clearCommercialSwr()
     return res.data.data as CommercialAccount
   },
-  listPaymentRequests: async (accountId?: number) => swr(`payments:${accountId || 'all'}`, async () => {
-    const res = await api.get('/commercial-control/admin/payment-requests', { ...commercialRequestConfig, params: accountId ? { accountId } : undefined })
+  listPaymentRequests: async (accountId?: number, options?: CommercialSwrOptions) => swr(`payments:${accountId || 'all'}`, async silent => {
+    const res = await api.get('/commercial-control/admin/payment-requests', commercialGetConfig(silent, { params: accountId ? { accountId } : undefined }))
     return res.data.data as PaymentRequest[]
-  }),
+  }, options),
   createPaymentRequest: async (payload: { accountId: number; amount: string; currency?: string; requestedPlanCode?: CommercialPlanCode | ''; requestedAddonCodes?: CommercialAddonCode[]; paymentMethod?: string; paymentReference?: string; proofUrl?: string; notes?: string }) => {
     const res = await api.post('/commercial-control/admin/payment-requests', { ...payload, requestedPlanCode: payload.requestedPlanCode || null }, commercialRequestConfig)
     clearCommercialSwr(payload.accountId)

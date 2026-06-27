@@ -1,4 +1,5 @@
 import api from './axios'
+import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
 
 export type DynamicCallerIdStatus = 'PENDING' | 'VERIFIED' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'REJECTED'
 
@@ -45,12 +46,18 @@ export type DynamicCallerIdCallValidation = {
 
 export const dynamicCallerIdApi = {
   getSummary: async (accountId?: number | string | null) => {
-    const res = await api.get('/dynamic-caller-id/summary', { params: accountId ? { accountId } : undefined })
-    return res.data.data as DynamicCallerIdSummary
+    return swr(swrKey('dynamic-caller-id:summary', { accountId }), async ({ silent }) => {
+      const config = { params: accountId ? { accountId } : undefined }
+      const res = await api.get('/dynamic-caller-id/summary', silent ? silentOverlayConfig(config) : config)
+      return res.data.data as DynamicCallerIdSummary
+    })
   },
   list: async (accountId?: number | string | null) => {
-    const res = await api.get('/dynamic-caller-id', { params: accountId ? { accountId } : undefined })
-    return res.data.data as DynamicCallerIdRecord[]
+    return swr(swrKey('dynamic-caller-id:list', { accountId }), async ({ silent }) => {
+      const config = { params: accountId ? { accountId } : undefined }
+      const res = await api.get('/dynamic-caller-id', silent ? silentOverlayConfig(config) : config)
+      return res.data.data as DynamicCallerIdRecord[]
+    })
   },
   validateCall: async (callerIdId?: number | string | null) => {
     const res = await api.post('/dynamic-caller-id/validate-call', { callerIdId: callerIdId || null })
@@ -58,14 +65,17 @@ export const dynamicCallerIdApi = {
   },
   request: async (payload: RequestCallerIdPayload) => {
     const res = await api.post('/dynamic-caller-id/request', payload)
+    clearSwrByPrefix('dynamic-caller-id')
     return res.data.data as DynamicCallerIdRecord
   },
   adminCreate: async (payload: RequestCallerIdPayload & { accountId: number | string; status?: DynamicCallerIdStatus }) => {
     const res = await api.post('/dynamic-caller-id/admin', payload)
+    clearSwrByPrefix('dynamic-caller-id')
     return res.data.data as DynamicCallerIdRecord
   },
   setStatus: async (id: number, status: DynamicCallerIdStatus) => {
     const res = await api.patch('/dynamic-caller-id/' + id + '/status', { status })
+    clearSwrByPrefix('dynamic-caller-id')
     return res.data.data as DynamicCallerIdRecord
   },
 }

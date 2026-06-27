@@ -161,6 +161,7 @@ export default function CommercialControl() {
 
   const loadData = useCallback(async (accountId?: number, options: { silent?: boolean; label?: string } = {}) => {
     setBusyLabel(options.label || 'Refreshing commercial control data')
+    const requestOptions = { silent: Boolean(options.silent || hasVisibleDataRef.current) }
     if (options.silent || hasVisibleDataRef.current) setRefreshing(true)
     else setLoading(true)
     setError('')
@@ -168,13 +169,13 @@ export default function CommercialControl() {
     setMessage('')
     try {
       const [catalogRes, summaryRes] = await Promise.all([
-        runStep('Catalog request failed', () => commercialControlApi.getCatalog()),
-        runStep('Summary request failed', () => commercialControlApi.getSummary(accountId)),
+        runStep('Catalog request failed', () => commercialControlApi.getCatalog(requestOptions)),
+        runStep('Summary request failed', () => commercialControlApi.getSummary(accountId, requestOptions)),
       ])
       const resolvedAccountId = summaryRes.account.id
       const [accountsResult, requestsResult] = await Promise.allSettled([
-        commercialControlApi.listAccounts(),
-        commercialControlApi.listPaymentRequests(resolvedAccountId),
+        commercialControlApi.listAccounts(requestOptions),
+        commercialControlApi.listPaymentRequests(resolvedAccountId, requestOptions),
       ])
       const nextAccounts = accountsResult.status === 'fulfilled' ? accountsResult.value : [summaryRes.account]
       const nextPaymentRequests = requestsResult.status === 'fulfilled' ? requestsResult.value : []

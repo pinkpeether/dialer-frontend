@@ -107,9 +107,10 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`
   }
 
+  const ptdtConfig = config as typeof config & { ptdtSilentOverlay?: boolean }
   const method = requestVerb(config.method)
   const path = normalizedPath(config.url)
-  if (shouldTrackRequest(method, path)) {
+  if (!ptdtConfig.ptdtSilentOverlay && shouldTrackRequest(method, path)) {
     const delayMs = method === 'get' ? 520 : 220
     const overlayId = beginGlobalRequestOverlay({ ...overlayTextFor(method, path), delayMs })
     overlayIds.set(config, overlayId)
