@@ -1,6 +1,8 @@
 import api from './axios'
 import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
 
+type ApiSwrOptions = { silent?: boolean }
+
 export const agentsAPI = {
   getAll: async (params?: {
     page?: number
@@ -23,11 +25,11 @@ export const agentsAPI = {
     })
   },
 
-  getStats: async () => {
+  getStats: async (options?: ApiSwrOptions) => {
     return swr('agents:stats:{}', async ({ silent }) => {
-      const res = await api.get('/agents/stats', silent ? silentOverlayConfig() : undefined)
+      const res = await api.get('/agents/stats', (silent || options?.silent) ? silentOverlayConfig() : undefined)
       return res.data.data
-    })
+    }, options)
   },
 
   create: async (data: {

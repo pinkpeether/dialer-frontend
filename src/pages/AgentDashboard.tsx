@@ -276,6 +276,35 @@ type CampaignProgress = {
   failed: number
 }
 
+type AgentDashboardCache = {
+  savedAt: string
+  liveStats?: LiveStats
+  recentCalls?: RecentCallRow[]
+  campaigns?: CampaignProgress[]
+}
+
+const AGENT_DASHBOARD_CACHE_KEY = 'ptdt-agent-dashboard:last-good'
+
+const readAgentDashboardCache = (): AgentDashboardCache | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(AGENT_DASHBOARD_CACHE_KEY)
+    return raw ? JSON.parse(raw) as AgentDashboardCache : null
+  } catch {
+    return null
+  }
+}
+
+const writeAgentDashboardCache = (patch: Partial<Omit<AgentDashboardCache, 'savedAt'>>) => {
+  if (typeof window === 'undefined') return
+  try {
+    const previous = readAgentDashboardCache()
+    window.localStorage.setItem(AGENT_DASHBOARD_CACHE_KEY, JSON.stringify({ ...previous, ...patch, savedAt: new Date().toISOString() }))
+  } catch {
+    // Local cache is best-effort; backend remains source of truth.
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const statusTheme: Record<AgentStatus, { label: string; color: string; bg: string }> = {
@@ -392,6 +421,7 @@ const normalizeDirection = (value: unknown): RecentCallRow['direction'] => {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AgentDashboard() {
+  const [cached] = useState(() => readAgentDashboardCache())
   const user = useAuthStore(state => state.user)
   const updateUser = useAuthStore(state => state.updateUser)
   const sipStatus = useSipStore(s => s.status)
@@ -412,25 +442,29 @@ export default function AgentDashboard() {
 
   // Live stats from API
   const [liveStats, setLiveStats] = useState<LiveStats>({
-    callsToday: 0, answeredToday: 0, avgDurationSeconds: 0, missedToday: 0, loading: true,
+    callsToday: cached?.liveStats?.callsToday ?? 0,
+    answeredToday: cached?.liveStats?.answeredToday ?? 0,
+    avgDurationSeconds: cached?.liveStats?.avgDurationSeconds ?? 0,
+    missedToday: cached?.liveStats?.missedToday ?? 0,
+    loading: !cached?.liveStats,
   })
 
   // Recent calls
-  const [recentCalls, setRecentCalls] = useState<RecentCallRow[]>([])
-  const [recentLoading, setRecentLoading] = useState(true)
+  const [recentCalls, setRecentCalls] = useState<RecentCallRow[]>(cached?.recentCalls ?? [])
+  const [recentLoading, setRecentLoading] = useState(!cached?.recentCalls?.length)
 
   // Campaign progress
-  const [campaigns, setCampaigns] = useState<CampaignProgress[]>([])
-  const [campaignLoading, setCampaignLoading] = useState(true)
+  const [campaigns, setCampaigns] = useState<CampaignProgress[]>(cached?.campaigns ?? [])
+  const [campaignLoading, setCampaignLoading] = useState(!cached?.campaigns?.length)
 
   // ── Fetch live stats ─────────────────────────────────────────────────────
 
-  const fetchLiveStats = useCallback(async () => {
+  const fetchLiveStats = useCallback(async (options: { silent?: boolean } = {}) => {
     try {
       const today = todayISO()
       const data = await callsAPI.getAll(
         { startDate: today, endDate: today, limit: 200 },
-        { timeout: 8000 }
+        { timeout: 8000, silent: options.silent }
       )
       const calls = extractList<Record<string, unknown>>(data, ['items', 'calls', 'results', 'data'])
 
@@ -447,13 +481,15 @@ export default function AgentDashboard() {
         ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
         : 0
 
-      setLiveStats({
+      const nextStats = {
         callsToday: calls.length,
         answeredToday: answered.length,
         missedToday: missed.length,
         avgDurationSeconds: avgDuration,
         loading: false,
-      })
+      }
+      setLiveStats(nextStats)
+      writeAgentDashboardCache({ liveStats: nextStats })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not load live stats'
       setMessage(msg)
@@ -463,14 +499,13 @@ export default function AgentDashboard() {
 
   // ── Fetch recent calls ───────────────────────────────────────────────────
 
-  const fetchRecentCalls = useCallback(async () => {
-    setRecentLoading(true)
+  const fetchRecentCalls = useCallback(async (options: { silent?: boolean } = {}) => {
+    if (!options.silent) setRecentLoading(true)
     try {
-      const data = await callsAPI.getAll({ limit: 10, page: 1 }, { timeout: 8000 })
+      const data = await callsAPI.getAll({ limit: 10, page: 1 }, { timeout: 8000, silent: options.silent })
       const calls = extractList<Record<string, unknown>>(data, ['items', 'calls', 'results', 'data'])
 
-      setRecentCalls(
-        calls.map((c, index) => ({
+      const nextRecentCalls = calls.map((c, index) => ({
           id: stringValue(c.id, `recent-${index}`),
           direction: normalizeDirection(c.direction || c.type),
           remoteNumber:
@@ -494,7 +529,8 @@ export default function AgentDashboard() {
           durationSeconds: numberValue(c.durationSeconds ?? c.duration ?? c.duration_seconds) || undefined,
           createdAt: stringValue(c.createdAt || c.startedAt || c.updatedAt, new Date().toISOString()),
         }))
-      )
+      setRecentCalls(nextRecentCalls)
+      writeAgentDashboardCache({ recentCalls: nextRecentCalls })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not load recent calls'
       setMessage(msg)
@@ -505,14 +541,13 @@ export default function AgentDashboard() {
 
   // ── Fetch campaign progress ──────────────────────────────────────────────
 
-  const fetchCampaigns = useCallback(async () => {
-    setCampaignLoading(true)
+  const fetchCampaigns = useCallback(async (options: { silent?: boolean } = {}) => {
+    if (!options.silent) setCampaignLoading(true)
     try {
-      const data = await campaignsAPI.getAll({ status: 'ACTIVE', limit: 6 })
+      const data = await campaignsAPI.getAll({ status: 'ACTIVE', limit: 6 }, { silent: options.silent })
       const list = extractList<Record<string, unknown>>(data, ['campaigns', 'items', 'results', 'data'])
 
-      setCampaigns(
-        list.map(c => ({
+      const nextCampaigns = list.map(c => ({
           id: numberValue(c.id),
           name: stringValue(c.name, 'Campaign'),
           status: stringValue(c.status, 'ACTIVE'),
@@ -521,7 +556,8 @@ export default function AgentDashboard() {
           pending: numberValue(c.pendingCount ?? c.pending),
           failed: numberValue(c.failedCount ?? c.failed),
         }))
-      )
+      setCampaigns(nextCampaigns)
+      writeAgentDashboardCache({ campaigns: nextCampaigns })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not load campaigns'
       setMessage(msg)
@@ -533,18 +569,19 @@ export default function AgentDashboard() {
   // ── Auto-refresh every 60s ───────────────────────────────────────────────
 
   useEffect(() => {
-    void fetchLiveStats()
-    void fetchRecentCalls()
-    void fetchCampaigns()
+    const requestOptions = { silent: Boolean(cached) }
+    void fetchLiveStats(requestOptions)
+    void fetchRecentCalls(requestOptions)
+    void fetchCampaigns(requestOptions)
 
     const interval = window.setInterval(() => {
-      void fetchLiveStats()
-      void fetchRecentCalls()
-      void fetchCampaigns()
+      void fetchLiveStats({ silent: true })
+      void fetchRecentCalls({ silent: true })
+      void fetchCampaigns({ silent: true })
     }, 60_000)
 
     return () => window.clearInterval(interval)
-  }, [fetchLiveStats, fetchRecentCalls, fetchCampaigns])
+  }, [cached, fetchLiveStats, fetchRecentCalls, fetchCampaigns])
 
   // ── Socket ───────────────────────────────────────────────────────────────
 
@@ -581,8 +618,8 @@ export default function AgentDashboard() {
       setAgentStatus('READY')
       setMessage('Call ended')
       // Refresh stats after call ends
-      void fetchLiveStats()
-      void fetchRecentCalls()
+      void fetchLiveStats({ silent: true })
+      void fetchRecentCalls({ silent: true })
     })
 
     return () => {
@@ -641,8 +678,8 @@ export default function AgentDashboard() {
       updateUser({ status: 'READY' })
       void agentsAPI.updateMyStatus('READY').catch(() => undefined)
       setMessage('Call ended')
-      void fetchLiveStats()
-      void fetchRecentCalls()
+      void fetchLiveStats({ silent: true })
+      void fetchRecentCalls({ silent: true })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not hang up call'
       socketRef.current?.emit(SOCKET_EVENTS.CALL_HANGUP, { callId: activeCall.callId })
@@ -663,8 +700,8 @@ export default function AgentDashboard() {
       updateUser({ status: 'READY' })
       await agentsAPI.updateMyStatus('READY')
       setMessage('✓ Disposition saved')
-      void fetchLiveStats()
-      void fetchRecentCalls()
+      void fetchLiveStats({ silent: true })
+      void fetchRecentCalls({ silent: true })
     } catch {
       setMessage('Disposition could not be saved. Please retry before clearing this call.')
     } finally {

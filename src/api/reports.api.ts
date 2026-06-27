@@ -50,6 +50,8 @@ export type AgentReportRow = {
   totalTalkTimeSecs: number
 }
 
+type ApiSwrOptions = { silent?: boolean }
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
@@ -68,12 +70,12 @@ export const reportsAPI = {
     })
   },
 
-  getCallTrend: async (filters?: ReportFilters): Promise<ReportTrendRow[]> => {
+  getCallTrend: async (filters?: ReportFilters, options?: ApiSwrOptions): Promise<ReportTrendRow[]> => {
     const params = { from: filters?.from, to: filters?.to, granularity: filters?.granularity ?? 'day' }
     return swr(swrKey('reports:calls', params), async ({ silent }) => {
-      const res = await api.get('/reports/calls', silent ? silentOverlayConfig({ params }) : { params })
+      const res = await api.get('/reports/calls', (silent || options?.silent) ? silentOverlayConfig({ params }) : { params })
       return dataOf<ReportTrendRow[]>(res)
-    })
+    }, options)
   },
 
   getCampaignBreakdown: async (filters?: ReportFilters): Promise<CampaignReportRow[]> => {

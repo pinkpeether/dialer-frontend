@@ -247,6 +247,35 @@ type DashboardRecentCall = {
   status?: string
 }
 
+type DashboardCache = {
+  savedAt: string
+  stats: Stats | null
+  recentCallData: CallLog[]
+  recentHistory: DashboardRecentCall[]
+}
+
+const DASHBOARD_CACHE_KEY = 'ptdt-dashboard:last-good'
+
+const readDashboardCache = (): DashboardCache | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(DASHBOARD_CACHE_KEY)
+    return raw ? JSON.parse(raw) as DashboardCache : null
+  } catch {
+    return null
+  }
+}
+
+const writeDashboardCache = (patch: Partial<Omit<DashboardCache, 'savedAt'>>) => {
+  if (typeof window === 'undefined') return
+  try {
+    const previous = readDashboardCache()
+    window.localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ ...previous, ...patch, savedAt: new Date().toISOString() }))
+  } catch {
+    // Local cache is best-effort; backend remains source of truth.
+  }
+}
+
 type TrendLog = Pick<CallLog, 'createdAt' | 'status' | 'disposition'>
 
 const COL_PINK   = '#fb0b8c'
@@ -367,9 +396,10 @@ const tooltipStyle = {
 
 export default function Dashboard() {
   const user = useAuthStore(s => s.user)
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [recentCallData, setRecentCallData] = useState<CallLog[]>([])
-  const [recentHistory, setRecentHistory] = useState<DashboardRecentCall[]>([])
+  const [cached] = useState(() => readDashboardCache())
+  const [stats, setStats] = useState<Stats | null>(cached?.stats ?? null)
+  const [recentCallData, setRecentCallData] = useState<CallLog[]>(cached?.recentCallData ?? [])
+  const [recentHistory, setRecentHistory] = useState<DashboardRecentCall[]>(cached?.recentHistory ?? [])
   const { activeCalls, recentCalls } = useLiveDashboard()
   const sipActiveCall = useSipStore(s => s.activeCall)
   const sipStatus = useSipStore(s => s.status)
@@ -390,49 +420,67 @@ export default function Dashboard() {
 
   useEffect(() => {
     const load = async () => {
+      const requestOptions = { silent: Boolean(cached) }
       const [a, c, ct] = await Promise.all([
-        agentsAPI.getStats(),
-        campaignsAPI.getStats(),
-        contactsAPI.getStats(),
+        agentsAPI.getStats(requestOptions),
+        campaignsAPI.getStats(requestOptions),
+        contactsAPI.getStats(undefined, requestOptions),
       ])
-      setStats({ agents: a, campaigns: c, contacts: ct })
+      const nextStats = { agents: a, campaigns: c, contacts: ct }
+      setStats(nextStats)
+      writeDashboardCache({ stats: nextStats })
     }
     void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     const loadCalls = async () => {
+      const requestOptions = { silent: Boolean(cached) }
       let apiCalls: CallLog[] = []
+      let nextRecentHistory = recentHistory
+      let nextRecentCallData = recentCallData
 
       try {
-        const res = await callsAPI.getAll({ limit: 20 })
+        const res = await callsAPI.getAll({ limit: 20 }, requestOptions)
         const calls = extractList<CallLog>(res, ['calls', 'results', 'items', 'data'])
         apiCalls = calls
-        setRecentHistory(calls.map(normalizeRecentCall))
+        nextRecentHistory = calls.map(normalizeRecentCall)
+        setRecentHistory(nextRecentHistory)
       } catch {
-        setRecentHistory([])
+        if (!cached?.recentHistory?.length) {
+          nextRecentHistory = []
+          setRecentHistory([])
+        }
       }
 
       try {
-        const trendRows = await reportsAPI.getCallTrend({ granularity: 'day' })
-        setRecentCallData(trendRowsToCallLogs(trendRows) as CallLog[])
+        const trendRows = await reportsAPI.getCallTrend({ granularity: 'day' }, requestOptions)
+        nextRecentCallData = trendRowsToCallLogs(trendRows) as CallLog[]
+        setRecentCallData(nextRecentCallData)
       } catch {
         try {
           if (apiCalls.length > 0) {
-            setRecentCallData(apiCalls)
+            nextRecentCallData = apiCalls
+            setRecentCallData(nextRecentCallData)
             return
           }
 
-          const res = await callsAPI.getAll({ limit: 100 })
+          const res = await callsAPI.getAll({ limit: 100 }, requestOptions)
           const calls = extractList<CallLog>(res, ['calls', 'results', 'items', 'data'])
-          setRecentCallData(calls)
-          setRecentHistory(calls.map(normalizeRecentCall))
+          nextRecentCallData = calls
+          nextRecentHistory = calls.map(normalizeRecentCall)
+          setRecentCallData(nextRecentCallData)
+          setRecentHistory(nextRecentHistory)
         } catch {
           // non-fatal — charts just stay empty
         }
+      } finally {
+        writeDashboardCache({ recentCallData: nextRecentCallData, recentHistory: nextRecentHistory })
       }
     }
     void loadCalls()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const trendData    = buildTrend(recentCallData)

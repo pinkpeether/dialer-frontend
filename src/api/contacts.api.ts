@@ -1,6 +1,8 @@
 import api from './axios'
 import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
 
+type ApiSwrOptions = { silent?: boolean }
+
 export const contactsAPI = {
   getAll: async (params?: Record<string, unknown>) => {
     return swr(swrKey('contacts:list', params), async ({ silent }) => {
@@ -10,12 +12,12 @@ export const contactsAPI = {
     })
   },
 
-  getStats: async (campaignId?: number) => {
+  getStats: async (campaignId?: number, options?: ApiSwrOptions) => {
     return swr(swrKey('contacts:stats', { campaignId }), async ({ silent }) => {
       const config = campaignId ? { params: { campaignId } } : {}
-      const res = await api.get('/contacts/stats', silent ? silentOverlayConfig(config) : config)
+      const res = await api.get('/contacts/stats', (silent || options?.silent) ? silentOverlayConfig(config) : config)
       return res.data.data
-    })
+    }, options)
   },
   getById: async (id: number | string): Promise<Record<string, unknown> | null> => {
     return swr(swrKey('contacts:detail', { id }), async ({ silent }) => {

@@ -1,14 +1,23 @@
 import api from './axios'
 import { callbacksAPI } from './callbacks.api'
+import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
 
 type CallsRequestOptions = {
   timeout?: number
+  silent?: boolean
 }
 
 export const callsAPI = {
   getAll: async (params?: Record<string, unknown>, options?: CallsRequestOptions) => {
-    const res = await api.get('/calls', { params, timeout: options?.timeout })
-    return res.data.data
+    return swr(
+      swrKey('calls:list', params),
+      async ({ silent }) => {
+        const config = { params, timeout: options?.timeout }
+        const res = await api.get('/calls', (silent || options?.silent) ? silentOverlayConfig(config) : config)
+        return res.data.data
+      },
+      { silent: options?.silent },
+    )
   },
 
   getById: async (id: number | string) => {
@@ -21,6 +30,7 @@ export const callsAPI = {
     data: { disposition: string; notes?: string; callbackAt?: string }
   ) => {
     const res = await api.patch(`/calls/${id}/disposition`, data)
+    clearSwrByPrefix('calls')
     return res.data.data
   },
 
@@ -29,6 +39,7 @@ export const callsAPI = {
     data?: { endedAt?: string }
   ) => {
     const res = await api.patch(`/calls/${id}/end`, data)
+    clearSwrByPrefix('calls')
     return res.data.data
   },
 

@@ -1,13 +1,15 @@
 import api from './axios'
 import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
 
+type ApiSwrOptions = { silent?: boolean }
+
 export const campaignsAPI = {
-  getAll: async (params?: Record<string, unknown>) => {
+  getAll: async (params?: Record<string, unknown>, options?: ApiSwrOptions) => {
     return swr(swrKey('campaigns:list', params), async ({ silent }) => {
       const config = { params }
-      const res = await api.get('/campaigns', silent ? silentOverlayConfig(config) : config)
+      const res = await api.get('/campaigns', (silent || options?.silent) ? silentOverlayConfig(config) : config)
       return res.data.data
-    })
+    }, options)
   },
 
   getById: async (id: number) => {
@@ -17,11 +19,11 @@ export const campaignsAPI = {
     })
   },
 
-  getStats: async () => {
+  getStats: async (options?: ApiSwrOptions) => {
     return swr('campaigns:stats:{}', async ({ silent }) => {
-      const res = await api.get('/campaigns/stats', silent ? silentOverlayConfig() : undefined)
+      const res = await api.get('/campaigns/stats', (silent || options?.silent) ? silentOverlayConfig() : undefined)
       return res.data.data
-    })
+    }, options)
   },
 
   create: async (data: Record<string, unknown>) => {
