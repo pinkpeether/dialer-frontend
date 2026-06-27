@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Building2, Crown, RefreshCw, UserPlus, Users } from 'lucide-react'
 import { administrationApi, type AccountMembership, type AdminCommercialAccount, type AdminUser, type CommercialAccountRole, type CommercialMembershipStatus } from '../api/administration.api'
-import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
+import { beginGlobalRequestOverlay, endGlobalRequestOverlay } from '../services/globalRequestOverlay'
 
 const platformRoles = new Set(['SUPER_ADMIN', 'ADMIN'])
 const accountRoleOptions: CommercialAccountRole[] = ['OWNER', 'ADMIN', 'BILLING', 'SUPERVISOR', 'AGENT']
@@ -84,6 +84,11 @@ export default function PlatformAdministrationV2() {
   const [pendingMembershipId, setPendingMembershipId] = useState<number | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const accountsAbortRef = useRef<AbortController | null>(null)
+  const accountsOverlayRef = useRef<number | null>(null)
+  const switchAbortRef = useRef<AbortController | null>(null)
+  const switchOverlayRef = useRef<number | null>(null)
+  const previousAccountIdRef = useRef<number | undefined>(cached?.selectedAccountId)
   const [form, setForm] = useState({
     userId: '',
     accountRole: 'OWNER' as CommercialAccountRole,
@@ -117,7 +122,7 @@ export default function PlatformAdministrationV2() {
     })
   }, [accounts, selectedAccount?.id, selectedMemberUserIds, users])
 
-  const loadMembers = async (accountId: number, options: { silent?: boolean } = {}) => {
+  const loadMembers = async (accountId: number, options: { silent?: boolean; signal?: AbortSignal } = {}) => {
     const nextMembers = await administrationApi.listPlatformAccountMembers(accountId, options)
     setMembers(nextMembers)
     writeCache({ selectedAccountId: accountId, accounts, users, members: nextMembers })
@@ -153,18 +158,48 @@ export default function PlatformAdministrationV2() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-useEffect(() => {
-  if (!cached?.accounts?.length) return
-  void loadData(cached.selectedAccountId, 'refresh')
-}, [])
+  useEffect(() => {
+    if (!cached?.accounts?.length) return
+    void loadData(cached.selectedAccountId, 'refresh')
+  }, [])
+
+  useEffect(() => {
+    if (!accountSwitching && !accountsLoading) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      accountsAbortRef.current?.abort()
+      switchAbortRef.current?.abort()
+      endGlobalRequestOverlay(accountsOverlayRef.current, false)
+      endGlobalRequestOverlay(switchOverlayRef.current, false)
+      accountsOverlayRef.current = null
+      switchOverlayRef.current = null
+      setSelectedAccountId(previousAccountIdRef.current)
+      setAccountSwitching(false)
+      setAccountsLoading(false)
+      setRefreshing(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [accountSwitching, accountsLoading])
 
   const loadAccountChoices = () => {
     if (accountsLoading || accountsLoaded) return
+    accountsAbortRef.current?.abort()
+    const controller = new AbortController()
+    accountsAbortRef.current = controller
+    accountsOverlayRef.current = beginGlobalRequestOverlay({
+      message: 'Fetching commercial accounts...',
+      followupMessage: 'Preparing account list...',
+      successMessage: 'Accounts ready',
+      detail: 'Press Esc to cancel and return to the current page.',
+      delayMs: 0,
+    })
     setAccountsLoading(true)
     setError('')
     setMessage('')
-    void administrationApi.getPlatformOverview({ silent: true })
+    void administrationApi.getPlatformOverview({ silent: true, signal: controller.signal })
       .then(overview => {
+        if (controller.signal.aborted) return
         const nextUsers = overview.assignableCustomerUsers || overview.users
         setAccounts(overview.accounts)
         setUsers(nextUsers)
@@ -172,21 +207,58 @@ useEffect(() => {
         setSelectedAccountId(undefined)
         setAccountsLoaded(true)
         writeCache({ selectedAccountId: undefined, accounts: overview.accounts, users: nextUsers, members: [] })
+        endGlobalRequestOverlay(accountsOverlayRef.current, true)
       })
-      .catch(err => setError(err instanceof Error ? err.message : 'Failed to load commercial accounts'))
-      .finally(() => setAccountsLoading(false))
+      .catch(err => {
+        if (controller.signal.aborted) {
+          endGlobalRequestOverlay(accountsOverlayRef.current, false)
+          return
+        }
+        setError(err instanceof Error ? err.message : 'Failed to load commercial accounts')
+        endGlobalRequestOverlay(accountsOverlayRef.current, false)
+      })
+      .finally(() => {
+        if (accountsAbortRef.current === controller) accountsAbortRef.current = null
+        accountsOverlayRef.current = null
+        setAccountsLoading(false)
+      })
   }
 
   const selectAccount = (accountId: number) => {
     if (accountId === selectedAccount?.id || accountSwitching) return
+    switchAbortRef.current?.abort()
+    const controller = new AbortController()
+    switchAbortRef.current = controller
+    previousAccountIdRef.current = selectedAccount?.id
+    switchOverlayRef.current = beginGlobalRequestOverlay({
+      message: 'Switching commercial account...',
+      followupMessage: 'Loading account members...',
+      successMessage: 'Account loaded',
+      detail: 'Press Esc to cancel and return to the current page.',
+      delayMs: 0,
+    })
     setSelectedAccountId(accountId)
     setMessage('')
     setError('')
     setAccountSwitching(true)
     setRefreshing(true)
-    void loadMembers(accountId, { silent: true })
-      .catch(err => setError(err instanceof Error ? err.message : 'Failed to load members'))
+    void loadMembers(accountId, { silent: true, signal: controller.signal })
+      .then(() => {
+        if (controller.signal.aborted) return
+        endGlobalRequestOverlay(switchOverlayRef.current, true)
+      })
+      .catch(err => {
+        if (controller.signal.aborted) {
+          setSelectedAccountId(previousAccountIdRef.current)
+          endGlobalRequestOverlay(switchOverlayRef.current, false)
+          return
+        }
+        setError(err instanceof Error ? err.message : 'Failed to load members')
+        endGlobalRequestOverlay(switchOverlayRef.current, false)
+      })
       .finally(() => {
+        if (switchAbortRef.current === controller) switchAbortRef.current = null
+        switchOverlayRef.current = null
         setRefreshing(false)
         setAccountSwitching(false)
       })
@@ -252,8 +324,6 @@ useEffect(() => {
 
   return (
     <div className="ptdt-page">
-      <PtdtBusyOverlay active={accountSwitching || accountsLoading} label={accountSwitching ? 'Switching commercial account' : 'Loading commercial accounts'} />
-
       <div className="ptdt-page-header">
         <div>
           <div className="eyebrow pink"><Crown size={12} /> PTDT Platform Control</div>

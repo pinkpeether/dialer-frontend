@@ -113,10 +113,11 @@ export type AddAccountMemberPayload = {
 }
 
 const administrationRequestConfig = { timeout: 45000 }
-const administrationGetConfig = (silent: boolean) => (
-  silent ? silentOverlayConfig(administrationRequestConfig) : administrationRequestConfig
-)
-type AdministrationSwrOptions = { silent?: boolean }
+const administrationGetConfig = (silent: boolean, config = {}) => {
+  const nextConfig = { ...administrationRequestConfig, ...config }
+  return silent ? silentOverlayConfig(nextConfig) : nextConfig
+}
+type AdministrationSwrOptions = { silent?: boolean; signal?: AbortSignal }
 
 const isArchivedAccount = (account?: { status?: string | null }) => String(account?.status || '').toUpperCase() === 'ARCHIVED'
 const withoutArchivedAccounts = (overview: PlatformAdministrationOverview): PlatformAdministrationOverview => {
@@ -136,7 +137,7 @@ export const administrationApi = {
   getMe: async (options?: AdministrationSwrOptions) => swr(
     swrKey('administration-me', { type: 'current-user' }),
     async ({ silent }) => {
-      const res = await api.get('/administration/me', administrationGetConfig(silent))
+      const res = await api.get('/administration/me', administrationGetConfig(silent, { signal: options?.signal }))
       const data = res.data.data as AdministrationMe
       return {
         ...data,
@@ -149,7 +150,7 @@ export const administrationApi = {
   getPlatformOverview: async (options?: AdministrationSwrOptions) => swr(
     swrKey('administration-platform', { type: 'overview' }),
     async ({ silent }) => {
-      const res = await api.get('/administration/platform/overview', administrationGetConfig(silent))
+      const res = await api.get('/administration/platform/overview', administrationGetConfig(silent, { signal: options?.signal }))
       return withoutArchivedAccounts(res.data.data as PlatformAdministrationOverview)
     },
     options,
@@ -158,7 +159,7 @@ export const administrationApi = {
   listPlatformAccountMembers: async (accountId: number, options?: AdministrationSwrOptions) => swr(
     swrKey('administration-platform', { type: 'members', accountId }),
     async ({ silent }) => {
-      const res = await api.get(`/administration/platform/accounts/${accountId}/members`, administrationGetConfig(silent))
+      const res = await api.get(`/administration/platform/accounts/${accountId}/members`, administrationGetConfig(silent, { signal: options?.signal }))
       return res.data.data as AccountMembership[]
     },
     options,

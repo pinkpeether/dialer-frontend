@@ -1,11 +1,155 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, CheckCircle2, Clock, Phone, RefreshCw, X, XCircle } from 'lucide-react'
+import { Calendar, CheckCircle2, Clock, Phone, RefreshCw, Trash2, X, XCircle } from 'lucide-react'
 import { useCallbacks } from '../hooks/useCallbacks'
 import { type CallbackRecord, type CallbackStatus } from '../api/callbacks.api'
 import { useSipStore } from '../store/sip.store'
 
 const PTDT_MOBILE_PAGE_CSS = `
+.ptdt-ai-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10040;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(5, 8, 18, .58);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+.ptdt-ai-confirm-modal {
+  position: relative;
+  width: min(560px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(251, 10, 139, .22);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(251, 10, 139, .18), transparent 42%),
+    radial-gradient(circle at top right, rgba(0, 167, 71, .14), transparent 40%),
+    var(--bg-glass-hi);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255,255,255,.38);
+  padding: clamp(18px, 4vw, 26px);
+}
+
+.ptdt-ai-confirm-modal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,.12), transparent 42%);
+}
+
+.ptdt-ai-confirm-content {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 18px;
+}
+
+.ptdt-ai-confirm-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: start;
+}
+
+.ptdt-ai-confirm-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--pink), #8b5cf6);
+  box-shadow: 0 16px 32px rgba(251, 10, 139, .22);
+}
+
+.ptdt-ai-confirm-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-glass);
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.ptdt-ai-confirm-title {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 950;
+  letter-spacing: -0.045em;
+}
+
+.ptdt-ai-confirm-message {
+  margin: 6px 0 0;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 750;
+}
+
+.ptdt-ai-confirm-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ptdt-ai-confirm-detail {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-glass);
+  padding: 12px;
+}
+
+.ptdt-ai-confirm-detail b {
+  display: block;
+  color: var(--text-3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  margin-bottom: 5px;
+}
+
+.ptdt-ai-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ptdt-ai-confirm-start {
+  border: 0;
+  border-radius: 999px;
+  min-height: 46px;
+  padding: 0 18px 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fff;
+  background: linear-gradient(180deg, #21e783, #008a4f);
+  box-shadow: 0 16px 32px rgba(0, 167, 71, .22), inset 0 1px 0 rgba(255,255,255,.34);
+  font-size: 14px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.ptdt-ai-confirm-start span {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 112, 62, .30);
+}
+
 @media (max-width: 900px) {
   .ptdt-mobile-page {
     width: 100% !important;
@@ -176,6 +320,10 @@ const PTDT_MOBILE_PAGE_CSS = `
     max-width: 100% !important;
   }
 
+  .ptdt-mobile-page .ptdt-ai-confirm-details {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
   .ptdt-mobile-page audio,
   .ptdt-mobile-page video {
     max-width: 100% !important;
@@ -233,6 +381,13 @@ const isDue = (iso: string) => {
   try { return new Date(iso).getTime() <= Date.now() } catch { return false }
 }
 
+const maskPhone = (phone?: string | null) => {
+  if (!phone) return 'No phone'
+  const compact = phone.replace(/\s+/g, '')
+  if (compact.length <= 7) return compact
+  return `${compact.slice(0, 4)}••••${compact.slice(-3)}`
+}
+
 const inputStyle: React.CSSProperties = {
   padding: '10px 13px',
   background: 'var(--bg-glass-hi)',
@@ -250,21 +405,34 @@ export default function Callbacks() {
   const [newDatetime, setNewDatetime] = useState('')
   const [newNotes, setNewNotes] = useState('')
   const [actionId, setActionId] = useState<number | string | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<CallbackRecord | null>(null)
 
   const sipCall = useSipStore(s => s.call)
 
   const { callbacks, loading, error, refresh, markCompleted, markCancelled, reschedule } =
-    useCallbacks({ status: filter === 'ALL' ? undefined : filter, autoRefreshMs: 60_000 })
+    useCallbacks({ status: filter === 'ALL' ? undefined : filter })
+
+  useEffect(() => {
+    if (!cancelTarget) return
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setCancelTarget(null) }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [cancelTarget])
 
   const handleComplete = async (id: number | string) => {
     setActionId(id)
     try { await markCompleted(id) } finally { setActionId(null) }
   }
 
-  const handleCancel = async (id: number | string) => {
-    if (!confirm('Cancel this callback?')) return
-    setActionId(id)
-    try { await markCancelled(id) } finally { setActionId(null) }
+  const handleCancel = async () => {
+    if (!cancelTarget) return
+    setActionId(cancelTarget.id)
+    try {
+      await markCancelled(cancelTarget.id)
+      setCancelTarget(null)
+    } finally {
+      setActionId(null)
+    }
   }
 
   const openReschedule = (cb: CallbackRecord) => {
@@ -473,7 +641,7 @@ export default function Callbacks() {
                               color="var(--danger)"
                               bg="rgba(239,68,68,0.08)"
                               disabled={busy}
-                              onClick={() => void handleCancel(cb.id)}
+                              onClick={() => setCancelTarget(cb)}
                             />
                           </>
                         )}
@@ -486,6 +654,63 @@ export default function Callbacks() {
           </table>
         </div>
       </div>
+
+      {/* Cancel callback modal */}
+      <AnimatePresence>
+        {cancelTarget && (
+          <motion.div
+            className="ptdt-ai-confirm-backdrop"
+            role="presentation"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onMouseDown={event => { if (event.target === event.currentTarget) setCancelTarget(null) }}
+          >
+            <motion.div
+              className="ptdt-ai-confirm-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="ptdt-callback-cancel-title"
+              initial={{ y: 24, scale: 0.95, opacity: 0 }}
+              animate={{ y: 0, scale: 1, opacity: 1 }}
+              exit={{ y: 16, scale: 0.96, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+            >
+              <div className="ptdt-ai-confirm-content">
+                <div className="ptdt-ai-confirm-top">
+                  <span className="ptdt-ai-confirm-icon"><Phone size={23} /></span>
+                  <div>
+                    <h2 id="ptdt-callback-cancel-title" className="ptdt-ai-confirm-title">Cancel Callback?</h2>
+                    <p className="ptdt-ai-confirm-message">
+                      This will remove the scheduled callback from the pending queue. Please confirm before PTDT updates the callback record.
+                    </p>
+                  </div>
+                  <button type="button" className="ptdt-ai-confirm-close" onClick={() => setCancelTarget(null)} aria-label="Close confirmation dialog">×</button>
+                </div>
+
+                <div className="ptdt-ai-confirm-details">
+                  <div className="ptdt-ai-confirm-detail">
+                    <b>Customer</b>
+                    <span className="mono">{maskPhone(cancelTarget.contactPhone)}</span>
+                  </div>
+                  <div className="ptdt-ai-confirm-detail">
+                    <b>Scheduled</b>
+                    <span className="mono">{fmtDatetime(cancelTarget.scheduledAt)}</span>
+                  </div>
+                </div>
+
+                <div className="ptdt-ai-confirm-actions">
+                  <button type="button" className="ptdt-action-btn" onClick={() => setCancelTarget(null)} disabled={actionId === cancelTarget.id}>Cancel</button>
+                  <button type="button" className="ptdt-ai-confirm-start" onClick={() => void handleCancel()} disabled={actionId === cancelTarget.id} style={{ background: 'linear-gradient(135deg,#ef4444,#fb0b8c)', boxShadow: '0 18px 34px rgba(239,68,68,.24)' }}>
+                    <span>{actionId === cancelTarget.id ? <Clock size={16} /> : <Trash2 size={16} />}</span>
+                    {actionId === cancelTarget.id ? 'Removing...' : 'Remove Callback'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Reschedule modal */}
       <AnimatePresence>
