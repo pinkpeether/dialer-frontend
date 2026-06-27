@@ -59,7 +59,6 @@ import SpoofingManagement from './pages/SpoofingManagement'
 
 const platformAdminRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN']
 const adminConsoleRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR']
-const adminManagerRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER']
 const adminManagerSupervisorRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR']
 const adminCustomerRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN']
 const adminSupervisorRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR']
