@@ -59,11 +59,11 @@ import { defaultRouteForRole } from './utils/roleRoutes'
 import SpoofingManagement from './pages/SpoofingManagement'
 
 const platformAdminRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN']
-const adminConsoleRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR']
-const adminManagerSupervisorRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR']
+const adminConsoleRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR']
+const adminManagerSupervisorRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR']
 const adminCustomerRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN']
 const adminSupervisorRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR']
-const billingRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR']
+const billingRoles: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR']
 
 function RoleHomeRedirect() {
   const isAuth = useAuthStore(s => s.isAuth)
