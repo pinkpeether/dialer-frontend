@@ -5,6 +5,7 @@ import { useCampaigns } from '../hooks/useCampaigns'
 import StatsCard from '../components/StatsCard'
 import DialingModeSelector from '../components/dialing/DialingModeSelector'
 import DialingModeBadge from '../components/dialing/DialingModeBadge'
+import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -248,6 +249,7 @@ export default function Campaigns() {
   const [showForm, setShowForm] = useState(false)
   const [actionError, setActionError] = useState('')
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -295,9 +297,26 @@ export default function Campaigns() {
     completed: campaigns.filter(c => c.status === 'COMPLETED').length,
   }
 
+  const confirmDeleteCampaign = (campaignId: number, campaignName: string) => {
+    setDialog({
+      tone: 'confirm',
+      title: 'Delete campaign?',
+      message: `This will remove ${campaignName} and its related campaign contacts/calls from this workspace.`,
+      confirmLabel: 'Delete Campaign',
+      onConfirm: () => {
+        setDialog(null)
+        void runAction(campaignId, async () => {
+          await deleteCampaign(campaignId)
+          setDialog({ tone: 'success', title: 'Campaign deleted', message: 'The campaign has been deleted.' })
+        })
+      },
+    })
+  }
+
   return (
     <div className="ptdt-mobile-page ptdt-mobile-page-campaigns" style={{ padding: '32px 36px', maxWidth: 1600, margin: '0 auto' }}>
       <style>{PTDT_MOBILE_PAGE_CSS}</style>
+      <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, gap: 18, flexWrap: 'wrap' }}>
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 14 }}>
@@ -419,7 +438,7 @@ export default function Campaigns() {
                   {campaignStatus === 'ACTIVE' && <ActionBtn disabled={busyId === campaignId} onClick={() => runAction(campaignId, () => updateStatus(campaignId, 'PAUSED'))} icon={<Pause size={12} />} label="Pause" color="var(--warning)" bg="rgba(240,185,11,0.12)" />}
                   {campaignStatus === 'PAUSED' && <ActionBtn disabled={busyId === campaignId} onClick={() => runAction(campaignId, () => updateStatus(campaignId, 'ACTIVE'))} icon={<Play size={12} />} label="Resume" color="var(--green-2)" bg="rgba(0,167,71,0.10)" />}
                   <IconBtn disabled={busyId === campaignId} onClick={() => runAction(campaignId, () => cloneCampaign(campaignId))} icon={<Copy size={12} />} color="var(--text-3)" />
-                  <IconBtn disabled={busyId === campaignId} onClick={() => { if (confirm('Delete campaign? This will remove its contacts and calls.')) void runAction(campaignId, () => deleteCampaign(campaignId)) }} icon={<Trash2 size={12} />} color="var(--danger)" border="rgba(239,68,68,0.32)" />
+                  <IconBtn disabled={busyId === campaignId} onClick={() => confirmDeleteCampaign(campaignId, getText(campaign.name, 'this campaign'))} icon={<Trash2 size={12} />} color="var(--danger)" border="rgba(239,68,68,0.32)" />
                 </div>
               </div>
             )
