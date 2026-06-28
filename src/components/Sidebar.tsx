@@ -245,8 +245,6 @@ export default function Sidebar() {
   const toggleGroup = (key: string) => setExpandedGroups(prev => ({ [key]: !prev[key] }))
 
   const handleLogout = () => {
-    const ok = typeof window === 'undefined' ? true : window.confirm('Kya aap waqai PTDT-Dialer se sign out karna chahte hain?')
-    if (!ok) return
     const token = localStorage.getItem('jd_token')
     logout()
     navigate('/login', { replace: true })
