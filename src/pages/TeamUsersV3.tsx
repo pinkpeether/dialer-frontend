@@ -46,7 +46,7 @@ const switchKnob: React.CSSProperties = {
 const roleLabel = (role: unknown) => {
   if (role === 'CUSTOMER_ADMIN') return 'Customer Admin'
   if (role === 'SUPERVISOR') return 'Supervisor'
-  if (role === 'MANAGER') return 'Customer Admin'
+  if (role === 'MANAGER') return 'Disabled Role'
   return 'Agent'
 }
 
