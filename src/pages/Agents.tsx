@@ -4,6 +4,7 @@ import { Users, Plus, Search, UserX, X, ShieldCheck } from 'lucide-react'
 import { useAgents } from '../hooks/useAgents'
 import { useAuthStore } from '../store/auth.store'
 import StatsCard from '../components/StatsCard'
+import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 
 const COL_PINK = '#fb0b8c'
 const COL_GREEN = '#00a747'
@@ -22,7 +23,7 @@ const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
 const EMPTY_AGENT_STATS = { total: 0, online: 0, ready: 0, busy: 0, offline: 0 }
 const ROLE_LABELS: Record<string, string> = {
   CUSTOMER_ADMIN: 'Customer Admin',
-  MANAGER: 'Manager',
+  MANAGER: 'Disabled Role',
   SUPERVISOR: 'Supervisor',
   AGENT: 'Agent',
 }
@@ -44,6 +45,7 @@ export default function Agents() {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
+  const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const [form, setForm] = useState({
     name: '', email: '', password: '', role: 'AGENT', extension: '', phone: '',
   })
@@ -67,12 +69,38 @@ export default function Agents() {
       setShowForm(false)
       setForm({ name: '', email: '', password: '', role: 'AGENT', extension: '', phone: '' })
     } catch (err: unknown) {
-      alert((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error creating team user')
+      setDialog({
+        tone: 'error',
+        title: 'Cannot create team user',
+        message: (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error creating team user',
+      })
     }
+  }
+
+  const confirmDeactivate = (agent: Record<string, unknown>) => {
+    setDialog({
+      tone: 'confirm',
+      title: 'Deactivate user?',
+      message: `Deactivate ${String(agent.name || agent.email || 'this user')}?`,
+      confirmLabel: 'Deactivate',
+      onConfirm: async () => {
+        setDialog(null)
+        try {
+          await deleteAgent(agent.id as number)
+        } catch (err) {
+          setDialog({
+            tone: 'error',
+            title: 'Cannot deactivate user',
+            message: (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Could not deactivate this user.',
+          })
+        }
+      },
+    })
   }
 
   return (
     <div className="ptdt-page">
+      <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -126,7 +154,6 @@ export default function Agents() {
               <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))} style={inputStyle}>
                 <option value="AGENT">Agent</option>
                 <option value="SUPERVISOR">Supervisor</option>
-                <option value="MANAGER">Manager</option>
                 <option value="CUSTOMER_ADMIN">Customer Admin</option>
               </select>
             </div>
@@ -183,7 +210,7 @@ export default function Agents() {
                       {isSelf ? (
                         <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: COL_GREEN, background: 'rgba(0,167,71,0.10)', border: '1px solid rgba(0,167,71,0.28)' }}><ShieldCheck size={13}/> Signed in</span>
                       ) : (
-                        <button onClick={() => { if (confirm('Deactivate this user?')) deleteAgent(agent.id as number) }} style={{ background: 'transparent', border: '1px solid rgba(239,68,68,0.32)', borderRadius: 'var(--radius-sm)', padding: '6px 10px', cursor: 'pointer', color: COL_DANGER, display: 'inline-flex', alignItems: 'center' }}>
+                        <button onClick={() => confirmDeactivate(agent)} style={{ background: 'transparent', border: '1px solid rgba(239,68,68,0.32)', borderRadius: 'var(--radius-sm)', padding: '6px 10px', cursor: 'pointer', color: COL_DANGER, display: 'inline-flex', alignItems: 'center' }}>
                           <UserX size={13}/><span style={{ marginLeft: 6, fontSize: 12, fontWeight: 800 }}>Deactivate</span>
                         </button>
                       )}

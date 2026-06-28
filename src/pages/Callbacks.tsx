@@ -4,6 +4,7 @@ import { Calendar, CheckCircle2, Clock, Phone, RefreshCw, Trash2, X, XCircle } f
 import { useCallbacks } from '../hooks/useCallbacks'
 import { type CallbackRecord, type CallbackStatus } from '../api/callbacks.api'
 import { useSipStore } from '../store/sip.store'
+import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 
 const PTDT_MOBILE_PAGE_CSS = `
 .ptdt-ai-confirm-backdrop {
@@ -406,6 +407,7 @@ export default function Callbacks() {
   const [newNotes, setNewNotes] = useState('')
   const [actionId, setActionId] = useState<number | string | null>(null)
   const [cancelTarget, setCancelTarget] = useState<CallbackRecord | null>(null)
+  const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
 
   const sipCall = useSipStore(s => s.call)
 
@@ -457,11 +459,14 @@ export default function Callbacks() {
 
   const handleDialNow = async (cb: CallbackRecord) => {
     const phone = cb.contactPhone
-    if (!phone) return alert('No phone number on this callback record.')
+    if (!phone) {
+      setDialog({ tone: 'error', title: 'No phone number', message: 'This callback record does not have a phone number.' })
+      return
+    }
     try {
       await sipCall(phone)
     } catch {
-      alert(`Could not initiate SIP call to ${phone}`)
+      setDialog({ tone: 'error', title: 'Call could not start', message: `Could not initiate call to ${phone}.` })
     }
   }
 
@@ -470,6 +475,7 @@ export default function Callbacks() {
   return (
     <div className="ptdt-mobile-page ptdt-mobile-page-callbacks" style={{ padding: '32px 36px', maxWidth: 1400, margin: '0 auto' }}>
       <style>{PTDT_MOBILE_PAGE_CSS}</style>
+      <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
 
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
