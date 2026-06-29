@@ -5,7 +5,7 @@ import { dynamicCallerIdApi, type DynamicCallerIdRecord } from '../api/dynamicCa
 
 export const DYNAMIC_CALLER_ID_SELECTION_KEY = 'ptdt-dialer:selected-dynamic-caller-id'
 
-const usableOnly = (items: DynamicCallerIdRecord[]) => items.filter(item => item.isUsable)
+const selectableCallerIds = (items: DynamicCallerIdRecord[]) => items.filter(item => item.isUsable || item.isVerified || ['ACTIVE', 'VERIFIED'].includes(String(item.approvalStatus)))
 
 export default function DynamicCallerIdDialerSelector() {
   const location = useLocation()
@@ -37,7 +37,7 @@ export default function DynamicCallerIdDialerSelector() {
     setError('')
     try {
       const summary = await dynamicCallerIdApi.getSummary()
-      const available = usableOnly((summary.availableNumbers?.length ? summary.availableNumbers : summary.callerIds) || [])
+      const available = selectableCallerIds((summary.availableNumbers?.length ? summary.availableNumbers : summary.callerIds) || [])
       setAddonActive(Boolean(summary.addonActive || available.length > 0))
       setBalanceState(summary.balanceState)
       setNumbers(available)
@@ -47,7 +47,7 @@ export default function DynamicCallerIdDialerSelector() {
       // In that case, show all globally usable Dynamic Caller IDs for testing/admin calls.
       try {
         const all = await dynamicCallerIdApi.list()
-        const available = usableOnly(all)
+        const available = selectableCallerIds(all)
         setAddonActive(available.length > 0)
         setBalanceState('ADMIN_CONTEXT')
         setNumbers(available)
@@ -76,17 +76,17 @@ export default function DynamicCallerIdDialerSelector() {
 
   if (!onDialerPage) return null
 
-  const usable = numbers.length > 0 && balanceState !== 'HARD_STOP'
+  const usable = numbers.length > 0
 
   return (
     <div
       className="glass"
       style={{
         position: 'fixed',
-        right: 22,
+        right: 'clamp(18px, 14vw, 230px)',
         top: 18,
         zIndex: 20,
-        width: 'min(340px, calc(100vw - 44px))',
+        width: 'min(330px, calc(100vw - 44px))',
         padding: 13,
         borderRadius: 18,
         boxShadow: '0 14px 36px rgba(15,23,42,.18)',
@@ -109,8 +109,8 @@ export default function DynamicCallerIdDialerSelector() {
         className="ptdt-select"
         value={selectedId}
         onChange={event => handleSelect(event.target.value)}
-        disabled={loading || numbers.length === 0 || balanceState === 'HARD_STOP'}
-        style={{ width: '100%', minHeight: 38, fontSize: 12.5 }}
+        disabled={loading}
+        style={{ width: '100%', minHeight: 38, fontSize: 12.5, cursor: loading ? 'progress' : 'pointer' }}
       >
         <option value="">Default Caller ID / campaign fallback</option>
         {numbers.map(item => <option key={item.id} value={item.id}>{item.displayName ? `${item.displayName} — ` : ''}{item.displayNumber}</option>)}
@@ -125,7 +125,7 @@ export default function DynamicCallerIdDialerSelector() {
 
       {selectedNumber && <div className="mono" style={{ marginTop: 8, color: 'var(--green-2)', fontSize: 10.5, fontWeight: 800 }}>Selected: {selectedNumber.displayNumber}</div>}
       {error && <div style={{ marginTop: 8, color: 'var(--danger)', fontSize: 11, lineHeight: 1.45 }}>{error}</div>}
-      {!error && !usable && <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 11, lineHeight: 1.45 }}>Caller ID selector unlocks after approved numbers are available and wallet status allows calling.</div>}
+      {!error && !usable && <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 11, lineHeight: 1.45 }}>No approved Dynamic Caller IDs are available for this account yet.</div>}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 // PTDT Team Users V3
 import { useMemo, useState } from 'react'
-import { Plus, ShieldCheck, Users, X } from 'lucide-react'
+import { Pencil, Plus, Save, ShieldCheck, Users, X } from 'lucide-react'
 import { useAgents } from '../hooks/useAgents'
 import { agentsAPI } from '../api/agents.api'
 import { useAuthStore } from '../store/auth.store'
@@ -82,6 +82,8 @@ export default function TeamUsersV3() {
   const [confirmEmail, setConfirmEmail] = useState('')
   const [armedEmail, setArmedEmail] = useState('')
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'AGENT', extension: '', phone: '' })
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingName, setEditingName] = useState('')
 
   const { agents, loading, createAgent, refetch } = useAgents({ isActive: showInactive ? undefined : true })
   const errorMessage = (err: unknown) => (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Something went wrong'
@@ -118,6 +120,37 @@ export default function TeamUsersV3() {
     await withBusy(async () => {
       try { await agentsAPI.setActive(id, active); await refetch() }
       catch (err) { setDialog({ tone: 'error', title: 'Cannot update user', message: errorMessage(err) }) }
+    })
+  }
+
+  const startEditUser = (user: Record<string, unknown>) => {
+    setEditingId(Number(user.id))
+    setEditingName(String(user.name || ''))
+  }
+
+  const cancelEditUser = () => {
+    setEditingId(null)
+    setEditingName('')
+  }
+
+  const saveEditUser = async (user: Record<string, unknown>) => {
+    const id = Number(user.id)
+    const nextName = editingName.trim()
+    if (!nextName) {
+      setDialog({ tone: 'error', title: 'Name required', message: 'Please enter a team user name.' })
+      return
+    }
+
+    setPendingId(id)
+    await withBusy(async () => {
+      try {
+        await agentsAPI.update(id, { name: nextName })
+        cancelEditUser()
+        await refetch()
+        setDialog({ tone: 'success', title: 'Team user updated', message: 'The team user name has been updated successfully.' })
+      } catch (err) {
+        setDialog({ tone: 'error', title: 'Cannot update user', message: errorMessage(err) })
+      }
     })
   }
 
@@ -223,7 +256,20 @@ export default function TeamUsersV3() {
               const canToggleActive = !isSelf && (!isSupervisor || user.role === 'AGENT')
               const statusStyle = active ? { color: green, bg: 'rgba(0,167,71,.10)' } : { color: 'var(--text-3)', bg: 'var(--bg-2)' }
               return <tr key={Number(user.id)} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: 14, fontWeight: 900 }}>{String(user.name || '—')}<br /><span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{String(user.agentCode || '')}</span></td>
+                <td style={{ padding: 14, fontWeight: 900 }}>
+                  {editingId === Number(user.id) ? (
+                    <input
+                      value={editingName}
+                      onChange={event => setEditingName(event.target.value)}
+                      style={{ ...inputStyle, maxWidth: 260, minHeight: 38 }}
+                      autoFocus
+                    />
+                  ) : (
+                    String(user.name || '—')
+                  )}
+                  <br />
+                  <span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{String(user.agentCode || '')}</span>
+                </td>
                 <td style={{ padding: 14 }}>{String(user.email || '—')}</td>
                 <td style={{ padding: 14 }}>{roleLabel(user.role)}</td>
                 <td style={{ padding: 14 }}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}` }}>{String(user.status)}</span></td>
@@ -236,7 +282,20 @@ export default function TeamUsersV3() {
                     <span className="badge" style={{ color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>Protected</span>
                   )}
                 </td>
-                <td style={{ padding: 14 }}>{isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setArmedEmail(''); setFinalTarget(user) }}>Cleanup</button> : '—'}</td>
+                <td style={{ padding: 14 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {editingId === Number(user.id) ? (
+                      <>
+                        <button type="button" className="ptdt-action-btn" disabled={pendingId === Number(user.id)} onClick={() => void saveEditUser(user)}><Save size={13} /> Save</button>
+                        <button type="button" className="ptdt-action-btn" onClick={cancelEditUser}><X size={13} /> Cancel</button>
+                      </>
+                    ) : !isSelf && (!isSupervisor || user.role === 'AGENT') ? (
+                      <button type="button" className="ptdt-action-btn" onClick={() => startEditUser(user)}><Pencil size={13} /> Edit</button>
+                    ) : null}
+                    {isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setArmedEmail(''); setFinalTarget(user) }}>Cleanup</button> : null}
+                    {isSelf || (isSupervisor && user.role !== 'AGENT') ? <span style={{ color: 'var(--text-3)' }}>—</span> : null}
+                  </div>
+                </td>
               </tr>
             })}
           </tbody>
