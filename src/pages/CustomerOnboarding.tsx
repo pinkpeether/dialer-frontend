@@ -4,6 +4,7 @@ import { agentsAPI } from '../api/agents.api'
 import { administrationApi } from '../api/administration.api'
 import { commercialControlApi, type CommercialPlanCode } from '../api/commercialControl.api'
 import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
+import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 import { setGlobalRequestOverlaySuppressed } from '../api/axios'
 
 const card = { padding: 18, borderRadius: 18 } as const
@@ -88,6 +89,7 @@ const errorMessage = (err: unknown) => (err as { response?: { data?: { message?:
 
 export default function CustomerOnboarding() {
   const [busy, setBusy] = useState(false)
+  const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [created, setCreated] = useState<{ accountName: string; accountCode: string; adminEmail: string } | null>(null)
@@ -166,6 +168,12 @@ export default function CustomerOnboarding() {
 
       setCreated({ accountName: account.name, accountCode: account.code, adminEmail: customerAdmin.email })
       setMessage('Customer Admin account created and assigned successfully.')
+      setDialog({
+        tone: 'success',
+        title: 'Customer Admin created',
+        message: 'Customer Admin account created and assigned successfully.',
+        confirmLabel: 'OK',
+      })
       setForm({
         accountName: '', accountCode: '', billingEmail: '', billingPhone: '', currency: 'USD',
         adminName: '', adminEmail: '', adminPassword: '', adminPhone: '', adminExtension: '',
@@ -182,6 +190,7 @@ export default function CustomerOnboarding() {
   return (
     <div className="ptdt-page">
       <PtdtBusyOverlay active={busy} label="Creating Customer Admin account..." />
+      <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
       <div className="ptdt-page-header">
         <div>
           <div className="eyebrow pink"><Crown size={12} /> PTDT Platform Setup</div>

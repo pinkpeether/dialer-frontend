@@ -85,9 +85,17 @@ export const setGlobalRequestOverlaySuppressed = (suppressed: boolean) => {
   }
 }
 
+const isPtdtModalOpen = () => {
+  try {
+    return Boolean(document.querySelector('[data-ptdt-dialog-open="true"], [data-ptdt-modal-open="true"]'))
+  } catch {
+    return false
+  }
+}
+
 const isGlobalOverlaySuppressed = () => {
   try {
-    return window.sessionStorage.getItem(GLOBAL_OVERLAY_SUPPRESS_KEY) === '1'
+    return window.sessionStorage.getItem(GLOBAL_OVERLAY_SUPPRESS_KEY) === '1' || isPtdtModalOpen()
   } catch {
     return false
   }

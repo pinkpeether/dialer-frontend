@@ -17,6 +17,7 @@ import {
 import { aiCallsAPI, type AiCallLog, type StartAiCallResponse } from '../api/aiCalls.api'
 import { callControlAPI, type CallControlAction } from '../api/callControl.api'
 import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
+import { setGlobalRequestOverlaySuppressed } from '../api/axios'
 
 const E164_REGEX = /^\+[1-9]\d{7,14}$/
 
@@ -732,6 +733,7 @@ export default function AiDialer() {
     }
 
     setSubmitting(true)
+    setGlobalRequestOverlaySuppressed(true)
     setStartedAt(Date.now())
 
     try {
@@ -749,6 +751,7 @@ export default function AiDialer() {
       setStartedAt(null)
       setError(getErrorMessage(err))
     } finally {
+      setGlobalRequestOverlaySuppressed(false)
       setSubmitting(false)
     }
   }, [assistantId, callerId, customerNumber, notes, transferTo, validation])
@@ -995,6 +998,7 @@ export default function AiDialer() {
 
       {confirmOpen && (
         <div
+          data-ptdt-modal-open="true"
           className="ptdt-ai-confirm-backdrop"
           role="presentation"
           onMouseDown={event => {

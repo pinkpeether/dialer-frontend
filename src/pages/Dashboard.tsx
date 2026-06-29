@@ -254,6 +254,22 @@ type DashboardCache = {
   recentHistory: DashboardRecentCall[]
 }
 
+const EMPTY_STATS: Stats = {
+  agents: { total: 0, online: 0, ready: 0, busy: 0 },
+  campaigns: { total: 0, active: 0, paused: 0 },
+  contacts: { total: 0, pending: 0, answered: 0, answerRate: 0 },
+}
+
+const normalizeStats = (value: unknown): Stats | null => {
+  if (!value || typeof value !== 'object') return null
+  const raw = value as Partial<Stats>
+  return {
+    agents: { ...EMPTY_STATS.agents, ...(raw.agents || {}) },
+    campaigns: { ...EMPTY_STATS.campaigns, ...(raw.campaigns || {}) },
+    contacts: { ...EMPTY_STATS.contacts, ...(raw.contacts || {}) },
+  }
+}
+
 const DASHBOARD_LEGACY_CACHE_KEY = 'ptdt-dashboard:last-good'
 const dashboardCacheKey = (userId?: number, role?: string) =>
   userId ? `ptdt-dashboard:last-good:${role || 'USER'}:${userId}` : null
@@ -265,7 +281,9 @@ const readDashboardCache = (userId?: number, role?: string): DashboardCache | nu
   try {
     window.localStorage.removeItem(DASHBOARD_LEGACY_CACHE_KEY)
     const raw = window.localStorage.getItem(key)
-    return raw ? JSON.parse(raw) as DashboardCache : null
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as DashboardCache
+    return { ...parsed, stats: normalizeStats(parsed.stats) }
   } catch {
     return null
   }
@@ -405,7 +423,7 @@ const tooltipStyle = {
 export default function Dashboard() {
   const user = useAuthStore(s => s.user)
   const [cached] = useState(() => readDashboardCache(user?.id, user?.role))
-  const [stats, setStats] = useState<Stats | null>(cached?.stats ?? null)
+  const [stats, setStats] = useState<Stats | null>(normalizeStats(cached?.stats) ?? null)
   const [recentCallData, setRecentCallData] = useState<CallLog[]>(cached?.recentCallData ?? [])
   const [recentHistory, setRecentHistory] = useState<DashboardRecentCall[]>(cached?.recentHistory ?? [])
   const { activeCalls, recentCalls } = useLiveDashboard()
@@ -434,7 +452,7 @@ export default function Dashboard() {
         campaignsAPI.getStats(requestOptions),
         contactsAPI.getStats(undefined, requestOptions),
       ])
-      const nextStats = { agents: a, campaigns: c, contacts: ct }
+      const nextStats = normalizeStats({ agents: a, campaigns: c, contacts: ct }) || EMPTY_STATS
       setStats(nextStats)
       writeDashboardCache(user?.id, user?.role, { stats: nextStats })
     }
@@ -495,18 +513,20 @@ export default function Dashboard() {
   const dispositionData = buildDispositionPie(recentCallData)
   const dashboardRecentCalls = recentCalls.length > 0 ? recentCalls : recentHistory
 
-  const cards = stats ? [
-    { label: 'Total Agents',     value: stats.agents.total,
-      sub: `${stats.agents.online} online · ${stats.agents.ready} ready`,
+  const safeStats = normalizeStats(stats)
+
+  const cards = safeStats ? [
+    { label: 'Total Agents',     value: safeStats.agents.total,
+      sub: `${safeStats.agents.online} online · ${safeStats.agents.ready} ready`,
       icon: <Users size={18}/>,      color: COL_PINK,   bg: 'rgba(251,11,140,0.10)' },
-    { label: 'Active Campaigns', value: stats.campaigns.active,
-      sub: `${stats.campaigns.total} total campaigns`,
+    { label: 'Active Campaigns', value: safeStats.campaigns.active,
+      sub: `${safeStats.campaigns.total} total campaigns`,
       icon: <Megaphone size={18}/>,  color: COL_GREEN,  bg: 'rgba(0,167,71,0.10)' },
-    { label: 'Total Contacts',   value: stats.contacts.total,
-      sub: `${stats.contacts.pending} pending`,
+    { label: 'Total Contacts',   value: safeStats.contacts.total,
+      sub: `${safeStats.contacts.pending} pending`,
       icon: <Phone size={18}/>,      color: COL_PURPLE, bg: 'rgba(128,87,215,0.10)' },
-    { label: 'Answer Rate',      value: `${stats.contacts.answerRate ?? 0}%`,
-      sub: `${stats.contacts.answered} answered`,
+    { label: 'Answer Rate',      value: `${safeStats.contacts.answerRate ?? 0}%`,
+      sub: `${safeStats.contacts.answered} answered`,
       icon: <TrendingUp size={18}/>, color: COL_GOLD,   bg: 'rgba(240,185,11,0.10)' },
   ] : []
 

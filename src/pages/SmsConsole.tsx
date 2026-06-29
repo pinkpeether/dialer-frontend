@@ -32,6 +32,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+const displayProviderName = (provider?: string) => {
+  const value = String(provider || 'Custom').trim()
+  return value.toLowerCase().includes('illyvoip') ? 'Custom' : value
+}
+
 const emptyConfig: SmsConfig = {
   enabled: false,
   provider: 'PTDT Dialer',
@@ -144,10 +149,6 @@ export default function SmsConsole() {
           </p>
         </div>
         <div className="ptdt-toolbar">
-          <span className="ptdt-chip">
-            <ShieldCheck size={12} />
-            {config.provider.toUpperCase()}
-          </span>
           <button className="ptdt-action-btn" type="button" onClick={() => void load()} disabled={loading}>
             <RefreshCw size={14} /> {loading ? 'Refreshing...' : 'Refresh'}
           </button>
@@ -171,7 +172,7 @@ export default function SmsConsole() {
       <div className="ptdt-pro-kpis" style={{ marginBottom: 18 }}>
         <div className="ptdt-pro-kpi">
           <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 900, letterSpacing: 1 }}>PROVIDER</div>
-          <div style={{ marginTop: 6, fontSize: 28, color: 'var(--text)', fontWeight: 950 }}>{config.provider}</div>
+          <div style={{ marginTop: 6, fontSize: 28, color: 'var(--text)', fontWeight: 950 }}>{displayProviderName(config.provider)}</div>
         </div>
         <div className="ptdt-pro-kpi">
           <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 900, letterSpacing: 1 }}>MAX LENGTH</div>
