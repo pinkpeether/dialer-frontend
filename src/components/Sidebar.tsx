@@ -63,6 +63,15 @@ const COLORS = {
   teal: '#00a747',
 }
 
+const sidebarRoleLabel = (role?: string) => {
+  if (role === 'CUSTOMER_ADMIN') return 'Customer Admin'
+  if (role === 'SUPERVISOR') return 'Supervisor'
+  if (role === 'AGENT') return 'Agent'
+  if (role === 'SUPER_ADMIN') return 'PTDT Super Admin'
+  if (role === 'ADMIN') return 'PTDT Admin'
+  return role || 'Account'
+}
+
 const hexToRgba = (hex: string, alpha: number) => {
   const normalized = hex.replace('#', '')
   const value = normalized.length === 3 ? normalized.split('').map(char => char + char).join('') : normalized
@@ -347,7 +356,12 @@ export default function Sidebar() {
             <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'User'}</div><div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)' }}>{(user as Record<string, unknown> | null)?.agentCode as string || '—'}</div></div>
             <NotificationBell />
           </div>
-          <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }} onClick={handleLogout} className="sidebar-signout" style={{ width: '100%', height: 42, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 850, cursor: 'pointer' }}><LogOut size={15} /> Sign Out</motion.button>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8, alignItems: 'center' }}>
+            <div className="mono" title={sidebarRoleLabel(user?.role)} style={{ minHeight: 42, borderRadius: 14, border: '1px solid rgba(128,87,215,.22)', background: 'linear-gradient(135deg, rgba(128,87,215,.12), rgba(251,11,140,.08))', color: 'var(--purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 10px', fontSize: 10.5, fontWeight: 950, letterSpacing: .7, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {sidebarRoleLabel(user?.role)}
+            </div>
+            <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }} onClick={handleLogout} className="sidebar-signout" style={{ height: 42, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 850, cursor: 'pointer', padding: '0 12px' }}><LogOut size={15} /> Sign Out</motion.button>
+          </div>
         </div>
       </aside>
     </>
