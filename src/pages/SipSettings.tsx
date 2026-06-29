@@ -5,6 +5,7 @@ import SipStatusBadge from '../components/SipStatusBadge'
 import { useSipStore } from '../store/sip.store'
 import { useToast } from '../hooks/useToast'
 import type { SipAccountConfig, SipTransport } from '../types/sip'
+import OperationalStatusPills from '../components/OperationalStatusPills'
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -170,25 +171,28 @@ export default function SipSettings() {
       `}</style>
 
     <div className="ptdt-sip-page" style={{ padding: '32px 36px', maxWidth: 1320, margin: '0 auto' }}>
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
-        <div className="eyebrow pink" style={{ marginBottom: 14 }}>
-          <PhoneCall size={11}/> Universal SIP Provider Mode
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+        <div>
+          <div className="eyebrow pink" style={{ marginBottom: 14 }}>
+            <PhoneCall size={11}/> Universal SIP Provider Mode
+          </div>
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(28px, 3.2vw, 42px)',
+            fontWeight: 900,
+            lineHeight: 1.05,
+            color: 'var(--text)',
+            letterSpacing: '-0.04em',
+            marginBottom: 10,
+          }}>
+            SIP Account <span className="gradient-brand-text">Configuration</span>
+          </h1>
+          <p style={{ fontSize: 14.5, color: 'var(--text-3)', lineHeight: 1.7, maxWidth: 860 }}>
+            Configure any compatible SIP provider. PTDT Dialer will use this account for softphone calls instead of a hardcoded telecom API.
+            Use the transport that matches your provider or PBX deployment, including WebSocket, TLS, TCP, or UDP where supported.
+          </p>
         </div>
-        <h1 style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 'clamp(28px, 3.2vw, 42px)',
-          fontWeight: 900,
-          lineHeight: 1.05,
-          color: 'var(--text)',
-          letterSpacing: '-0.04em',
-          marginBottom: 10,
-        }}>
-          SIP Account <span className="gradient-brand-text">Configuration</span>
-        </h1>
-        <p style={{ fontSize: 14.5, color: 'var(--text-3)', lineHeight: 1.7, maxWidth: 860 }}>
-          Configure any compatible SIP provider. PTDT Dialer will use this account for softphone calls instead of a hardcoded telecom API.
-          Use the transport that matches your provider or PBX deployment, including WebSocket, TLS, TCP, or UDP where supported.
-        </p>
+        <OperationalStatusPills />
       </motion.div>
 
       <div className="ptdt-sip-shell" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 20 }}>

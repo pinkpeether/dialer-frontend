@@ -13,6 +13,17 @@ const memory = new Map<string, SwrRecord<unknown>>()
 const prefix = 'ptdt-api-swr:'
 const defaultMaxAgeMs = 30 * 60 * 1000
 
+const currentUserCacheScope = () => {
+  if (typeof window === 'undefined') return 'guest'
+  try {
+    const raw = window.localStorage.getItem('jd_user')
+    const user = raw ? JSON.parse(raw) as { id?: number; role?: string } : null
+    return user?.id ? `user:${user.role || 'USER'}:${user.id}` : 'guest'
+  } catch {
+    return 'guest'
+  }
+}
+
 const storageKey = (key: string) => `${prefix}${key}`
 
 const stableValue = (value: unknown): unknown => {
@@ -29,7 +40,7 @@ const stableValue = (value: unknown): unknown => {
     }, {})
 }
 
-export const swrKey = (scope: string, params?: unknown) => `${scope}:${JSON.stringify(stableValue(params || {}))}`
+export const swrKey = (scope: string, params?: unknown) => `${currentUserCacheScope()}:${scope}:${JSON.stringify(stableValue(params || {}))}`
 
 export const silentOverlayConfig = <T extends AxiosRequestConfig>(config?: T): T & SwrAxiosRequestConfig => ({
   ...(config || {} as T),
@@ -69,11 +80,13 @@ export const removeSwr = (key: string) => {
 export const clearSwrByPrefix = (scope: string) => {
   const fullPrefix = `${scope}:`
   Array.from(memory.keys()).forEach(key => {
-    if (key.startsWith(fullPrefix)) memory.delete(key)
+    if (key.startsWith(fullPrefix) || key.includes(`:${fullPrefix}`)) memory.delete(key)
   })
   if (typeof window === 'undefined') return
   Object.keys(window.localStorage).forEach(key => {
-    if (key.startsWith(storageKey(fullPrefix))) window.localStorage.removeItem(key)
+    if (key.startsWith(storageKey(fullPrefix)) || (key.startsWith(prefix) && key.includes(`:${fullPrefix}`))) {
+      window.localStorage.removeItem(key)
+    }
   })
 }
 

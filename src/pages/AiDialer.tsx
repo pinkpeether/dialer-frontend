@@ -16,6 +16,8 @@ import {
 } from 'lucide-react'
 import { aiCallsAPI, type AiCallLog, type StartAiCallResponse } from '../api/aiCalls.api'
 import { callControlAPI, type CallControlAction } from '../api/callControl.api'
+import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
+import { setGlobalRequestOverlaySuppressed } from '../api/axios'
 
 const E164_REGEX = /^\+[1-9]\d{7,14}$/
 
@@ -651,6 +653,7 @@ export default function AiDialer() {
   const [controlMessage, setControlMessage] = useState('')
   const [controlError, setControlError] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
 
   const validation = useMemo(() => {
     return [
@@ -730,6 +733,7 @@ export default function AiDialer() {
     }
 
     setSubmitting(true)
+    setGlobalRequestOverlaySuppressed(true)
     setStartedAt(Date.now())
 
     try {
@@ -747,6 +751,7 @@ export default function AiDialer() {
       setStartedAt(null)
       setError(getErrorMessage(err))
     } finally {
+      setGlobalRequestOverlaySuppressed(false)
       setSubmitting(false)
     }
   }, [assistantId, callerId, customerNumber, notes, transferTo, validation])
@@ -771,7 +776,19 @@ export default function AiDialer() {
       return
     }
 
-    if (requiresConfirm && !window.confirm('This will end the active AI call. Continue?')) return
+    if (requiresConfirm) {
+      setDialog({
+        tone: 'confirm',
+        title: 'End active AI call?',
+        message: 'This will end the active AI call. Continue?',
+        confirmLabel: 'End Call',
+        onConfirm: () => {
+          setDialog(null)
+          void runControl(action, false)
+        },
+      })
+      return
+    }
 
     setControlLoading(action)
 
@@ -802,6 +819,7 @@ export default function AiDialer() {
   return (
     <div className="ptdt-ai-dialer-page">
       <style>{pageCss}</style>
+      <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 20 }}>
         <div>
@@ -980,6 +998,7 @@ export default function AiDialer() {
 
       {confirmOpen && (
         <div
+          data-ptdt-modal-open="true"
           className="ptdt-ai-confirm-backdrop"
           role="presentation"
           onMouseDown={event => {

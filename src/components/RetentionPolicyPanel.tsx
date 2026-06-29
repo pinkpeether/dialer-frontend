@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ShieldAlert, Trash2 } from 'lucide-react'
 import { recordingStorageProAPI, type RecordingRetentionPolicy } from '../api/recordingStoragePro.api'
+import PtdtDialog, { type PtdtDialogState } from './PtdtDialog'
 
 const defaultPolicy: RecordingRetentionPolicy = {
   enabled: false,
@@ -16,6 +17,7 @@ export default function RetentionPolicyPanel() {
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -80,9 +82,7 @@ export default function RetentionPolicyPanel() {
     }
   }
 
-  const runLive = async () => {
-    const confirmed = window.confirm('This will purge eligible recording metadata for the oldest controlled batch. Continue?')
-    if (!confirmed) return
+  const executeLivePurge = async () => {
     setLoading(true)
     setMessage('')
     try {
@@ -96,8 +96,22 @@ export default function RetentionPolicyPanel() {
     }
   }
 
+  const runLive = async () => {
+    setDialog({
+      tone: 'confirm',
+      title: 'Run live purge?',
+      message: 'This will purge eligible recording metadata for the oldest controlled batch.',
+      confirmLabel: 'Run Live Purge',
+      onConfirm: async () => {
+        setDialog(null)
+        await executeLivePurge()
+      },
+    })
+  }
+
   return (
     <section className="ptdt-card" style={{ padding: 18 }}>
+      <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
       <div style={{ marginBottom: 14 }}>
         <div className="eyebrow pink" style={{ marginBottom: 10 }}>
           <ShieldAlert size={12} /> Retention Policy

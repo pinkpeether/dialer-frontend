@@ -5,6 +5,7 @@ import { useCampaigns } from '../hooks/useCampaigns'
 import StatsCard from '../components/StatsCard'
 import DialingModeSelector from '../components/dialing/DialingModeSelector'
 import DialingModeBadge from '../components/dialing/DialingModeBadge'
+import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -234,6 +235,14 @@ const inputStyle = {
   width: '100%',
 } as const
 
+const campaignFieldLabelStyle = {
+  color: 'var(--text-2)',
+  fontSize: 12,
+  fontWeight: 900,
+} as const
+
+const requiredStar = <span style={{ color: '#ef4444' }}> *</span>
+
 const getNumber = (value: unknown, fallback = 0) => {
   const num = Number(value)
   return Number.isFinite(num) ? num : fallback
@@ -248,6 +257,7 @@ export default function Campaigns() {
   const [showForm, setShowForm] = useState(false)
   const [actionError, setActionError] = useState('')
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -295,9 +305,26 @@ export default function Campaigns() {
     completed: campaigns.filter(c => c.status === 'COMPLETED').length,
   }
 
+  const confirmDeleteCampaign = (campaignId: number, campaignName: string) => {
+    setDialog({
+      tone: 'confirm',
+      title: 'Delete campaign?',
+      message: `This will remove ${campaignName} and its related campaign contacts/calls from this workspace.`,
+      confirmLabel: 'Delete Campaign',
+      onConfirm: () => {
+        setDialog(null)
+        void runAction(campaignId, async () => {
+          await deleteCampaign(campaignId)
+          setDialog({ tone: 'success', title: 'Campaign deleted', message: 'The campaign has been deleted.' })
+        })
+      },
+    })
+  }
+
   return (
     <div className="ptdt-mobile-page ptdt-mobile-page-campaigns" style={{ padding: '32px 36px', maxWidth: 1600, margin: '0 auto' }}>
       <style>{PTDT_MOBILE_PAGE_CSS}</style>
+      <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, gap: 18, flexWrap: 'wrap' }}>
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 14 }}>
@@ -336,20 +363,40 @@ export default function Campaigns() {
         <form onSubmit={handleCreate} className="glass" style={{ padding: 24, marginBottom: 24 }}>
           <h3 className="display" style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 18 }}>New Campaign</h3>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginBottom: 12 }}>
-            <input placeholder="Campaign Name" value={form.name} onChange={event => setForm(previous => ({ ...previous, name: event.target.value }))} required style={inputStyle} />
-            <input placeholder="Description" value={form.description} onChange={event => setForm(previous => ({ ...previous, description: event.target.value }))} style={inputStyle} />
-            <input type="number" placeholder="Dialing Ratio" value={form.dialingRatio} onChange={event => setForm(previous => ({ ...previous, dialingRatio: Number(event.target.value) }))} style={inputStyle} min={1} max={10} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 14, marginBottom: 14, alignItems: 'start' }}>
+            <label style={{ display: 'grid', gap: 6 }}>
+              <span style={campaignFieldLabelStyle}>Campaign Name{requiredStar}</span>
+              <input value={form.name} onChange={event => setForm(previous => ({ ...previous, name: event.target.value }))} required style={inputStyle} />
+            </label>
+
+            <label style={{ display: 'grid', gap: 6 }}>
+              <span style={campaignFieldLabelStyle}>Description</span>
+              <input value={form.description} onChange={event => setForm(previous => ({ ...previous, description: event.target.value }))} style={inputStyle} />
+            </label>
+
+            <label style={{ display: 'grid', gap: 6 }}>
+              <span style={campaignFieldLabelStyle}>Dialing Ratio{requiredStar}</span>
+              <input type="number" value={form.dialingRatio} onChange={event => setForm(previous => ({ ...previous, dialingRatio: Number(event.target.value) }))} required style={inputStyle} min={1} max={10} />
+            </label>
+
             <DialingModeSelector value={form.mode} onChange={mode => setForm(previous => ({ ...previous, mode }))} />
-            <select value={form.timezone} onChange={event => setForm(previous => ({ ...previous, timezone: event.target.value }))} style={inputStyle}>
-              <option value="Asia/Karachi">Asia/Karachi</option>
-              <option value="UTC">UTC</option>
-              <option value="America/New_York">America/New_York</option>
-              <option value="America/Chicago">America/Chicago</option>
-              <option value="America/Los_Angeles">America/Los_Angeles</option>
-              <option value="Europe/London">Europe/London</option>
-            </select>
-            <textarea placeholder="Call Script…" value={form.script} onChange={event => setForm(previous => ({ ...previous, script: event.target.value }))} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+
+            <label style={{ display: 'grid', gap: 6 }}>
+              <span style={campaignFieldLabelStyle}>Timezone{requiredStar}</span>
+              <select required value={form.timezone} onChange={event => setForm(previous => ({ ...previous, timezone: event.target.value }))} style={inputStyle}>
+                <option value="Asia/Karachi">Asia/Karachi</option>
+                <option value="UTC">UTC</option>
+                <option value="America/New_York">America/New_York</option>
+                <option value="America/Chicago">America/Chicago</option>
+                <option value="America/Los_Angeles">America/Los_Angeles</option>
+                <option value="Europe/London">Europe/London</option>
+              </select>
+            </label>
+
+            <label style={{ display: 'grid', gap: 6, gridColumn: 'span 3' }}>
+              <span style={campaignFieldLabelStyle}>Call Script</span>
+              <textarea value={form.script} onChange={event => setForm(previous => ({ ...previous, script: event.target.value }))} rows={3} style={{ ...inputStyle, minHeight: 88, resize: 'vertical' }} />
+            </label>
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
@@ -419,7 +466,7 @@ export default function Campaigns() {
                   {campaignStatus === 'ACTIVE' && <ActionBtn disabled={busyId === campaignId} onClick={() => runAction(campaignId, () => updateStatus(campaignId, 'PAUSED'))} icon={<Pause size={12} />} label="Pause" color="var(--warning)" bg="rgba(240,185,11,0.12)" />}
                   {campaignStatus === 'PAUSED' && <ActionBtn disabled={busyId === campaignId} onClick={() => runAction(campaignId, () => updateStatus(campaignId, 'ACTIVE'))} icon={<Play size={12} />} label="Resume" color="var(--green-2)" bg="rgba(0,167,71,0.10)" />}
                   <IconBtn disabled={busyId === campaignId} onClick={() => runAction(campaignId, () => cloneCampaign(campaignId))} icon={<Copy size={12} />} color="var(--text-3)" />
-                  <IconBtn disabled={busyId === campaignId} onClick={() => { if (confirm('Delete campaign? This will remove its contacts and calls.')) void runAction(campaignId, () => deleteCampaign(campaignId)) }} icon={<Trash2 size={12} />} color="var(--danger)" border="rgba(239,68,68,0.32)" />
+                  <IconBtn disabled={busyId === campaignId} onClick={() => confirmDeleteCampaign(campaignId, getText(campaign.name, 'this campaign'))} icon={<Trash2 size={12} />} color="var(--danger)" border="rgba(239,68,68,0.32)" />
                 </div>
               </div>
             )

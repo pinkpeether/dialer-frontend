@@ -20,6 +20,7 @@ const api = axios.create({
 })
 
 const overlayIds = new WeakMap<object, number>()
+const GLOBAL_OVERLAY_SUPPRESS_KEY = 'ptdt:suppress-global-overlay'
 
 const managedGetPrefixes = [
   '/administration',
@@ -75,7 +76,33 @@ const requestVerb = (method?: string) => (method || 'get').toLowerCase()
 
 const pathStartsWith = (path: string, prefixes: string[]) => prefixes.some(prefix => path === prefix || path.startsWith(`${prefix}/`))
 
+export const setGlobalRequestOverlaySuppressed = (suppressed: boolean) => {
+  try {
+    if (suppressed) window.sessionStorage.setItem(GLOBAL_OVERLAY_SUPPRESS_KEY, '1')
+    else window.sessionStorage.removeItem(GLOBAL_OVERLAY_SUPPRESS_KEY)
+  } catch {
+    // Best-effort UI preference only.
+  }
+}
+
+const isPtdtModalOpen = () => {
+  try {
+    return Boolean(document.querySelector('[data-ptdt-dialog-open="true"], [data-ptdt-modal-open="true"]'))
+  } catch {
+    return false
+  }
+}
+
+const isGlobalOverlaySuppressed = () => {
+  try {
+    return window.sessionStorage.getItem(GLOBAL_OVERLAY_SUPPRESS_KEY) === '1' || isPtdtModalOpen()
+  } catch {
+    return false
+  }
+}
+
 const shouldTrackRequest = (method: string, path: string) => {
+  if (isGlobalOverlaySuppressed()) return false
   if (!path || pathStartsWith(path, silentRequestPrefixes)) return false
   if (method === 'get') {
     if (pathStartsWith(path, silentGetPrefixes)) return false

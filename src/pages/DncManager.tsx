@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, RefreshCw, Search, ShieldOff, Trash2, X } from 'lucide-react'
 import { dncAPI, type DncEntry } from '../api/dnc.api'
 import { useAuthStore } from '../store/auth.store'
+import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 
 const fmtDate = (iso?: string) => {
   if (!iso) return '—'
@@ -32,8 +33,9 @@ export default function DncManager() {
   const [removingId, setRemovingId] = useState<number | string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const canRemove = user?.role === 'ADMIN'
+  const canRemove = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN'
 
   const load = useCallback(async (q?: string) => {
     setLoading(true)
@@ -80,22 +82,31 @@ export default function DncManager() {
   }
 
   const handleRemove = async (entry: DncEntry) => {
-    if (!confirm(`Remove ${entry.phone} from DNC list?`)) return
-    setRemovingId(entry.id)
-    try {
-      await dncAPI.remove(entry.id)
-      await load()
-      setSuccessMsg(`✓ ${entry.phone} removed from DNC`)
-      setTimeout(() => setSuccessMsg(null), 3000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove entry')
-    } finally {
-      setRemovingId(null)
-    }
+    setDialog({
+      tone: 'confirm',
+      title: 'Remove DNC number?',
+      message: `Remove ${entry.phone} from the Do Not Call list?`,
+      confirmLabel: 'Remove Number',
+      onConfirm: async () => {
+        setDialog(null)
+        setRemovingId(entry.id)
+        try {
+          await dncAPI.remove(entry.id)
+          await load()
+          setSuccessMsg(`✓ ${entry.phone} removed from DNC`)
+          setTimeout(() => setSuccessMsg(null), 3000)
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to remove entry')
+        } finally {
+          setRemovingId(null)
+        }
+      },
+    })
   }
 
   return (
     <div className="ptdt-page">
+      <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
 
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>

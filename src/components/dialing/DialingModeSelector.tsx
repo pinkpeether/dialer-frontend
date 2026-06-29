@@ -7,7 +7,7 @@ const MODES = [
   { value: 'MANUAL', label: 'Manual', help: 'Agent selects and dials manually.' },
   { value: 'PREVIEW', label: 'Preview', help: 'Agent reviews next contact before calling.' },
   { value: 'PROGRESSIVE', label: 'Progressive', help: 'One call per ready agent.' },
-  { value: 'PREDICTIVE', label: 'Predictive Beta', help: 'Conservative multi-call pacing with guardrails.' },
+  { value: 'PREDICTIVE', label: 'Predictive', help: 'Conservative multi-call pacing with guardrails.' },
 ]
 
 export default function DialingModeSelector({ value, onChange }: Props) {
@@ -25,14 +25,14 @@ export default function DialingModeSelector({ value, onChange }: Props) {
           textTransform: 'uppercase',
         }}
       >
-        Dialing Mode
+        Dialing Mode <span style={{ color: 'var(--danger)' }}>*</span>
       </label>
       <select
         value={value || 'PROGRESSIVE'}
         onChange={event => onChange(event.target.value)}
         style={{
           width: '100%',
-          padding: '11px 14px',
+          padding: '9px 12px',
           background: 'var(--bg-glass-hi)',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-md)',

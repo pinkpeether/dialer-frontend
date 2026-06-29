@@ -17,6 +17,7 @@ import { useAuthStore }     from '../store/auth.store'
 import { useSipStore }      from '../store/sip.store'
 import { useLiveDashboard } from '../hooks/useLiveDashboard'
 import StatsCard            from '../components/StatsCard'
+import OperationalStatusPills from '../components/OperationalStatusPills'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -254,23 +255,49 @@ type DashboardCache = {
   recentHistory: DashboardRecentCall[]
 }
 
-const DASHBOARD_CACHE_KEY = 'ptdt-dashboard:last-good'
+const EMPTY_STATS: Stats = {
+  agents: { total: 0, online: 0, ready: 0, busy: 0 },
+  campaigns: { total: 0, active: 0, paused: 0 },
+  contacts: { total: 0, pending: 0, answered: 0, answerRate: 0 },
+}
 
-const readDashboardCache = (): DashboardCache | null => {
+const normalizeStats = (value: unknown): Stats | null => {
+  if (!value || typeof value !== 'object') return null
+  const raw = value as Partial<Stats>
+  return {
+    agents: { ...EMPTY_STATS.agents, ...(raw.agents || {}) },
+    campaigns: { ...EMPTY_STATS.campaigns, ...(raw.campaigns || {}) },
+    contacts: { ...EMPTY_STATS.contacts, ...(raw.contacts || {}) },
+  }
+}
+
+const DASHBOARD_LEGACY_CACHE_KEY = 'ptdt-dashboard:last-good'
+const dashboardCacheKey = (userId?: number, role?: string) =>
+  userId ? `ptdt-dashboard:last-good:${role || 'USER'}:${userId}` : null
+
+const readDashboardCache = (userId?: number, role?: string): DashboardCache | null => {
   if (typeof window === 'undefined') return null
+  const key = dashboardCacheKey(userId, role)
+  if (!key) return null
   try {
-    const raw = window.localStorage.getItem(DASHBOARD_CACHE_KEY)
-    return raw ? JSON.parse(raw) as DashboardCache : null
+    window.localStorage.removeItem(DASHBOARD_LEGACY_CACHE_KEY)
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as DashboardCache
+    return { ...parsed, stats: normalizeStats(parsed.stats) }
   } catch {
     return null
   }
 }
 
-const writeDashboardCache = (patch: Partial<Omit<DashboardCache, 'savedAt'>>) => {
+const writeDashboardCache = (userId: number | undefined, role: string | undefined, patch: Partial<Omit<DashboardCache, 'savedAt'>>) => {
   if (typeof window === 'undefined') return
+  const key = dashboardCacheKey(userId, role)
+  if (!key) return
   try {
-    const previous = readDashboardCache()
-    window.localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ ...previous, ...patch, savedAt: new Date().toISOString() }))
+    window.localStorage.removeItem(DASHBOARD_LEGACY_CACHE_KEY)
+    const previous = readDashboardCache(userId, role)
+    window.localStorage.setItem(key, JSON.stringify({ ...previous, ...patch, savedAt: new Date().toISOString() }))
   } catch {
     // Local cache is best-effort; backend remains source of truth.
   }
@@ -396,8 +423,8 @@ const tooltipStyle = {
 
 export default function Dashboard() {
   const user = useAuthStore(s => s.user)
-  const [cached] = useState(() => readDashboardCache())
-  const [stats, setStats] = useState<Stats | null>(cached?.stats ?? null)
+  const [cached] = useState(() => readDashboardCache(user?.id, user?.role))
+  const [stats, setStats] = useState<Stats | null>(normalizeStats(cached?.stats) ?? null)
   const [recentCallData, setRecentCallData] = useState<CallLog[]>(cached?.recentCallData ?? [])
   const [recentHistory, setRecentHistory] = useState<DashboardRecentCall[]>(cached?.recentHistory ?? [])
   const { activeCalls, recentCalls } = useLiveDashboard()
@@ -426,9 +453,9 @@ export default function Dashboard() {
         campaignsAPI.getStats(requestOptions),
         contactsAPI.getStats(undefined, requestOptions),
       ])
-      const nextStats = { agents: a, campaigns: c, contacts: ct }
+      const nextStats = normalizeStats({ agents: a, campaigns: c, contacts: ct }) || EMPTY_STATS
       setStats(nextStats)
-      writeDashboardCache({ stats: nextStats })
+      writeDashboardCache(user?.id, user?.role, { stats: nextStats })
     }
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -476,7 +503,7 @@ export default function Dashboard() {
           // non-fatal — charts just stay empty
         }
       } finally {
-        writeDashboardCache({ recentCallData: nextRecentCallData, recentHistory: nextRecentHistory })
+        writeDashboardCache(user?.id, user?.role, { recentCallData: nextRecentCallData, recentHistory: nextRecentHistory })
       }
     }
     void loadCalls()
@@ -487,18 +514,20 @@ export default function Dashboard() {
   const dispositionData = buildDispositionPie(recentCallData)
   const dashboardRecentCalls = recentCalls.length > 0 ? recentCalls : recentHistory
 
-  const cards = stats ? [
-    { label: 'Total Agents',     value: stats.agents.total,
-      sub: `${stats.agents.online} online · ${stats.agents.ready} ready`,
+  const safeStats = normalizeStats(stats)
+
+  const cards = safeStats ? [
+    { label: 'Total Agents',     value: safeStats.agents.total,
+      sub: `${safeStats.agents.online} online · ${safeStats.agents.ready} ready`,
       icon: <Users size={18}/>,      color: COL_PINK,   bg: 'rgba(251,11,140,0.10)' },
-    { label: 'Active Campaigns', value: stats.campaigns.active,
-      sub: `${stats.campaigns.total} total campaigns`,
+    { label: 'Active Campaigns', value: safeStats.campaigns.active,
+      sub: `${safeStats.campaigns.total} total campaigns`,
       icon: <Megaphone size={18}/>,  color: COL_GREEN,  bg: 'rgba(0,167,71,0.10)' },
-    { label: 'Total Contacts',   value: stats.contacts.total,
-      sub: `${stats.contacts.pending} pending`,
+    { label: 'Total Contacts',   value: safeStats.contacts.total,
+      sub: `${safeStats.contacts.pending} pending`,
       icon: <Phone size={18}/>,      color: COL_PURPLE, bg: 'rgba(128,87,215,0.10)' },
-    { label: 'Answer Rate',      value: `${stats.contacts.answerRate ?? 0}%`,
-      sub: `${stats.contacts.answered} answered`,
+    { label: 'Answer Rate',      value: `${safeStats.contacts.answerRate ?? 0}%`,
+      sub: `${safeStats.contacts.answered} answered`,
       icon: <TrendingUp size={18}/>, color: COL_GOLD,   bg: 'rgba(240,185,11,0.10)' },
   ] : []
 
@@ -514,23 +543,26 @@ export default function Dashboard() {
       <style>{PTDT_MOBILE_PAGE_CSS}</style>
 
       {/* Hero header */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
-        <div className="eyebrow pink" style={{ marginBottom: 14 }}>
-          <Sparkles size={11}/> Live operations
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+        <div>
+          <div className="eyebrow pink" style={{ marginBottom: 14 }}>
+            <Sparkles size={11}/> Live operations
+          </div>
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(28px, 3.4vw, 42px)',
+            fontWeight: 900, lineHeight: 1.05,
+            letterSpacing: '-0.04em', marginBottom: 10, color: 'var(--text)',
+          }}>
+            {greeting},{' '}
+            <span className="gradient-brand-text">{user?.name?.split(' ')[0] || 'Operator'}</span>
+          </h1>
+          <p style={{ fontSize: 14.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="pulse-dot"/>
+            Pipeline online · monitoring {dashboardActiveCalls.length} live call{dashboardActiveCalls.length === 1 ? '' : 's'}
+          </p>
         </div>
-        <h1 style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 'clamp(28px, 3.4vw, 42px)',
-          fontWeight: 900, lineHeight: 1.05,
-          letterSpacing: '-0.04em', marginBottom: 10, color: 'var(--text)',
-        }}>
-          {greeting},{' '}
-          <span className="gradient-brand-text">{user?.name?.split(' ')[0] || 'Operator'}</span>
-        </h1>
-        <p style={{ fontSize: 14.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="pulse-dot"/>
-          Pipeline online · monitoring {dashboardActiveCalls.length} live call{dashboardActiveCalls.length === 1 ? '' : 's'}
-        </p>
+        <OperationalStatusPills />
       </motion.div>
 
       {/* Stats grid */}

@@ -408,12 +408,12 @@ export default function CampaignDetail() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {(campaign.status === 'DRAFT' || campaign.status === 'PAUSED') && <button disabled={busy} className="btn-brand" onClick={() => void handleStatusChange('ACTIVE')}><Play size={14} /> Start</button>}
-                {campaign.status === 'ACTIVE' && <button disabled={busy} onClick={() => void handleStatusChange('PAUSED')}><Pause size={14} /> Pause</button>}
-                {campaign.status !== 'COMPLETED' && <button disabled={busy} onClick={() => void handleStatusChange('COMPLETED')}><CheckCircle2 size={14} /> Complete</button>}
-                <button disabled={busy} onClick={() => setImportOpen(true)}><Upload size={14} /> Import CSV</button>
-                <button disabled={busy} onClick={() => void loadCampaign()}><RefreshCw size={14} /> Refresh</button>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {(campaign.status === 'DRAFT' || campaign.status === 'PAUSED') && <CampaignActionButton disabled={busy} tone="brand" onClick={() => void handleStatusChange('ACTIVE')} icon={<Play size={14} />}>Start</CampaignActionButton>}
+                {campaign.status === 'ACTIVE' && <CampaignActionButton disabled={busy} tone="warning" onClick={() => void handleStatusChange('PAUSED')} icon={<Pause size={14} />}>Pause</CampaignActionButton>}
+                {campaign.status !== 'COMPLETED' && <CampaignActionButton disabled={busy} tone="success" onClick={() => void handleStatusChange('COMPLETED')} icon={<CheckCircle2 size={14} />}>Complete</CampaignActionButton>}
+                <CampaignActionButton disabled={busy} tone="neutral" onClick={() => setImportOpen(true)} icon={<Upload size={14} />}>Import CSV</CampaignActionButton>
+                <CampaignActionButton disabled={busy} tone="neutral" onClick={() => void loadCampaign()} icon={<RefreshCw size={14} />}>Refresh</CampaignActionButton>
               </div>
             </div>
 
@@ -463,6 +463,42 @@ export default function CampaignDetail() {
         </>
       )}
     </div>
+  )
+}
+
+function CampaignActionButton({ children, icon, onClick, disabled, tone = 'neutral' }: { children: React.ReactNode; icon: React.ReactNode; onClick?: () => void; disabled?: boolean; tone?: 'brand' | 'success' | 'warning' | 'neutral' }) {
+  const tones = {
+    brand: { color: '#fff', border: 'rgba(251,11,140,.28)', background: 'var(--grad-brand)', shadow: '0 14px 34px rgba(251,11,140,.22)' },
+    success: { color: 'var(--green-2)', border: 'rgba(0,167,71,.28)', background: 'rgba(0,167,71,.10)', shadow: 'none' },
+    warning: { color: 'var(--warning)', border: 'rgba(240,185,11,.32)', background: 'rgba(240,185,11,.12)', shadow: 'none' },
+    neutral: { color: 'var(--text)', border: 'var(--border)', background: 'var(--bg-glass-hi)', shadow: '0 10px 26px rgba(15,23,42,.08)' },
+  }[tone]
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        minHeight: 42,
+        padding: '9px 15px',
+        borderRadius: 14,
+        border: `1px solid ${tones.border}`,
+        background: tones.background,
+        color: tones.color,
+        fontWeight: 900,
+        fontSize: 13,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        cursor: disabled ? 'progress' : 'pointer',
+        opacity: disabled ? 0.62 : 1,
+        boxShadow: tones.shadow,
+      }}
+    >
+      {icon}
+      {children}
+    </button>
   )
 }
 

@@ -64,6 +64,7 @@ export default function CustomerBillingPortal() {
   const critical = Number(account?.criticalBalanceThreshold || 3)
   const currentState = balanceState(balance, low, critical, Boolean(account?.hardStopEnabled))
   const activeAddons = account?.addons?.filter(item => item.status === 'ACTIVE') || []
+  const isSupervisorMembership = selectedMembership?.accountRole === 'SUPERVISOR'
 
   const loadData = useCallback(async (options: { silent?: boolean } = {}) => {
     if (options.silent || hasVisibleDataRef.current) setRefreshing(true)
@@ -166,7 +167,7 @@ export default function CustomerBillingPortal() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 18 }}>
               {[
-                ['Manage Users', Boolean(selectedMembership?.canManageUsers)],
+                [isSupervisorMembership ? 'Manage Agents' : 'Manage Users', isSupervisorMembership || Boolean(selectedMembership?.canManageUsers)],
                 ['Manage Billing', Boolean(selectedMembership?.canManageBilling)],
                 ['Manage Campaigns', Boolean(selectedMembership?.canManageCampaigns)],
                 ['View Reports', Boolean(selectedMembership?.canViewReports)],

@@ -27,8 +27,7 @@ export function normalizeRole(role?: string | null): UserRole | null {
 }
 
 export function defaultRouteForRole(role?: string | null) {
-  void role
-  return '/dashboard'
+  return normalizeRole(role) === 'AGENT' ? '/agent/workspace' : '/dashboard'
 }
 
 export function canAgentAccessPath(pathname: string) {

@@ -45,6 +45,7 @@ import { authAPI } from '../api/auth.api'
 import ThemeToggle from './ThemeToggle'
 import NotificationBell from './NotificationBell'
 import DesktopUpdateControl from './DesktopUpdateControl'
+import PtdtDialog, { type PtdtDialogState } from './PtdtDialog'
 import { useSipStore } from '../store/sip.store'
 
 type NavItem = { to: string; icon: ElementType; label: string; roles?: string[]; color?: string }
@@ -63,6 +64,15 @@ const COLORS = {
   teal: '#00a747',
 }
 
+const sidebarRoleLabel = (role?: string) => {
+  if (role === 'CUSTOMER_ADMIN') return 'Customer Admin'
+  if (role === 'SUPERVISOR') return 'Supervisor'
+  if (role === 'AGENT') return 'Agent'
+  if (role === 'SUPER_ADMIN') return 'PTDT Super Admin'
+  if (role === 'ADMIN') return 'PTDT Admin'
+  return role || 'Account'
+}
+
 const hexToRgba = (hex: string, alpha: number) => {
   const normalized = hex.replace('#', '')
   const value = normalized.length === 3 ? normalized.split('').map(char => char + char).join('') : normalized
@@ -75,25 +85,25 @@ const NAV: NavItem[] = [
   { to: '/dialer', icon: Phone, label: 'Dialer', color: COLORS.green },
   { to: '/sms', icon: MessageSquareText, label: 'Send SMS', color: COLORS.green },
   { to: '/agent/dashboard', icon: Headset, label: 'Agent Dashboard', color: COLORS.cyan },
-  { to: '/campaigns', icon: Megaphone, label: 'Manage Campaigns', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], color: COLORS.pink },
+  { to: '/campaigns', icon: Megaphone, label: 'Manage Campaigns', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.pink },
   { to: '/contacts', icon: BookUser, label: 'Contacts', color: COLORS.teal },
   { to: '/contact-management-pro', icon: Users, label: 'Contact Management Pro', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.teal },
-  { to: '/agents', icon: Users, label: 'Agents / Team Users', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], color: COLORS.indigo },
+  { to: '/agents', icon: Users, label: 'Agents / Team Users', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
   { to: '/agent-management-pro', icon: Users, label: 'Agent Management Pro', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.purple },
   { to: '/calls', icon: History, label: 'Call History', color: COLORS.gold },
   { to: '/callbacks', icon: Calendar, label: 'Callbacks', color: COLORS.orange },
-  { to: '/supervisor', icon: Eye, label: 'Supervisor', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], color: COLORS.purple },
+  { to: '/supervisor', icon: Eye, label: 'Supervisor', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.purple },
   { to: '/ops', icon: Activity, label: 'Ops Center', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.green },
   { to: '/monitoring', icon: Activity, label: 'Monitoring', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.cyan },
   { to: '/live-monitoring-advanced', icon: Globe, label: 'Live Monitoring Plus', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.teal },
   { to: '/advanced-dialing', icon: Zap, label: 'Advanced Dialing', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.orange },
   { to: '/call-controls', icon: PhoneCall, label: 'Call Controls', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.red },
-  { to: '/live-ai', icon: Radio, label: 'Live AI', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR', 'AGENT'], color: COLORS.pink },
+  { to: '/live-ai', icon: Radio, label: 'Live AI', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR', 'AGENT'], color: COLORS.pink },
   { to: '/campaign-management-pro', icon: Layers3, label: 'Campaign Management Pro', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.teal },
   { to: '/reports-analytics-pro', icon: BarChart3, label: 'Reports Analytics Plus', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.purple },
   { to: '/ui-ux-pro', icon: Palette, label: 'UI/UX Pro', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.teal },
   { to: '/security-admin-pro', icon: LockKeyhole, label: 'Security Admin Pro', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.red },
-  { to: '/deployment-platform-pro', icon: ServerCog, label: 'Deployment Platform', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.teal },
+  { to: '/deployment-platform-pro', icon: ServerCog, label: 'Deployment Platform', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.teal },
   { to: '/support/diagnostics', icon: LifeBuoy, label: 'Diagnostics', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
   { to: '/dnc', icon: ShieldOff, label: 'DNC Registry', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.red },
   { to: '/reports', icon: BarChart3, label: 'Reports', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.pink },
@@ -107,7 +117,7 @@ const NAV: NavItem[] = [
   { to: '/platform/administration', icon: Crown, label: 'Platform Administration', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.pink },
   { to: '/customer-onboarding', icon: Building2, label: 'Customer Onboarding', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.purple },
   { to: '/commercial-control', icon: CreditCard, label: 'Commercial Control', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.green },
-  { to: '/billing', icon: Building2, label: 'Billing & Plan', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], color: COLORS.gold },
+  { to: '/billing', icon: Building2, label: 'Billing & Plan', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.gold },
   { to: '/admin/spoofing', icon: PhoneCall, label: 'Dynamic Caller ID', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.cyan },
   { to: '/sip-settings', icon: Wrench, label: 'SIP Settings', color: COLORS.gold },
   { to: '/settings', icon: Settings2, label: 'Account Settings', color: COLORS.slate },
@@ -118,7 +128,6 @@ const AGENT_NAV: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', color: COLORS.purple },
   { to: '/agent/workspace', icon: BriefcaseBusiness, label: 'Agent Workspace', color: COLORS.purple },
   { to: '/dialer', icon: Phone, label: 'Call Dialer', color: COLORS.green },
-  { to: '/sms', icon: MessageSquareText, label: 'Send SMS', color: COLORS.green },
   { to: '/live-ai', icon: Radio, label: 'Live AI', color: COLORS.pink },
   { to: '/calls', icon: History, label: 'My Calls', color: COLORS.gold },
   { to: '/callbacks', icon: Calendar, label: 'My Callbacks', color: COLORS.orange },
@@ -131,8 +140,8 @@ const CONSOLE_GROUPS: NavGroup[] = [
   { key: 'administration', label: 'ADMINISTRATION', icon: Crown, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/platform/administration', '/customer-onboarding', '/commercial-control'] },
   { key: 'ai-dialer', label: 'AI DIALER', icon: Radio, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/ai-dialer', '/ai-dialer/logs'] },
   { key: 'dialer', label: 'DIALER', icon: Phone, color: COLORS.green, items: ['/dialer', '/advanced-dialing'] },
-  { key: 'agents', label: 'AGENTS', icon: Users, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], items: ['/agents', '/agent-management-pro'] },
-  { key: 'campaigns', label: 'CAMPAIGNS', icon: Megaphone, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'MANAGER', 'SUPERVISOR'], items: ['/campaigns', '/campaign-management-pro'] },
+  { key: 'agents', label: 'AGENTS', icon: Users, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/agents', '/agent-management-pro'] },
+  { key: 'campaigns', label: 'CAMPAIGNS', icon: Megaphone, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/campaigns', '/campaign-management-pro'] },
   { key: 'spoofing', label: 'SPOOFING MANAGEMENT', icon: PhoneCall, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/admin/spoofing'] },
   { key: 'sms', label: 'SMS MANAGEMENT', icon: MessageSquareText, color: COLORS.green, items: ['/sms'] },
   { key: 'calls', label: 'CALLS', icon: History, color: COLORS.green, items: ['/calls', '/callbacks', '/call-controls', '/call-intelligence'] },
@@ -163,7 +172,7 @@ const getConsoleSectionLabel = (groupKey: string, normalizedRole?: string) => {
 const AGENT_GROUPS: NavGroup[] = [
   { key: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, color: COLORS.purple, items: ['/dashboard'] },
   { key: 'workspace', label: 'WORKSPACE', icon: BriefcaseBusiness, color: COLORS.purple, items: ['/agent/workspace'] },
-  { key: 'dialer', label: 'DIALER', icon: Phone, color: COLORS.green, items: ['/dialer', '/sms', '/live-ai'] },
+  { key: 'dialer', label: 'DIALER', icon: Phone, color: COLORS.green, items: ['/dialer', '/live-ai'] },
   { key: 'calls', label: 'CALLS', icon: History, color: COLORS.gold, items: ['/calls', '/callbacks'] },
   { key: 'settings', label: 'SETTINGS', icon: Settings2, color: COLORS.slate, items: ['/notifications-alerts-pro', '/settings'] },
 ]
@@ -216,6 +225,7 @@ export default function Sidebar() {
     return window.localStorage.getItem('ptdt-performance-mode') !== 'off'
   })
   const [desktopVersion, setDesktopVersion] = useState('')
+  const [logoutDialog, setLogoutDialog] = useState<PtdtDialogState | null>(null)
 
   const userRole = (user as Record<string, unknown> | null)?.role as string | undefined
   const normalizedRole = userRole?.toUpperCase()
@@ -245,14 +255,22 @@ export default function Sidebar() {
   const closeMobileNav = () => { if (isMobileViewport()) setMobileOpen(false) }
   const toggleGroup = (key: string) => setExpandedGroups(prev => ({ [key]: !prev[key] }))
 
-  const handleLogout = () => {
-    const ok = typeof window === 'undefined' ? true : window.confirm('Kya aap waqai PTDT-Dialer se sign out karna chahte hain?')
-    if (!ok) return
+  const executeLogout = () => {
     const token = localStorage.getItem('jd_token')
     logout()
     navigate('/login', { replace: true })
     void authAPI.logout(token).catch(() => undefined)
     void unregisterSip().catch(() => undefined)
+  }
+
+  const handleLogout = () => {
+    setLogoutDialog({
+      tone: 'confirm',
+      title: 'Sign out?',
+      message: 'Are you sure you want to sign out of PTDT Dialer?',
+      confirmLabel: 'Sign Out',
+      onConfirm: executeLogout,
+    })
   }
 
   useEffect(() => {
@@ -345,14 +363,20 @@ export default function Sidebar() {
         {desktopVersion && <div className="mono" style={{ margin: '0 8px 10px', fontSize: 9.5, color: 'var(--muted)', textAlign: 'center', letterSpacing: 0.7, textTransform: 'uppercase' }}>Desktop v{desktopVersion}</div>}
         <DesktopUpdateControl />
         <div style={{ paddingTop: 6 }}>
-          <div className="glass" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 8, borderRadius: 14 }}>
-            <div style={{ position: 'relative', width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #fb0b8c, #8057d7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', boxShadow: '0 4px 12px rgba(251,11,140,0.30)', flexShrink: 0 }}>{user?.name?.charAt(0)?.toUpperCase() || 'U'}<span style={{ position: 'absolute', bottom: -1, right: -1, width: 10, height: 10, borderRadius: '50%', background: '#2ae97b', border: '2px solid var(--surface)' }} /></div>
-            <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'User'}</div><div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)' }}>{(user as Record<string, unknown> | null)?.agentCode as string || '—'}</div></div>
+          <div className="glass" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 8, borderRadius: 16, background: 'linear-gradient(135deg, rgba(251,11,140,.96), rgba(128,87,215,.92))', border: '1px solid rgba(251,11,140,.38)', boxShadow: '0 14px 34px rgba(251,11,140,.20)' }}>
+            <div style={{ position: 'relative', width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,.18)', border: '1px solid rgba(255,255,255,.34)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 950, color: '#fff', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.20), 0 8px 20px rgba(0,0,0,.18)', flexShrink: 0 }}>{user?.name?.charAt(0)?.toUpperCase() || 'U'}<span style={{ position: 'absolute', bottom: -1, right: -1, width: 11, height: 11, borderRadius: '50%', background: '#2ae97b', border: '2px solid rgba(255,255,255,.92)' }} /></div>
+            <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: 13.5, fontWeight: 900, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'User'}</div><div className="mono" style={{ fontSize: 10.8, color: 'rgba(255,255,255,.82)', fontWeight: 850 }}>{(user as Record<string, unknown> | null)?.agentCode as string || '—'}</div></div>
             <NotificationBell />
           </div>
-          <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }} onClick={handleLogout} className="sidebar-signout" style={{ width: '100%', height: 42, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 850, cursor: 'pointer' }}><LogOut size={15} /> Sign Out</motion.button>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8, alignItems: 'center' }}>
+            <div className="mono" title={sidebarRoleLabel(user?.role)} style={{ minHeight: 42, borderRadius: 18, border: '1px solid rgba(4,120,87,.36)', background: 'linear-gradient(145deg, #d4f7e4 0%, #9fdeb7 46%, #57b77a 100%)', color: '#064e3b', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', fontSize: 12.2, fontWeight: 950, letterSpacing: .7, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.72), inset 0 -1px 0 rgba(4,120,87,.12), 0 12px 28px rgba(4,120,87,.22), 0 2px 5px rgba(15,23,42,.10)' }}>
+              {sidebarRoleLabel(user?.role)}
+            </div>
+            <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }} onClick={handleLogout} style={{ height: 42, borderRadius: 18, border: '1px solid rgba(148,163,184,.36)', background: 'linear-gradient(145deg, #f7f8fb 0%, #e6e9f0 48%, #cdd3df 100%)', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, fontSize: 13.8, fontWeight: 950, cursor: 'pointer', padding: '0 15px', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.92), inset 0 -1px 0 rgba(15,23,42,.07), 0 14px 30px rgba(15,23,42,.14), 0 2px 6px rgba(15,23,42,.08)', textShadow: '0 1px 0 rgba(255,255,255,.55)' }}><LogOut size={15} /> Sign Out</motion.button>
+          </div>
         </div>
       </aside>
+      <PtdtDialog dialog={logoutDialog} onClose={() => setLogoutDialog(null)} />
     </>
   )
 }

@@ -4,6 +4,8 @@ import { agentsAPI } from '../api/agents.api'
 import { administrationApi } from '../api/administration.api'
 import { commercialControlApi, type CommercialPlanCode } from '../api/commercialControl.api'
 import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
+import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
+import { setGlobalRequestOverlaySuppressed } from '../api/axios'
 
 const card = { padding: 18, borderRadius: 18 } as const
 
@@ -87,6 +89,7 @@ const errorMessage = (err: unknown) => (err as { response?: { data?: { message?:
 
 export default function CustomerOnboarding() {
   const [busy, setBusy] = useState(false)
+  const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [created, setCreated] = useState<{ accountName: string; accountCode: string; adminEmail: string } | null>(null)
@@ -112,6 +115,7 @@ export default function CustomerOnboarding() {
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     setBusy(true)
+    setGlobalRequestOverlaySuppressed(true)
     setError('')
     setMessage('')
     setCreated(null)
@@ -164,6 +168,12 @@ export default function CustomerOnboarding() {
 
       setCreated({ accountName: account.name, accountCode: account.code, adminEmail: customerAdmin.email })
       setMessage('Customer Admin account created and assigned successfully.')
+      setDialog({
+        tone: 'success',
+        title: 'Customer Admin created',
+        message: 'Customer Admin account created and assigned successfully.',
+        confirmLabel: 'OK',
+      })
       setForm({
         accountName: '', accountCode: '', billingEmail: '', billingPhone: '', currency: 'USD',
         adminName: '', adminEmail: '', adminPassword: '', adminPhone: '', adminExtension: '',
@@ -172,6 +182,7 @@ export default function CustomerOnboarding() {
     } catch (err) {
       setError(errorMessage(err))
     } finally {
+      setGlobalRequestOverlaySuppressed(false)
       setBusy(false)
     }
   }
@@ -179,6 +190,7 @@ export default function CustomerOnboarding() {
   return (
     <div className="ptdt-page">
       <PtdtBusyOverlay active={busy} label="Creating Customer Admin account..." />
+      <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
       <div className="ptdt-page-header">
         <div>
           <div className="eyebrow pink"><Crown size={12} /> PTDT Platform Setup</div>
@@ -218,7 +230,7 @@ export default function CustomerOnboarding() {
         <div style={fieldGrid}>
           <div><FieldLabel required>Customer / company name</FieldLabel><input style={inputStyle} value={form.accountName} onChange={event => setField('accountName', event.target.value)} placeholder="Customer / company name" required /></div>
           <div><FieldLabel>Account code</FieldLabel><input style={inputStyle} value={form.accountCode} onChange={event => setField('accountCode', event.target.value)} placeholder="Optional account code" /></div>
-          <div><FieldLabel>Billing email</FieldLabel><input style={inputStyle} value={form.billingEmail} onChange={event => setField('billingEmail', event.target.value)} placeholder="Billing email" type="email" /></div>
+          <div><FieldLabel>Billing email</FieldLabel><input style={inputStyle} value={form.billingEmail} onChange={event => setField('billingEmail', event.target.value)} placeholder="Billing email" type="email" name="ptdt_billing_contact_email" autoComplete="off" data-lpignore="true" /></div>
           <div><FieldLabel>Billing phone</FieldLabel><input style={inputStyle} value={form.billingPhone} onChange={event => setField('billingPhone', event.target.value)} placeholder="Billing phone" /></div>
           <div><FieldLabel required>Currency</FieldLabel><select className="ptdt-select" style={compactSelectStyle} value={form.currency} onChange={event => setField('currency', event.target.value)} required>{currencies.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></div>
         </div>
@@ -226,8 +238,8 @@ export default function CustomerOnboarding() {
         <div className="eyebrow green" style={{ margin: '18px 0 10px' }}>Customer Admin Login</div>
         <div style={fieldGrid}>
           <div><FieldLabel required>Customer Admin full name</FieldLabel><input style={inputStyle} value={form.adminName} onChange={event => setField('adminName', event.target.value)} placeholder="Customer Admin full name" required /></div>
-          <div><FieldLabel required>Customer Admin login email</FieldLabel><input style={inputStyle} value={form.adminEmail} onChange={event => setField('adminEmail', event.target.value)} placeholder="Customer Admin login email" type="email" required /></div>
-          <div><FieldLabel required>Temporary password</FieldLabel><input style={inputStyle} value={form.adminPassword} onChange={event => setField('adminPassword', event.target.value)} placeholder="Temporary password" type="password" required /></div>
+          <div><FieldLabel required>Customer Admin login email</FieldLabel><input style={inputStyle} value={form.adminEmail} onChange={event => setField('adminEmail', event.target.value)} placeholder="Customer Admin login email" type="email" name="username" autoComplete="username" required /></div>
+          <div><FieldLabel required>Temporary password</FieldLabel><input style={inputStyle} value={form.adminPassword} onChange={event => setField('adminPassword', event.target.value)} placeholder="Temporary password" type="password" name="new-password" autoComplete="new-password" required /></div>
           <div><FieldLabel>Admin phone</FieldLabel><input style={inputStyle} value={form.adminPhone} onChange={event => setField('adminPhone', event.target.value)} placeholder="Admin phone" /></div>
           <div><FieldLabel>Extension</FieldLabel><input style={inputStyle} value={form.adminExtension} onChange={event => setField('adminExtension', event.target.value)} placeholder="Extension" /></div>
         </div>

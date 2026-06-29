@@ -4,6 +4,7 @@ import { BookUser, Upload, Search, Trash2, Plus, X } from 'lucide-react'
 import { useContacts }  from '../hooks/useContacts'
 import StatsCard        from '../components/StatsCard'
 import { campaignsAPI } from '../api/campaigns.api'
+import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -246,6 +247,7 @@ export default function Contacts() {
   const [creating, setCreating] = useState(false)
   const [newContact, setNewContact] = useState({ name: '', phone: '', email: '', notes: '' })
   const [contactCampaignId, setContactCampaignId] = useState<number | ''>('')
+  const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const { contacts, stats, loading, error, pagination, uploadCSV, createContact, deleteContact } =
@@ -275,13 +277,32 @@ export default function Contacts() {
 
   const handleCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !campId) { alert('Select a campaign first'); return }
+    if (!file) return
+    if (!campId) {
+      setDialog({
+        tone: 'error',
+        title: 'Select a campaign',
+        message: 'Choose a campaign before uploading contacts. Contacts are stored inside a campaign.',
+      })
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+
     setUploading(true)
     try {
       const result = await uploadCSV(campId, file)
-      alert(`✓ Imported: ${result.imported} | Duplicates: ${result.duplicates} | DNC: ${result.dncSkipped}`)
-    } catch (err) { alert(err instanceof Error ? err.message : 'Upload failed') }
-    finally {
+      setDialog({
+        tone: 'success',
+        title: 'CSV import complete',
+        message: `Imported: ${result.imported} | Duplicates: ${result.duplicates} | DNC: ${result.dncSkipped}`,
+      })
+    } catch (err) {
+      setDialog({
+        tone: 'error',
+        title: 'CSV upload failed',
+        message: err instanceof Error ? err.message : 'Upload failed',
+      })
+    } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
     }
@@ -289,8 +310,15 @@ export default function Contacts() {
 
 
   const handleCreateContact = async () => {
-    if (!newContact.phone.trim()) { alert('Phone number is required'); return }
-    if (!contactCampaignId) { alert('Select a campaign before adding a contact'); return }
+    if (!newContact.phone.trim()) {
+      setDialog({ tone: 'error', title: 'Phone number required', message: 'Enter a phone number before adding this contact.' })
+      return
+    }
+    if (!contactCampaignId) {
+      setDialog({ tone: 'error', title: 'Select a campaign', message: 'Choose a campaign before adding this contact.' })
+      return
+    }
+
     setCreating(true)
     try {
       await createContact({
@@ -302,13 +330,38 @@ export default function Contacts() {
       })
       setNewContact({ name: '', phone: '', email: '', notes: '' })
       setAddOpen(false)
-    } catch (err) { alert(err instanceof Error ? err.message : 'Failed to add contact') }
-    finally { setCreating(false) }
+      setDialog({ tone: 'success', title: 'Contact added', message: 'The contact has been added to the selected campaign.' })
+    } catch (err) {
+      setDialog({ tone: 'error', title: 'Cannot add contact', message: err instanceof Error ? err.message : 'Failed to add contact' })
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const confirmDeleteContact = (contact: Record<string, unknown>) => {
+    const contactId = contact.id as number
+    const label = String(contact.name || contact.phone || 'this contact')
+    setDialog({
+      tone: 'confirm',
+      title: 'Delete contact?',
+      message: `This will remove ${label} from the contact list.`,
+      confirmLabel: 'Delete Contact',
+      onConfirm: async () => {
+        setDialog(null)
+        try {
+          await deleteContact(contactId)
+          setDialog({ tone: 'success', title: 'Contact deleted', message: 'The contact has been deleted.' })
+        } catch (err) {
+          setDialog({ tone: 'error', title: 'Cannot delete contact', message: err instanceof Error ? err.message : 'Failed to delete contact' })
+        }
+      },
+    })
   }
 
   return (
     <div className="ptdt-page ptdt-mobile-page ptdt-mobile-page-contacts">
       <style>{PTDT_MOBILE_PAGE_CSS}</style>
+      <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
 
       {/* PTDT Header */}
       <motion.div
@@ -503,7 +556,7 @@ export default function Contacts() {
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       <button
-                        onClick={() => { if (confirm('Delete contact?')) deleteContact(c.id as number) }}
+                        onClick={() => confirmDeleteContact(c)}
                         style={{
                           background: 'transparent',
                           border: '1px solid rgba(239,68,68,0.32)',
