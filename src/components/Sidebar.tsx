@@ -357,10 +357,10 @@ export default function Sidebar() {
             <NotificationBell />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8, alignItems: 'center' }}>
-            <div className="mono" title={sidebarRoleLabel(user?.role)} style={{ minHeight: 42, borderRadius: 14, border: '1px solid rgba(128,87,215,.58)', background: 'linear-gradient(135deg, #8057d7, #6d4bc6)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 11px', fontSize: 11.8, fontWeight: 950, letterSpacing: .65, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', boxShadow: '0 10px 24px rgba(128,87,215,.22)' }}>
+            <div className="mono" title={sidebarRoleLabel(user?.role)} style={{ minHeight: 42, borderRadius: 14, border: '1px solid rgba(0,167,71,.58)', background: 'linear-gradient(135deg, #00a747, #047857)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 11px', fontSize: 11.8, fontWeight: 950, letterSpacing: .65, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', boxShadow: '0 10px 24px rgba(0,167,71,.22)' }}>
               {sidebarRoleLabel(user?.role)}
             </div>
-            <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }} onClick={handleLogout} className="sidebar-signout" style={{ height: 42, borderRadius: 14, border: '1px solid rgba(0,167,71,.38)', background: 'linear-gradient(135deg, #0f5132, #143f33)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13.5, fontWeight: 900, cursor: 'pointer', padding: '0 13px', boxShadow: '0 10px 24px rgba(0,167,71,.16)' }}><LogOut size={15} /> Sign Out</motion.button>
+            <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }} onClick={handleLogout} className="sidebar-signout" style={{ height: 42, borderRadius: 14, border: '1px solid rgba(148,163,184,.48)', background: 'linear-gradient(135deg, #1f2937, #111827)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13.5, fontWeight: 900, cursor: 'pointer', padding: '0 13px', boxShadow: '0 10px 24px rgba(15,23,42,.22)' }}><LogOut size={15} /> Sign Out</motion.button>
           </div>
         </div>
       </aside>
