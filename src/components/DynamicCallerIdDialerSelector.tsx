@@ -95,10 +95,10 @@ export default function DynamicCallerIdDialerSelector() {
       className="ptdt-dynamic-caller-collapse"
       style={{
         position: 'fixed',
-        left: 'calc(var(--sidebar-width, 280px) + 34px)',
+        right: 'clamp(455px, 29vw, 640px)',
         top: 18,
         zIndex: 22,
-        width: expanded ? 'min(360px, calc(100vw - var(--sidebar-width, 280px) - 70px))' : 'min(260px, calc(100vw - var(--sidebar-width, 280px) - 70px))',
+        width: expanded ? 'min(350px, calc(100vw - var(--sidebar-width, 280px) - 70px))' : 'min(250px, calc(100vw - var(--sidebar-width, 280px) - 70px))',
         transition: 'width .22s ease',
       }}
     >
@@ -120,9 +120,9 @@ export default function DynamicCallerIdDialerSelector() {
           className="glass"
           style={{
             width: '100%',
-            minHeight: 46,
+            minHeight: 44,
             borderRadius: 18,
-            padding: '10px 14px',
+            padding: '9px 13px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -176,7 +176,7 @@ export default function DynamicCallerIdDialerSelector() {
               }}
               title="Collapse Dynamic Caller ID"
             >
-              <span style={{ width: 30, height: 30, borderRadius: 12, display: 'grid', placeItems: 'center', color: '#fff', background: 'var(--grad-brand)', flexShrink: 0 }}><PhoneCall size={15} /></span>
+              <span style={{ width: 28, height: 28, borderRadius: 12, display: 'grid', placeItems: 'center', color: '#fff', background: 'var(--grad-brand)', flexShrink: 0 }}><PhoneCall size={15} /></span>
               <span>
                 <span className="mono" style={{ display: 'block', fontSize: 9.5, color: 'var(--text-3)', fontWeight: 900, letterSpacing: 1.1 }}>COMMERCIAL ADD-ON</span>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 950, color: 'var(--text)' }}>Dynamic Caller ID</span>
