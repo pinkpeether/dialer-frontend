@@ -123,7 +123,7 @@ export default function App() {
             <Route path="/notifications-alerts-pro" element={<RoleRoute><NotificationsAlertsPro /></RoleRoute>} />
             <Route path="/ui-ux-pro"          element={<RoleRoute roles={adminCustomerRoles}><UiUxPro /></RoleRoute>} />
             <Route path="/security-admin-pro" element={<RoleRoute roles={platformAdminRoles}><SecurityAdminPro /></RoleRoute>} />
-            <Route path="/deployment-platform-pro" element={<RoleRoute roles={adminCustomerRoles}><DeploymentPlatformPro /></RoleRoute>} />
+            <Route path="/deployment-platform-pro" element={<RoleRoute roles={platformAdminRoles}><DeploymentPlatformPro /></RoleRoute>} />
             <Route path="/support/diagnostics" element={<RoleRoute roles={adminSupervisorRoles}><SupportDiagnostics /></RoleRoute>} />
             <Route path="/production/review"   element={<RoleRoute roles={platformAdminRoles}><ProductionReview /></RoleRoute>} />
             <Route path="/admin/spoofing" element={<RoleRoute roles={platformAdminRoles}><SpoofingManagement /></RoleRoute>} />

@@ -22,6 +22,14 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
 }
 
+const fieldLabelStyle: React.CSSProperties = {
+  color: 'var(--text-2)',
+  fontSize: 12,
+  fontWeight: 900,
+}
+
+const requiredStar = <span style={{ color: danger }}> *</span>
+
 const switchStyle = (active: boolean, pending: boolean): React.CSSProperties => ({
   width: 66,
   height: 34,
@@ -172,15 +180,29 @@ export default function TeamUsersV3() {
           <h3 style={{ marginTop: 0 }}>New Team User</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
             {[
-              ['name', 'Full Name', 'text'],
-              ['email', 'Email', 'email'],
-              ['password', 'Password', 'password'],
-              ['extension', 'Extension', 'text'],
-              ['phone', 'Phone', 'text'],
-            ].map(([key, label, type]) => <input key={key} type={type} placeholder={label} value={(form as Record<string, string>)[key]} onChange={event => setForm(prev => ({ ...prev, [key]: event.target.value }))} required={['name', 'email', 'password'].includes(key)} style={inputStyle} />)}
-            <select value={isSupervisor ? 'AGENT' : form.role} onChange={event => setForm(prev => ({ ...prev, role: event.target.value }))} style={inputStyle}>
-              {roleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+              ['name', 'Full Name', 'text', true],
+              ['email', 'Email', 'email', true],
+              ['password', 'Password', 'password', true],
+              ['extension', 'Extension', 'text', false],
+              ['phone', 'Phone', 'text', false],
+            ].map(([key, label, type, required]) => (
+              <label key={String(key)} style={{ display: 'grid', gap: 6 }}>
+                <span style={fieldLabelStyle}>{String(label)}{required ? requiredStar : null}</span>
+                <input
+                  type={String(type)}
+                  value={(form as Record<string, string>)[String(key)]}
+                  onChange={event => setForm(prev => ({ ...prev, [String(key)]: event.target.value }))}
+                  required={Boolean(required)}
+                  style={inputStyle}
+                />
+              </label>
+            ))}
+            <label style={{ display: 'grid', gap: 6 }}>
+              <span style={fieldLabelStyle}>Role{requiredStar}</span>
+              <select required value={isSupervisor ? 'AGENT' : form.role} onChange={event => setForm(prev => ({ ...prev, role: event.target.value }))} style={inputStyle}>
+                {roleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
           </div>
           {isSupervisor && <p style={{ margin: '10px 0 0', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 800 }}>Supervisor accounts can create Agent users only.</p>}
           <button className="btn-brand" style={{ marginTop: 14 }} type="submit">Create User</button>

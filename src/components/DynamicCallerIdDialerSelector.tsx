@@ -37,8 +37,8 @@ export default function DynamicCallerIdDialerSelector() {
     setError('')
     try {
       const summary = await dynamicCallerIdApi.getSummary()
-      const available = summary.availableNumbers || []
-      setAddonActive(Boolean(summary.addonActive))
+      const available = usableOnly((summary.availableNumbers?.length ? summary.availableNumbers : summary.callerIds) || [])
+      setAddonActive(Boolean(summary.addonActive || available.length > 0))
       setBalanceState(summary.balanceState)
       setNumbers(available)
       reconcileSavedSelection(available)
@@ -76,7 +76,7 @@ export default function DynamicCallerIdDialerSelector() {
 
   if (!onDialerPage) return null
 
-  const usable = addonActive && numbers.length > 0 && balanceState !== 'HARD_STOP'
+  const usable = numbers.length > 0 && balanceState !== 'HARD_STOP'
 
   return (
     <div
@@ -109,7 +109,7 @@ export default function DynamicCallerIdDialerSelector() {
         className="ptdt-select"
         value={selectedId}
         onChange={event => handleSelect(event.target.value)}
-        disabled={!usable || loading}
+        disabled={loading || numbers.length === 0 || balanceState === 'HARD_STOP'}
         style={{ width: '100%', minHeight: 38, fontSize: 12.5 }}
       >
         <option value="">Default Caller ID / campaign fallback</option>
@@ -125,7 +125,7 @@ export default function DynamicCallerIdDialerSelector() {
 
       {selectedNumber && <div className="mono" style={{ marginTop: 8, color: 'var(--green-2)', fontSize: 10.5, fontWeight: 800 }}>Selected: {selectedNumber.displayNumber}</div>}
       {error && <div style={{ marginTop: 8, color: 'var(--danger)', fontSize: 11, lineHeight: 1.45 }}>{error}</div>}
-      {!error && !usable && <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 11, lineHeight: 1.45 }}>Caller ID selector unlocks after Dynamic Caller ID add-on is active, wallet is usable, and numbers are approved.</div>}
+      {!error && !usable && <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 11, lineHeight: 1.45 }}>Caller ID selector unlocks after approved numbers are available and wallet status allows calling.</div>}
     </div>
   )
 }

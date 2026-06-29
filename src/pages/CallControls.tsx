@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ShieldCheck, Radio, PhoneCall } from 'lucide-react'
 import AdvancedCallControlPanel from '../components/AdvancedCallControlPanel'
 import { callControlAPI } from '../api/callControl.api'
+import { useAuthStore } from '../store/auth.store'
 
 type ActiveCall = {
   id: number
@@ -23,20 +24,23 @@ type CallControlsCache = {
 
 const CACHE_KEY = 'ptdt-call-controls:last-good'
 
-const readCache = (): CallControlsCache | null => {
+const readCache = (cacheKey: string | null): CallControlsCache | null => {
   if (typeof window === 'undefined') return null
   try {
-    const raw = window.localStorage.getItem(CACHE_KEY)
+    window.localStorage.removeItem(CACHE_KEY)
+    if (!cacheKey) return null
+    const raw = window.localStorage.getItem(cacheKey)
     return raw ? JSON.parse(raw) as CallControlsCache : null
   } catch {
     return null
   }
 }
 
-const writeCache = (cache: Omit<CallControlsCache, 'savedAt'>) => {
-  if (typeof window === 'undefined') return
+const writeCache = (cacheKey: string | null, cache: Omit<CallControlsCache, 'savedAt'>) => {
+  if (typeof window === 'undefined' || !cacheKey) return
   try {
-    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cache, savedAt: new Date().toISOString() }))
+    window.localStorage.removeItem(CACHE_KEY)
+    window.localStorage.setItem(cacheKey, JSON.stringify({ ...cache, savedAt: new Date().toISOString() }))
   } catch {
     // Cache is best-effort; backend remains source of truth.
   }
@@ -63,7 +67,9 @@ function displayCallStatus(status?: string | null) {
 }
 
 export default function CallControls() {
-  const [cached] = useState(() => readCache())
+  const currentUser = useAuthStore(state => state.user)
+  const cacheKey = currentUser?.id ? `${CACHE_KEY}:${currentUser.role}:${currentUser.id}` : null
+  const [cached] = useState(() => readCache(cacheKey))
   const [calls, setCalls] = useState<ActiveCall[]>(cached?.calls ?? [])
   const [capabilities, setCapabilities] = useState<Record<string, unknown> | null>(cached?.capabilities ?? null)
   const [selected, setSelected] = useState<ActiveCall | null>(() => cached?.calls.find(call => call.id === cached.selectedCallId) || cached?.calls[0] || null)
@@ -83,7 +89,7 @@ export default function CallControls() {
       setCapabilities(caps)
       setCalls(nextCalls)
       setSelected(nextSelected)
-      writeCache({ calls: nextCalls, capabilities: caps, selectedCallId: nextSelected?.id })
+      writeCache(cacheKey, { calls: nextCalls, capabilities: caps, selectedCallId: nextSelected?.id })
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to load call controls'
       setError(message)

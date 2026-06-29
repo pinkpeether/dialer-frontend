@@ -93,7 +93,7 @@ const NAV: NavItem[] = [
   { to: '/reports-analytics-pro', icon: BarChart3, label: 'Reports Analytics Plus', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.purple },
   { to: '/ui-ux-pro', icon: Palette, label: 'UI/UX Pro', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.teal },
   { to: '/security-admin-pro', icon: LockKeyhole, label: 'Security Admin Pro', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.red },
-  { to: '/deployment-platform-pro', icon: ServerCog, label: 'Deployment Platform', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.teal },
+  { to: '/deployment-platform-pro', icon: ServerCog, label: 'Deployment Platform', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.teal },
   { to: '/support/diagnostics', icon: LifeBuoy, label: 'Diagnostics', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
   { to: '/dnc', icon: ShieldOff, label: 'DNC Registry', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.red },
   { to: '/reports', icon: BarChart3, label: 'Reports', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.pink },
