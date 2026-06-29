@@ -45,6 +45,7 @@ import { authAPI } from '../api/auth.api'
 import ThemeToggle from './ThemeToggle'
 import NotificationBell from './NotificationBell'
 import DesktopUpdateControl from './DesktopUpdateControl'
+import PtdtDialog, { type PtdtDialogState } from './PtdtDialog'
 import { useSipStore } from '../store/sip.store'
 
 type NavItem = { to: string; icon: ElementType; label: string; roles?: string[]; color?: string }
@@ -224,6 +225,7 @@ export default function Sidebar() {
     return window.localStorage.getItem('ptdt-performance-mode') !== 'off'
   })
   const [desktopVersion, setDesktopVersion] = useState('')
+  const [logoutDialog, setLogoutDialog] = useState<PtdtDialogState | null>(null)
 
   const userRole = (user as Record<string, unknown> | null)?.role as string | undefined
   const normalizedRole = userRole?.toUpperCase()
@@ -253,12 +255,22 @@ export default function Sidebar() {
   const closeMobileNav = () => { if (isMobileViewport()) setMobileOpen(false) }
   const toggleGroup = (key: string) => setExpandedGroups(prev => ({ [key]: !prev[key] }))
 
-  const handleLogout = () => {
+  const executeLogout = () => {
     const token = localStorage.getItem('jd_token')
     logout()
     navigate('/login', { replace: true })
     void authAPI.logout(token).catch(() => undefined)
     void unregisterSip().catch(() => undefined)
+  }
+
+  const handleLogout = () => {
+    setLogoutDialog({
+      tone: 'confirm',
+      title: 'Sign out?',
+      message: 'Are you sure you want to sign out of PTDT Dialer?',
+      confirmLabel: 'Sign Out',
+      onConfirm: executeLogout,
+    })
   }
 
   useEffect(() => {
@@ -364,6 +376,7 @@ export default function Sidebar() {
           </div>
         </div>
       </aside>
+      <PtdtDialog dialog={logoutDialog} onClose={() => setLogoutDialog(null)} />
     </>
   )
 }
