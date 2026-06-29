@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Activity, Headset, Phone, RefreshCw, Shield } from 'lucide-react'
+import { Activity, Headset, Phone, Shield } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
 import { agentsAPI } from '../api/agents.api'
 import { AGENT_STATUS_EVENTS } from '../constants/socketEvents'
+import OperationalStatusPills from '../components/OperationalStatusPills'
 
 type AgentStatus = 'OFFLINE' | 'READY' | 'BUSY' | 'WRAP_UP'
 
@@ -153,13 +154,7 @@ export default function Supervisor() {
               Live agent grid — refreshes every 30s. Last: {lastRefresh.toLocaleTimeString()}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void load()}
-            style={{ height: 42, width: 42, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-3)', display: 'grid', placeItems: 'center', cursor: 'pointer' }}
-          >
-            <RefreshCw size={16} />
-          </button>
+          <OperationalStatusPills onRefresh={() => void load()} />
         </div>
       </motion.div>
 

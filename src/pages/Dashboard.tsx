@@ -17,6 +17,7 @@ import { useAuthStore }     from '../store/auth.store'
 import { useSipStore }      from '../store/sip.store'
 import { useLiveDashboard } from '../hooks/useLiveDashboard'
 import StatsCard            from '../components/StatsCard'
+import OperationalStatusPills from '../components/OperationalStatusPills'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -542,23 +543,26 @@ export default function Dashboard() {
       <style>{PTDT_MOBILE_PAGE_CSS}</style>
 
       {/* Hero header */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
-        <div className="eyebrow pink" style={{ marginBottom: 14 }}>
-          <Sparkles size={11}/> Live operations
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+        <div>
+          <div className="eyebrow pink" style={{ marginBottom: 14 }}>
+            <Sparkles size={11}/> Live operations
+          </div>
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(28px, 3.4vw, 42px)',
+            fontWeight: 900, lineHeight: 1.05,
+            letterSpacing: '-0.04em', marginBottom: 10, color: 'var(--text)',
+          }}>
+            {greeting},{' '}
+            <span className="gradient-brand-text">{user?.name?.split(' ')[0] || 'Operator'}</span>
+          </h1>
+          <p style={{ fontSize: 14.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="pulse-dot"/>
+            Pipeline online · monitoring {dashboardActiveCalls.length} live call{dashboardActiveCalls.length === 1 ? '' : 's'}
+          </p>
         </div>
-        <h1 style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 'clamp(28px, 3.4vw, 42px)',
-          fontWeight: 900, lineHeight: 1.05,
-          letterSpacing: '-0.04em', marginBottom: 10, color: 'var(--text)',
-        }}>
-          {greeting},{' '}
-          <span className="gradient-brand-text">{user?.name?.split(' ')[0] || 'Operator'}</span>
-        </h1>
-        <p style={{ fontSize: 14.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="pulse-dot"/>
-          Pipeline online · monitoring {dashboardActiveCalls.length} live call{dashboardActiveCalls.length === 1 ? '' : 's'}
-        </p>
+        <OperationalStatusPills />
       </motion.div>
 
       {/* Stats grid */}

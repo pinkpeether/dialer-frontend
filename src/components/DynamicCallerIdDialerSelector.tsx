@@ -83,10 +83,10 @@ export default function DynamicCallerIdDialerSelector() {
       className="glass"
       style={{
         position: 'fixed',
-        right: 'clamp(18px, 14vw, 230px)',
+        right: 'clamp(390px, 34vw, 560px)',
         top: 18,
         zIndex: 20,
-        width: 'min(330px, calc(100vw - 44px))',
+        width: 'min(320px, calc(100vw - 44px))',
         padding: 13,
         borderRadius: 18,
         boxShadow: '0 14px 36px rgba(15,23,42,.18)',
