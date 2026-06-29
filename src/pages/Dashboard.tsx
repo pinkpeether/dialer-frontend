@@ -254,23 +254,31 @@ type DashboardCache = {
   recentHistory: DashboardRecentCall[]
 }
 
-const DASHBOARD_CACHE_KEY = 'ptdt-dashboard:last-good'
+const DASHBOARD_LEGACY_CACHE_KEY = 'ptdt-dashboard:last-good'
+const dashboardCacheKey = (userId?: number, role?: string) =>
+  userId ? `ptdt-dashboard:last-good:${role || 'USER'}:${userId}` : null
 
-const readDashboardCache = (): DashboardCache | null => {
+const readDashboardCache = (userId?: number, role?: string): DashboardCache | null => {
   if (typeof window === 'undefined') return null
+  const key = dashboardCacheKey(userId, role)
+  if (!key) return null
   try {
-    const raw = window.localStorage.getItem(DASHBOARD_CACHE_KEY)
+    window.localStorage.removeItem(DASHBOARD_LEGACY_CACHE_KEY)
+    const raw = window.localStorage.getItem(key)
     return raw ? JSON.parse(raw) as DashboardCache : null
   } catch {
     return null
   }
 }
 
-const writeDashboardCache = (patch: Partial<Omit<DashboardCache, 'savedAt'>>) => {
+const writeDashboardCache = (userId: number | undefined, role: string | undefined, patch: Partial<Omit<DashboardCache, 'savedAt'>>) => {
   if (typeof window === 'undefined') return
+  const key = dashboardCacheKey(userId, role)
+  if (!key) return
   try {
-    const previous = readDashboardCache()
-    window.localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ ...previous, ...patch, savedAt: new Date().toISOString() }))
+    window.localStorage.removeItem(DASHBOARD_LEGACY_CACHE_KEY)
+    const previous = readDashboardCache(userId, role)
+    window.localStorage.setItem(key, JSON.stringify({ ...previous, ...patch, savedAt: new Date().toISOString() }))
   } catch {
     // Local cache is best-effort; backend remains source of truth.
   }
@@ -396,7 +404,7 @@ const tooltipStyle = {
 
 export default function Dashboard() {
   const user = useAuthStore(s => s.user)
-  const [cached] = useState(() => readDashboardCache())
+  const [cached] = useState(() => readDashboardCache(user?.id, user?.role))
   const [stats, setStats] = useState<Stats | null>(cached?.stats ?? null)
   const [recentCallData, setRecentCallData] = useState<CallLog[]>(cached?.recentCallData ?? [])
   const [recentHistory, setRecentHistory] = useState<DashboardRecentCall[]>(cached?.recentHistory ?? [])
@@ -428,7 +436,7 @@ export default function Dashboard() {
       ])
       const nextStats = { agents: a, campaigns: c, contacts: ct }
       setStats(nextStats)
-      writeDashboardCache({ stats: nextStats })
+      writeDashboardCache(user?.id, user?.role, { stats: nextStats })
     }
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -476,7 +484,7 @@ export default function Dashboard() {
           // non-fatal — charts just stay empty
         }
       } finally {
-        writeDashboardCache({ recentCallData: nextRecentCallData, recentHistory: nextRecentHistory })
+        writeDashboardCache(user?.id, user?.role, { recentCallData: nextRecentCallData, recentHistory: nextRecentHistory })
       }
     }
     void loadCalls()

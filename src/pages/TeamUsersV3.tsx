@@ -6,6 +6,7 @@ import { agentsAPI } from '../api/agents.api'
 import { useAuthStore } from '../store/auth.store'
 import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
+import { setGlobalRequestOverlaySuppressed } from '../api/axios'
 
 const green = '#00a747'
 const danger = '#ef4444'
@@ -79,7 +80,14 @@ export default function TeamUsersV3() {
 
   const withBusy = async (task: () => Promise<void>) => {
     setBusy(true)
-    try { await task() } finally { setBusy(false); setPendingId(null) }
+    setGlobalRequestOverlaySuppressed(true)
+    try {
+      await task()
+    } finally {
+      setGlobalRequestOverlaySuppressed(false)
+      setBusy(false)
+      setPendingId(null)
+    }
   }
 
   const createUser = async (event: React.FormEvent) => {
@@ -190,13 +198,22 @@ export default function TeamUsersV3() {
             {loading ? <tr><td colSpan={6} style={{ padding: 28, color: 'var(--text-3)' }}>Loading users...</td></tr> : agents.length === 0 ? <tr><td colSpan={6} style={{ padding: 28, color: 'var(--text-3)' }}>No team users found</td></tr> : agents.map(user => {
               const isSelf = Number(user.id) === Number(currentUser?.id)
               const active = Boolean(user.isActive)
+              const canToggleActive = !isSelf && (!isSupervisor || user.role === 'AGENT')
               const statusStyle = active ? { color: green, bg: 'rgba(0,167,71,.10)' } : { color: 'var(--text-3)', bg: 'var(--bg-2)' }
               return <tr key={Number(user.id)} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ padding: 14, fontWeight: 900 }}>{String(user.name || '—')}<br /><span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{String(user.agentCode || '')}</span></td>
                 <td style={{ padding: 14 }}>{String(user.email || '—')}</td>
                 <td style={{ padding: 14 }}>{roleLabel(user.role)}</td>
                 <td style={{ padding: 14 }}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}` }}>{String(user.status)}</span></td>
-                <td style={{ padding: 14 }}>{isSelf ? <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }}><ShieldCheck size={13} /> Signed in</span> : <button type="button" role="switch" aria-checked={active} disabled={pendingId === Number(user.id)} onClick={() => void setUserActive(user, !active)} style={switchStyle(active, pendingId === Number(user.id))}><span style={switchKnob} /></button>}</td>
+                <td style={{ padding: 14 }}>
+                  {isSelf ? (
+                    <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }}><ShieldCheck size={13} /> Signed in</span>
+                  ) : canToggleActive ? (
+                    <button type="button" role="switch" aria-checked={active} disabled={pendingId === Number(user.id)} onClick={() => void setUserActive(user, !active)} style={switchStyle(active, pendingId === Number(user.id))}><span style={switchKnob} /></button>
+                  ) : (
+                    <span className="badge" style={{ color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>Protected</span>
+                  )}
+                </td>
                 <td style={{ padding: 14 }}>{isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setArmedEmail(''); setFinalTarget(user) }}>Cleanup</button> : '—'}</td>
               </tr>
             })}

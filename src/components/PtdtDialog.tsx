@@ -22,6 +22,7 @@ export default function PtdtDialog({ dialog, onClose }: { dialog: PtdtDialogStat
   return (
     <AnimatePresence>
       <motion.div
+        data-ptdt-dialog-open="true"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
