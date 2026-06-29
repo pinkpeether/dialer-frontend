@@ -15,7 +15,6 @@ export default function DynamicCallerIdDialerSelector() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [addonActive, setAddonActive] = useState(false)
-  const [balanceState, setBalanceState] = useState('')
   const [numbers, setNumbers] = useState<DynamicCallerIdRecord[]>([])
   const [expanded, setExpanded] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -53,7 +52,6 @@ export default function DynamicCallerIdDialerSelector() {
       const summary = await dynamicCallerIdApi.getSummary()
       const available = selectableCallerIds((summary.availableNumbers?.length ? summary.availableNumbers : summary.callerIds) || [])
       setAddonActive(Boolean(summary.addonActive || available.length > 0))
-      setBalanceState(summary.balanceState)
       setNumbers(available)
       reconcileSavedSelection(available)
     } catch (err) {
@@ -61,7 +59,6 @@ export default function DynamicCallerIdDialerSelector() {
         const all = await dynamicCallerIdApi.list()
         const available = selectableCallerIds(all)
         setAddonActive(available.length > 0)
-        setBalanceState('ADMIN_CONTEXT')
         setNumbers(available)
         reconcileSavedSelection(available)
         setError(available.length ? '' : (err instanceof Error ? err.message : 'Dynamic Caller ID unavailable'))

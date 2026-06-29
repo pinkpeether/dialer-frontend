@@ -22,7 +22,6 @@ type Props = {
     totals: Record<string, number>
     sections: ReadinessSection[]
     generatedAt: string
-    recommendedNextSprint?: string
   } | null
 }
 
@@ -59,12 +58,6 @@ export default function PlatformReadinessPanel({ overview }: Props) {
             </div>
           ))}
         </div>
-
-        {overview.recommendedNextSprint && (
-          <div style={{ marginTop: 16, borderRadius: 14, border: '1px solid rgba(251,11,140,0.24)', background: 'rgba(251,11,140,0.08)', padding: 14, color: 'var(--text)' }}>
-            <strong>Recommended next sprint:</strong> {overview.recommendedNextSprint}
-          </div>
-        )}
       </div>
 
       {overview.sections.map(section => (

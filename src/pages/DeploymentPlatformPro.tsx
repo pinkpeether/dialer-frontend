@@ -54,7 +54,7 @@ export default function DeploymentPlatformPro() {
 
   const load = async (options: { silent?: boolean } = {}) => {
     try {
-      setLoading(true)
+      if (!options.silent) setLoading(true)
       setError(null)
       const [overviewResult, checklistResult, commandsResult] = await Promise.all([
         deploymentPlatformProAPI.getOverview(options),

@@ -124,7 +124,7 @@ export default function CommercialControlStable() {
     <div className="ptdt-page" style={{ opacity: busy ? 0.58 : 1, transition: 'opacity .18s ease' }}>
       <PtdtBusyOverlay active={busy} label={busyLabel} />
       <div className="ptdt-page-header">
-        <div><div className="eyebrow pink"><CreditCard size={12} /> Phase 4 Sprint 11</div><h1 className="ptdt-page-title">Commercial <span className="gradient-brand-text">Control Layer</span></h1><p className="ptdt-page-desc">SWR cached commercial controls with background revalidation.</p></div>
+        <div><div className="eyebrow pink"><CreditCard size={12} /> Commercial Controls</div><h1 className="ptdt-page-title">Commercial <span className="gradient-brand-text">Control Layer</span></h1><p className="ptdt-page-desc">Commercial plans, wallet balance, paid add-ons, and account billing controls.</p></div>
         <div className="ptdt-toolbar">{query.isFetching && !busy && <span className="ptdt-chip">Syncing...</span>}<button className={`ptdt-action-btn ${busyLabel.includes('Refreshing') && busy ? 'ptdt-refresh-active' : ''}`} onClick={() => void refresh()} disabled={busy}><RefreshCw size={14} /> Refresh</button></div>
       </div>
       {error && <div className="glass" style={{ color: 'var(--danger)', marginBottom: 14, padding: 14 }}>{error}</div>}

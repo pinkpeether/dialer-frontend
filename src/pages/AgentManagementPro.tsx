@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Crown, RefreshCw, ShieldCheck, Users } from 'lucide-react'
 import AgentLeaderboardPanel from '../components/AgentLeaderboardPanel'
 import { agentManagementAPI } from '../api/agentManagement.api'
@@ -94,29 +94,61 @@ const createFingerprint = () => {
   return generated
 }
 
+type AgentManagementCache = {
+  savedAt: string
+  days: number
+  overview: Overview | null
+  leaderboard: LeaderboardResponse | null
+  shifts: ShiftResponse | null
+  sessions: SessionsResponse | null
+}
+
+const CACHE_KEY = 'ptdt-agent-management-pro:last-good'
+
+const readCache = (): AgentManagementCache | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY)
+    return raw ? JSON.parse(raw) as AgentManagementCache : null
+  } catch {
+    return null
+  }
+}
+
+const writeCache = (cache: Omit<AgentManagementCache, 'savedAt'>) => {
+  if (typeof window === 'undefined') return
+  try { window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cache, savedAt: new Date().toISOString() })) } catch { /* best-effort cache */ }
+}
+
 export default function AgentManagementPro() {
-  const [days, setDays] = useState(7)
-  const [overview, setOverview] = useState<Overview | null>(null)
-  const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null)
-  const [shifts, setShifts] = useState<ShiftResponse | null>(null)
-  const [sessions, setSessions] = useState<SessionsResponse | null>(null)
+  const [cached] = useState(() => readCache())
+  const [days, setDays] = useState(cached?.days ?? 7)
+  const [overview, setOverview] = useState<Overview | null>(cached?.overview ?? null)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(cached?.leaderboard ?? null)
+  const [shifts, setShifts] = useState<ShiftResponse | null>(cached?.shifts ?? null)
+  const [sessions, setSessions] = useState<SessionsResponse | null>(cached?.sessions ?? null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const hasVisibleDataRef = useRef(Boolean(cached?.overview))
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (options: { silent?: boolean } = {}) => {
+    const hasVisibleData = hasVisibleDataRef.current
+    if (!options.silent && !hasVisibleData) setLoading(true)
     setMessage('')
     try {
+      const requestOptions = { silent: Boolean(options.silent || hasVisibleData) }
       const [overviewData, leaderboardData, shiftData, sessionData] = await Promise.all([
-        agentManagementAPI.getOverview({ days }),
-        agentManagementAPI.getLeaderboard({ days, limit: 20 }),
-        agentManagementAPI.getShifts(),
-        agentManagementAPI.getSessions(),
+        agentManagementAPI.getOverview({ days }, requestOptions),
+        agentManagementAPI.getLeaderboard({ days, limit: 20 }, requestOptions),
+        agentManagementAPI.getShifts(undefined, requestOptions),
+        agentManagementAPI.getSessions(requestOptions),
       ])
       setOverview(overviewData)
       setLeaderboard(leaderboardData)
       setShifts(shiftData)
       setSessions(sessionData)
+      hasVisibleDataRef.current = true
+      writeCache({ days, overview: overviewData, leaderboard: leaderboardData, shifts: shiftData, sessions: sessionData })
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Failed to load agent management data')
     } finally {
@@ -125,7 +157,7 @@ export default function AgentManagementPro() {
   }, [days])
 
   useEffect(() => {
-    void load()
+    void load({ silent: Boolean(cached?.overview) })
   }, [load])
 
   const handleStartSession = async () => {
@@ -133,7 +165,7 @@ export default function AgentManagementPro() {
     try {
       await agentManagementAPI.startSession(createFingerprint())
       setMessage('Single-session guard started for this device.')
-      await load()
+      await load({ silent: true })
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Failed to start session')
     }
@@ -144,7 +176,7 @@ export default function AgentManagementPro() {
     try {
       await agentManagementAPI.endSession()
       setMessage('Session ended for this device.')
-      await load()
+      await load({ silent: true })
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Failed to end session')
     }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, MessageSquareText, RefreshCw, Send, ShieldCheck, Zap } from 'lucide-react'
+import { CheckCircle2, MessageSquareText, RefreshCw, Send, Zap } from 'lucide-react'
 import { smsApi, type SmsConfig, type SmsSendResult, type SmsStatusResult } from '../api/sms.api'
 
 const inputStyle: React.CSSProperties = {

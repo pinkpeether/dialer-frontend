@@ -133,8 +133,10 @@ export default function AdvancedDialingAnalytics() {
     queryKey: ['advanced-dialing', 'engine-status', engineCampaignId],
     queryFn: () => advancedDialingAPI.getEngineStatus(engineCampaignId),
     enabled: Number.isFinite(engineCampaignId) && engineCampaignId > 0,
-    refetchInterval: 8000,
+    staleTime: 60 * 1000,
+    gcTime: 20 * 60 * 1000,
     refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
   })
 
   const metrics = metricsQuery.data ?? null

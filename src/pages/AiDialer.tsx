@@ -767,26 +767,12 @@ export default function AiDialer() {
     setConfirmOpen(true)
   }, [validation])
 
-  const runControl = useCallback(async (action: CallControlAction, requiresConfirm?: boolean) => {
+  const executeControl = useCallback(async (action: CallControlAction) => {
     setControlError('')
     setControlMessage('')
 
     if (!activeCallId) {
       setControlError('Call ID is required before call controls can be used.')
-      return
-    }
-
-    if (requiresConfirm) {
-      setDialog({
-        tone: 'confirm',
-        title: 'End active AI call?',
-        message: 'This will end the active AI call. Continue?',
-        confirmLabel: 'End Call',
-        onConfirm: () => {
-          setDialog(null)
-          void runControl(action, false)
-        },
-      })
       return
     }
 
@@ -808,6 +794,24 @@ export default function AiDialer() {
       setControlLoading(null)
     }
   }, [activeCallId, transferTo])
+
+  const runControl = useCallback((action: CallControlAction, requiresConfirm?: boolean) => {
+    if (requiresConfirm) {
+      setDialog({
+        tone: 'confirm',
+        title: 'End active AI call?',
+        message: 'This will end the active AI call. Continue?',
+        confirmLabel: 'End Call',
+        onConfirm: () => {
+          setDialog(null)
+          void executeControl(action)
+        },
+      })
+      return
+    }
+
+    void executeControl(action)
+  }, [executeControl])
 
   const timelineRows = [
     { label: 'Call setup prepared', active: hasStarted || canSubmit },

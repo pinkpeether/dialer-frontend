@@ -24,7 +24,10 @@ const GLOBAL_OVERLAY_SUPPRESS_KEY = 'ptdt:suppress-global-overlay'
 
 const managedGetPrefixes = [
   '/administration',
+  '/agent-management',
+  '/advanced-dialing',
   '/commercial-control',
+  '/contact-management-pro',
   '/ai-calls',
   '/agents',
   '/campaigns',
@@ -47,6 +50,7 @@ const managedGetPrefixes = [
   '/ui-ux-pro',
   '/dynamic-caller-id',
   '/customer-onboarding',
+  '/live-monitoring-advanced',
   '/notifications-alerts-pro',
   '/sms',
 ]

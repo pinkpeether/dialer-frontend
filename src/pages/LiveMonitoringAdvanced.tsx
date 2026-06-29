@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity, Globe2, RefreshCw, ShieldAlert } from 'lucide-react'
 import { liveMonitoringAdvancedAPI } from '../api/liveMonitoringAdvanced.api'
 import LiveCallMapPanel, { type LiveCallMapBucket } from '../components/LiveCallMapPanel'
@@ -75,14 +75,17 @@ export default function LiveMonitoringAdvanced() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const hasVisibleDataRef = useRef(false)
 
-  const fetchOverview = useCallback(async () => {
-    setLoading(true)
+  const fetchOverview = useCallback(async (options: { silent?: boolean } = {}) => {
+    const silent = Boolean(options.silent || hasVisibleDataRef.current)
+    if (!silent) setLoading(true)
     setError('')
     try {
       const parsedCampaignId = campaignId.trim() ? Number(campaignId.trim()) : undefined
-      const result = await liveMonitoringAdvancedAPI.getOverview(parsedCampaignId)
+      const result = await liveMonitoringAdvancedAPI.getOverview(parsedCampaignId, { silent })
       setData(result)
+      hasVisibleDataRef.current = true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load live monitoring advanced views')
     } finally {
@@ -97,7 +100,7 @@ export default function LiveMonitoringAdvanced() {
   useEffect(() => {
     if (!autoRefresh) return undefined
     const timer = window.setInterval(() => {
-      void fetchOverview()
+      void fetchOverview({ silent: true })
     }, 10000)
     return () => window.clearInterval(timer)
   }, [autoRefresh, fetchOverview])

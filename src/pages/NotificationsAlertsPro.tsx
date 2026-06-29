@@ -26,11 +26,36 @@ const emptyPreferences: AlertPreferences = {
   },
 }
 
+type NotificationsCache = {
+  savedAt: string
+  summary: AlertSummary | null
+  alerts: NotificationAlert[]
+  preferences: AlertPreferences
+}
+
+const CACHE_KEY = 'ptdt-notifications-alerts-pro:last-good'
+
+const readCache = (): NotificationsCache | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY)
+    return raw ? JSON.parse(raw) as NotificationsCache : null
+  } catch {
+    return null
+  }
+}
+
+const writeCache = (cache: Omit<NotificationsCache, 'savedAt'>) => {
+  if (typeof window === 'undefined') return
+  try { window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cache, savedAt: new Date().toISOString() })) } catch { /* best-effort cache */ }
+}
+
 export default function NotificationsAlertsPro() {
-  const [summary, setSummary] = useState<AlertSummary | null>(null)
-  const [alerts, setAlerts] = useState<NotificationAlert[]>([])
-  const [preferences, setPreferences] = useState<AlertPreferences>(emptyPreferences)
-  const [loading, setLoading] = useState(true)
+  const [cached] = useState(() => readCache())
+  const [summary, setSummary] = useState<AlertSummary | null>(cached?.summary ?? null)
+  const [alerts, setAlerts] = useState<NotificationAlert[]>(cached?.alerts ?? [])
+  const [preferences, setPreferences] = useState<AlertPreferences>(cached?.preferences ?? emptyPreferences)
+  const [loading, setLoading] = useState(!cached?.summary)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -39,17 +64,20 @@ export default function NotificationsAlertsPro() {
   const criticalCount = useMemo(() => alerts.filter(alert => alert.severity === 'CRITICAL').length, [alerts])
   const warningCount = useMemo(() => alerts.filter(alert => alert.severity === 'WARNING').length, [alerts])
 
-  async function load() {
-    setLoading(true)
+  async function load(options: { silent?: boolean } = {}) {
+    const requestOptions = { silent: Boolean(options.silent || summary) }
+    if (!requestOptions.silent) setLoading(true)
     setError(null)
     try {
       const [nextSummary, nextAlerts] = await Promise.all([
-        notificationsAlertsProApi.getSummary(),
-        notificationsAlertsProApi.listAlerts({ limit: 100 }),
+        notificationsAlertsProApi.getSummary(requestOptions),
+        notificationsAlertsProApi.listAlerts({ limit: 100 }, requestOptions),
       ])
       setSummary(nextSummary)
       setAlerts(nextAlerts)
-      setPreferences(nextSummary.preferences || emptyPreferences)
+      const nextPreferences = nextSummary.preferences || emptyPreferences
+      setPreferences(nextPreferences)
+      writeCache({ summary: nextSummary, alerts: nextAlerts, preferences: nextPreferences })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load notifications & alerts')
     } finally {
@@ -58,9 +86,10 @@ export default function NotificationsAlertsPro() {
   }
 
   useEffect(() => {
-    void load()
-    const interval = window.setInterval(() => { void load() }, 30000)
+    void load({ silent: Boolean(cached?.summary) })
+    const interval = window.setInterval(() => { void load({ silent: true }) }, 30000)
     return () => window.clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -105,7 +134,7 @@ export default function NotificationsAlertsPro() {
     try {
       await action()
       setSuccess(message)
-      await load()
+      await load({ silent: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Alert operation failed')
     }
@@ -133,7 +162,7 @@ export default function NotificationsAlertsPro() {
           </p>
         </div>
         <div className="ptdt-toolbar">
-          <span className="ptdt-chip"><CalendarClock size={12} /> 30s auto refresh</span>
+          <span className="ptdt-chip"><CalendarClock size={12} /> Background refresh</span>
           <button className="ptdt-action-btn" type="button" onClick={() => void load()} disabled={loading}>
             <RefreshCw size={14} /> {loading ? 'Refreshing...' : 'Refresh'}
           </button>

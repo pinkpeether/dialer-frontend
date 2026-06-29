@@ -19,17 +19,43 @@ type DuplicateGroup = {
   contacts: DuplicateContact[]
 }
 
+type DuplicateContactsCache = {
+  savedAt: string
+  groups: DuplicateGroup[]
+}
+
+const CACHE_KEY = 'ptdt-contact-management-pro:duplicates:last-good'
+
+const readCache = (): DuplicateContactsCache | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY)
+    return raw ? JSON.parse(raw) as DuplicateContactsCache : null
+  } catch {
+    return null
+  }
+}
+
+const writeCache = (groups: DuplicateGroup[]) => {
+  if (typeof window === 'undefined') return
+  try { window.localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: new Date().toISOString(), groups })) } catch { /* best-effort cache */ }
+}
+
 export default function DuplicateContactsPanel() {
-  const [groups, setGroups] = useState<DuplicateGroup[]>([])
+  const [cached] = useState(() => readCache())
+  const [groups, setGroups] = useState<DuplicateGroup[]>(cached?.groups ?? [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const loadDuplicates = async () => {
-    setLoading(true)
+  const loadDuplicates = async (options: { silent?: boolean } = {}) => {
+    const silent = Boolean(options.silent || groups.length)
+    if (!silent) setLoading(true)
     setError('')
     try {
-      const data = await contactManagementProAPI.getDuplicates()
-      setGroups((data.duplicateGroups || []) as DuplicateGroup[])
+      const data = await contactManagementProAPI.getDuplicates({ silent })
+      const nextGroups = (data.duplicateGroups || []) as DuplicateGroup[]
+      setGroups(nextGroups)
+      writeCache(nextGroups)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load duplicate contacts')
     } finally {
@@ -38,7 +64,8 @@ export default function DuplicateContactsPanel() {
   }
 
   useEffect(() => {
-    void loadDuplicates()
+    void loadDuplicates({ silent: Boolean(cached?.groups.length) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

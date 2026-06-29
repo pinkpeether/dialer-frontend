@@ -1,4 +1,5 @@
 import api from './axios'
+import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
 
 export type AlertSeverity = 'INFO' | 'SUCCESS' | 'WARNING' | 'CRITICAL'
 export type AlertType =
@@ -66,45 +67,69 @@ const cleanParams = (params: Record<string, unknown>) => {
   return next
 }
 
+type NotificationsOptions = { silent?: boolean }
+const notificationsGetConfig = (silent: boolean, config = {}) => (
+  silent ? silentOverlayConfig(config) : config
+)
+
 export const notificationsAlertsProApi = {
-  getSummary: async () => {
-    const res = await api.get('/notifications-alerts-pro/summary')
-    return res.data.data as AlertSummary
-  },
-  getPreferences: async () => {
-    const res = await api.get('/notifications-alerts-pro/preferences')
-    return res.data.data as AlertPreferences
-  },
+  getSummary: async (options?: NotificationsOptions) => swr(
+    swrKey('notifications-alerts-pro', { type: 'summary' }),
+    async ({ silent }) => {
+      const res = await api.get('/notifications-alerts-pro/summary', notificationsGetConfig(silent))
+      return res.data.data as AlertSummary
+    },
+    options,
+  ),
+  getPreferences: async (options?: NotificationsOptions) => swr(
+    swrKey('notifications-alerts-pro', { type: 'preferences' }),
+    async ({ silent }) => {
+      const res = await api.get('/notifications-alerts-pro/preferences', notificationsGetConfig(silent))
+      return res.data.data as AlertPreferences
+    },
+    options,
+  ),
   updatePreferences: async (payload: Partial<AlertPreferences>) => {
     const res = await api.patch('/notifications-alerts-pro/preferences', payload)
+    clearSwrByPrefix('notifications-alerts-pro')
     return res.data.data as AlertPreferences
   },
-  listAlerts: async (params: { onlyUnread?: boolean; severity?: string; type?: string; limit?: number } = {}) => {
-    const res = await api.get('/notifications-alerts-pro/alerts', { params: cleanParams(params) })
-    return res.data.data as NotificationAlert[]
-  },
+  listAlerts: async (params: { onlyUnread?: boolean; severity?: string; type?: string; limit?: number } = {}, options?: NotificationsOptions) => swr(
+    swrKey('notifications-alerts-pro', { type: 'alerts', params }),
+    async ({ silent }) => {
+      const res = await api.get('/notifications-alerts-pro/alerts', notificationsGetConfig(silent, { params: cleanParams(params) }))
+      return res.data.data as NotificationAlert[]
+    },
+    options,
+  ),
   createAlert: async (payload: Partial<NotificationAlert> & { title: string; message: string }) => {
     const res = await api.post('/notifications-alerts-pro/alerts', payload)
+    clearSwrByPrefix('notifications-alerts-pro')
     return res.data.data as NotificationAlert
   },
   acknowledgeAlert: async (alertId: string) => {
     const res = await api.post(`/notifications-alerts-pro/alerts/${alertId}/acknowledge`)
+    clearSwrByPrefix('notifications-alerts-pro')
     return res.data.data as NotificationAlert
   },
   acknowledgeAll: async () => {
     const res = await api.post('/notifications-alerts-pro/alerts/acknowledge-all')
+    clearSwrByPrefix('notifications-alerts-pro')
     return res.data.data as { acknowledged: number }
   },
   runSweep: async () => {
     const res = await api.post('/notifications-alerts-pro/sweep')
+    clearSwrByPrefix('notifications-alerts-pro')
     return res.data.data
   },
   createAngryCustomerAlert: async (payload: { callId?: number; agentId?: number; sentimentScore?: number; reason?: string }) => {
     const res = await api.post('/notifications-alerts-pro/angry-customer', payload)
+    clearSwrByPrefix('notifications-alerts-pro')
     return res.data.data as NotificationAlert
   },
   createShiftReminder: async (payload: { agentId: number; agentName?: string; startsAt?: string; endsAt?: string; reminderType?: 'SHIFT_START' | 'SHIFT_END' | 'BREAK_DUE' | 'BREAK_OVER' }) => {
     const res = await api.post('/notifications-alerts-pro/shift-reminder', payload)
+    clearSwrByPrefix('notifications-alerts-pro')
     return res.data.data as NotificationAlert
   },
 }
