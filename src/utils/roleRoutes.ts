@@ -9,6 +9,7 @@ const AGENT_ROUTES = [
   '/callbacks',
   '/notifications-alerts-pro',
   '/settings',
+  '/sip-settings',
 ]
 
 export function normalizeRole(role?: string | null): UserRole | null {
