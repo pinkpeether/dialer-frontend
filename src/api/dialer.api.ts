@@ -7,6 +7,29 @@ const selectedDynamicCallerId = (explicit?: number | string | null) => {
   return stored ? Number(stored) : undefined
 }
 
+const campaignControlPermissionMessage =
+  'Campaign control is managed by your Supervisor. Select an active campaign and register your voice account to start calling.'
+
+function isForbiddenError(err: unknown) {
+  return Boolean(
+    typeof err === 'object' &&
+    err !== null &&
+    'response' in err &&
+    (err as { response?: { status?: number } }).response?.status === 403,
+  )
+}
+
+async function campaignControlRequest(request: () => Promise<unknown>) {
+  try {
+    return await request()
+  } catch (err) {
+    if (isForbiddenError(err)) {
+      throw new Error(campaignControlPermissionMessage)
+    }
+    throw err
+  }
+}
+
 export const dialerAPI = {
   getToken: async () => {
     const res = await api.get('/dialer/token')
@@ -14,13 +37,17 @@ export const dialerAPI = {
   },
 
   startCampaign: async (campaignId: number) => {
-    const res = await api.post('/dialer/start/' + campaignId)
-    return res.data
+    return campaignControlRequest(async () => {
+      const res = await api.post('/dialer/start/' + campaignId)
+      return res.data
+    })
   },
 
   stopCampaign: async (campaignId: number) => {
-    const res = await api.post('/dialer/stop/' + campaignId)
-    return res.data
+    return campaignControlRequest(async () => {
+      const res = await api.post('/dialer/stop/' + campaignId)
+      return res.data
+    })
   },
 
   getActiveCampaigns: async () => {
