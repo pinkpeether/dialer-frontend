@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff, KeyRound, Save, Settings2, UserRound } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, PhoneCall, Save, Settings2, UserRound } from 'lucide-react'
 import { profileAPI } from '../api/profile.api'
 import { useAuthStore } from '../store/auth.store'
 import { useToast } from '../hooks/useToast'
@@ -429,7 +430,7 @@ export default function Settings() {
           Account <span className="gradient-brand-text">Settings</span>
         </h1>
         <p style={{ fontSize: 14.5, color: 'var(--text-3)' }}>
-          Manage your profile, password, and dialer preferences.
+          Manage your profile, password, voice account, and dialer preferences.
         </p>
       </motion.div>
 
@@ -454,6 +455,31 @@ export default function Settings() {
           <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }} onClick={() => void handleSaveProfile()} disabled={savingProfile} className="btn-brand" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 6, borderRadius: 'var(--radius-full)', padding: '0 22px', minHeight: 42, fontSize: 13.5 }}>
             <Save size={14} /> {savingProfile ? 'Saving…' : 'Save Profile'}
           </motion.button>
+        </SectionCard>
+
+        {/* Voice section */}
+        <SectionCard title="Voice Settings" subtitle="Register the voice account used for live calling." icon={<PhoneCall size={17} />} tone="green">
+          <p style={{ margin: 0, color: 'var(--text-3)', fontSize: 13.2, lineHeight: 1.65 }}>
+            Configure and register your assigned voice account before making live calls from the Dialer workspace.
+          </p>
+          <Link
+            to="/sip-settings"
+            className="btn-brand"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              marginTop: 16,
+              borderRadius: 'var(--radius-full)',
+              padding: '0 22px',
+              minHeight: 42,
+              fontSize: 13.5,
+              textDecoration: 'none',
+            }}
+          >
+            <PhoneCall size={14} /> Open Voice Settings
+          </Link>
         </SectionCard>
 
         {/* Password section */}
