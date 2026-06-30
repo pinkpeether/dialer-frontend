@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Wrench } from 'lucide-react'
 import Sidebar from './Sidebar'
 import { useSipStore } from '../store/sip.store'
 import { useAuthStore } from '../store/auth.store'
@@ -13,10 +14,12 @@ export default function Layout() {
   const registerSip = useSipStore(s => s.register)
   const unregisterSip = useSipStore(s => s.unregister)
   const logout = useAuthStore(s => s.logout)
+  const userRole = useAuthStore(s => s.user?.role)
   const navigate = useNavigate()
   const autoRegisterKeyRef = useRef('')
   const autoRegisterInFlightRef = useRef(false)
   const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const showAgentVoiceLink = String(userRole || '').toUpperCase() === 'AGENT'
 
   useEffect(() => {
     const ready = Boolean(
@@ -81,21 +84,48 @@ export default function Layout() {
         dialog={confirmSignOut ? {
           tone: 'confirm',
           title: 'Sign out confirmation',
-          message: 'Kya aap waqai PTDT-Dialer se sign out karna chahte hain?',
+          message: 'Are you sure you want to sign out of PTDT-Dialer?',
           confirmLabel: 'Yes, Sign Out',
           onConfirm: performSignOut,
         } : null}
         onClose={() => setConfirmSignOut(false)}
       />
 
-      {/* PTDT aurora — pink / purple / green orbs */}
       <div className="aurora-bg">
         <div className="aurora-orb-3" />
       </div>
-      {/* Grid overlay (visible only in dark = PTDT tokenomics vibe) */}
       <div className="grid-overlay" />
 
       <Sidebar />
+      {showAgentVoiceLink && (
+        <NavLink
+          to="/sip-settings"
+          style={{
+            position: 'fixed',
+            left: 14,
+            bottom: 172,
+            width: 'calc(var(--sidebar-width) - 28px)',
+            minHeight: 38,
+            borderRadius: 16,
+            border: '1px solid rgba(128,87,215,0.30)',
+            background: 'linear-gradient(135deg, rgba(128,87,215,0.18), rgba(128,87,215,0.08))',
+            color: '#8057d7',
+            zIndex: 36,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 11,
+            padding: '8px 12px',
+            textDecoration: 'none',
+            fontSize: 12.8,
+            fontWeight: 900,
+            boxShadow: '0 8px 18px rgba(128,87,215,0.14)',
+            boxSizing: 'border-box',
+          }}
+        >
+          <span className="sidebar-icon-shell" style={{ color: '#8057d7' }}><Wrench size={16} /></span>
+          <span style={{ lineHeight: 1.25, flex: 1 }}>Voice Settings</span>
+        </NavLink>
+      )}
       <DynamicCallerIdDialerSelector />
 
       <main style={{
@@ -111,7 +141,6 @@ export default function Layout() {
           <Outlet />
         </div>
 
-        {/* Footer copyright — always visible */}
         <footer style={{
           padding: '20px 32px',
           borderTop: '1px solid var(--border)',
@@ -133,9 +162,6 @@ export default function Layout() {
           <span>
             Copyrights © <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>PTDT-Dialer</span>
             {' · '}Pink Taxi Group Ltd · United Kingdom. All rights reserved.
-            {' · '}
-            Trust the <span style={{ color: 'var(--pink)', fontWeight: 700 }}>{'{ Code }'}</span>,{' '}
-            <span style={{ color: 'var(--green-2)', fontWeight: 700 }}>// Not the Cult!</span>
           </span>
         </footer>
       </main>
