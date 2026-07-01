@@ -1,6 +1,6 @@
 // PTDT Team Users V3
 import { useMemo, useState } from 'react'
-import { Pencil, Plus, Save, ShieldCheck, Users, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Pencil, Plus, Save, ShieldCheck, Users, X } from 'lucide-react'
 import { useAgents } from '../hooks/useAgents'
 import { agentsAPI } from '../api/agents.api'
 import { useAuthStore } from '../store/auth.store'
@@ -10,6 +10,9 @@ import { setGlobalRequestOverlaySuppressed } from '../api/axios'
 
 const green = '#00a747'
 const danger = '#ef4444'
+
+type TeamUser = Record<string, unknown>
+type CustomerGroup = { key: string; id: number | null; name: string; code: string; status: string; users: TeamUser[] }
 
 const inputStyle: React.CSSProperties = {
   padding: '11px 14px',
@@ -59,6 +62,35 @@ const roleLabel = (role: unknown) => {
   return 'Agent'
 }
 
+const accountForUser = (user: TeamUser) => {
+  const direct = user.commercialAccount as Record<string, unknown> | null | undefined
+  if (direct?.id || direct?.name) return direct
+  const list = user.commercialAccounts as Record<string, unknown>[] | undefined
+  return Array.isArray(list) && list.length ? list[0] : null
+}
+
+const groupUsersByCustomer = (users: TeamUser[]) => {
+  const map = new Map<string, CustomerGroup>()
+  users.forEach(user => {
+    const account = accountForUser(user)
+    const id = account?.id ? Number(account.id) : null
+    const name = String(account?.name || 'Unassigned Customer')
+    const key = id ? `account-${id}` : 'account-unassigned'
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        id,
+        name,
+        code: String(account?.code || '—'),
+        status: String(account?.status || '—'),
+        users: [],
+      })
+    }
+    map.get(key)?.users.push(user)
+  })
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+}
+
 export default function TeamUsersV3() {
   const currentUser = useAuthStore(state => state.user)
   const isPlatformAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN'
@@ -84,8 +116,10 @@ export default function TeamUsersV3() {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'AGENT', extension: '', phone: '' })
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState('')
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
-  const { agents, loading, createAgent, refetch } = useAgents({ isActive: showInactive ? undefined : true })
+  const { agents, loading, createAgent, refetch } = useAgents({ isActive: showInactive ? undefined : true, limit: 200 })
+  const groupedAccounts = useMemo(() => groupUsersByCustomer(agents), [agents])
   const errorMessage = (err: unknown) => (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Something went wrong'
 
   const withBusy = async (task: () => Promise<void>) => {
@@ -179,6 +213,55 @@ export default function TeamUsersV3() {
     })
   }
 
+  const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
+
+  const renderUserRow = (user: TeamUser) => {
+    const isSelf = Number(user.id) === Number(currentUser?.id)
+    const active = Boolean(user.isActive)
+    const canToggleActive = !isSelf && (!isSupervisor || user.role === 'AGENT')
+    const statusStyle = active ? { color: green, bg: 'rgba(0,167,71,.10)' } : { color: 'var(--text-3)', bg: 'var(--bg-2)' }
+
+    return <tr key={Number(user.id)} style={{ borderBottom: '1px solid var(--border)' }}>
+      <td style={{ padding: 14, fontWeight: 900 }}>
+        {editingId === Number(user.id) ? (
+          <input value={editingName} onChange={event => setEditingName(event.target.value)} style={{ ...inputStyle, maxWidth: 260, minHeight: 38 }} autoFocus />
+        ) : (
+          String(user.name || '—')
+        )}
+        <br />
+        <span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{String(user.agentCode || '')}</span>
+      </td>
+      <td style={{ padding: 14 }}>{String(user.email || '—')}</td>
+      <td style={{ padding: 14 }}>{roleLabel(user.role)}</td>
+      <td style={{ padding: 14 }}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}` }}>{String(user.status)}</span></td>
+      <td style={{ padding: 14 }}>
+        {isSelf ? (
+          <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }}><ShieldCheck size={13} /> Signed in</span>
+        ) : canToggleActive ? (
+          <button type="button" role="switch" aria-checked={active} disabled={pendingId === Number(user.id)} onClick={() => void setUserActive(user, !active)} style={switchStyle(active, pendingId === Number(user.id))}><span style={switchKnob} /></button>
+        ) : (
+          <span className="badge" style={{ color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>Protected</span>
+        )}
+      </td>
+      <td style={{ padding: 14 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {editingId === Number(user.id) ? (
+            <>
+              <button type="button" className="ptdt-action-btn" disabled={pendingId === Number(user.id)} onClick={() => void saveEditUser(user)}><Save size={13} /> Save</button>
+              <button type="button" className="ptdt-action-btn" onClick={cancelEditUser}><X size={13} /> Cancel</button>
+            </>
+          ) : !isSelf && (!isSupervisor || user.role === 'AGENT') ? (
+            <button type="button" className="ptdt-action-btn" onClick={() => startEditUser(user)}><Pencil size={13} /> Edit</button>
+          ) : null}
+          {isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setArmedEmail(''); setFinalTarget(user) }}>Cleanup</button> : null}
+          {isSelf || (isSupervisor && user.role !== 'AGENT') ? <span style={{ color: 'var(--text-3)' }}>—</span> : null}
+        </div>
+      </td>
+    </tr>
+  }
+
+  const tableHeader = <thead><tr>{['User', 'Email', 'Role', 'Status', 'Active', 'Actions'].map(label => <th key={label} style={{ textAlign: 'left', padding: 14, borderBottom: '1px solid var(--border)' }}>{label}</th>)}</tr></thead>
+
   return (
     <div className="ptdt-page">
       <PtdtBusyOverlay active={busy} label="Applying team user changes..." />
@@ -221,13 +304,7 @@ export default function TeamUsersV3() {
             ].map(([key, label, type, required]) => (
               <label key={String(key)} style={{ display: 'grid', gap: 6 }}>
                 <span style={fieldLabelStyle}>{String(label)}{required ? requiredStar : null}</span>
-                <input
-                  type={String(type)}
-                  value={(form as Record<string, string>)[String(key)]}
-                  onChange={event => setForm(prev => ({ ...prev, [String(key)]: event.target.value }))}
-                  required={Boolean(required)}
-                  style={inputStyle}
-                />
+                <input type={String(type)} value={(form as Record<string, string>)[String(key)]} onChange={event => setForm(prev => ({ ...prev, [String(key)]: event.target.value }))} required={Boolean(required)} style={inputStyle} />
               </label>
             ))}
             <label style={{ display: 'grid', gap: 6 }}>
@@ -246,61 +323,50 @@ export default function TeamUsersV3() {
         <input type="checkbox" checked={showInactive} onChange={event => setShowInactive(event.target.checked)} /> Show inactive users
       </label>
 
-      <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
-          <thead><tr>{['User', 'Email', 'Role', 'Status', 'Active', 'Actions'].map(label => <th key={label} style={{ textAlign: 'left', padding: 14, borderBottom: '1px solid var(--border)' }}>{label}</th>)}</tr></thead>
-          <tbody>
-            {loading ? <tr><td colSpan={6} style={{ padding: 28, color: 'var(--text-3)' }}>Loading users...</td></tr> : agents.length === 0 ? <tr><td colSpan={6} style={{ padding: 28, color: 'var(--text-3)' }}>No team users found</td></tr> : agents.map(user => {
-              const isSelf = Number(user.id) === Number(currentUser?.id)
-              const active = Boolean(user.isActive)
-              const canToggleActive = !isSelf && (!isSupervisor || user.role === 'AGENT')
-              const statusStyle = active ? { color: green, bg: 'rgba(0,167,71,.10)' } : { color: 'var(--text-3)', bg: 'var(--bg-2)' }
-              return <tr key={Number(user.id)} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: 14, fontWeight: 900 }}>
-                  {editingId === Number(user.id) ? (
-                    <input
-                      value={editingName}
-                      onChange={event => setEditingName(event.target.value)}
-                      style={{ ...inputStyle, maxWidth: 260, minHeight: 38 }}
-                      autoFocus
-                    />
-                  ) : (
-                    String(user.name || '—')
-                  )}
-                  <br />
-                  <span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{String(user.agentCode || '')}</span>
-                </td>
-                <td style={{ padding: 14 }}>{String(user.email || '—')}</td>
-                <td style={{ padding: 14 }}>{roleLabel(user.role)}</td>
-                <td style={{ padding: 14 }}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}` }}>{String(user.status)}</span></td>
-                <td style={{ padding: 14 }}>
-                  {isSelf ? (
-                    <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }}><ShieldCheck size={13} /> Signed in</span>
-                  ) : canToggleActive ? (
-                    <button type="button" role="switch" aria-checked={active} disabled={pendingId === Number(user.id)} onClick={() => void setUserActive(user, !active)} style={switchStyle(active, pendingId === Number(user.id))}><span style={switchKnob} /></button>
-                  ) : (
-                    <span className="badge" style={{ color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>Protected</span>
-                  )}
-                </td>
-                <td style={{ padding: 14 }}>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {editingId === Number(user.id) ? (
-                      <>
-                        <button type="button" className="ptdt-action-btn" disabled={pendingId === Number(user.id)} onClick={() => void saveEditUser(user)}><Save size={13} /> Save</button>
-                        <button type="button" className="ptdt-action-btn" onClick={cancelEditUser}><X size={13} /> Cancel</button>
-                      </>
-                    ) : !isSelf && (!isSupervisor || user.role === 'AGENT') ? (
-                      <button type="button" className="ptdt-action-btn" onClick={() => startEditUser(user)}><Pencil size={13} /> Edit</button>
-                    ) : null}
-                    {isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setArmedEmail(''); setFinalTarget(user) }}>Cleanup</button> : null}
-                    {isSelf || (isSupervisor && user.role !== 'AGENT') ? <span style={{ color: 'var(--text-3)' }}>—</span> : null}
+      {loading ? (
+        <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>Loading users...</div>
+      ) : agents.length === 0 ? (
+        <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>No team users found</div>
+      ) : isPlatformAdmin ? (
+        <div style={{ display: 'grid', gap: 12 }}>
+          {groupedAccounts.map((group, index) => {
+            const isOpen = expandedGroups[group.key] ?? index === 0
+            const agentCount = group.users.filter(user => user.role === 'AGENT').length
+            const supervisorCount = group.users.filter(user => user.role === 'SUPERVISOR').length
+            const adminCount = group.users.filter(user => user.role === 'CUSTOMER_ADMIN').length
+            return (
+              <div key={group.key} className="glass" style={{ overflow: 'hidden' }}>
+                <button type="button" onClick={() => toggleGroup(group.key)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'transparent', border: 0, borderBottom: isOpen ? '1px solid var(--border)' : 0, color: 'var(--text)', cursor: 'pointer', textAlign: 'left' }}>
+                  <span style={{ color: 'var(--pink)' }}>{isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
+                  <span style={{ flex: 1 }}>
+                    <strong style={{ fontSize: 16 }}>{group.name}</strong>
+                    <span className="mono" style={{ display: 'block', color: 'var(--text-3)', fontSize: 11, marginTop: 4 }}>Customer Code: {group.code} · Status: {group.status}</span>
+                  </span>
+                  <span className="badge" style={{ color: 'var(--pink)', background: 'rgba(251,11,140,.10)', border: '1px solid rgba(251,11,140,.28)' }}>{group.users.length} Users</span>
+                  <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }}>{agentCount} Agents</span>
+                  <span className="badge" style={{ color: 'var(--text-2)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>{supervisorCount} Supervisors</span>
+                  {adminCount > 0 && <span className="badge" style={{ color: 'var(--text-2)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>{adminCount} Customer Admins</span>}
+                </button>
+                {isOpen && (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
+                      {tableHeader}
+                      <tbody>{group.users.map(renderUserRow)}</tbody>
+                    </table>
                   </div>
-                </td>
-              </tr>
-            })}
-          </tbody>
-        </table>
-      </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
+            {tableHeader}
+            <tbody>{agents.map(renderUserRow)}</tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
