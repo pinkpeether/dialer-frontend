@@ -4,7 +4,7 @@ import { administrationApi, type AccountMembership, type AdminCommercialAccount,
 import { beginGlobalRequestOverlay, endGlobalRequestOverlay } from '../services/globalRequestOverlay'
 
 const platformRoles = new Set(['SUPER_ADMIN', 'ADMIN'])
-const accountRoleOptions: CommercialAccountRole[] = ['OWNER', 'ADMIN', 'BILLING', 'SUPERVISOR', 'AGENT']
+const accountRoleOptions: CommercialAccountRole[] = ['OWNER', 'SUPERVISOR', 'AGENT']
 const CACHE_KEY = 'ptdt-platform-administration:last-good'
 
 const accountThemes = [
@@ -44,7 +44,48 @@ const writeCache = (cache: Omit<PlatformAdminCache, 'savedAt'>) => {
 
 const themeAt = (index: number) => accountThemes[index % accountThemes.length]
 const money = (value: unknown, currency = 'USD') => `${currency} ${Number(value || 0).toFixed(2)}`
-const accountRoleLabel = (role: string) => role === 'ADMIN' ? 'Account Admin' : role
+const accountRoleLabel = (role: string) => {
+  if (role === 'OWNER') return 'Customer Admin'
+  if (role === 'SUPERVISOR') return 'Supervisor'
+  if (role === 'AGENT') return 'Agent'
+  return role
+}
+
+const accountRoleForUser = (role?: string): CommercialAccountRole => {
+  if (role === 'CUSTOMER_ADMIN') return 'OWNER'
+  if (role === 'SUPERVISOR') return 'SUPERVISOR'
+  return 'AGENT'
+}
+
+const permissionsForAccountRole = (role: CommercialAccountRole) => {
+  if (role === 'OWNER') {
+    return {
+      canManageUsers: true,
+      canManageBilling: true,
+      canManageCampaigns: true,
+      canViewReports: true,
+      canUseDynamicCallerId: true,
+    }
+  }
+
+  if (role === 'SUPERVISOR') {
+    return {
+      canManageUsers: false,
+      canManageBilling: false,
+      canManageCampaigns: true,
+      canViewReports: true,
+      canUseDynamicCallerId: true,
+    }
+  }
+
+  return {
+    canManageUsers: false,
+    canManageBilling: false,
+    canManageCampaigns: false,
+    canViewReports: false,
+    canUseDynamicCallerId: false,
+  }
+}
 const statusColor = (status: string) => status === 'ACTIVE' ? 'var(--green-2)' : status === 'SUSPENDED' ? 'var(--danger)' : 'var(--text-3)'
 const overlayMinimumMs = 760
 const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms))
@@ -296,15 +337,13 @@ export default function PlatformAdministrationV2() {
     setError('')
     setMessage('')
 
+    const permissions = permissionsForAccountRole(form.accountRole)
+
     void administrationApi.addPlatformAccountMember(selectedAccount.id, {
       userId: Number(form.userId),
       accountRole: form.accountRole,
       status: 'ACTIVE',
-      canManageUsers: form.canManageUsers,
-      canManageBilling: form.canManageBilling,
-      canManageCampaigns: form.canManageCampaigns,
-      canViewReports: form.canViewReports,
-      canUseDynamicCallerId: form.canUseDynamicCallerId,
+      ...permissions,
     })
       .then(membership => {
         const nextMembers = [membership, ...members.filter(item => item.id !== membership.id && item.userId !== membership.userId)]
@@ -427,7 +466,16 @@ export default function PlatformAdministrationV2() {
           </div>
 
           <form onSubmit={assignMember} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, marginBottom: 18 }}>
-            <select className="ptdt-select" required value={form.userId} onChange={event => setForm({ ...form, userId: event.target.value })}>
+            <select
+              className="ptdt-select"
+              required
+              value={form.userId}
+              onChange={event => {
+                const userId = event.target.value
+                const selectedUser = users.find(user => String(user.id) === userId)
+                setForm({ ...form, userId, accountRole: accountRoleForUser(String(selectedUser?.role || '')) })
+              }}
+            >
               <option value="">Select user</option>
               {assignableUsers.map(user => {
                 const isExistingMember = selectedMemberUserIds.has(user.id)
