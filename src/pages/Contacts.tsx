@@ -4,6 +4,7 @@ import { BookUser, Building2, Plus, Search, Trash2, Upload, X } from 'lucide-rea
 import { useContacts } from '../hooks/useContacts'
 import StatsCard from '../components/StatsCard'
 import { campaignsAPI } from '../api/campaigns.api'
+import { administrationApi, type AdminCommercialAccount } from '../api/administration.api'
 import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
 
@@ -20,9 +21,14 @@ type ContactGroup = CustomerAccount & { key: string; contacts: ContactRecord[] }
 
 const accountKey = (account?: CustomerAccount | null) => account?.id ? Number(account.id) : null
 const fallbackAccount: CustomerAccount = { id: null, name: 'Unassigned Customer', code: '—', status: '—' }
-const accountFromCampaignId = (campaignId: unknown, campaigns: Record<string, unknown>[]): CustomerAccount | null => { const campaign = campaigns.find(c => Number(c.id) === Number(campaignId)); const account = campaign?.commercialAccount as CustomerAccount | undefined; return account || null }
-const accountForContact = (contact: ContactRecord, campaigns: Record<string, unknown>[]): CustomerAccount => contact.commercialAccount || contact.campaign?.commercialAccount || accountFromCampaignId(contact.campaignId, campaigns) || fallbackAccount
+const toCustomerAccount = (account?: Partial<AdminCommercialAccount> | CustomerAccount | null): CustomerAccount | null => {
+  if (!account || (!account.id && !account.name)) return null
+  return { id: account.id ? Number(account.id) : null, name: String(account.name || 'Unassigned Customer'), code: String(account.code || '—'), status: String(account.status || '—') }
+}
+const accountFromCampaignId = (campaignId: unknown, campaigns: Record<string, unknown>[]): CustomerAccount | null => { const campaign = campaigns.find(c => Number(c.id) === Number(campaignId)); const account = campaign?.commercialAccount as CustomerAccount | undefined; return toCustomerAccount(account) }
+const accountForContact = (contact: ContactRecord, campaigns: Record<string, unknown>[]): CustomerAccount => toCustomerAccount(contact.commercialAccount) || toCustomerAccount(contact.campaign?.commercialAccount) || accountFromCampaignId(contact.campaignId, campaigns) || fallbackAccount
 const groupContactsByCustomer = (contacts: ContactRecord[], campaigns: Record<string, unknown>[]) => { const map = new Map<string, ContactGroup>(); contacts.forEach(contact => { const account = accountForContact(contact, campaigns); const key = account.id ? `account-${account.id}` : 'account-unassigned'; if (!map.has(key)) map.set(key, { ...account, key, contacts: [] }); map.get(key)?.contacts.push(contact) }); return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)) }
+const uniqueAccounts = (accounts: Array<CustomerAccount | null | undefined>) => { const map = new Map<number, CustomerAccount>(); accounts.forEach(account => { if (account?.id) map.set(Number(account.id), account) }); return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)) }
 
 export default function Contacts() {
   const [search, setSearch] = useState('')
@@ -30,6 +36,7 @@ export default function Contacts() {
   const [campId, setCampId] = useState<number | undefined>()
   const [status, setStatus] = useState<string | undefined>()
   const [campaigns, setCampaigns] = useState<Record<string, unknown>[]>([])
+  const [accountOptions, setAccountOptions] = useState<CustomerAccount[]>([])
   const [uploading, setUploading] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -41,15 +48,49 @@ export default function Contacts() {
 
   const { contacts, stats, loading, error, pagination, uploadCSV, createContact, deleteContact } = useContacts({ campaignId: campId, commercialAccountId: customerId, status: status || undefined, search: search || undefined, limit: 50 })
   const contactRows = contacts as ContactRecord[]
-  const customers = useMemo(() => { const map = new Map<number, CustomerAccount>(); campaigns.forEach(c => { const account = c.commercialAccount as CustomerAccount | undefined; if (account?.id) map.set(Number(account.id), account) }); contactRows.forEach(c => { const account = accountForContact(c, campaigns); if (account.id) map.set(Number(account.id), account) }); return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)) }, [campaigns, contactRows])
-  const visibleCampaigns = useMemo(() => customerId ? campaigns.filter(c => accountKey(c.commercialAccount as CustomerAccount | undefined) === customerId) : campaigns, [campaigns, customerId])
+  const customers = useMemo(() => uniqueAccounts([
+    ...accountOptions,
+    ...campaigns.map(c => toCustomerAccount(c.commercialAccount as CustomerAccount | undefined)),
+    ...contactRows.map(c => accountForContact(c, campaigns)),
+  ]), [accountOptions, campaigns, contactRows])
+  const visibleCampaigns = useMemo(() => customerId ? campaigns.filter(c => accountKey(toCustomerAccount(c.commercialAccount as CustomerAccount | undefined)) === customerId) : campaigns, [campaigns, customerId])
   const visibleContacts = useMemo(() => contactRows.filter(contact => { const matchesCustomer = !customerId || accountKey(accountForContact(contact, campaigns)) === customerId; const matchesCampaign = !campId || Number(contact.campaignId) === campId; const matchesStatus = !status || String(contact.status) === status; const q = search.toLowerCase(); const matchesSearch = !q || String(contact.name || '').toLowerCase().includes(q) || String(contact.phone || '').toLowerCase().includes(q); return matchesCustomer && matchesCampaign && matchesStatus && matchesSearch }), [contactRows, campaigns, customerId, campId, status, search])
   const groupedContacts = useMemo(() => groupContactsByCustomer(visibleContacts, campaigns), [visibleContacts, campaigns])
   const visibleStats = stats
   const visibleTotal = Number((pagination as Record<string, number> | undefined)?.total ?? contacts.length)
   const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
 
-  useEffect(() => { campaignsAPI.getAll({ limit: 200 }).then(d => setCampaigns(d.campaigns || [])).catch(() => setCampaigns([])) }, [])
+  useEffect(() => {
+    let cancelled = false
+    const loadMeta = async () => {
+      const [campaignResult, meResult] = await Promise.allSettled([
+        campaignsAPI.getAll({ limit: 200 }),
+        administrationApi.getMe({ silent: true }),
+      ])
+      if (!cancelled) {
+        if (campaignResult.status === 'fulfilled') setCampaigns(campaignResult.value.campaigns || [])
+        else setCampaigns([])
+      }
+
+      let accounts: CustomerAccount[] = []
+      if (meResult.status === 'fulfilled') {
+        if (meResult.value.platformAccess) {
+          try {
+            const overview = await administrationApi.getPlatformOverview({ silent: true })
+            accounts = uniqueAccounts(overview.accounts.map(account => toCustomerAccount(account)))
+          } catch {
+            accounts = uniqueAccounts(meResult.value.memberships.map(membership => toCustomerAccount(membership.account)))
+          }
+        } else {
+          accounts = uniqueAccounts(meResult.value.memberships.map(membership => toCustomerAccount(membership.account)))
+        }
+      }
+      if (!cancelled) setAccountOptions(accounts)
+    }
+    void loadMeta()
+    return () => { cancelled = true }
+  }, [])
+
   useEffect(() => { if (campId && !visibleCampaigns.some(c => Number(c.id) === campId)) setCampId(undefined); if (contactCampaignId && !visibleCampaigns.some(c => Number(c.id) === Number(contactCampaignId))) setContactCampaignId('') }, [customerId, visibleCampaigns, campId, contactCampaignId])
 
   const handleCSV = async (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file) return; if (!campId) { setDialog({ tone: 'error', title: 'Select a campaign', message: 'Choose a campaign before uploading contacts. Contacts are stored inside a campaign.' }); if (fileRef.current) fileRef.current.value = ''; return } setUploading(true); try { const result = await uploadCSV(campId, file); setDialog({ tone: 'success', title: 'CSV import complete', message: `Imported: ${result.imported} | Duplicates: ${result.duplicates} | DNC: ${result.dncSkipped}` }) } catch (err) { setDialog({ tone: 'error', title: 'CSV upload failed', message: err instanceof Error ? err.message : 'Upload failed' }) } finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' } }
