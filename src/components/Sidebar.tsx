@@ -119,7 +119,7 @@ const NAV: NavItem[] = [
   { to: '/commercial-control', icon: CreditCard, label: 'Commercial Control', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.green },
   { to: '/billing', icon: Building2, label: 'Billing & Plan', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.gold },
   { to: '/admin/spoofing', icon: PhoneCall, label: 'Dynamic Caller ID', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.cyan },
-  { to: '/sip-settings', icon: Wrench, label: 'SIP Settings', color: COLORS.gold },
+  { to: '/sip-settings', icon: Wrench, label: 'Voice Settings', color: COLORS.gold },
   { to: '/settings', icon: Settings2, label: 'Account Settings', color: COLORS.slate },
   { to: '/settings/system', icon: SlidersHorizontal, label: 'System Settings', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.orange },
 ]
@@ -248,7 +248,10 @@ export default function Sidebar() {
   }, [groups, isPathActive])
 
   const standaloneItems = useMemo(() => {
-    if (normalizedRole === 'AGENT') return []
+    if (normalizedRole === 'AGENT') {
+      const voiceSettings = itemMap['/sip-settings']
+      return voiceSettings ? [voiceSettings] : []
+    }
     return CONSOLE_STANDALONE.map(to => itemMap[to]).filter(Boolean).filter(item => isVisibleForRole(item.roles))
   }, [isVisibleForRole, itemMap, normalizedRole])
 
@@ -347,7 +350,7 @@ export default function Sidebar() {
           })}
 
           {standaloneItems.length > 0 && <>
-            <div className="mono" style={{ fontSize: 9.5, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1.4, padding: '12px 12px 8px', fontWeight: 700 }}>Tools</div>
+            {normalizedRole !== 'AGENT' && <div className="mono" style={{ fontSize: 9.5, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1.4, padding: '12px 12px 8px', fontWeight: 700 }}>Tools</div>}
             {standaloneItems.map(item => {
               const Icon = item.icon
               const iconColor = item.color || COLORS.pink
