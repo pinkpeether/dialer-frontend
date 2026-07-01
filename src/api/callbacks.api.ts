@@ -2,6 +2,13 @@ import api from './axios'
 
 export type CallbackStatus = 'PENDING' | 'COMPLETED' | 'RESCHEDULED' | 'CANCELLED'
 
+export type CallbackCommercialAccount = {
+  id: number | null
+  name: string
+  code: string
+  status: string
+}
+
 export type CallbackRecord = {
   id: number | string
   contactId?: number | null
@@ -13,18 +20,53 @@ export type CallbackRecord = {
   contactPhone?: string | null
   agentName?: string | null
   createdAt?: string
+  commercialAccount?: CallbackCommercialAccount | null
+  commercialAccounts?: CallbackCommercialAccount[]
+}
+
+const stringValue = (value: unknown, fallback = '') => {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return fallback
+}
+
+const accountFrom = (value: unknown): CallbackCommercialAccount | null => {
+  const account = value as Record<string, unknown> | null | undefined
+  if (!account || (!account.id && !account.name)) return null
+  return {
+    id: account.id ? Number(account.id) : null,
+    name: stringValue(account.name, 'Unassigned Customer'),
+    code: stringValue(account.code, '—'),
+    status: stringValue(account.status, '—'),
+  }
 }
 
 const normalizeCallback = (raw: unknown): CallbackRecord => {
   const item = raw as Record<string, unknown>
   const contact = item.contact as Record<string, unknown> | undefined
+  const call = item.call as Record<string, unknown> | undefined
+  const campaign = item.campaign as Record<string, unknown> | undefined
+  const contactCampaign = contact?.campaign as Record<string, unknown> | undefined
+  const callCampaign = call?.campaign as Record<string, unknown> | undefined
   const agent = item.agent as Record<string, unknown> | undefined
+  const accounts = Array.isArray(item.commercialAccounts)
+    ? item.commercialAccounts.map(accountFrom).filter(Boolean) as CallbackCommercialAccount[]
+    : []
+  const commercialAccount = accountFrom(item.commercialAccount)
+    || accountFrom(campaign?.commercialAccount)
+    || accountFrom(callCampaign?.commercialAccount)
+    || accountFrom(contactCampaign?.commercialAccount)
+    || accounts[0]
+    || null
+
   return {
     ...(item as unknown as CallbackRecord),
     contactId: (item.contactId as number | null | undefined) ?? (contact?.id as number | null | undefined),
     contactName: (item.contactName as string | null | undefined) ?? (contact?.name as string | null | undefined),
     contactPhone: (item.contactPhone as string | null | undefined) ?? (contact?.phone as string | null | undefined),
     agentName: (item.agentName as string | null | undefined) ?? (agent?.name as string | null | undefined),
+    commercialAccount,
+    commercialAccounts: commercialAccount ? [commercialAccount, ...accounts.filter(account => account.id !== commercialAccount.id)] : accounts,
   }
 }
 
