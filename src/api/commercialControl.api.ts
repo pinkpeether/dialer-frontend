@@ -25,7 +25,7 @@ const commercialGetConfig = (silent: boolean, config = {}) => {
 }
 const swrMemory = new Map<string, unknown>()
 const swrPrefix = 'ptdt-commercial-control-api-swr:'
-const swrMaxAgeMs = 30 * 60 * 1000
+const swrMaxAgeMs = 10 * 1000
 
 type SwrRecord<T> = { savedAt: number; data: T }
 type CommercialSwrOptions = { silent?: boolean; signal?: AbortSignal }
@@ -61,12 +61,19 @@ const removeSwr = (key: string) => {
   if (typeof window !== 'undefined') window.localStorage.removeItem(cacheKey(key))
 }
 
-const clearCommercialSwr = (accountId?: number) => {
+export const clearCommercialControlCache = (accountId?: number) => {
   removeSwr('accounts')
   removeSwr('catalog')
   if (accountId) {
     removeSwr(`summary:${accountId}`)
     removeSwr(`payments:${accountId}`)
+  }
+  if (typeof window !== 'undefined') {
+    Object.keys(window.localStorage).forEach(key => {
+      if (key.startsWith('ptdt-commercial-control-api-swr:')) {
+        window.localStorage.removeItem(key)
+      }
+    })
   }
 }
 
@@ -84,7 +91,7 @@ const swr = async <T>(key: string, request: (silent: boolean) => Promise<T>, opt
 export const commercialControlApi = {
   seedCatalog: async () => {
     const res = await api.post('/commercial-control/admin/seed-catalog', undefined, commercialRequestConfig)
-    clearCommercialSwr()
+    clearCommercialControlCache()
     return res.data.data as CommercialSummary
   },
   getCatalog: async (options?: CommercialSwrOptions) => swr('catalog', async silent => {
@@ -106,7 +113,7 @@ export const commercialControlApi = {
   }, options),
   createAccount: async (payload: { name: string; code?: string; email?: string; phone?: string; currency?: string; lowBalanceThreshold?: string; criticalBalanceThreshold?: string }) => {
     const res = await api.post('/commercial-control/admin/accounts', payload, commercialRequestConfig)
-    clearCommercialSwr()
+    clearCommercialControlCache()
     return res.data.data as CommercialAccount
   },
   listPaymentRequests: async (accountId?: number, options?: CommercialSwrOptions) => swr(`payments:${accountId || 'all'}`, async silent => {
@@ -115,33 +122,33 @@ export const commercialControlApi = {
   }, options),
   createPaymentRequest: async (payload: { accountId: number; amount: string; currency?: string; requestedPlanCode?: CommercialPlanCode | ''; requestedAddonCodes?: CommercialAddonCode[]; paymentMethod?: string; paymentReference?: string; proofUrl?: string; notes?: string }) => {
     const res = await api.post('/commercial-control/admin/payment-requests', { ...payload, requestedPlanCode: payload.requestedPlanCode || null }, commercialRequestConfig)
-    clearCommercialSwr(payload.accountId)
+    clearCommercialControlCache(payload.accountId)
     return res.data.data as PaymentRequest
   },
   updatePaymentRequestStatus: async (id: number, status: PaymentRequestStatus) => {
     const res = await api.patch(`/commercial-control/admin/payment-requests/${id}/status`, { status }, commercialRequestConfig)
     const data = res.data.data as PaymentRequest
-    clearCommercialSwr(data.accountId)
+    clearCommercialControlCache(data.accountId)
     return data
   },
   activatePlan: async (accountId: number, payload: { planCode: CommercialPlanCode; status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'TRIAL'; monthlyFeeOverride?: string; endsAt?: string; notes?: string }) => {
     const res = await api.post(`/commercial-control/admin/accounts/${accountId}/activate-plan`, payload, commercialRequestConfig)
-    clearCommercialSwr(accountId)
+    clearCommercialControlCache(accountId)
     return res.data.data as CommercialSubscription
   },
   topUpWallet: async (accountId: number, payload: { amount: string; description?: string; reference?: string }) => {
     const res = await api.post(`/commercial-control/admin/accounts/${accountId}/topup`, payload, commercialRequestConfig)
-    clearCommercialSwr(accountId)
+    clearCommercialControlCache(accountId)
     return res.data.data as { wallet: CommercialWallet; transaction: WalletTransaction }
   },
   setAddonStatus: async (accountId: number, addonCode: CommercialAddonCode, payload: { status: CommercialStatus; priceOverride?: string; notes?: string }) => {
     const res = await api.patch(`/commercial-control/admin/accounts/${accountId}/addons/${addonCode}`, payload, commercialRequestConfig)
-    clearCommercialSwr(accountId)
+    clearCommercialControlCache(accountId)
     return res.data.data
   },
   updateThresholds: async (accountId: number, payload: { lowBalanceThreshold?: string; criticalBalanceThreshold?: string; hardStopEnabled?: boolean }) => {
     const res = await api.patch(`/commercial-control/admin/accounts/${accountId}/thresholds`, payload, commercialRequestConfig)
-    clearCommercialSwr(accountId)
+    clearCommercialControlCache(accountId)
     return res.data.data as CommercialAccount
   },
 }

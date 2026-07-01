@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Building2, Eye, RefreshCw, ShieldAlert } from 'lucide-react'
 import { accountReviewApi, type AccountActionResult, type AccountReview } from '../api/accountReview.api'
-import { commercialControlApi, type CommercialAccount } from '../api/commercialControl.api'
+import { clearCommercialControlCache, commercialControlApi, type CommercialAccount } from '../api/commercialControl.api'
 
 const inputStyle: React.CSSProperties = {
   padding: '11px 14px',
@@ -72,6 +72,7 @@ export default function CustomerOnboardingDangerZone() {
     setLoadingAccounts(true)
     setError('')
     try {
+      clearCommercialControlCache()
       const items = await commercialControlApi.listAccounts({ silent: true })
       setAccounts(items)
     } catch (err) {
