@@ -8,6 +8,7 @@ import { administrationApi } from '../api/administration.api'
 import { commercialControlApi, type CommercialAccount } from '../api/commercialControl.api'
 import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
+import { mergeMasterCustomerGroups, useMasterCustomerAccounts } from '../hooks/useMasterCustomerAccounts'
 
 const COL_PINK = '#fb0b8c'
 const COL_GREEN = '#00a747'
@@ -52,13 +53,14 @@ export default function Contacts() {
   const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const fileRef = useRef<HTMLInputElement>(null)
+  const masterAccounts = useMasterCustomerAccounts()
 
   const { contacts, stats, loading, error, pagination, uploadCSV, createContact, deleteContact } = useContacts({ campaignId: campId, commercialAccountId: customerId, status: status || undefined, search: search || undefined, limit: 50 })
   const contactRows = contacts as ContactRecord[]
   const customers = useMemo(() => uniqueAccounts([...accountOptions, ...campaigns.map(c => asAccount(c.commercialAccount)), ...contactRows.map(c => accountForContact(c, campaigns))]), [accountOptions, campaigns, contactRows])
   const visibleCampaigns = useMemo(() => customerId ? campaigns.filter(c => accountId(asAccount(c.commercialAccount)) === customerId) : campaigns, [campaigns, customerId])
   const visibleContacts = useMemo(() => contactRows.filter(contact => { const q = search.toLowerCase(); return (!customerId || accountId(accountForContact(contact, campaigns)) === customerId) && (!campId || Number(contact.campaignId) === campId) && (!status || String(contact.status) === status) && (!q || String(contact.name || '').toLowerCase().includes(q) || String(contact.phone || '').toLowerCase().includes(q)) }), [contactRows, campaigns, customerId, campId, status, search])
-  const groupedContacts = useMemo(() => groupContactsByCustomer(visibleContacts, campaigns), [visibleContacts, campaigns])
+  const groupedContacts = useMemo(() => mergeMasterCustomerGroups(masterAccounts, groupContactsByCustomer(visibleContacts, campaigns), 'contacts'), [visibleContacts, campaigns, masterAccounts])
   const visibleTotal = Number((pagination as Record<string, number> | undefined)?.total ?? contacts.length)
   const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
 

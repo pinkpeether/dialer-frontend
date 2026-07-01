@@ -6,6 +6,7 @@ import { type CallbackRecord, type CallbackStatus } from '../api/callbacks.api'
 import { useSipStore } from '../store/sip.store'
 import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
+import { mergeMasterCustomerGroups, useMasterCustomerAccounts } from '../hooks/useMasterCustomerAccounts'
 
 const PTDT_MOBILE_PAGE_CSS = `
 .ptdt-ai-confirm-backdrop {
@@ -174,6 +175,7 @@ export default function Callbacks() {
   const [cancelTarget, setCancelTarget] = useState<CallbackRecord | null>(null)
   const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const masterAccounts = useMasterCustomerAccounts()
 
   const sipCall = useSipStore(s => s.call)
   const { callbacks, loading, error, refresh, markCompleted, markCancelled, reschedule } =
@@ -183,7 +185,7 @@ export default function Callbacks() {
     () => [...callbacks].sort((a, b) => timestamp(b.scheduledAt) - timestamp(a.scheduledAt)),
     [callbacks]
   )
-  const groupedCallbacks = useMemo(() => groupCallbacksByCustomer(sortedCallbacks), [sortedCallbacks])
+  const groupedCallbacks = useMemo(() => mergeMasterCustomerGroups(masterAccounts, groupCallbacksByCustomer(sortedCallbacks), 'callbacks'), [sortedCallbacks, masterAccounts])
 
   useEffect(() => {
     if (!cancelTarget) return
@@ -327,7 +329,7 @@ export default function Callbacks() {
 
       {loading ? (
         <div className="glass" style={{ padding: 60, color: 'var(--text-3)', textAlign: 'center' }}>Loading callbacks…</div>
-      ) : sortedCallbacks.length === 0 ? (
+      ) : sortedCallbacks.length === 0 && groupedCallbacks.length === 0 ? (
         <div className="glass" style={{ padding: 60, color: 'var(--text-3)', textAlign: 'center' }}>No callbacks in this category.</div>
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>

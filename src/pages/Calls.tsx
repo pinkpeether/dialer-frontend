@@ -15,6 +15,7 @@ import { callsAPI } from '../api/calls.api'
 import CallDispositionModal from '../components/CallDispositionModal'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
 import type { DispositionValue } from '../components/DispositionPanel'
+import { mergeMasterCustomerGroups, useMasterCustomerAccounts } from '../hooks/useMasterCustomerAccounts'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -377,6 +378,7 @@ export default function Calls() {
   const [selectedForDisposition, setSelectedForDisposition] = useState<CallRow | null>(null)
   const [expandedId, setExpandedId] = useState<string | number | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const masterAccounts = useMasterCustomerAccounts()
 
   const page = Math.max(1, numberValue(searchParams.get('page'), 1))
   const limit = Math.max(1, numberValue(searchParams.get('limit'), 25))
@@ -440,7 +442,7 @@ export default function Calls() {
     return withoutInternalSipLegs.filter((item) => [item.remoteName, item.remoteNumber, item.campaignName, item.agentName, item.status, item.commercialAccount.name, item.commercialAccount.code].some(value => String(value || '').toLowerCase().includes(query)))
   }, [data, search])
 
-  const groupedCalls = useMemo(() => groupCallsByCustomer(filteredItems), [filteredItems])
+  const groupedCalls = useMemo(() => mergeMasterCustomerGroups(masterAccounts, groupCallsByCustomer(filteredItems), 'calls'), [filteredItems, masterAccounts])
 
   const updateParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(searchParams)
@@ -551,7 +553,7 @@ export default function Calls() {
       <div style={{ display: 'grid', gap: 12 }}>
         {loading && <div style={{ ...glassPanel, borderRadius: 20, padding: 18, fontSize: 12, color: brand.muted }}>Loading call history...</div>}
         {error && !loading && <div style={{ ...glassPanel, borderRadius: 20, padding: 18, fontSize: 12, color: brand.red }}>{error}</div>}
-        {!loading && !error && filteredItems.length === 0 && <div style={{ ...glassPanel, borderRadius: 20, padding: 22, fontSize: 12, color: brand.muted, display: 'flex', alignItems: 'center', gap: 10 }}><PhoneCall size={18} color={brand.faint} /><span>No calls found for the current filters.</span></div>}
+        {!loading && !error && filteredItems.length === 0 && groupedCalls.length === 0 && <div style={{ ...glassPanel, borderRadius: 20, padding: 22, fontSize: 12, color: brand.muted, display: 'flex', alignItems: 'center', gap: 10 }}><PhoneCall size={18} color={brand.faint} /><span>No calls found for the current filters.</span></div>}
         {!loading && !error && groupedCalls.map((group, index) => {
           const isOpen = expandedGroups[group.key] ?? index === 0
           const completed = group.calls.filter(call => call.status === 'answered' || call.status === 'completed').length

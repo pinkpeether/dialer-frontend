@@ -8,6 +8,7 @@ import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
 import { setGlobalRequestOverlaySuppressed } from '../api/axios'
+import { mergeMasterCustomerGroups, useMasterCustomerAccounts } from '../hooks/useMasterCustomerAccounts'
 
 const green = '#00a747'
 const danger = '#ef4444'
@@ -109,7 +110,8 @@ export default function TeamUsersV3() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
   const { agents, loading, createAgent, refetch } = useAgents({ isActive: showInactive ? undefined : true, limit: 200 })
-  const groupedAccounts = useMemo(() => groupUsersByCustomer(agents), [agents])
+  const masterAccounts = useMasterCustomerAccounts()
+  const groupedAccounts = useMemo(() => mergeMasterCustomerGroups(masterAccounts, groupUsersByCustomer(agents), 'users'), [agents, masterAccounts])
   const errorMessage = (err: unknown) => (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Something went wrong'
 
   const withBusy = async (task: () => Promise<void>) => {
@@ -230,7 +232,7 @@ export default function TeamUsersV3() {
 
       <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, color: 'var(--text-2)', fontWeight: 800 }}><input type="checkbox" checked={showInactive} onChange={event => setShowInactive(event.target.checked)} /> Show inactive users</label>
 
-      {loading ? <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>Loading users...</div> : agents.length === 0 ? <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>No team users found</div> : isPlatformAdmin ? <div style={{ display: 'grid', gap: 12 }}>{groupedAccounts.map((group, index) => {
+      {loading ? <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>Loading users...</div> : isPlatformAdmin ? <div style={{ display: 'grid', gap: 12 }}>{groupedAccounts.map((group, index) => {
         const isOpen = expandedGroups[group.key] ?? index === 0
         const agentCount = group.users.filter(user => user.role === 'AGENT').length
         const supervisorCount = group.users.filter(user => user.role === 'SUPERVISOR').length
