@@ -25,7 +25,7 @@ const commercialGetConfig = (silent: boolean, config = {}) => {
 }
 const swrMemory = new Map<string, unknown>()
 const swrPrefix = 'ptdt-commercial-control-api-swr:'
-const swrMaxAgeMs = 10 * 1000
+const swrMaxAgeMs = 30 * 60 * 1000
 
 type SwrRecord<T> = { savedAt: number; data: T }
 type CommercialSwrOptions = { silent?: boolean; signal?: AbortSignal }

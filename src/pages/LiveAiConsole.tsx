@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Brain, RefreshCw, Radio } from 'lucide-react'
 import LiveAiAssistantPanel from '../components/LiveAiAssistantPanel'
 import { liveAiAPI } from '../api/liveAi.api'
@@ -9,28 +9,31 @@ export default function LiveAiConsole() {
   const [selectedCallId, setSelectedCallId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const hasVisibleDataRef = useRef(false)
 
-  const loadSessions = async () => {
-    setLoading(true)
+  const loadSessions = useCallback(async (options: { silent?: boolean } = {}) => {
+    const silent = Boolean(options.silent || hasVisibleDataRef.current)
+    if (!silent) setLoading(true)
     setError('')
     try {
-      const result = await liveAiAPI.listSessions()
+      const result = await liveAiAPI.listSessions({ silent })
       setSessions(result)
+      hasVisibleDataRef.current = true
       setSelectedCallId(current => current ?? result[0]?.callId ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load Live AI sessions')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     void loadSessions()
     const timer = window.setInterval(() => {
-      void loadSessions()
+      void loadSessions({ silent: true })
     }, 8000)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [loadSessions])
 
   return (
     <div className="ptdt-page ptdt-pro-page">

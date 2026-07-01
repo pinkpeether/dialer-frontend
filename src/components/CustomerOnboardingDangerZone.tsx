@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Building2, Eye, RefreshCw, ShieldAlert } from 'lucide-react'
 import { accountReviewApi, type AccountActionResult, type AccountReview } from '../api/accountReview.api'
-import { clearCommercialControlCache, commercialControlApi, type CommercialAccount } from '../api/commercialControl.api'
+import { commercialControlApi, type CommercialAccount } from '../api/commercialControl.api'
 
 const inputStyle: React.CSSProperties = {
   padding: '11px 14px',
@@ -64,17 +64,19 @@ export default function CustomerOnboardingDangerZone() {
   const [loadingReview, setLoadingReview] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const hasVisibleAccountsRef = useRef(false)
 
   const selectedAccount = useMemo(() => accounts.find(account => Number(account.id) === Number(selectedAccountId)), [accounts, selectedAccountId])
   const phraseMatched = Boolean(review?.confirmationPhrase && typedPhrase.trim() === review.confirmationPhrase)
 
-  const loadAccounts = async () => {
-    setLoadingAccounts(true)
+  const loadAccounts = async (options: { silent?: boolean } = {}) => {
+    const silent = Boolean(options.silent || hasVisibleAccountsRef.current)
+    if (!silent) setLoadingAccounts(true)
     setError('')
     try {
-      clearCommercialControlCache()
-      const items = await commercialControlApi.listAccounts({ silent: true })
+      const items = await commercialControlApi.listAccounts({ silent })
       setAccounts(items)
+      hasVisibleAccountsRef.current = true
     } catch (err) {
       setError(errorMessage(err))
     } finally {

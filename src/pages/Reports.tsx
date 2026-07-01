@@ -10,7 +10,6 @@ import { reportsAPI, type AgentReportRow, type CampaignReportRow, type ReportCom
 
 type Campaign = { id: number; name: string; commercialAccount?: ReportCommercialAccount | null }
 type Agent = { id: number; name?: string | null; commercialAccount?: ReportCommercialAccount | null; commercialAccounts?: ReportCommercialAccount[] }
-type CustomerOption = ReportCommercialAccount
 
 type TabKey = 'overview' | 'campaigns' | 'agents'
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { liveAiAPI } from '../api/liveAi.api'
 import type { LiveAiSession, SmartScriptPrompt } from '../api/liveAi.api'
 
@@ -68,24 +68,30 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const hasVisibleSessionRef = useRef(false)
+  const hasVisibleScriptRef = useRef(false)
 
   const currentCallId = useMemo(() => activeCallId || Number(manualCallId) || null, [activeCallId, manualCallId])
 
-  const loadSession = useCallback(async (id = currentCallId) => {
+  const loadSession = useCallback(async (id = currentCallId, options: { silent?: boolean } = {}) => {
     if (!id) return
     try {
-      const result = await liveAiAPI.getSession(id)
+      const silent = Boolean(options.silent || hasVisibleSessionRef.current)
+      const result = await liveAiAPI.getSession(id, { silent })
       setSession(result)
+      hasVisibleSessionRef.current = true
     } catch {
       // A session may not exist yet; this is fine before Start Live AI.
     }
   }, [currentCallId])
 
-  const loadScript = useCallback(async (id = currentCallId) => {
+  const loadScript = useCallback(async (id = currentCallId, options: { silent?: boolean } = {}) => {
     if (!id) return
     try {
-      const result = await liveAiAPI.getSmartScript(id)
+      const silent = Boolean(options.silent || hasVisibleScriptRef.current)
+      const result = await liveAiAPI.getSmartScript(id, { silent })
       setScript(result)
+      hasVisibleScriptRef.current = true
     } catch {
       setScript(null)
     }
@@ -100,7 +106,7 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
 
   useEffect(() => {
     if (!currentCallId || session?.status !== 'LIVE') return undefined
-    const timer = window.setInterval(() => loadSession(currentCallId), 4000)
+    const timer = window.setInterval(() => loadSession(currentCallId, { silent: true }), 4000)
     return () => window.clearInterval(timer)
   }, [currentCallId, loadSession, session?.status])
 
@@ -136,13 +142,13 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
     })
     setSession(result)
     setChunkText('')
-    await loadScript(currentCallId)
+    await loadScript(currentCallId, { silent: true })
   }, 'Live transcript chunk analyzed')
 
   const applyDisposition = () => run(async () => {
     if (!currentCallId) throw new Error('Enter a call ID first')
     await liveAiAPI.applyAutoDisposition(currentCallId)
-    await loadSession(currentCallId)
+    await loadSession(currentCallId, { silent: true })
   }, 'Auto disposition applied')
 
   const createFollowUp = () => run(async () => {
@@ -151,7 +157,7 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
       minutesFromNow: session?.followUpSuggestion?.suggestedMinutesFromNow || 120,
       notes: session?.followUpSuggestion?.reason || 'Live AI suggested follow-up.',
     })
-    await loadSession(currentCallId)
+    await loadSession(currentCallId, { silent: true })
   }, 'Follow-up callback created')
 
   const stop = () => run(async () => {

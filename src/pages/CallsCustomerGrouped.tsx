@@ -112,7 +112,13 @@ export default function CallsCustomerGrouped() {
   const calls = callsQuery.data ?? []
   const filtered = useMemo(() => { const q = search.trim().toLowerCase(); return q ? calls.filter(call => [call.remoteName, call.remoteNumber, call.campaignName, call.agentName, call.commercialAccount.name, call.status].some(v => String(v || '').toLowerCase().includes(q))) : calls }, [calls, search])
   const groups = useMemo(() => groupCallsByCustomer(filtered), [filtered])
-  const updateParam = (key: string, value: string) => { const next = new URLSearchParams(searchParams); value ? next.set(key, value) : next.delete(key); next.set('page', '1'); setSearchParams(next) }
+  const updateParam = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams)
+    if (value) next.set(key, value)
+    else next.delete(key)
+    next.set('page', '1')
+    setSearchParams(next)
+  }
   const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
   const selectedDispositionCallId = selectedForDisposition ? numberValue(selectedForDisposition.id, Number.NaN) : Number.NaN
 

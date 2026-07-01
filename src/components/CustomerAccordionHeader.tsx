@@ -91,6 +91,7 @@ export default function CustomerAccordionHeader({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const customerAccordionBodyStyle = {
   background: 'rgba(148, 163, 184, 0.08)',
   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.32)',
