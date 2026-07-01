@@ -4,6 +4,7 @@ import { BarChart3, Building2, CalendarDays, Download, PhoneCall, RefreshCw, Shi
 import { LineChart, Line, PieChart, Pie, Cell, Tooltip, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
 import { useQuery } from '@tanstack/react-query'
 import { campaignsAPI } from '../api/campaigns.api'
+import { commercialControlApi } from '../api/commercialControl.api'
 import { agentsAPI } from '../api/agents.api'
 import { reportsAPI, type AgentReportRow, type CampaignReportRow, type ReportCommercialAccount, type ReportSummary, type ReportTrendRow } from '../api/reports.api'
 
@@ -41,12 +42,12 @@ export default function Reports() {
 
   const reportFilters = useMemo(() => ({ from: startDate || undefined, to: endDate || undefined, commercialAccountId: selectedCustomer === 'all' ? undefined : selectedCustomer, campaignId: selectedCampaign === 'all' ? undefined : selectedCampaign, agentId: selectedAgent === 'all' ? undefined : selectedAgent }), [startDate, endDate, selectedCustomer, selectedCampaign, selectedAgent])
 
-  const metaQuery = useQuery({ queryKey: ['reports', 'meta'], queryFn: async () => { const [campRes, agentRes] = await Promise.all([campaignsAPI.getAll({ limit: 200 }), agentsAPI.getAll()]); return { campaigns: extractList<Campaign>(campRes, ['campaigns', 'results']), agents: Array.isArray(agentRes) ? agentRes as Agent[] : extractList<Agent>(agentRes, ['agents', 'items', 'results']) } }, staleTime: 2 * 60 * 1000, gcTime: 15 * 60 * 1000, refetchOnWindowFocus: false, placeholderData: previousData => previousData })
+  const metaQuery = useQuery({ queryKey: ['reports', 'meta'], queryFn: async () => { const [campRes, agentRes, customerAccounts] = await Promise.all([campaignsAPI.getAll({ limit: 200 }), agentsAPI.getAll(), commercialControlApi.listAccounts({ silent: true })]); return { campaigns: extractList<Campaign>(campRes, ['campaigns', 'results']), agents: Array.isArray(agentRes) ? agentRes as Agent[] : extractList<Agent>(agentRes, ['agents', 'items', 'results']), customerAccounts } }, staleTime: 10 * 1000, gcTime: 15 * 60 * 1000, refetchOnWindowFocus: true, placeholderData: previousData => previousData })
   const reportsQuery = useQuery({ queryKey: ['reports', 'summary', reportFilters], queryFn: async () => { const [summary, trend, campaignRows, agentRows] = await Promise.all([reportsAPI.getSummary(reportFilters), reportsAPI.getCallTrend({ ...reportFilters, granularity: 'day' }), reportsAPI.getCampaignBreakdown(reportFilters), reportsAPI.getAgentBreakdown(reportFilters)]); return { summary, trend, campaignRows, agentRows } }, staleTime: 90 * 1000, gcTime: 15 * 60 * 1000, refetchOnWindowFocus: false, placeholderData: previousData => previousData })
 
   const campaigns = useMemo(() => metaQuery.data?.campaigns ?? [], [metaQuery.data?.campaigns])
   const agents = useMemo(() => metaQuery.data?.agents ?? [], [metaQuery.data?.agents])
-  const customers = useMemo(() => { const map = new Map<number, CustomerOption>(); campaigns.forEach(c => { const account = c.commercialAccount; if (account?.id) map.set(Number(account.id), account) }); agents.forEach(a => agentAccounts(a).forEach(account => { if (account?.id) map.set(Number(account.id), account) })); return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)) }, [campaigns, agents])
+  const customers = useMemo(() => (metaQuery.data?.customerAccounts || []).map(account => ({ id: account.id, name: account.name, code: account.code, status: account.status })).sort((a, b) => a.name.localeCompare(b.name)), [metaQuery.data?.customerAccounts])
   const filteredCampaignOptions = useMemo(() => selectedCustomer === 'all' ? campaigns : campaigns.filter(c => accountKey(c.commercialAccount) === selectedCustomer), [campaigns, selectedCustomer])
   const filteredAgentOptions = useMemo(() => selectedCustomer === 'all' ? agents : agents.filter(a => agentAccounts(a).some(account => accountKey(account) === selectedCustomer)), [agents, selectedCustomer])
   const summary = reportsQuery.data?.summary ?? emptySummary
