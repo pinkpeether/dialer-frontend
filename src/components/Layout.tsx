@@ -81,18 +81,16 @@ export default function Layout() {
         dialog={confirmSignOut ? {
           tone: 'confirm',
           title: 'Sign out confirmation',
-          message: 'Kya aap waqai PTDT-Dialer se sign out karna chahte hain?',
+          message: 'Are you sure you want to sign out of PTDT-Dialer?',
           confirmLabel: 'Yes, Sign Out',
           onConfirm: performSignOut,
         } : null}
         onClose={() => setConfirmSignOut(false)}
       />
 
-      {/* PTDT aurora — pink / purple / green orbs */}
       <div className="aurora-bg">
         <div className="aurora-orb-3" />
       </div>
-      {/* Grid overlay (visible only in dark = PTDT tokenomics vibe) */}
       <div className="grid-overlay" />
 
       <Sidebar />
@@ -111,7 +109,6 @@ export default function Layout() {
           <Outlet />
         </div>
 
-        {/* Footer copyright — always visible */}
         <footer style={{
           padding: '20px 32px',
           borderTop: '1px solid var(--border)',
