@@ -1,11 +1,12 @@
 // PTDT Team Users V3
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Pencil, Plus, Save, ShieldCheck, Users, X } from 'lucide-react'
+import { Pencil, Plus, Save, ShieldCheck, Users, X } from 'lucide-react'
 import { useAgents } from '../hooks/useAgents'
 import { agentsAPI } from '../api/agents.api'
 import { useAuthStore } from '../store/auth.store'
 import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
+import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
 import { setGlobalRequestOverlaySuppressed } from '../api/axios'
 
 const green = '#00a747'
@@ -77,14 +78,7 @@ const groupUsersByCustomer = (users: TeamUser[]) => {
     const name = String(account?.name || 'Unassigned Customer')
     const key = id ? `account-${id}` : 'account-unassigned'
     if (!map.has(key)) {
-      map.set(key, {
-        key,
-        id,
-        name,
-        code: String(account?.code || '—'),
-        status: String(account?.status || '—'),
-        users: [],
-      })
+      map.set(key, { key, id, name, code: String(account?.code || '—'), status: String(account?.status || '—'), users: [] })
     }
     map.get(key)?.users.push(user)
   })
@@ -97,11 +91,7 @@ export default function TeamUsersV3() {
   const isSupervisor = currentUser?.role === 'SUPERVISOR'
   const roleOptions = useMemo(() => {
     if (isSupervisor) return [{ value: 'AGENT', label: 'Agent' }]
-
-    const base = [
-      { value: 'AGENT', label: 'Agent' },
-      { value: 'SUPERVISOR', label: 'Supervisor' },
-    ]
+    const base = [{ value: 'AGENT', label: 'Agent' }, { value: 'SUPERVISOR', label: 'Supervisor' }]
     return isPlatformAdmin ? [...base, { value: 'CUSTOMER_ADMIN', label: 'Customer Admin' }] : base
   }, [isPlatformAdmin, isSupervisor])
 
@@ -125,9 +115,8 @@ export default function TeamUsersV3() {
   const withBusy = async (task: () => Promise<void>) => {
     setBusy(true)
     setGlobalRequestOverlaySuppressed(true)
-    try {
-      await task()
-    } finally {
+    try { await task() }
+    finally {
       setGlobalRequestOverlaySuppressed(false)
       setBusy(false)
       setPendingId(null)
@@ -162,10 +151,7 @@ export default function TeamUsersV3() {
     setEditingName(String(user.name || ''))
   }
 
-  const cancelEditUser = () => {
-    setEditingId(null)
-    setEditingName('')
-  }
+  const cancelEditUser = () => { setEditingId(null); setEditingName('') }
 
   const saveEditUser = async (user: Record<string, unknown>) => {
     const id = Number(user.id)
@@ -174,7 +160,6 @@ export default function TeamUsersV3() {
       setDialog({ tone: 'error', title: 'Name required', message: 'Please enter a team user name.' })
       return
     }
-
     setPendingId(id)
     await withBusy(async () => {
       try {
@@ -220,43 +205,13 @@ export default function TeamUsersV3() {
     const active = Boolean(user.isActive)
     const canToggleActive = !isSelf && (!isSupervisor || user.role === 'AGENT')
     const statusStyle = active ? { color: green, bg: 'rgba(0,167,71,.10)' } : { color: 'var(--text-3)', bg: 'var(--bg-2)' }
-
     return <tr key={Number(user.id)} style={{ borderBottom: '1px solid var(--border)' }}>
-      <td style={{ padding: 14, fontWeight: 900 }}>
-        {editingId === Number(user.id) ? (
-          <input value={editingName} onChange={event => setEditingName(event.target.value)} style={{ ...inputStyle, maxWidth: 260, minHeight: 38 }} autoFocus />
-        ) : (
-          String(user.name || '—')
-        )}
-        <br />
-        <span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{String(user.agentCode || '')}</span>
-      </td>
+      <td style={{ padding: 14, fontWeight: 900 }}>{editingId === Number(user.id) ? <input value={editingName} onChange={event => setEditingName(event.target.value)} style={{ ...inputStyle, maxWidth: 260, minHeight: 38 }} autoFocus /> : String(user.name || '—')}<br /><span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{String(user.agentCode || '')}</span></td>
       <td style={{ padding: 14 }}>{String(user.email || '—')}</td>
       <td style={{ padding: 14 }}>{roleLabel(user.role)}</td>
       <td style={{ padding: 14 }}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}` }}>{String(user.status)}</span></td>
-      <td style={{ padding: 14 }}>
-        {isSelf ? (
-          <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }}><ShieldCheck size={13} /> Signed in</span>
-        ) : canToggleActive ? (
-          <button type="button" role="switch" aria-checked={active} disabled={pendingId === Number(user.id)} onClick={() => void setUserActive(user, !active)} style={switchStyle(active, pendingId === Number(user.id))}><span style={switchKnob} /></button>
-        ) : (
-          <span className="badge" style={{ color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>Protected</span>
-        )}
-      </td>
-      <td style={{ padding: 14 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {editingId === Number(user.id) ? (
-            <>
-              <button type="button" className="ptdt-action-btn" disabled={pendingId === Number(user.id)} onClick={() => void saveEditUser(user)}><Save size={13} /> Save</button>
-              <button type="button" className="ptdt-action-btn" onClick={cancelEditUser}><X size={13} /> Cancel</button>
-            </>
-          ) : !isSelf && (!isSupervisor || user.role === 'AGENT') ? (
-            <button type="button" className="ptdt-action-btn" onClick={() => startEditUser(user)}><Pencil size={13} /> Edit</button>
-          ) : null}
-          {isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setArmedEmail(''); setFinalTarget(user) }}>Cleanup</button> : null}
-          {isSelf || (isSupervisor && user.role !== 'AGENT') ? <span style={{ color: 'var(--text-3)' }}>—</span> : null}
-        </div>
-      </td>
+      <td style={{ padding: 14 }}>{isSelf ? <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }}><ShieldCheck size={13} /> Signed in</span> : canToggleActive ? <button type="button" role="switch" aria-checked={active} disabled={pendingId === Number(user.id)} onClick={() => void setUserActive(user, !active)} style={switchStyle(active, pendingId === Number(user.id))}><span style={switchKnob} /></button> : <span className="badge" style={{ color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>Protected</span>}</td>
+      <td style={{ padding: 14 }}><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{editingId === Number(user.id) ? <><button type="button" className="ptdt-action-btn" disabled={pendingId === Number(user.id)} onClick={() => void saveEditUser(user)}><Save size={13} /> Save</button><button type="button" className="ptdt-action-btn" onClick={cancelEditUser}><X size={13} /> Cancel</button></> : !isSelf && (!isSupervisor || user.role === 'AGENT') ? <button type="button" className="ptdt-action-btn" onClick={() => startEditUser(user)}><Pencil size={13} /> Edit</button> : null}{isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setArmedEmail(''); setFinalTarget(user) }}>Cleanup</button> : null}{isSelf || (isSupervisor && user.role !== 'AGENT') ? <span style={{ color: 'var(--text-3)' }}>—</span> : null}</div></td>
     </tr>
   }
 
@@ -267,106 +222,21 @@ export default function TeamUsersV3() {
       <PtdtBusyOverlay active={busy} label="Applying team user changes..." />
       <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
 
-      <div className="ptdt-page-header">
-        <div>
-          <div className="eyebrow pink"><Users size={12} /> PTDT-Dialer Access</div>
-          <h1 className="ptdt-page-title">Team <span className="gradient-brand-text">Users</span></h1>
-          <p className="ptdt-page-desc">Create and manage users for the selected customer account scope.</p>
-        </div>
-        <button className="btn-brand" type="button" onClick={() => setShowForm(prev => !prev)}>
-          {showForm ? <X size={15} /> : <Plus size={15} />} {showForm ? 'Cancel' : 'New Team User'}
-        </button>
-      </div>
+      <div className="ptdt-page-header"><div><div className="eyebrow pink"><Users size={12} /> PTDT-Dialer Access</div><h1 className="ptdt-page-title">Team <span className="gradient-brand-text">Users</span></h1><p className="ptdt-page-desc">Create and manage users for the selected customer account scope.</p></div><button className="btn-brand" type="button" onClick={() => setShowForm(prev => !prev)}>{showForm ? <X size={15} /> : <Plus size={15} />} {showForm ? 'Cancel' : 'New Team User'}</button></div>
 
-      {finalTarget && (
-        <div className="glass" style={{ padding: 18, marginBottom: 18, borderColor: 'rgba(239,68,68,.40)' }}>
-          <div className="eyebrow pink">Danger Zone</div>
-          <h3 style={{ margin: '8px 0', color: danger }}>Final user cleanup</h3>
-          <p style={{ color: 'var(--text-2)' }}>Type <strong>{String(finalTarget.email)}</strong> to confirm this final action.</p>
-          <input className="ptdt-input" value={confirmEmail} onChange={event => { setArmedEmail(''); setConfirmEmail(event.target.value) }} placeholder="Exact email" />
-          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-            <button className="ptdt-action-btn" type="button" onClick={() => setFinalTarget(null)}>Cancel</button>
-            <button className="ptdt-action-btn danger" type="button" disabled={confirmEmail !== String(finalTarget.email)} onClick={() => void finishFinalAction()}>{armedEmail === String(finalTarget.email || '') ? 'Final click to cleanup' : 'Confirm cleanup'}</button>
-          </div>
-        </div>
-      )}
+      {finalTarget && <div className="glass" style={{ padding: 18, marginBottom: 18, borderColor: 'rgba(239,68,68,.40)' }}><div className="eyebrow pink">Danger Zone</div><h3 style={{ margin: '8px 0', color: danger }}>Final user cleanup</h3><p style={{ color: 'var(--text-2)' }}>Type <strong>{String(finalTarget.email)}</strong> to confirm this final action.</p><input className="ptdt-input" value={confirmEmail} onChange={event => { setArmedEmail(''); setConfirmEmail(event.target.value) }} placeholder="Exact email" /><div style={{ display: 'flex', gap: 10, marginTop: 12 }}><button className="ptdt-action-btn" type="button" onClick={() => setFinalTarget(null)}>Cancel</button><button className="ptdt-action-btn danger" type="button" disabled={confirmEmail !== String(finalTarget.email)} onClick={() => void finishFinalAction()}>{armedEmail === String(finalTarget.email || '') ? 'Final click to cleanup' : 'Confirm cleanup'}</button></div></div>}
 
-      {showForm && (
-        <form onSubmit={createUser} className="glass" style={{ padding: 24, marginBottom: 18 }}>
-          <h3 style={{ marginTop: 0 }}>New Team User</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-            {[
-              ['name', 'Full Name', 'text', true],
-              ['email', 'Email', 'email', true],
-              ['password', 'Password', 'password', true],
-              ['extension', 'Extension', 'text', false],
-              ['phone', 'Phone', 'text', false],
-            ].map(([key, label, type, required]) => (
-              <label key={String(key)} style={{ display: 'grid', gap: 6 }}>
-                <span style={fieldLabelStyle}>{String(label)}{required ? requiredStar : null}</span>
-                <input type={String(type)} value={(form as Record<string, string>)[String(key)]} onChange={event => setForm(prev => ({ ...prev, [String(key)]: event.target.value }))} required={Boolean(required)} style={inputStyle} />
-              </label>
-            ))}
-            <label style={{ display: 'grid', gap: 6 }}>
-              <span style={fieldLabelStyle}>Role{requiredStar}</span>
-              <select required value={isSupervisor ? 'AGENT' : form.role} onChange={event => setForm(prev => ({ ...prev, role: event.target.value }))} style={inputStyle}>
-                {roleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
-            </label>
-          </div>
-          {isSupervisor && <p style={{ margin: '10px 0 0', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 800 }}>Supervisor accounts can create Agent users only.</p>}
-          <button className="btn-brand" style={{ marginTop: 14 }} type="submit">Create User</button>
-        </form>
-      )}
+      {showForm && <form onSubmit={createUser} className="glass" style={{ padding: 24, marginBottom: 18 }}><h3 style={{ marginTop: 0 }}>New Team User</h3><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>{[['name', 'Full Name', 'text', true], ['email', 'Email', 'email', true], ['password', 'Password', 'password', true], ['extension', 'Extension', 'text', false], ['phone', 'Phone', 'text', false]].map(([key, label, type, required]) => <label key={String(key)} style={{ display: 'grid', gap: 6 }}><span style={fieldLabelStyle}>{String(label)}{required ? requiredStar : null}</span><input type={String(type)} value={(form as Record<string, string>)[String(key)]} onChange={event => setForm(prev => ({ ...prev, [String(key)]: event.target.value }))} required={Boolean(required)} style={inputStyle} /></label>)}<label style={{ display: 'grid', gap: 6 }}><span style={fieldLabelStyle}>Role{requiredStar}</span><select required value={isSupervisor ? 'AGENT' : form.role} onChange={event => setForm(prev => ({ ...prev, role: event.target.value }))} style={inputStyle}>{roleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div>{isSupervisor && <p style={{ margin: '10px 0 0', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 800 }}>Supervisor accounts can create Agent users only.</p>}<button className="btn-brand" style={{ marginTop: 14 }} type="submit">Create User</button></form>}
 
-      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, color: 'var(--text-2)', fontWeight: 800 }}>
-        <input type="checkbox" checked={showInactive} onChange={event => setShowInactive(event.target.checked)} /> Show inactive users
-      </label>
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, color: 'var(--text-2)', fontWeight: 800 }}><input type="checkbox" checked={showInactive} onChange={event => setShowInactive(event.target.checked)} /> Show inactive users</label>
 
-      {loading ? (
-        <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>Loading users...</div>
-      ) : agents.length === 0 ? (
-        <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>No team users found</div>
-      ) : isPlatformAdmin ? (
-        <div style={{ display: 'grid', gap: 12 }}>
-          {groupedAccounts.map((group, index) => {
-            const isOpen = expandedGroups[group.key] ?? index === 0
-            const agentCount = group.users.filter(user => user.role === 'AGENT').length
-            const supervisorCount = group.users.filter(user => user.role === 'SUPERVISOR').length
-            const adminCount = group.users.filter(user => user.role === 'CUSTOMER_ADMIN').length
-            return (
-              <div key={group.key} className="glass" style={{ overflow: 'hidden' }}>
-                <button type="button" onClick={() => toggleGroup(group.key)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'transparent', border: 0, borderBottom: isOpen ? '1px solid var(--border)' : 0, color: 'var(--text)', cursor: 'pointer', textAlign: 'left' }}>
-                  <span style={{ color: 'var(--pink)' }}>{isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
-                  <span style={{ flex: 1 }}>
-                    <strong style={{ fontSize: 16 }}>{group.name}</strong>
-                    <span className="mono" style={{ display: 'block', color: 'var(--text-3)', fontSize: 11, marginTop: 4 }}>Customer Code: {group.code} · Status: {group.status}</span>
-                  </span>
-                  <span className="badge" style={{ color: 'var(--pink)', background: 'rgba(251,11,140,.10)', border: '1px solid rgba(251,11,140,.28)' }}>{group.users.length} Users</span>
-                  <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }}>{agentCount} Agents</span>
-                  <span className="badge" style={{ color: 'var(--text-2)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>{supervisorCount} Supervisors</span>
-                  {adminCount > 0 && <span className="badge" style={{ color: 'var(--text-2)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>{adminCount} Customer Admins</span>}
-                </button>
-                {isOpen && (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
-                      {tableHeader}
-                      <tbody>{group.users.map(renderUserRow)}</tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
-            {tableHeader}
-            <tbody>{agents.map(renderUserRow)}</tbody>
-          </table>
-        </div>
-      )}
+      {loading ? <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>Loading users...</div> : agents.length === 0 ? <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>No team users found</div> : isPlatformAdmin ? <div style={{ display: 'grid', gap: 12 }}>{groupedAccounts.map((group, index) => {
+        const isOpen = expandedGroups[group.key] ?? index === 0
+        const agentCount = group.users.filter(user => user.role === 'AGENT').length
+        const supervisorCount = group.users.filter(user => user.role === 'SUPERVISOR').length
+        const adminCount = group.users.filter(user => user.role === 'CUSTOMER_ADMIN').length
+        return <div key={group.key} className="glass" style={{ overflow: 'hidden' }}><CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.users.length} Users` }, { label: `${agentCount} Agents`, color: green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${supervisorCount} Supervisors`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }, ...(adminCount > 0 ? [{ label: `${adminCount} Customer Admins`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }] : [])]} />{isOpen && <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>{tableHeader}<tbody>{group.users.map(renderUserRow)}</tbody></table></div>}</div>
+      })}</div> : <div className="glass" style={{ padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>{tableHeader}<tbody>{agents.map(renderUserRow)}</tbody></table></div>}
     </div>
   )
 }
