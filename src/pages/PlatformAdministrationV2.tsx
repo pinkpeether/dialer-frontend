@@ -4,7 +4,6 @@ import { administrationApi, type AccountMembership, type AdminCommercialAccount,
 import { beginGlobalRequestOverlay, endGlobalRequestOverlay } from '../services/globalRequestOverlay'
 
 const platformRoles = new Set(['SUPER_ADMIN', 'ADMIN'])
-const accountRoleOptions: CommercialAccountRole[] = ['OWNER', 'SUPERVISOR', 'AGENT']
 const CACHE_KEY = 'ptdt-platform-administration:last-good'
 
 const accountThemes = [
@@ -349,7 +348,7 @@ export default function PlatformAdministrationV2() {
         const nextMembers = [membership, ...members.filter(item => item.id !== membership.id && item.userId !== membership.userId)]
         setMembers(nextMembers)
         writeCache({ selectedAccountId: selectedAccount.id, accounts, users, members: nextMembers })
-        setForm(prev => ({ ...prev, userId: '' }))
+        setForm(prev => ({ ...prev, userId: '', accountRole: 'AGENT' }))
         setMessage('Account membership assigned.')
         void loadMembers(selectedAccount.id, { silent: true }).catch(() => undefined)
       })
@@ -490,9 +489,9 @@ export default function PlatformAdministrationV2() {
                 )
               })}
             </select>
-            <select className="ptdt-select" value={form.accountRole} onChange={event => setForm({ ...form, accountRole: event.target.value as CommercialAccountRole })}>
-              {accountRoleOptions.map(role => <option key={role} value={role}>{accountRoleLabel(role)}</option>)}
-            </select>
+            <div className="ptdt-select" style={{ display: 'flex', alignItems: 'center', minHeight: 42, fontWeight: 900, color: 'var(--text)' }}>
+              Access: {form.userId ? accountRoleLabel(form.accountRole) : 'Select user first'}
+            </div>
             <button className="btn-brand" type="submit" disabled={saving || !selectedAccount}><UserPlus size={14} /> {saving ? 'Assigning...' : 'Assign Member'}</button>
           </form>
 
