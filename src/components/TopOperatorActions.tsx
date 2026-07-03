@@ -24,13 +24,14 @@ export default function TopOperatorActions() {
   const unregisterSip = useSipStore(state => state.unregister)
   const [deskHidden, setDeskHidden] = useState(false)
   const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
+  const isDialerPage = location.pathname === '/dialer'
 
   const performSignOut = useCallback(() => {
-    const token = localStorage.getItem('jd_token')
+    const sessionToken = localStorage.getItem('jd_token')
     setDialog(null)
     logout()
     navigate('/login', { replace: true })
-    void authAPI.logout(token).catch(() => undefined)
+    void authAPI.logout(sessionToken).catch(() => undefined)
     void unregisterSip().catch(() => undefined)
   }, [logout, navigate, unregisterSip])
 
@@ -53,11 +54,9 @@ export default function TopOperatorActions() {
     setDeskHidden(current => !current)
   }
 
-  if (location.pathname !== '/dialer') return null
-
   return (
     <>
-      <div className="ptdt-top-operator-actions">
+      <div className={`ptdt-top-operator-actions ${isDialerPage ? 'is-dialer-page' : ''}`}>
         <div className="ptdt-top-operator-row">
           <NotificationBell />
           <div className="ptdt-top-operator-role">
@@ -70,15 +69,17 @@ export default function TopOperatorActions() {
           </button>
         </div>
 
-        <div className="ptdt-top-operator-row ptdt-top-operator-desk-row">
-          <div className="ptdt-dialer-idle-pill">
-            <span />
-            Dialer Idle
+        {isDialerPage && (
+          <div className="ptdt-top-operator-row ptdt-top-operator-desk-row">
+            <div className="ptdt-dialer-idle-pill">
+              <span />
+              Dialer Idle
+            </div>
+            <button type="button" className="ptdt-hide-desk-pill" onClick={toggleVoiceDesk}>
+              {deskHidden ? 'Open Desk' : 'Hide Desk'}
+            </button>
           </div>
-          <button type="button" className="ptdt-hide-desk-pill" onClick={toggleVoiceDesk}>
-            {deskHidden ? 'Open Desk' : 'Hide Desk'}
-          </button>
-        </div>
+        )}
       </div>
       <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
     </>
