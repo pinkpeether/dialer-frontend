@@ -42,7 +42,6 @@ import {
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
 import ThemeToggle from './ThemeToggle'
-import DesktopUpdateControl from './DesktopUpdateControl'
 
 type NavItem = { to: string; icon: ElementType; label: string; roles?: string[]; color?: string }
 type NavGroup = { key: string; label: string; icon: ElementType; roles?: string[]; color?: string; items: string[] }
@@ -181,7 +180,6 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
-  const [desktopVersion, setDesktopVersion] = useState('')
 
   const userRole = (user as Record<string, unknown> | null)?.role as string | undefined
   const normalizedRole = userRole?.toUpperCase()
@@ -230,12 +228,6 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
   }, [])
 
   useEffect(() => {
-    let mounted = true
-    void window.ptdtDesktop?.getAppVersion().then(version => { if (mounted) setDesktopVersion(version) }).catch(() => { if (mounted) setDesktopVersion('') })
-    return () => { mounted = false }
-  }, [])
-
-  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setMobileOpen(false) }
     const onResize = () => { if (!isMobileViewport()) setMobileOpen(false) }
     window.addEventListener('keydown', onKeyDown)
@@ -254,18 +246,18 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
       <button type="button" className="ptdt-mobile-nav-toggle" onClick={() => setMobileOpen(true)} aria-label="Open navigation menu"><Menu size={18} /><span>Menu</span></button>
       <button type="button" className={`ptdt-mobile-nav-backdrop ${mobileOpen ? 'is-open' : ''}`} onClick={() => setMobileOpen(false)} aria-label="Close navigation menu" />
 
-      <aside className={`ptdt-sidebar ${mobileOpen ? 'is-open' : ''} ${collapsed ? 'is-collapsed' : ''}`} style={{ width: sidebarWidth, height: '100vh', background: 'var(--bg-glass-hi)', backdropFilter: 'blur(22px) saturate(160%)', WebkitBackdropFilter: 'blur(22px) saturate(160%)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: collapsed ? '18px 10px' : '18px 14px', position: 'fixed', top: 0, left: 0, zIndex: 30, boxShadow: 'var(--shadow-md)', boxSizing: 'border-box', overflowX: 'hidden', transition: 'width .22s ease, padding .22s ease' }}>
-        <div style={{ position: 'relative', display: collapsed ? 'flex' : 'grid', gridTemplateColumns: collapsed ? undefined : 'minmax(104px, 128px) auto', justifyContent: 'center', alignItems: 'center', columnGap: 8, rowGap: 4, padding: collapsed ? '6px 0 22px' : '4px 2px 24px', marginBottom: collapsed ? 4 : 8, textAlign: 'center' }}>
+      <aside className={`ptdt-sidebar ${mobileOpen ? 'is-open' : ''} ${collapsed ? 'is-collapsed' : ''}`} style={{ width: sidebarWidth, height: '100vh', background: 'var(--bg-glass-hi)', backdropFilter: 'blur(22px) saturate(160%)', WebkitBackdropFilter: 'blur(22px) saturate(160%)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: collapsed ? '16px 10px' : '14px 14px 12px', position: 'fixed', top: 0, left: 0, zIndex: 30, boxShadow: 'var(--shadow-md)', boxSizing: 'border-box', overflowX: 'hidden', transition: 'width .22s ease, padding .22s ease' }}>
+        <div style={{ position: 'relative', display: collapsed ? 'flex' : 'grid', gridTemplateColumns: collapsed ? undefined : 'minmax(104px, 128px) auto', justifyContent: 'center', alignItems: 'center', columnGap: 8, rowGap: 4, padding: collapsed ? '6px 0 18px' : '2px 2px 18px', marginBottom: collapsed ? 2 : 6, textAlign: 'center' }}>
           <button type="button" className="ptdt-mobile-sidebar-close" onClick={() => setMobileOpen(false)} aria-label="Close navigation menu" style={{ position: 'absolute', top: 0, right: 0 }}><X size={18} /></button>
           <motion.img src="ptdt-main-logo.png" alt="PTDT" whileHover={{ scale: 1.04 }} transition={{ type: 'spring', stiffness: 280 }} style={{ width: collapsed ? 56 : 126, height: collapsed ? 56 : 82, objectFit: 'contain', borderRadius: 0, background: 'transparent', mixBlendMode: 'multiply', justifySelf: 'end' }} />
           {!collapsed && <><div style={{ fontFamily: 'var(--font-display)', fontSize: 31, fontWeight: 950, color: 'var(--text)', lineHeight: 1, letterSpacing: '-0.055em', justifySelf: 'start' }}>Dialer</div><div className="mono" style={{ gridColumn: '1 / -1', fontSize: 13, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 7.2, marginTop: -2, fontWeight: 800 }}>ADMIN CONSOLE</div></>}
         </div>
 
-        {!collapsed && <div style={{ padding: '9px 10px', marginBottom: 14, borderRadius: 14, background: 'linear-gradient(135deg, rgba(251,11,140,0.08), rgba(128,87,215,0.08))', border: '1px solid var(--border)', fontSize: 10.5, fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.55 }}>
+        {!collapsed && <div style={{ padding: '8px 10px', marginBottom: 10, borderRadius: 14, background: 'linear-gradient(135deg, rgba(251,11,140,0.08), rgba(128,87,215,0.08))', border: '1px solid var(--border)', fontSize: 10.5, fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.45 }}>
           Trust the <span style={{ color: 'var(--pink)' }}>{`{ Code }`}</span>,<br /><span style={{ color: 'var(--green-2)' }}>// </span> Not the Cult!
         </div>}
 
-        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: collapsed ? 8 : 5, overflowY: 'auto', overflowX: 'hidden', paddingRight: collapsed ? 0 : 2, paddingBottom: 10 }}>
+        <nav style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: collapsed ? 8 : 5, overflowY: 'auto', overflowX: 'hidden', paddingRight: collapsed ? 0 : 2, paddingBottom: 8 }}>
           {!collapsed && <div className="mono" style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1.5, padding: '0 12px 8px', fontWeight: 800 }}>Navigation</div>}
           {groups.map(group => {
             const Icon = group.icon
@@ -302,15 +294,13 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
           </>}
         </nav>
 
-        {!collapsed && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 10px', marginBottom: 8, borderTop: '1px solid var(--border)', marginTop: 8 }}>
-          <span className="mono" style={{ fontSize: 11.5, color: 'var(--text-3)', fontWeight: 900, letterSpacing: 0.6, textTransform: 'uppercase' }}>Appearance / Theme</span><ThemeToggle />
+        {!collapsed && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 8px 0', borderTop: '1px solid var(--border)', marginTop: 8 }}>
+          <span className="mono" style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: 'var(--text-3)', fontWeight: 950, letterSpacing: 1.2, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Appearance / Theme</span>
+          <ThemeToggle />
+          <button type="button" onClick={() => onCollapsedChange?.(true)} aria-label="Collapse sidebar" title="Collapse sidebar" style={{ width: 48, height: 48, borderRadius: 16, border: '1px solid rgba(255,255,255,.58)', background: 'linear-gradient(145deg, rgba(15,23,42,.96), rgba(15,23,42,.88))', color: '#fff', display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px rgba(255,255,255,.42), 0 0 0 5px rgba(15,23,42,.16), 0 14px 28px rgba(15,23,42,.26)', cursor: 'pointer', flexShrink: 0 }}><ChevronLeft size={23} strokeWidth={3} /></button>
         </div>}
-        {!collapsed && desktopVersion && <div className="mono" style={{ margin: '0 8px 8px', fontSize: 9.5, color: 'var(--muted)', textAlign: 'center', letterSpacing: 0.7, textTransform: 'uppercase' }}>Desktop v{desktopVersion}</div>}
-        {!collapsed && <DesktopUpdateControl />}
 
-        <button type="button" onClick={() => onCollapsedChange?.(!collapsed)} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} style={{ alignSelf: collapsed ? 'center' : 'flex-end', width: 48, height: 48, marginTop: collapsed ? 10 : 12, marginRight: collapsed ? 0 : 2, borderRadius: 16, border: '1px solid rgba(255,255,255,.58)', background: 'linear-gradient(145deg, rgba(15,23,42,.96), rgba(15,23,42,.88))', color: '#fff', display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px rgba(255,255,255,.42), 0 0 0 5px rgba(15,23,42,.16), 0 14px 28px rgba(15,23,42,.26)', cursor: 'pointer' }}>
-          {collapsed ? <ChevronRight size={23} strokeWidth={3} /> : <ChevronLeft size={23} strokeWidth={3} />}
-        </button>
+        {collapsed && <button type="button" onClick={() => onCollapsedChange?.(false)} aria-label="Expand sidebar" title="Expand sidebar" style={{ alignSelf: 'center', width: 48, height: 48, marginTop: 10, borderRadius: 16, border: '1px solid rgba(255,255,255,.58)', background: 'linear-gradient(145deg, rgba(15,23,42,.96), rgba(15,23,42,.88))', color: '#fff', display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px rgba(255,255,255,.42), 0 0 0 5px rgba(15,23,42,.16), 0 14px 28px rgba(15,23,42,.26)', cursor: 'pointer' }}><ChevronRight size={23} strokeWidth={3} /></button>}
       </aside>
     </>
   )
