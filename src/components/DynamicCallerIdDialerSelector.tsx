@@ -2,14 +2,32 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { PhoneCall, RefreshCw, ShieldCheck } from 'lucide-react'
 import { dynamicCallerIdApi, type DynamicCallerIdRecord } from '../api/dynamicCallerId.api'
+import { useSipStore } from '../store/sip.store'
+import { useSocket } from '../hooks/useSocket'
 
 export const DYNAMIC_CALLER_ID_SELECTION_KEY = 'ptdt-dialer:selected-dynamic-caller-id'
 
 const selectableCallerIds = (items: DynamicCallerIdRecord[]) =>
   items.filter(item => item.isUsable || item.isVerified || ['ACTIVE', 'VERIFIED'].includes(String(item.approvalStatus)))
 
+function StatusCard({ eyebrow, value, color }: { eyebrow: string; value: string; color: string }) {
+  return (
+    <div className="ptdt-caller-id-status-card">
+      <span className="ptdt-caller-id-status-dot" style={{ background: color }} />
+      <div>
+        <div className="mono ptdt-caller-id-status-eyebrow">{eyebrow}</div>
+        <div className="ptdt-caller-id-status-value" style={{ color }}>{value}</div>
+      </div>
+    </div>
+  )
+}
+
 export default function DynamicCallerIdDialerSelector() {
   const location = useLocation()
+  const sipConfig = useSipStore(state => state.config)
+  const sipStatus = useSipStore(state => state.status)
+  const socket = useSocket()
+  const [connected, setConnected] = useState(Boolean(socket.isConnected))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [addonActive, setAddonActive] = useState(false)
@@ -21,6 +39,18 @@ export default function DynamicCallerIdDialerSelector() {
 
   const onDialerPage = location.pathname === '/dialer'
   const selectedNumber = useMemo(() => numbers.find(item => String(item.id) === selectedId), [numbers, selectedId])
+
+  useEffect(() => {
+    setConnected(Boolean(socket.isConnected))
+    const cleanupConnect = socket.on('connect', () => setConnected(true))
+    const cleanupDisconnect = socket.on('disconnect', () => setConnected(false))
+    const timer = window.setInterval(() => setConnected(Boolean(socket.isConnected)), 2000)
+    return () => {
+      cleanupConnect()
+      cleanupDisconnect()
+      window.clearInterval(timer)
+    }
+  }, [socket])
 
   const reconcileSavedSelection = (available: DynamicCallerIdRecord[]) => {
     const saved = typeof window === 'undefined' ? '' : window.localStorage.getItem(DYNAMIC_CALLER_ID_SELECTION_KEY) || ''
@@ -72,53 +102,73 @@ export default function DynamicCallerIdDialerSelector() {
   if (!onDialerPage) return null
 
   const usable = numbers.length > 0
+  const sipLabel = sipConfig.enabled
+    ? sipStatus === 'registered'
+      ? 'SIP Registered'
+      : sipStatus === 'in_call'
+        ? 'SIP In Call'
+        : sipStatus === 'calling'
+          ? 'SIP Calling'
+          : 'SIP Offline'
+    : 'SIP Disabled'
+
+  const sipColor = sipStatus === 'registered' || sipStatus === 'in_call' || sipStatus === 'calling'
+    ? 'var(--green-2)'
+    : 'var(--text-3)'
 
   return (
-    <div
-      className="glass ptdt-dynamic-caller-static"
-      style={{
-        width: '100%',
-        padding: 14,
-        borderRadius: 20,
-        boxShadow: '0 18px 44px rgba(15,23,42,.12)',
-        border: '1px solid rgba(251,11,140,.18)',
-        overflow: 'hidden',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
-        <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
-          <span style={{ width: 30, height: 30, borderRadius: 12, display: 'grid', placeItems: 'center', color: '#fff', background: 'var(--grad-brand)', flexShrink: 0 }}><PhoneCall size={15} /></span>
-          <span style={{ minWidth: 0 }}>
-            <span className="mono" style={{ display: 'block', fontSize: 9.5, color: 'var(--text-3)', fontWeight: 900, letterSpacing: 1.1 }}>COMMERCIAL ADD-ON</span>
-            <span style={{ display: 'block', fontSize: 13.5, fontWeight: 950, color: 'var(--text)' }}>Dynamic Caller ID</span>
-          </span>
-        </div>
-        <button type="button" className="ptdt-action-btn" onClick={() => void load()} disabled={loading} style={{ minHeight: 31, padding: '6px 9px' }} title="Refresh caller IDs">
-          <RefreshCw size={13} />
-        </button>
-      </div>
-
-      <select
-        className="ptdt-select"
-        value={selectedId}
-        onChange={event => handleSelect(event.target.value)}
-        disabled={loading}
-        style={{ width: '100%', minHeight: 38, fontSize: 12.5, cursor: loading ? 'progress' : 'pointer' }}
+    <div className="ptdt-dialer-side-status-stack">
+      <div
+        className="glass ptdt-dynamic-caller-static"
+        style={{
+          width: '100%',
+          padding: 14,
+          borderRadius: 20,
+          boxShadow: '0 18px 44px rgba(15,23,42,.12)',
+          border: '1px solid rgba(251,11,140,.18)',
+          overflow: 'hidden',
+        }}
       >
-        <option value="">Default Caller ID / campaign fallback</option>
-        {numbers.map(item => <option key={item.id} value={item.id}>{item.displayName ? `${item.displayName} — ` : ''}{item.displayNumber}</option>)}
-      </select>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+          <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
+            <span style={{ width: 30, height: 30, borderRadius: 12, display: 'grid', placeItems: 'center', color: '#fff', background: 'var(--grad-brand)', flexShrink: 0 }}><PhoneCall size={15} /></span>
+            <span style={{ minWidth: 0 }}>
+              <span className="mono" style={{ display: 'block', fontSize: 9.5, color: 'var(--text-3)', fontWeight: 900, letterSpacing: 1.1 }}>COMMERCIAL ADD-ON</span>
+              <span style={{ display: 'block', fontSize: 13.5, fontWeight: 950, color: 'var(--text)' }}>Dynamic Caller ID</span>
+            </span>
+          </div>
+          <button type="button" className="ptdt-action-btn" onClick={() => void load()} disabled={loading} style={{ minHeight: 31, padding: '6px 9px' }} title="Refresh caller IDs">
+            <RefreshCw size={13} />
+          </button>
+        </div>
 
-      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-        <span className="ptdt-chip" style={{ color: addonActive ? 'var(--green-2)' : 'var(--danger)', borderColor: addonActive ? 'rgba(0,167,71,.24)' : 'rgba(239,68,68,.28)' }}>
-          {addonActive ? 'ADD-ON ACTIVE' : 'ADD-ON INACTIVE'}
-        </span>
-        <span className="ptdt-chip"><ShieldCheck size={12} /> {numbers.length} verified</span>
+        <select
+          className="ptdt-select"
+          value={selectedId}
+          onChange={event => handleSelect(event.target.value)}
+          disabled={loading}
+          style={{ width: '100%', minHeight: 38, fontSize: 12.5, cursor: loading ? 'progress' : 'pointer' }}
+        >
+          <option value="">Default Caller ID / campaign fallback</option>
+          {numbers.map(item => <option key={item.id} value={item.id}>{item.displayName ? `${item.displayName} — ` : ''}{item.displayNumber}</option>)}
+        </select>
+
+        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <span className="ptdt-chip" style={{ color: addonActive ? 'var(--green-2)' : 'var(--danger)', borderColor: addonActive ? 'rgba(0,167,71,.24)' : 'rgba(239,68,68,.28)' }}>
+            {addonActive ? 'ADD-ON ACTIVE' : 'ADD-ON INACTIVE'}
+          </span>
+          <span className="ptdt-chip"><ShieldCheck size={12} /> {numbers.length} verified</span>
+        </div>
+
+        {selectedNumber && <div className="mono" style={{ marginTop: 8, color: 'var(--green-2)', fontSize: 10.5, fontWeight: 900 }}>Selected: {selectedNumber.displayNumber}</div>}
+        {error && <div style={{ marginTop: 8, color: 'var(--danger)', fontSize: 11, lineHeight: 1.45 }}>{error}</div>}
+        {!error && !usable && <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 11, lineHeight: 1.45 }}>No approved Dynamic Caller IDs are available for this account yet.</div>}
       </div>
 
-      {selectedNumber && <div className="mono" style={{ marginTop: 8, color: 'var(--green-2)', fontSize: 10.5, fontWeight: 900 }}>Selected: {selectedNumber.displayNumber}</div>}
-      {error && <div style={{ marginTop: 8, color: 'var(--danger)', fontSize: 11, lineHeight: 1.45 }}>{error}</div>}
-      {!error && !usable && <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 11, lineHeight: 1.45 }}>No approved Dynamic Caller IDs are available for this account yet.</div>}
+      <div className="ptdt-caller-id-status-row">
+        <StatusCard eyebrow="SIP" value={sipLabel} color={sipColor} />
+        <StatusCard eyebrow="REALTIME" value={connected ? 'Online' : 'Offline'} color={connected ? 'var(--green-2)' : 'var(--pink)'} />
+      </div>
     </div>
   )
 }
