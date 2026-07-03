@@ -669,6 +669,17 @@ export default function AiDialer() {
   const displayStatus = hasStarted ? getDisplayStatus(liveLog?.callStatus || result?.status) : 'Ready'
   const displayDurationMs = liveLog?.durationMs && liveLog.durationMs > 0 ? liveLog.durationMs : elapsedMs
   const isLive = hasStarted && !isTerminalStatus(liveLog?.callStatus || result?.status)
+  const displayResult = !hasStarted
+    ? 'Ready'
+    : submitting
+      ? 'Starting'
+      : liveLog?.callSuccessful === true
+        ? 'Successful'
+        : liveLog?.callSuccessful === false
+          ? 'Review needed'
+          : isLive
+            ? 'In progress'
+            : 'Awaiting analysis'
 
   useEffect(() => {
     if (!startedAt || !isLive) return undefined
@@ -933,7 +944,7 @@ export default function AiDialer() {
             <div className="ptdt-ai-call-meta">
               <div style={statStyle}><b className="ptdt-ai-meta-title customer">Customer</b><br /><span>{maskPhone(result?.toNumber || customerNumber)}</span></div>
               <div style={statStyle}><b className="ptdt-ai-meta-title transfer">Transfer</b><br /><span>{maskPhone(result?.transferDestination || transferTo)}</span></div>
-              <div style={statStyle}><b className="ptdt-ai-meta-title result">Result</b><br /><span>{liveLog?.callSuccessful === true ? 'Successful' : liveLog?.callSuccessful === false ? 'Review needed' : 'Pending'}</span></div>
+              <div style={statStyle}><b className="ptdt-ai-meta-title result">Result</b><br /><span>{displayResult}</span></div>
             </div>
 
             <div className="ptdt-ai-dialpad-controls">
