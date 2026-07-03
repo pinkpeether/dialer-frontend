@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { io, type Socket } from 'socket.io-client'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, KeyRound, PhoneCall, Save, Settings2, UserRound } from 'lucide-react'
 import { profileAPI } from '../api/profile.api'
 import { useAuthStore } from '../store/auth.store'
+import { useSipStore } from '../store/sip.store'
 import { useToast } from '../hooks/useToast'
+import { getSocketUrl } from '../utils/socketUrl'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -274,6 +277,27 @@ function SectionCard({ title, subtitle, icon, tone = 'pink', children }: {
   )
 }
 
+function VoiceStatusCard({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="glass" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          background: color,
+          display: 'inline-block',
+          boxShadow: `0 0 10px ${color}`,
+        }}
+      />
+      <div>
+        <div className="mono" style={{ fontSize: 9, color: 'var(--text-3)', fontWeight: 800, letterSpacing: 1.1 }}>{label}</div>
+        <div style={{ fontSize: 12, fontWeight: 800, color }}>{value}</div>
+      </div>
+    </div>
+  )
+}
+
 function FormRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 14 }}>
@@ -349,6 +373,9 @@ export default function Settings() {
   const user = useAuthStore(state => state.user)
   const updateUser = useAuthStore(state => state.updateUser)
   const toast = useToast()
+  const sipConfig = useSipStore(state => state.config)
+  const sipStatus = useSipStore(state => state.status)
+  const [socketConnected, setSocketConnected] = useState(false)
   const userRecord = user as unknown as Record<string, unknown> | null
 
   // Profile state
@@ -417,6 +444,34 @@ export default function Settings() {
     toast.success('Preferences saved')
   }
 
+  useEffect(() => {
+    const token = localStorage.getItem('jd_token')
+    if (!token) return
+
+    const socket: Socket = io(getSocketUrl(), {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+    })
+
+    socket.on('connect', () => setSocketConnected(true))
+    socket.on('disconnect', () => setSocketConnected(false))
+
+    return () => {
+      socket.disconnect()
+    }
+  }, [])
+
+  const sipModeEnabled = Boolean(sipConfig.enabled)
+  const sipRegistered = sipModeEnabled && sipStatus === 'registered'
+  const sipColor = sipRegistered ? 'var(--green-2)' : sipModeEnabled ? 'var(--pink)' : 'var(--text-3)'
+  const sipLabel = !sipModeEnabled
+    ? 'Not Configured'
+    : sipRegistered
+      ? 'Registered'
+      : sipStatus === 'registering'
+        ? 'Registering'
+        : 'Not Registered'
+
   return (
     <div className="ptdt-mobile-page ptdt-mobile-page-settings" style={{ padding: '32px 36px', maxWidth: 900, margin: '0 auto' }}>
       <style>{PTDT_MOBILE_PAGE_CSS}</style>
@@ -459,6 +514,10 @@ export default function Settings() {
 
         {/* Voice section */}
         <SectionCard title="Voice Settings" subtitle="Register the voice account used for live calling." icon={<PhoneCall size={17} />} tone="green">
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+            <VoiceStatusCard label="SIP" value={sipLabel} color={sipColor} />
+            <VoiceStatusCard label="REALTIME" value={socketConnected ? 'Online' : 'Offline'} color={socketConnected ? 'var(--green-2)' : 'var(--pink)'} />
+          </div>
           <p style={{ margin: 0, color: 'var(--text-3)', fontSize: 13.2, lineHeight: 1.65 }}>
             Configure and register your assigned voice account before making live calls from the Dialer workspace.
           </p>
