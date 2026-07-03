@@ -2,14 +2,13 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import './form-control-polish.css'
+import './sprint15-ui-polish.css'
 import App from './App.tsx'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 
-const savedPerformanceMode = window.localStorage.getItem('ptdt-performance-mode')
-const resolvedPerformanceMode = savedPerformanceMode === null ? 'on' : savedPerformanceMode
-window.localStorage.setItem('ptdt-performance-mode', resolvedPerformanceMode)
-document.documentElement.dataset.performanceMode = resolvedPerformanceMode === 'on' ? 'on' : 'off'
+window.localStorage.setItem('ptdt-performance-mode', 'on')
+document.documentElement.dataset.performanceMode = 'on'
 
 const app = (
   <QueryClientProvider client={queryClient}>
