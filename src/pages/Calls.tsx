@@ -367,7 +367,7 @@ function CallsTableHeader() {
       <div>Direction</div>
       <div>Contact</div>
       <div>Campaign</div>
-      <div>Agent</div>
+      <div>Profile / Role</div>
       <div style={{ textAlign: 'right' }}>Duration</div>
       <div style={{ textAlign: 'right' }}>Started</div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: '100%', margin: '-10px -12px -10px 0', padding: '10px 12px 10px 16px' }}>
@@ -517,7 +517,7 @@ export default function Calls() {
             <DetailField label="Full Number" value={call.remoteNumber} />
             <DetailField label="Contact Name" value={call.remoteName || '-'} />
             <DetailField label="Campaign" value={visibleCampaignName(call)} color={call.isDynamicCallerIdBackendCall ? brand.green : undefined} />
-            <DetailField label="Agent" value={call.agentName || '-'} />
+            <DetailField label="Profile / Role" value={call.agentName || '-'} />
             <DetailField label="Status" value={pill.label} color={pill.color} />
             <DetailField label="Disposition" value={currentDisposition || '-'} color={currentDisposition ? brand.green : undefined} />
             <DetailField label="Notes" value={call.notes || '-'} />
