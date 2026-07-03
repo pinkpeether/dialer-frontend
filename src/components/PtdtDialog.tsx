@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, ShieldCheck } from 'lucide-react'
 
@@ -16,6 +17,19 @@ const colorForTone = (tone: PtdtDialogState['tone']) => {
 }
 
 export default function PtdtDialog({ dialog, onClose }: { dialog: PtdtDialogState | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!dialog) return undefined
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing) return
+      event.preventDefault()
+      onClose()
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [dialog, onClose])
+
   if (!dialog) return null
   const accent = colorForTone(dialog.tone)
 
