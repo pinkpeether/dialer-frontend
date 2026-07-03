@@ -217,27 +217,52 @@ const loginResponsiveCss = `
 }
 
 .ptdt-login-access-metric {
-  padding: 13px 14px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.06);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 14px 15px;
+  border-radius: 17px;
+  border: 1px solid rgba(255,255,255,0.24);
+  color: #ffffff;
+  box-shadow: 0 16px 34px rgba(15,23,42,0.16), inset 0 1px 0 rgba(255,255,255,0.28);
+}
+
+.ptdt-login-access-metric::after {
+  content: '';
+  position: absolute;
+  inset: -42% -28% auto auto;
+  width: 92px;
+  height: 92px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.24);
+  filter: blur(10px);
+  z-index: -1;
+}
+
+.ptdt-login-access-metric:nth-child(1) {
+  background: linear-gradient(135deg, #fb0b8c 0%, #8057d7 100%);
+}
+
+.ptdt-login-access-metric:nth-child(2) {
+  background: linear-gradient(135deg, #00e5a0 0%, #667085 52%, #8057d7 100%);
 }
 
 .ptdt-login-access-metric-label {
   display: block;
   font-size: 10px;
-  color: var(--text-3);
-  font-weight: 800;
-  letter-spacing: 0.9px;
+  color: rgba(255,255,255,0.78);
+  font-weight: 900;
+  letter-spacing: 0.95px;
   text-transform: uppercase;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 }
 
 .ptdt-login-access-metric-value {
   display: block;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 800;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 900;
+  text-shadow: 0 1px 8px rgba(15,23,42,0.22);
 }
 
 .ptdt-login-open-button {
@@ -711,10 +736,10 @@ const handleLogin = async (e: React.FormEvent) => {
 
       <div className="ptdt-login-card-header">
         <h2 id="ptdt-login-modal-title" className="ptdt-login-card-title">
-          Welcome back
+          Welcome back!
         </h2>
         <p className="ptdt-login-card-desc">
-          Sign in to access your operator dashboard.
+          Sign in to access your PTDT Dialer operator dashboard.
         </p>
       </div>
 
