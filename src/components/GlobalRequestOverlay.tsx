@@ -3,6 +3,7 @@ import {
   getGlobalRequestOverlaySnapshot,
   subscribeGlobalRequestOverlay,
 } from '../services/globalRequestOverlay'
+import PtdtOrbitLoader from './PtdtOrbitLoader'
 
 export default function GlobalRequestOverlay() {
   const overlay = useSyncExternalStore(
@@ -13,22 +14,30 @@ export default function GlobalRequestOverlay() {
 
   if (!overlay.visible) return null
 
+  const isSuccess = overlay.phase === 'success'
+
   return (
-    <div className={`ptdt-global-progress-overlay ${overlay.phase === 'success' ? 'is-success' : ''}`} aria-live="polite" aria-busy={overlay.phase === 'working'}>
+    <div
+      className={`ptdt-global-progress-overlay ${isSuccess ? 'is-success' : ''}`}
+      data-ptdt-modal-open="true"
+      aria-live="polite"
+      aria-busy={overlay.phase === 'working'}
+    >
       <div className="ptdt-global-progress-panel">
-        {overlay.phase === 'success' ? (
+        {isSuccess ? (
           <div className="ptdt-global-success-mark">✓</div>
         ) : (
-          <div className="ptdt-global-premium-spinner" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <i>⟳</i>
+          <div style={{ width: 96, height: 96, margin: '0 auto 18px', display: 'grid', placeItems: 'center' }}>
+            <PtdtOrbitLoader size={96} label={overlay.message || 'Loading'} />
           </div>
         )}
-        <div className="ptdt-global-progress-title">{overlay.message}</div>
-        <div className="ptdt-global-progress-copy">{overlay.detail}</div>
+
+        <div className="ptdt-global-progress-title">
+          {overlay.message}
+        </div>
+        <div className="ptdt-global-progress-copy">
+          {overlay.detail}
+        </div>
       </div>
     </div>
   )

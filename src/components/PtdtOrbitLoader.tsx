@@ -1,10 +1,10 @@
-import React from 'react';
-import './PtdtOrbitLoader.css';
+import React from 'react'
+import './PtdtOrbitLoader.css'
 
 export interface PtdtOrbitLoaderProps {
-  size?: number;
-  label?: string;
-  className?: string;
+  size?: number
+  label?: string
+  className?: string
 }
 
 export const PtdtOrbitLoader: React.FC<PtdtOrbitLoaderProps> = ({
@@ -12,7 +12,7 @@ export const PtdtOrbitLoader: React.FC<PtdtOrbitLoaderProps> = ({
   label = 'Loading',
   className = '',
 }) => {
-  const dotDelays = [0, 0.13, 0.27, 0.4, 0.53, 0.67, 0.8, 0.93];
+  const dotDelays = [0, 0.13, 0.27, 0.4, 0.53, 0.67, 0.8, 0.93]
   const dotColors = [
     '#FB0B8C',
     '#FB0B8C',
@@ -22,7 +22,7 @@ export const PtdtOrbitLoader: React.FC<PtdtOrbitLoaderProps> = ({
     '#00A747',
     '#888780',
     '#888780',
-  ];
+  ]
   const dotPositions = [
     { top: '0%', left: '50%', marginLeft: '-4px' },
     { top: '14%', right: '14%' },
@@ -32,7 +32,7 @@ export const PtdtOrbitLoader: React.FC<PtdtOrbitLoaderProps> = ({
     { bottom: '14%', left: '14%' },
     { top: '50%', left: '0%', marginTop: '-4px' },
     { top: '14%', left: '14%' },
-  ];
+  ]
 
   return (
     <div
@@ -74,7 +74,7 @@ export const PtdtOrbitLoader: React.FC<PtdtOrbitLoaderProps> = ({
       </div>
       <span className="ptdt-orbit-loader__sr-only">{label}</span>
     </div>
-  );
-};
+  )
+}
 
-export default PtdtOrbitLoader;
+export default PtdtOrbitLoader
