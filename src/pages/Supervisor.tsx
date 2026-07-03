@@ -34,13 +34,13 @@ const accountForAgent = (agent: Record<string, unknown>): CustomerAccount | null
   const list = agent.commercialAccounts as Record<string, unknown>[] | undefined
   const account = direct?.id || direct?.name ? direct : Array.isArray(list) && list.length ? list[0] : null
   if (!account) return null
-  return { id: account.id ? Number(account.id) : null, name: str(account.name, 'Unassigned Customer'), code: str(account.code, '—'), status: str(account.status, '—') }
+  return { id: account.id ? Number(account.id) : null, name: str(account.name, 'PTDT Super Admin'), code: str(account.code, '—'), status: str(account.status, '—') }
 }
 
 const groupAgentsByCustomer = (agents: AgentRow[]) => {
   const map = new Map<string, CustomerGroup>()
   agents.forEach(agent => {
-    const account = agent.commercialAccount || { id: null, name: 'Unassigned Customer', code: '—', status: '—' }
+    const account = agent.commercialAccount || { id: null, name: 'PTDT Super Admin', code: '—', status: '—' }
     const key = account.id ? `account-${account.id}` : 'account-unassigned'
     if (!map.has(key)) map.set(key, { ...account, key, agents: [] })
     map.get(key)?.agents.push(agent)

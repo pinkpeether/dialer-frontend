@@ -35,7 +35,7 @@ const accountFrom = (value: unknown): CallbackCommercialAccount | null => {
   if (!account || (!account.id && !account.name)) return null
   return {
     id: account.id ? Number(account.id) : null,
-    name: stringValue(account.name, 'Unassigned Customer'),
+    name: stringValue(account.name, 'PTDT Super Admin'),
     code: stringValue(account.code, '—'),
     status: stringValue(account.status, '—'),
   }

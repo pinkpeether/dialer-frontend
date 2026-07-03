@@ -130,12 +130,12 @@ const inputStyle: React.CSSProperties = {
 type CustomerAccount = { id: number | null; name: string; code: string; status: string }
 type CallbackGroup = CustomerAccount & { key: string; callbacks: CallbackRecord[] }
 
-const fallbackAccount: CustomerAccount = { id: null, name: 'Unassigned Customer', code: '—', status: '—' }
+const fallbackAccount: CustomerAccount = { id: null, name: 'PTDT Super Admin', code: '—', status: '—' }
 
 const accountForCallback = (cb: CallbackRecord): CustomerAccount => {
   const account = cb.commercialAccount || cb.commercialAccounts?.[0]
   return account
-    ? { id: account.id ?? null, name: account.name || 'Unassigned Customer', code: account.code || '—', status: account.status || '—' }
+    ? { id: account.id ?? null, name: account.name || 'PTDT Super Admin', code: account.code || '—', status: account.status || '—' }
     : fallbackAccount
 }
 
@@ -167,7 +167,7 @@ function TableHeader() {
 }
 
 export default function Callbacks() {
-  const [filter, setFilter] = useState<CallbackStatus | 'ALL'>('PENDING')
+  const [filter, setFilter] = useState<CallbackStatus | 'ALL'>('ALL')
   const [rescheduling, setRescheduling] = useState<CallbackRecord | null>(null)
   const [newDatetime, setNewDatetime] = useState('')
   const [newNotes, setNewNotes] = useState('')

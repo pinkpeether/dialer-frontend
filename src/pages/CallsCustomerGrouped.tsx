@@ -62,7 +62,7 @@ const accountForCall = (row: Record<string, unknown>): CustomerAccount => {
   const direct = row.commercialAccount as Record<string, unknown> | null | undefined
   const campaign = row.campaign as Record<string, unknown> | null | undefined
   const account = direct?.id || direct?.name ? direct : campaign?.commercialAccount as Record<string, unknown> | null | undefined
-  return { id: account?.id ? Number(account.id) : null, name: stringValue(account?.name, 'Unassigned Customer'), code: stringValue(account?.code, '—'), status: stringValue(account?.status, '—') }
+  return { id: account?.id ? Number(account.id) : null, name: stringValue(account?.name, 'PTDT Super Admin'), code: stringValue(account?.code, '—'), status: stringValue(account?.status, '—') }
 }
 
 const normalizeCall = (item: unknown, index: number): CallRow => {

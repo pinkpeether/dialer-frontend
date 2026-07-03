@@ -47,7 +47,7 @@ const getStatusColor = (status: string) => {
 
 const accountForAgent = (agent: LiveAgentActivity): CustomerAccount => {
   const account = agent.commercialAccount || agent.commercialAccounts?.[0]
-  return account || { id: null, name: 'Unassigned Customer', code: '—', status: '—' }
+  return account || { id: null, name: 'PTDT Super Admin', code: '—', status: '—' }
 }
 
 const groupAgentsByCustomer = (agents: LiveAgentActivity[]) => {

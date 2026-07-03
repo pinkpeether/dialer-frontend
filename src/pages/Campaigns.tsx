@@ -31,7 +31,7 @@ const getText = (value: unknown, fallback = '') => typeof value === 'string' ? v
 
 const accountForCampaign = (campaign: CampaignRecord): CustomerAccount => {
   const account = campaign.commercialAccount as Record<string, unknown> | null | undefined
-  return { id: account?.id ? Number(account.id) : null, name: getText(account?.name, 'Unassigned Customer'), code: getText(account?.code, '—'), status: getText(account?.status, '—') }
+  return { id: account?.id ? Number(account.id) : null, name: getText(account?.name, 'PTDT Super Admin'), code: getText(account?.code, '—'), status: getText(account?.status, '—') }
 }
 const groupCampaignsByCustomer = (campaigns: CampaignRecord[]) => {
   const map = new Map<string, CampaignGroup>()

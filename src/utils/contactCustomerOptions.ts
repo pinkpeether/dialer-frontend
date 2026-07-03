@@ -11,7 +11,7 @@ export const normalizeContactCustomerAccount = (account?: Partial<AdminCommercia
   if (!isValidAccount(account)) return null
   return {
     id: account.id ? Number(account.id) : null,
-    name: String(account.name || 'Unassigned Customer'),
+    name: String(account.name || 'PTDT Super Admin'),
     code: String(account.code || '—'),
     status: String(account.status || '—'),
   }

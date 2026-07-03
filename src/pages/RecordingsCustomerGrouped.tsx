@@ -26,7 +26,7 @@ const fmtDuration = (seconds?: number) => { if (!Number.isFinite(seconds) || !se
 const stringValue = (value: unknown, fallback = '') => typeof value === 'string' ? value : typeof value === 'number' ? String(value) : fallback
 const accountForRecording = (row: RecordingRow): CustomerAccount => {
   const account = row.commercialAccount || row.campaign?.commercialAccount || null
-  return { id: account?.id ? Number(account.id) : null, name: stringValue(account?.name, 'Unassigned Customer'), code: stringValue(account?.code, '—'), status: stringValue(account?.status, '—') }
+  return { id: account?.id ? Number(account.id) : null, name: stringValue(account?.name, 'PTDT Super Admin'), code: stringValue(account?.code, '—'), status: stringValue(account?.status, '—') }
 }
 const groupRecordingsByCustomer = (recordings: RecordingRow[]) => {
   const map = new Map<string, RecordingGroup>()

@@ -30,8 +30,8 @@ type CampaignRecord = Record<string, unknown> & { commercialAccount?: CustomerAc
 type ContactRecord = Record<string, unknown> & { commercialAccount?: CustomerAccount | null; campaign?: { id: number; name: string; commercialAccount?: CustomerAccount | null } | null }
 type ContactGroup = CustomerAccount & { key: string; contacts: ContactRecord[] }
 
-const fallbackAccount: CustomerAccount = { id: null, name: 'Unassigned Customer', code: '—', status: '—' }
-const asAccount = (value?: Partial<CustomerAccount | CommercialAccount> | null): CustomerAccount | null => value && (value.id || value.name) ? { id: value.id ? Number(value.id) : null, name: String(value.name || 'Unassigned Customer'), code: String(value.code || '—'), status: String(value.status || '—') } : null
+const fallbackAccount: CustomerAccount = { id: null, name: 'PTDT Super Admin', code: '—', status: '—' }
+const asAccount = (value?: Partial<CustomerAccount | CommercialAccount> | null): CustomerAccount | null => value && (value.id || value.name) ? { id: value.id ? Number(value.id) : null, name: String(value.name || 'PTDT Super Admin'), code: String(value.code || '—'), status: String(value.status || '—') } : null
 const accountId = (account?: CustomerAccount | null) => account?.id ? Number(account.id) : null
 const uniqueAccounts = (accounts: Array<CustomerAccount | null | undefined>) => { const map = new Map<number | string, CustomerAccount>(); accounts.forEach(account => { if (!account) return; map.set(account.id ?? account.name, account) }); return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)) }
 const accountForCampaignId = (campaignId: unknown, campaigns: CampaignRecord[]) => asAccount(campaigns.find(c => Number(c.id) === Number(campaignId))?.commercialAccount)

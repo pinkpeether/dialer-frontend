@@ -186,7 +186,7 @@ function accountForCall(row: Record<string, unknown>): CustomerAccount {
   const account = direct?.id || direct?.name ? direct : campaign?.commercialAccount as Record<string, unknown> | null | undefined
   return {
     id: account?.id ? Number(account.id) : null,
-    name: stringValue(account?.name, 'Unassigned Customer'),
+    name: stringValue(account?.name, 'PTDT Super Admin'),
     code: stringValue(account?.code, '—'),
     status: stringValue(account?.status, '—'),
   }
@@ -287,8 +287,15 @@ function statusPill(status: CallStatus) {
   return { label: 'UNKNOWN', color: brand.faint }
 }
 
+function isAwaitingBackendDisposition(call: CallRow) {
+  return call.isDynamicCallerIdBackendCall &&
+    !call.disposition &&
+    call.durationSeconds <= 0 &&
+    (call.status === 'unknown' || call.status === 'queued' || call.status === 'in_progress')
+}
+
 function visibleStatusPill(call: CallRow) {
-  if (call.isDynamicCallerIdBackendCall && call.status === 'unknown') return { label: 'AWAITING DISPOSITION', color: brand.gold }
+  if (isAwaitingBackendDisposition(call)) return { label: 'AWAITING DISPOSITION', color: brand.gold }
   return statusPill(call.status)
 }
 
@@ -300,11 +307,13 @@ function visibleCampaignName(call: CallRow) {
 }
 
 function visibleDuration(call: CallRow) {
+  if (isAwaitingBackendDisposition(call)) return 'Needs disposition'
   if (call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0) return 'Pending'
   return fmtDuration(call.durationSeconds)
 }
 
 function visibleDurationDetail(call: CallRow) {
+  if (isAwaitingBackendDisposition(call)) return 'Awaiting disposition'
   if (call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0) return 'Pending tracking'
   return fmtDuration(call.durationSeconds)
 }

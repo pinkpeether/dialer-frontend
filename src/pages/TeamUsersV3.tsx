@@ -76,7 +76,7 @@ const groupUsersByCustomer = (users: TeamUser[]) => {
   users.forEach(user => {
     const account = accountForUser(user)
     const id = account?.id ? Number(account.id) : null
-    const name = String(account?.name || 'Unassigned Customer')
+    const name = String(account?.name || 'PTDT Super Admin')
     const key = id ? `account-${id}` : 'account-unassigned'
     if (!map.has(key)) {
       map.set(key, { key, id, name, code: String(account?.code || '—'), status: String(account?.status || '—'), users: [] })
