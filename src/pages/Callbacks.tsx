@@ -6,6 +6,7 @@ import { type CallbackRecord, type CallbackStatus } from '../api/callbacks.api'
 import { useSipStore } from '../store/sip.store'
 import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
+import { mergeMasterCustomerGroups, useMasterCustomerAccounts } from '../hooks/useMasterCustomerAccounts'
 
 const PTDT_MOBILE_PAGE_CSS = `
 .ptdt-ai-confirm-backdrop {
@@ -129,12 +130,12 @@ const inputStyle: React.CSSProperties = {
 type CustomerAccount = { id: number | null; name: string; code: string; status: string }
 type CallbackGroup = CustomerAccount & { key: string; callbacks: CallbackRecord[] }
 
-const fallbackAccount: CustomerAccount = { id: null, name: 'Unassigned Customer', code: '—', status: '—' }
+const fallbackAccount: CustomerAccount = { id: null, name: 'PTDT Super Admin', code: '—', status: '—' }
 
 const accountForCallback = (cb: CallbackRecord): CustomerAccount => {
   const account = cb.commercialAccount || cb.commercialAccounts?.[0]
   return account
-    ? { id: account.id ?? null, name: account.name || 'Unassigned Customer', code: account.code || '—', status: account.status || '—' }
+    ? { id: account.id ?? null, name: account.name || 'PTDT Super Admin', code: account.code || '—', status: account.status || '—' }
     : fallbackAccount
 }
 
@@ -166,7 +167,7 @@ function TableHeader() {
 }
 
 export default function Callbacks() {
-  const [filter, setFilter] = useState<CallbackStatus | 'ALL'>('PENDING')
+  const [filter, setFilter] = useState<CallbackStatus | 'ALL'>('ALL')
   const [rescheduling, setRescheduling] = useState<CallbackRecord | null>(null)
   const [newDatetime, setNewDatetime] = useState('')
   const [newNotes, setNewNotes] = useState('')
@@ -174,6 +175,7 @@ export default function Callbacks() {
   const [cancelTarget, setCancelTarget] = useState<CallbackRecord | null>(null)
   const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const masterAccounts = useMasterCustomerAccounts()
 
   const sipCall = useSipStore(s => s.call)
   const { callbacks, loading, error, refresh, markCompleted, markCancelled, reschedule } =
@@ -183,7 +185,7 @@ export default function Callbacks() {
     () => [...callbacks].sort((a, b) => timestamp(b.scheduledAt) - timestamp(a.scheduledAt)),
     [callbacks]
   )
-  const groupedCallbacks = useMemo(() => groupCallbacksByCustomer(sortedCallbacks), [sortedCallbacks])
+  const groupedCallbacks = useMemo(() => mergeMasterCustomerGroups(masterAccounts, groupCallbacksByCustomer(sortedCallbacks), 'callbacks'), [sortedCallbacks, masterAccounts])
 
   useEffect(() => {
     if (!cancelTarget) return
@@ -241,7 +243,7 @@ export default function Callbacks() {
     }
   }
 
-  const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
+  const toggleGroup = (key: string, currentlyOpen = false) => setExpandedGroups(prev => ({ ...prev, [key]: !currentlyOpen }))
   const pendingCount = sortedCallbacks.filter(c => c.status === 'PENDING' && isDue(c.scheduledAt)).length
 
   const renderCallbackRow = (cb: CallbackRecord, i: number) => {
@@ -327,7 +329,7 @@ export default function Callbacks() {
 
       {loading ? (
         <div className="glass" style={{ padding: 60, color: 'var(--text-3)', textAlign: 'center' }}>Loading callbacks…</div>
-      ) : sortedCallbacks.length === 0 ? (
+      ) : sortedCallbacks.length === 0 && groupedCallbacks.length === 0 ? (
         <div className="glass" style={{ padding: 60, color: 'var(--text-3)', textAlign: 'center' }}>No callbacks in this category.</div>
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
@@ -338,7 +340,7 @@ export default function Callbacks() {
             const completed = group.callbacks.filter(cb => cb.status === 'COMPLETED').length
             return (
               <div key={group.key} className="glass" style={{ overflow: 'hidden', padding: 0 }}>
-                <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.callbacks.length} Callbacks` }, { label: `${pending} Pending`, color: '#f0b90b', bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(due > 0 ? [{ label: `${due} Due Now`, color: '#f0b90b', bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : []), { label: `${completed} Completed`, color: '#00a747', bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }]} />
+                <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.callbacks.length} Callbacks` }, { label: `${pending} Pending`, color: '#f0b90b', bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(due > 0 ? [{ label: `${due} Due Now`, color: '#f0b90b', bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : []), { label: `${completed} Completed`, color: '#00a747', bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }]} />
                 {isOpen && (
                   <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto' }}>
                     <TableHeader />

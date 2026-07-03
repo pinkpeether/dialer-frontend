@@ -133,6 +133,16 @@ const withoutArchivedAccounts = (overview: PlatformAdministrationOverview): Plat
   }
 }
 
+
+export const clearAdministrationCache = () => {
+  clearSwrByPrefix('administration-platform')
+  clearSwrByPrefix('administration-me')
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem('ptdt-platform-administration:last-good')
+    window.localStorage.removeItem('ptdt-customer-billing:last-good')
+  }
+}
+
 export const administrationApi = {
   getMe: async (options?: AdministrationSwrOptions) => swr(
     swrKey('administration-me', { type: 'current-user' }),

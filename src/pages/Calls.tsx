@@ -15,6 +15,7 @@ import { callsAPI } from '../api/calls.api'
 import CallDispositionModal from '../components/CallDispositionModal'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
 import type { DispositionValue } from '../components/DispositionPanel'
+import { mergeMasterCustomerGroups, useMasterCustomerAccounts } from '../hooks/useMasterCustomerAccounts'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -114,7 +115,7 @@ const glassPanel: CSSProperties = {
   boxShadow: 'var(--shadow-md)',
 }
 
-const tableColumns = '82px 86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px 136px'
+const tableColumns = '82px 86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 130px 180px 160px'
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
@@ -185,7 +186,7 @@ function accountForCall(row: Record<string, unknown>): CustomerAccount {
   const account = direct?.id || direct?.name ? direct : campaign?.commercialAccount as Record<string, unknown> | null | undefined
   return {
     id: account?.id ? Number(account.id) : null,
-    name: stringValue(account?.name, 'Unassigned Customer'),
+    name: stringValue(account?.name, 'PTDT Super Admin'),
     code: stringValue(account?.code, '—'),
     status: stringValue(account?.status, '—'),
   }
@@ -286,8 +287,15 @@ function statusPill(status: CallStatus) {
   return { label: 'UNKNOWN', color: brand.faint }
 }
 
+function isAwaitingBackendDisposition(call: CallRow) {
+  return call.isDynamicCallerIdBackendCall &&
+    !call.disposition &&
+    call.durationSeconds <= 0 &&
+    (call.status === 'unknown' || call.status === 'queued' || call.status === 'in_progress')
+}
+
 function visibleStatusPill(call: CallRow) {
-  if (call.isDynamicCallerIdBackendCall && call.status === 'unknown') return { label: 'AWAITING DISPOSITION', color: brand.gold }
+  if (isAwaitingBackendDisposition(call)) return { label: 'AWAITING DISPOSITION', color: brand.gold }
   return statusPill(call.status)
 }
 
@@ -299,11 +307,13 @@ function visibleCampaignName(call: CallRow) {
 }
 
 function visibleDuration(call: CallRow) {
+  if (isAwaitingBackendDisposition(call)) return 'Needs disposition'
   if (call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0) return 'Pending'
   return fmtDuration(call.durationSeconds)
 }
 
 function visibleDurationDetail(call: CallRow) {
+  if (isAwaitingBackendDisposition(call)) return 'Awaiting disposition'
   if (call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0) return 'Pending tracking'
   return fmtDuration(call.durationSeconds)
 }
@@ -357,7 +367,7 @@ function CallsTableHeader() {
       <div>Direction</div>
       <div>Contact</div>
       <div>Campaign</div>
-      <div>Agent</div>
+      <div>Profile / Role</div>
       <div style={{ textAlign: 'right' }}>Duration</div>
       <div style={{ textAlign: 'right' }}>Started</div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: '100%', margin: '-10px -12px -10px 0', padding: '10px 12px 10px 16px' }}>
@@ -377,6 +387,7 @@ export default function Calls() {
   const [selectedForDisposition, setSelectedForDisposition] = useState<CallRow | null>(null)
   const [expandedId, setExpandedId] = useState<string | number | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const masterAccounts = useMasterCustomerAccounts()
 
   const page = Math.max(1, numberValue(searchParams.get('page'), 1))
   const limit = Math.max(1, numberValue(searchParams.get('limit'), 25))
@@ -440,7 +451,7 @@ export default function Calls() {
     return withoutInternalSipLegs.filter((item) => [item.remoteName, item.remoteNumber, item.campaignName, item.agentName, item.status, item.commercialAccount.name, item.commercialAccount.code].some(value => String(value || '').toLowerCase().includes(query)))
   }, [data, search])
 
-  const groupedCalls = useMemo(() => groupCallsByCustomer(filteredItems), [filteredItems])
+  const groupedCalls = useMemo(() => mergeMasterCustomerGroups(masterAccounts, groupCallsByCustomer(filteredItems), 'calls'), [filteredItems, masterAccounts])
 
   const updateParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(searchParams)
@@ -478,7 +489,7 @@ export default function Calls() {
     setDatePickerOpen(false)
   }
 
-  const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
+  const toggleGroup = (key: string, currentlyOpen = false) => setExpandedGroups(prev => ({ ...prev, [key]: !currentlyOpen }))
   const selectedDispositionCallId = selectedForDisposition ? numberValue(selectedForDisposition.id, Number.NaN) : Number.NaN
 
   const renderCallRow = (call: CallRow) => {
@@ -491,7 +502,7 @@ export default function Calls() {
         <div onClick={() => setExpandedId(isExpanded ? null : call.id)} style={{ display: 'grid', gridTemplateColumns: tableColumns, minWidth: 1110, padding: '11px 12px', fontSize: 12, borderTop: '1px solid var(--border)', alignItems: 'center', cursor: 'pointer', background: isExpanded ? 'rgba(251,11,140,0.05)' : 'transparent', transition: 'background 0.15s ease' }}>
           <div style={{ fontSize: 13, fontWeight: 950, color: brand.red, letterSpacing: 0.4, fontFamily: 'var(--font-mono)' }}>{call.id}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{directionIcon(call.direction)}<span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.7, color: pill.color }}>{call.direction === 'incoming' ? 'IN' : 'OUT'}</span></div>
-          <div style={{ minWidth: 0 }}><div style={{ fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{call.remoteName || call.remoteNumber}</div>{hasName && <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{call.remoteNumber}</div>}<div style={{ display: 'inline-flex', marginTop: 5, borderRadius: 999, border: `1px solid ${pill.color}44`, color: pill.color, padding: '3px 7px', fontSize: 9.5, fontWeight: 900 }}>{pill.label}</div></div>
+          <div style={{ minWidth: 0 }}><div style={{ fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{call.remoteName || call.remoteNumber}</div>{hasName && <div style={{ fontSize: 11, color: brand.purple, fontWeight: 850, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{call.remoteNumber}</div>}<div style={{ display: 'inline-flex', marginTop: 5, borderRadius: 999, border: `1px solid ${pill.color}44`, color: pill.color, padding: '3px 7px', fontSize: 9.5, fontWeight: 900 }}>{pill.label}</div></div>
           <div style={{ fontSize: 11, color: call.isDynamicCallerIdBackendCall ? brand.green : brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: call.isDynamicCallerIdBackendCall ? 850 : 500 }}>{visibleCampaignName(call)}</div>
           <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{call.agentName || '-'}</div>
           <div style={{ fontSize: 11, textAlign: 'right', color: call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0 ? brand.gold : brand.ink, fontWeight: call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0 ? 850 : 500 }}>{visibleDuration(call)}</div>
@@ -506,7 +517,7 @@ export default function Calls() {
             <DetailField label="Full Number" value={call.remoteNumber} />
             <DetailField label="Contact Name" value={call.remoteName || '-'} />
             <DetailField label="Campaign" value={visibleCampaignName(call)} color={call.isDynamicCallerIdBackendCall ? brand.green : undefined} />
-            <DetailField label="Agent" value={call.agentName || '-'} />
+            <DetailField label="Profile / Role" value={call.agentName || '-'} />
             <DetailField label="Status" value={pill.label} color={pill.color} />
             <DetailField label="Disposition" value={currentDisposition || '-'} color={currentDisposition ? brand.green : undefined} />
             <DetailField label="Notes" value={call.notes || '-'} />
@@ -551,7 +562,7 @@ export default function Calls() {
       <div style={{ display: 'grid', gap: 12 }}>
         {loading && <div style={{ ...glassPanel, borderRadius: 20, padding: 18, fontSize: 12, color: brand.muted }}>Loading call history...</div>}
         {error && !loading && <div style={{ ...glassPanel, borderRadius: 20, padding: 18, fontSize: 12, color: brand.red }}>{error}</div>}
-        {!loading && !error && filteredItems.length === 0 && <div style={{ ...glassPanel, borderRadius: 20, padding: 22, fontSize: 12, color: brand.muted, display: 'flex', alignItems: 'center', gap: 10 }}><PhoneCall size={18} color={brand.faint} /><span>No calls found for the current filters.</span></div>}
+        {!loading && !error && filteredItems.length === 0 && groupedCalls.length === 0 && <div style={{ ...glassPanel, borderRadius: 20, padding: 22, fontSize: 12, color: brand.muted, display: 'flex', alignItems: 'center', gap: 10 }}><PhoneCall size={18} color={brand.faint} /><span>No calls found for the current filters.</span></div>}
         {!loading && !error && groupedCalls.map((group, index) => {
           const isOpen = expandedGroups[group.key] ?? index === 0
           const completed = group.calls.filter(call => call.status === 'answered' || call.status === 'completed').length
@@ -559,7 +570,7 @@ export default function Calls() {
           const pending = group.calls.filter(call => call.isDynamicCallerIdBackendCall && call.status === 'unknown').length
           return (
             <div key={group.key} style={{ ...glassPanel, borderRadius: 20, overflow: 'hidden' }}>
-              <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.calls.length} Calls` }, { label: `${completed} Completed`, color: brand.green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${missed} Missed`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(pending > 0 ? [{ label: `${pending} Pending`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : [])]} />
+              <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.calls.length} Calls` }, { label: `${completed} Completed`, color: brand.green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${missed} Missed`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(pending > 0 ? [{ label: `${pending} Pending`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : [])]} />
               {isOpen && <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto', overflowY: 'hidden' }}><CallsTableHeader /><div>{group.calls.map(renderCallRow)}</div></div>}
             </div>
           )

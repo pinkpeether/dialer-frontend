@@ -29,6 +29,7 @@ const managedGetPrefixes = [
   '/commercial-control',
   '/contact-management-pro',
   '/ai-calls',
+  '/dialer',
   '/agents',
   '/campaigns',
   '/contacts',
@@ -50,7 +51,9 @@ const managedGetPrefixes = [
   '/ui-ux-pro',
   '/dynamic-caller-id',
   '/customer-onboarding',
+  '/account-review',
   '/live-monitoring-advanced',
+  '/live-ai',
   '/notifications-alerts-pro',
   '/sms',
 ]
@@ -58,7 +61,6 @@ const managedGetPrefixes = [
 const silentGetPrefixes = [
   '/auth/profile',
   '/notifications',
-  '/live-ai/sessions',
 ]
 
 const silentRequestPrefixes = [

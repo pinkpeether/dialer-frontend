@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Archive, BadgeDollarSign, BellRing, CreditCard, Plus, RefreshCw, ShieldCheck, WalletCards } from 'lucide-react'
+import { Archive, BadgeDollarSign, BellRing, CreditCard, RefreshCw, ShieldCheck, WalletCards } from 'lucide-react'
 import { commercialControlApi, type CommercialAccount, type CommercialAddonCode, type CommercialCatalog, type CommercialPlanCode, type CommercialStatus, type CommercialSummary, type PaymentRequest } from '../api/commercialControl.api'
 import api from '../api/axios'
 import { beginGlobalRequestOverlay, endGlobalRequestOverlay } from '../services/globalRequestOverlay'
@@ -113,6 +113,7 @@ export default function CommercialControl() {
   const [catalog, setCatalog] = useState<CommercialCatalog | null>(cached?.catalog ?? null)
   const [accounts, setAccounts] = useState<CommercialAccount[]>(cached?.accounts ?? [])
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>(cached?.paymentRequests ?? [])
+  const [paymentPreviewVisible, setPaymentPreviewVisible] = useState(false)
   const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(cached?.selectedAccountId)
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(Boolean(cached?.summary))
@@ -133,8 +134,6 @@ export default function CommercialControl() {
   const accountsAbortRef = useRef<AbortController | null>(null)
   const accountsOverlayRef = useRef<number | null>(null)
   const accountsRef = useRef<CommercialAccount[]>(cached?.accounts ?? [])
-
-  const [accountForm, setAccountForm] = useState({ name: '', code: '', email: '', phone: '', currency: 'USD' })
   const [paymentForm, setPaymentForm] = useState({ amount: '100', requestedPlanCode: 'PREMIUM' as CommercialPlanCode | '', requestedAddonCodes: ['DYNAMIC_CALLER_ID'] as CommercialAddonCode[], paymentMethod: 'Manual Bank Transfer', paymentReference: '', proofUrl: '', notes: '' })
   const [topupForm, setTopupForm] = useState({ amount: '100', reference: '', description: 'Manual wallet top-up approved by PTDT Admin' })
   const [planForm, setPlanForm] = useState({ planCode: 'PREMIUM' as CommercialPlanCode, status: 'ACTIVE' as PlanStatusValue, monthlyFeeOverride: '', notes: '' })
@@ -151,6 +150,23 @@ export default function CommercialControl() {
   const refreshButtonActive = loading || refreshing
   const activePlanName = summary?.subscription?.plan?.name || 'Plan not selected'
   const activeAddonCodes = useMemo(() => new Set(summary?.addons.filter(item => item.status === 'ACTIVE').map(item => item.addon.code) || []), [summary])
+  const selectedPaymentPlanName = paymentForm.requestedPlanCode
+    ? planOptions.find(plan => plan.value === paymentForm.requestedPlanCode)?.label || paymentForm.requestedPlanCode
+    : 'No plan change'
+  const selectedPaymentAddonName = paymentForm.requestedAddonCodes[0]
+    ? catalog?.addons.find(addon => addon.code === paymentForm.requestedAddonCodes[0])?.name || paymentForm.requestedAddonCodes[0].replace(/_/g, ' ')
+    : 'No add-on'
+  const paymentPreviewRows = [
+    ['Customer', summary?.account.name || 'Selected account'],
+    ['Amount', money(paymentForm.amount || 0, currentCurrency)],
+    ['Requested Plan', selectedPaymentPlanName],
+    ['Requested Add-on', selectedPaymentAddonName],
+    ['Method', paymentForm.paymentMethod || 'Manual Bank Transfer'],
+    ['Reference', paymentForm.paymentReference || 'Not entered'],
+    ['Proof', paymentForm.proofUrl || 'Not attached'],
+    ['Notes', paymentForm.notes || 'No notes'],
+  ] as const
+
 
   const applyAddonState = useCallback((current: CommercialSummary, addonCode: CommercialAddonCode, status: CommercialStatus, patch?: Partial<CommercialSummary['addons'][number]>) => ({
     ...current,
@@ -294,14 +310,6 @@ export default function CommercialControl() {
   }
 
   const handleSeed = () => withSave(async () => { await commercialControlApi.seedCatalog() }, 'Commercial catalog seeded and default account ensured.')
-  const handleCreateAccount = (event: FormEvent) => {
-    event.preventDefault()
-    void withSave(async () => {
-      const created = await commercialControlApi.createAccount(accountForm)
-      setSelectedAccountId(created.id)
-      setAccountForm({ name: '', code: '', email: '', phone: '', currency: 'USD' })
-    }, 'Commercial account created.')
-  }
   const handlePaymentRequest = (event: FormEvent) => {
     event.preventDefault()
     if (!currentAccountId) return
@@ -614,13 +622,36 @@ export default function CommercialControl() {
             <form onSubmit={handlePaymentRequest} className="glass" style={cardStyle}>
               <h3 style={{ marginTop: 0 }}>Submit Manual Payment Request</h3>
               <p style={{ color: 'var(--text-3)', marginTop: -4 }}>Use this when customer pays outside PTDT-Dialer and sends slip/reference by WhatsApp or email.</p>
-              <div style={{ display: 'grid', gap: 10 }}><input className="ptdt-input" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="Amount" required /><select className="ptdt-select" value={paymentForm.requestedPlanCode} onChange={e => setPaymentForm({ ...paymentForm, requestedPlanCode: e.target.value as CommercialPlanCode | '' })}><option value="">No plan change</option>{planOptions.map(plan => <option key={plan.value} value={plan.value}>{plan.label}</option>)}</select><select className="ptdt-select" value={paymentForm.requestedAddonCodes[0] || ''} onChange={e => setPaymentForm({ ...paymentForm, requestedAddonCodes: e.target.value ? [e.target.value as CommercialAddonCode] : [] })}><option value="">No add-on</option>{catalog?.addons.map(addon => <option key={addon.code} value={addon.code}>{addon.name}</option>)}</select><input className="ptdt-input" value={paymentForm.paymentReference} onChange={e => setPaymentForm({ ...paymentForm, paymentReference: e.target.value })} placeholder="Payment reference" /><input className="ptdt-input" value={paymentForm.proofUrl} onChange={e => setPaymentForm({ ...paymentForm, proofUrl: e.target.value })} placeholder="Proof URL / slip location" /><input className="ptdt-input" value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder="Notes" /><button className="btn-brand" disabled={pageBusy}>Submit Request</button></div>
+              <div style={{ display: 'grid', gap: 10 }}><input className="ptdt-input" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="Amount" required /><select className="ptdt-select" value={paymentForm.requestedPlanCode} onChange={e => setPaymentForm({ ...paymentForm, requestedPlanCode: e.target.value as CommercialPlanCode | '' })}><option value="">No plan change</option>{planOptions.map(plan => <option key={plan.value} value={plan.value}>{plan.label}</option>)}</select><select className="ptdt-select" value={paymentForm.requestedAddonCodes[0] || ''} onChange={e => setPaymentForm({ ...paymentForm, requestedAddonCodes: e.target.value ? [e.target.value as CommercialAddonCode] : [] })}><option value="">No add-on</option>{catalog?.addons.map(addon => <option key={addon.code} value={addon.code}>{addon.name}</option>)}</select><input className="ptdt-input" value={paymentForm.paymentReference} onChange={e => setPaymentForm({ ...paymentForm, paymentReference: e.target.value })} placeholder="Payment reference" /><input className="ptdt-input" value={paymentForm.proofUrl} onChange={e => setPaymentForm({ ...paymentForm, proofUrl: e.target.value })} placeholder="Proof URL / slip location" /><input className="ptdt-input" value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder="Notes" /><div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}><button type="button" className="ptdt-action-btn" onClick={() => setPaymentPreviewVisible(true)} disabled={!summary || pageBusy}>Preview Payment Request</button><button className="btn-brand" disabled={pageBusy}>Submit Request</button></div></div>
             </form>
 
-            <form onSubmit={handleCreateAccount} className="glass" style={cardStyle}>
-              <h3 style={{ marginTop: 0 }}>Create Commercial Account</h3>
-              <div style={{ display: 'grid', gap: 10 }}><input className="ptdt-input" value={accountForm.name} onChange={e => setAccountForm({ ...accountForm, name: e.target.value })} placeholder="Customer / company name" required /><input className="ptdt-input" value={accountForm.code} onChange={e => setAccountForm({ ...accountForm, code: e.target.value })} placeholder="Optional account code" /><input className="ptdt-input" value={accountForm.email} onChange={e => setAccountForm({ ...accountForm, email: e.target.value })} placeholder="Billing email" /><input className="ptdt-input" value={accountForm.phone} onChange={e => setAccountForm({ ...accountForm, phone: e.target.value })} placeholder="Billing phone" /><button className="btn-brand" disabled={pageBusy}><Plus size={14} /> Create Account</button></div>
-            </form>
+            <div className="glass" style={{ ...cardStyle, display: 'grid', alignContent: 'start', gap: 12, borderColor: paymentPreviewVisible ? 'rgba(0,167,71,.30)' : 'var(--border)' }}>
+              <div className="eyebrow green"><BadgeDollarSign size={12} /> Payment Preview</div>
+              <h3 style={{ margin: 0 }}>Payment Request Preview</h3>
+              <p style={{ color: 'var(--text-3)', margin: 0, fontSize: 12.5, lineHeight: 1.55 }}>
+                Review the manual payment request before submitting it for verification.
+              </p>
+
+              {paymentPreviewVisible ? (
+                <div style={{ display: 'grid', gap: 9, marginTop: 4 }}>
+                  {paymentPreviewRows.map(([label, value]) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '9px 10px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
+                      <span style={{ color: 'var(--text-3)', fontWeight: 850, fontSize: 12 }}>{label}</span>
+                      <strong style={{ color: label === 'Amount' ? 'var(--green-2)' : 'var(--text)', fontSize: 12.5, textAlign: 'right' }}>{value}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ minHeight: 220, display: 'grid', placeItems: 'center', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 18, color: 'var(--text-3)', padding: 18 }}>
+                  Fill the manual payment form and click Preview Payment Request.
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+                <button type="button" className="ptdt-action-btn" onClick={() => setPaymentPreviewVisible(true)} disabled={!summary || pageBusy}>Refresh Preview</button>
+                {paymentPreviewVisible && <button type="button" className="ptdt-action-btn danger" onClick={() => setPaymentPreviewVisible(false)} disabled={pageBusy}>Clear Preview</button>}
+              </div>
+            </div>
           </div>
 
           <div className="glass" style={{ padding: 0, overflow: 'hidden', marginBottom: 18 }}>

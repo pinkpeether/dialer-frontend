@@ -1,0 +1,3 @@
+import CustomerOnboardingDangerZone from './CustomerOnboardingDangerZone'
+
+export default CustomerOnboardingDangerZone

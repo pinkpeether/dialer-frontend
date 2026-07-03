@@ -40,7 +40,7 @@ const getStatusColor = (status: string) => {
   return '#64748b'
 }
 
-const accountForCall = (call: LiveCallWallItem): CustomerAccount => call.campaign?.commercialAccount || { id: null, name: 'Unassigned Customer', code: '—', status: '—' }
+const accountForCall = (call: LiveCallWallItem): CustomerAccount => call.campaign?.commercialAccount || { id: null, name: 'PTDT Super Admin', code: '—', status: '—' }
 const groupLiveCallsByCustomer = (calls: LiveCallWallItem[]) => {
   const map = new Map<string, LiveCallGroup>()
   calls.forEach(call => {

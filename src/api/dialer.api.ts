@@ -24,7 +24,7 @@ async function campaignControlRequest(request: () => Promise<unknown>) {
     return await request()
   } catch (err) {
     if (isForbiddenError(err)) {
-      throw new Error(campaignControlPermissionMessage)
+      throw new Error(campaignControlPermissionMessage, { cause: err })
     }
     throw err
   }

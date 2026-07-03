@@ -8,6 +8,7 @@ import PtdtDialog, { type PtdtDialogState } from '../components/PtdtDialog'
 import PtdtBusyOverlay from '../components/PtdtBusyOverlay'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
 import { setGlobalRequestOverlaySuppressed } from '../api/axios'
+import { mergeMasterCustomerGroups, useMasterCustomerAccounts } from '../hooks/useMasterCustomerAccounts'
 
 const green = '#00a747'
 const danger = '#ef4444'
@@ -75,7 +76,7 @@ const groupUsersByCustomer = (users: TeamUser[]) => {
   users.forEach(user => {
     const account = accountForUser(user)
     const id = account?.id ? Number(account.id) : null
-    const name = String(account?.name || 'Unassigned Customer')
+    const name = String(account?.name || 'PTDT Super Admin')
     const key = id ? `account-${id}` : 'account-unassigned'
     if (!map.has(key)) {
       map.set(key, { key, id, name, code: String(account?.code || '—'), status: String(account?.status || '—'), users: [] })
@@ -109,7 +110,8 @@ export default function TeamUsersV3() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
   const { agents, loading, createAgent, refetch } = useAgents({ isActive: showInactive ? undefined : true, limit: 200 })
-  const groupedAccounts = useMemo(() => groupUsersByCustomer(agents), [agents])
+  const masterAccounts = useMasterCustomerAccounts()
+  const groupedAccounts = useMemo(() => mergeMasterCustomerGroups(masterAccounts, groupUsersByCustomer(agents), 'users'), [agents, masterAccounts])
   const errorMessage = (err: unknown) => (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Something went wrong'
 
   const withBusy = async (task: () => Promise<void>) => {
@@ -198,7 +200,7 @@ export default function TeamUsersV3() {
     })
   }
 
-  const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
+  const toggleGroup = (key: string, currentlyOpen = false) => setExpandedGroups(prev => ({ ...prev, [key]: !currentlyOpen }))
 
   const renderUserRow = (user: TeamUser) => {
     const isSelf = Number(user.id) === Number(currentUser?.id)
@@ -230,12 +232,12 @@ export default function TeamUsersV3() {
 
       <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, color: 'var(--text-2)', fontWeight: 800 }}><input type="checkbox" checked={showInactive} onChange={event => setShowInactive(event.target.checked)} /> Show inactive users</label>
 
-      {loading ? <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>Loading users...</div> : agents.length === 0 ? <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>No team users found</div> : isPlatformAdmin ? <div style={{ display: 'grid', gap: 12 }}>{groupedAccounts.map((group, index) => {
+      {loading ? <div className="glass" style={{ padding: 28, color: 'var(--text-3)' }}>Loading users...</div> : isPlatformAdmin ? <div style={{ display: 'grid', gap: 12 }}>{groupedAccounts.map((group, index) => {
         const isOpen = expandedGroups[group.key] ?? index === 0
         const agentCount = group.users.filter(user => user.role === 'AGENT').length
         const supervisorCount = group.users.filter(user => user.role === 'SUPERVISOR').length
         const adminCount = group.users.filter(user => user.role === 'CUSTOMER_ADMIN').length
-        return <div key={group.key} className="glass" style={{ overflow: 'hidden' }}><CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.users.length} Users` }, { label: `${agentCount} Agents`, color: green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${supervisorCount} Supervisors`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }, ...(adminCount > 0 ? [{ label: `${adminCount} Customer Admins`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }] : [])]} />{isOpen && <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>{tableHeader}<tbody>{group.users.map(renderUserRow)}</tbody></table></div>}</div>
+        return <div key={group.key} className="glass" style={{ overflow: 'hidden' }}><CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.users.length} Users` }, { label: `${agentCount} Agents`, color: green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${supervisorCount} Supervisors`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }, ...(adminCount > 0 ? [{ label: `${adminCount} Customer Admins`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }] : [])]} />{isOpen && <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>{tableHeader}<tbody>{group.users.map(renderUserRow)}</tbody></table></div>}</div>
       })}</div> : <div className="glass" style={{ padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>{tableHeader}<tbody>{agents.map(renderUserRow)}</tbody></table></div>}
     </div>
   )

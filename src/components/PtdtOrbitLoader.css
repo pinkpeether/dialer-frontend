@@ -1,0 +1,67 @@
+.ptdt-orbit-loader {
+  position: relative;
+  display: inline-block;
+}
+
+.ptdt-orbit-loader__rotator {
+  position: absolute;
+  inset: 0;
+  animation: ptdt-orbit-rotate 1.6s linear infinite;
+  will-change: transform;
+}
+
+.ptdt-orbit-loader__dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: ptdt-orbit-pulse 1.6s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.ptdt-orbit-loader__icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5F5E5A;
+}
+
+.ptdt-orbit-loader__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes ptdt-orbit-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ptdt-orbit-pulse {
+  0%,
+  70%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ptdt-orbit-loader__rotator,
+  .ptdt-orbit-loader__dot {
+    animation: none;
+  }
+}

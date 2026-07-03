@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Clock, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOutgoing, X, Trash2, RotateCcw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -65,6 +65,20 @@ function directionStyle(call: RecentCallItem) {
 export default function RecentCallsModal({ open, calls, onClose, onClear, onRedial }: RecentCallsModalProps) {
   const navigate = useNavigate()
   const [filter, setFilter] = useState<RecentFilter>('all')
+
+  // ptdt-recent-calls-escape
+  useEffect(() => {
+    if (!open) return undefined
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing) return
+      event.preventDefault()
+      onClose()
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [open, onClose])
   const sortedCalls = useMemo(
     () => [...calls].sort((a, b) => b.at - a.at),
     [calls]
