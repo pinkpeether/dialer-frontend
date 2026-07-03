@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react
 import { Outlet, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopOperatorActions from './TopOperatorActions'
+import DynamicCallerIdDialerSelector from './DynamicCallerIdDialerSelector'
 import { useSipStore } from '../store/sip.store'
 import { useAuthStore } from '../store/auth.store'
 import { authAPI } from '../api/auth.api'
@@ -85,7 +86,8 @@ export default function Layout() {
         minHeight: '100vh',
         position: 'relative',
         background: 'var(--bg)',
-      }}
+        '--sidebar-current-width': `${sidebarWidth}px`,
+      } as React.CSSProperties}
     >
       <PtdtDialog
         dialog={confirmSignOut ? {
@@ -105,6 +107,7 @@ export default function Layout() {
 
       <Sidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
       <TopOperatorActions />
+      <DynamicCallerIdDialerSelector />
 
       <main style={{
         flex: 1,
