@@ -24,6 +24,14 @@
   transform-origin: 50% 50%;
 }
 
+html[data-performance-mode="on"] .ptdt-orbit-loader__rotator {
+  animation: ptdt-orbit-rotate 1.6s linear infinite !important;
+}
+
+html[data-performance-mode="on"] .ptdt-orbit-loader__bar {
+  animation: ptdt-orbit-pulse 1.6s ease-in-out infinite !important;
+}
+
 .ptdt-orbit-loader__icon {
   position: absolute;
   inset: 0;
