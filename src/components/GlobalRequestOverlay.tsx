@@ -28,7 +28,7 @@ export default function GlobalRequestOverlay() {
           <div className="ptdt-global-success-mark">✓</div>
         ) : (
           <div style={{ width: 96, height: 96, margin: '0 auto 18px', display: 'grid', placeItems: 'center' }}>
-            <PtdtOrbitLoader size={96} label={overlay.message || 'Loading'} />
+            <PtdtOrbitLoader size={96} label="PTDT loading" />
           </div>
         )}
 
