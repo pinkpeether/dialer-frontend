@@ -8,15 +8,20 @@
   inset: 0;
   animation: ptdt-orbit-rotate 1.6s linear infinite;
   will-change: transform;
+  transform-origin: 50% 50%;
 }
 
-.ptdt-orbit-loader__dot {
+.ptdt-orbit-loader__bar {
   position: absolute;
+  top: 50%;
+  left: 50%;
   width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  height: 22px;
+  border-radius: 999px;
   animation: ptdt-orbit-pulse 1.6s ease-in-out infinite;
   will-change: transform, opacity;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.18);
+  transform-origin: 50% 50%;
 }
 
 .ptdt-orbit-loader__icon {
@@ -50,18 +55,18 @@
   0%,
   70%,
   100% {
-    opacity: 0.25;
-    transform: scale(0.7);
+    opacity: 0.24;
+    scale: 0.72;
   }
   15% {
     opacity: 1;
-    transform: scale(1.15);
+    scale: 1.08;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ptdt-orbit-loader__rotator,
-  .ptdt-orbit-loader__dot {
+  .ptdt-orbit-loader__bar {
     animation: none;
   }
 }
