@@ -115,7 +115,7 @@ const glassPanel: CSSProperties = {
   boxShadow: 'var(--shadow-md)',
 }
 
-const tableColumns = '82px 86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 110px 150px 136px'
+const tableColumns = '82px 86px minmax(180px, 1.35fr) minmax(130px, 1fr) minmax(120px, 0.8fr) 130px 180px 160px'
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
@@ -502,7 +502,7 @@ export default function Calls() {
         <div onClick={() => setExpandedId(isExpanded ? null : call.id)} style={{ display: 'grid', gridTemplateColumns: tableColumns, minWidth: 1110, padding: '11px 12px', fontSize: 12, borderTop: '1px solid var(--border)', alignItems: 'center', cursor: 'pointer', background: isExpanded ? 'rgba(251,11,140,0.05)' : 'transparent', transition: 'background 0.15s ease' }}>
           <div style={{ fontSize: 13, fontWeight: 950, color: brand.red, letterSpacing: 0.4, fontFamily: 'var(--font-mono)' }}>{call.id}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{directionIcon(call.direction)}<span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.7, color: pill.color }}>{call.direction === 'incoming' ? 'IN' : 'OUT'}</span></div>
-          <div style={{ minWidth: 0 }}><div style={{ fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{call.remoteName || call.remoteNumber}</div>{hasName && <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{call.remoteNumber}</div>}<div style={{ display: 'inline-flex', marginTop: 5, borderRadius: 999, border: `1px solid ${pill.color}44`, color: pill.color, padding: '3px 7px', fontSize: 9.5, fontWeight: 900 }}>{pill.label}</div></div>
+          <div style={{ minWidth: 0 }}><div style={{ fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{call.remoteName || call.remoteNumber}</div>{hasName && <div style={{ fontSize: 11, color: brand.purple, fontWeight: 850, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{call.remoteNumber}</div>}<div style={{ display: 'inline-flex', marginTop: 5, borderRadius: 999, border: `1px solid ${pill.color}44`, color: pill.color, padding: '3px 7px', fontSize: 9.5, fontWeight: 900 }}>{pill.label}</div></div>
           <div style={{ fontSize: 11, color: call.isDynamicCallerIdBackendCall ? brand.green : brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: call.isDynamicCallerIdBackendCall ? 850 : 500 }}>{visibleCampaignName(call)}</div>
           <div style={{ fontSize: 11, color: brand.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{call.agentName || '-'}</div>
           <div style={{ fontSize: 11, textAlign: 'right', color: call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0 ? brand.gold : brand.ink, fontWeight: call.isDynamicCallerIdBackendCall && call.durationSeconds <= 0 ? 850 : 500 }}>{visibleDuration(call)}</div>
