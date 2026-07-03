@@ -12,8 +12,8 @@ export const PtdtOrbitLoader: React.FC<PtdtOrbitLoaderProps> = ({
   label = 'Loading',
   className = '',
 }) => {
-  const dotDelays = [0, 0.13, 0.27, 0.4, 0.53, 0.67, 0.8, 0.93]
-  const dotColors = [
+  const barDelays = [0, 0.13, 0.27, 0.4, 0.53, 0.67, 0.8, 0.93]
+  const barColors = [
     '#FB0B8C',
     '#FB0B8C',
     '#A855F7',
@@ -22,16 +22,6 @@ export const PtdtOrbitLoader: React.FC<PtdtOrbitLoaderProps> = ({
     '#00A747',
     '#888780',
     '#888780',
-  ]
-  const dotPositions = [
-    { top: '0%', left: '50%', marginLeft: '-4px' },
-    { top: '14%', right: '14%' },
-    { top: '50%', right: '0%', marginTop: '-4px' },
-    { bottom: '14%', right: '14%' },
-    { bottom: '0%', left: '50%', marginLeft: '-4px' },
-    { bottom: '14%', left: '14%' },
-    { top: '50%', left: '0%', marginTop: '-4px' },
-    { top: '14%', left: '14%' },
   ]
 
   return (
@@ -42,14 +32,14 @@ export const PtdtOrbitLoader: React.FC<PtdtOrbitLoaderProps> = ({
       aria-label={label}
     >
       <div className="ptdt-orbit-loader__rotator">
-        {dotPositions.map((pos, i) => (
+        {barColors.map((color, i) => (
           <span
             key={i}
-            className="ptdt-orbit-loader__dot"
+            className="ptdt-orbit-loader__bar"
             style={{
-              ...pos,
-              backgroundColor: dotColors[i],
-              animationDelay: `${dotDelays[i]}s`,
+              backgroundColor: color,
+              animationDelay: `${barDelays[i]}s`,
+              transform: `translate(-50%, -50%) rotate(${i * 45}deg) translateY(${Math.round(size * -0.43)}px)`,
             }}
           />
         ))}
