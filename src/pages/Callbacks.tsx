@@ -243,7 +243,7 @@ export default function Callbacks() {
     }
   }
 
-  const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
+  const toggleGroup = (key: string, currentlyOpen = false) => setExpandedGroups(prev => ({ ...prev, [key]: !currentlyOpen }))
   const pendingCount = sortedCallbacks.filter(c => c.status === 'PENDING' && isDue(c.scheduledAt)).length
 
   const renderCallbackRow = (cb: CallbackRecord, i: number) => {
@@ -340,7 +340,7 @@ export default function Callbacks() {
             const completed = group.callbacks.filter(cb => cb.status === 'COMPLETED').length
             return (
               <div key={group.key} className="glass" style={{ overflow: 'hidden', padding: 0 }}>
-                <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.callbacks.length} Callbacks` }, { label: `${pending} Pending`, color: '#f0b90b', bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(due > 0 ? [{ label: `${due} Due Now`, color: '#f0b90b', bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : []), { label: `${completed} Completed`, color: '#00a747', bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }]} />
+                <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.callbacks.length} Callbacks` }, { label: `${pending} Pending`, color: '#f0b90b', bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(due > 0 ? [{ label: `${due} Due Now`, color: '#f0b90b', bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : []), { label: `${completed} Completed`, color: '#00a747', bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }]} />
                 {isOpen && (
                   <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto' }}>
                     <TableHeader />

@@ -103,7 +103,7 @@ function ActivityTable({ agents }: { agents: LiveAgentActivity[] }) {
 export default function LiveAgentActivityPanel({ agents }: Props) {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const groupedAgents = useMemo(() => groupAgentsByCustomer(agents), [agents])
-  const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
+  const toggleGroup = (key: string, currentlyOpen = false) => setExpandedGroups(prev => ({ ...prev, [key]: !currentlyOpen }))
 
   return (
     <section className="ptdt-pro-table-shell" style={{ padding: 18 }}>
@@ -134,7 +134,7 @@ export default function LiveAgentActivityPanel({ agents }: Props) {
               <div key={group.key} className="glass" style={{ overflow: 'hidden', padding: 0 }}>
                 <CustomerAccordionHeader
                   isOpen={isOpen}
-                  onClick={() => toggleGroup(group.key)}
+                  onClick={() => toggleGroup(group.key, isOpen)}
                   name={group.name}
                   meta={`Customer Code: ${group.code} · Status: ${group.status}`}
                   badges={[

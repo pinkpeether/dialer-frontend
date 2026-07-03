@@ -200,7 +200,7 @@ export default function TeamUsersV3() {
     })
   }
 
-  const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
+  const toggleGroup = (key: string, currentlyOpen = false) => setExpandedGroups(prev => ({ ...prev, [key]: !currentlyOpen }))
 
   const renderUserRow = (user: TeamUser) => {
     const isSelf = Number(user.id) === Number(currentUser?.id)
@@ -237,7 +237,7 @@ export default function TeamUsersV3() {
         const agentCount = group.users.filter(user => user.role === 'AGENT').length
         const supervisorCount = group.users.filter(user => user.role === 'SUPERVISOR').length
         const adminCount = group.users.filter(user => user.role === 'CUSTOMER_ADMIN').length
-        return <div key={group.key} className="glass" style={{ overflow: 'hidden' }}><CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.users.length} Users` }, { label: `${agentCount} Agents`, color: green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${supervisorCount} Supervisors`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }, ...(adminCount > 0 ? [{ label: `${adminCount} Customer Admins`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }] : [])]} />{isOpen && <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>{tableHeader}<tbody>{group.users.map(renderUserRow)}</tbody></table></div>}</div>
+        return <div key={group.key} className="glass" style={{ overflow: 'hidden' }}><CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.users.length} Users` }, { label: `${agentCount} Agents`, color: green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${supervisorCount} Supervisors`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }, ...(adminCount > 0 ? [{ label: `${adminCount} Customer Admins`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }] : [])]} />{isOpen && <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>{tableHeader}<tbody>{group.users.map(renderUserRow)}</tbody></table></div>}</div>
       })}</div> : <div className="glass" style={{ padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>{tableHeader}<tbody>{agents.map(renderUserRow)}</tbody></table></div>}
     </div>
   )

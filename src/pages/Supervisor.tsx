@@ -114,7 +114,7 @@ export default function Supervisor() {
 
   const counts = useMemo(() => ({ total: agents.length, ready: agents.filter(a => a.status === 'READY').length, busy: agents.filter(a => a.status === 'BUSY').length, wrapUp: agents.filter(a => a.status === 'WRAP_UP').length, offline: agents.filter(a => a.status === 'OFFLINE').length }), [agents])
   const groupedAccounts = useMemo(() => groupAgentsByCustomer(agents), [agents])
-  const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
+  const toggleGroup = (key: string, currentlyOpen = false) => setExpandedGroups(prev => ({ ...prev, [key]: !currentlyOpen }))
 
   const renderAgentCard = (agent: AgentRow, index: number) => {
     const theme = STATUS_THEME[agent.status]
@@ -134,7 +134,7 @@ export default function Supervisor() {
       const ready = group.agents.filter(agent => agent.status === 'READY').length
       const busy = group.agents.filter(agent => agent.status === 'BUSY').length
       const offline = group.agents.filter(agent => agent.status === 'OFFLINE').length
-      return <div key={group.key} className="glass" style={{ overflow: 'hidden' }}><CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.agents.length} Agents` }, { label: `${ready} Ready`, color: '#00a747', bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${busy} On Call`, color: '#fb0b8c', bg: 'rgba(251,11,140,.10)', border: '1px solid rgba(251,11,140,.28)' }, { label: `${offline} Offline`, color: 'var(--text-3)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }]} />{isOpen && <div style={{ ...customerAccordionBodyStyle, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, padding: 16 }}>{group.agents.map(renderAgentCard)}</div>}</div>
+      return <div key={group.key} className="glass" style={{ overflow: 'hidden' }}><CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.agents.length} Agents` }, { label: `${ready} Ready`, color: '#00a747', bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${busy} On Call`, color: '#fb0b8c', bg: 'rgba(251,11,140,.10)', border: '1px solid rgba(251,11,140,.28)' }, { label: `${offline} Offline`, color: 'var(--text-3)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }]} />{isOpen && <div style={{ ...customerAccordionBodyStyle, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, padding: 16 }}>{group.agents.map(renderAgentCard)}</div>}</div>
     })}</div>}
   </div>
 }

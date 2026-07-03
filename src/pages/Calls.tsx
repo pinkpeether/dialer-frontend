@@ -489,7 +489,7 @@ export default function Calls() {
     setDatePickerOpen(false)
   }
 
-  const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))
+  const toggleGroup = (key: string, currentlyOpen = false) => setExpandedGroups(prev => ({ ...prev, [key]: !currentlyOpen }))
   const selectedDispositionCallId = selectedForDisposition ? numberValue(selectedForDisposition.id, Number.NaN) : Number.NaN
 
   const renderCallRow = (call: CallRow) => {
@@ -570,7 +570,7 @@ export default function Calls() {
           const pending = group.calls.filter(call => call.isDynamicCallerIdBackendCall && call.status === 'unknown').length
           return (
             <div key={group.key} style={{ ...glassPanel, borderRadius: 20, overflow: 'hidden' }}>
-              <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.calls.length} Calls` }, { label: `${completed} Completed`, color: brand.green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${missed} Missed`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(pending > 0 ? [{ label: `${pending} Pending`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : [])]} />
+              <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.calls.length} Calls` }, { label: `${completed} Completed`, color: brand.green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${missed} Missed`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(pending > 0 ? [{ label: `${pending} Pending`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : [])]} />
               {isOpen && <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto', overflowY: 'hidden' }}><CallsTableHeader /><div>{group.calls.map(renderCallRow)}</div></div>}
             </div>
           )
