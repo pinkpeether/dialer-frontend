@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import TopOperatorActions from './TopOperatorActions'
 import { useSipStore } from '../store/sip.store'
 import { useAuthStore } from '../store/auth.store'
 import { authAPI } from '../api/auth.api'
 import PtdtDialog from './PtdtDialog'
-import DynamicCallerIdDialerSelector from './DynamicCallerIdDialerSelector'
 
 export default function Layout() {
   const sipConfig = useSipStore(s => s.config)
@@ -17,6 +17,14 @@ export default function Layout() {
   const autoRegisterKeyRef = useRef('')
   const autoRegisterInFlightRef = useRef(false)
   const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem('ptdt-sidebar-collapsed') === '1'
+  })
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') window.localStorage.setItem('ptdt-sidebar-collapsed', sidebarCollapsed ? '1' : '0')
+  }, [sidebarCollapsed])
 
   useEffect(() => {
     const ready = Boolean(
@@ -67,6 +75,8 @@ export default function Layout() {
     void unregisterSip().catch(() => undefined)
   }, [logout, navigate, unregisterSip])
 
+  const sidebarWidth = sidebarCollapsed ? 96 : 324
+
   return (
     <div
       onClickCapture={requestSignOut}
@@ -93,17 +103,18 @@ export default function Layout() {
       </div>
       <div className="grid-overlay" />
 
-      <Sidebar />
-      <DynamicCallerIdDialerSelector />
+      <Sidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
+      <TopOperatorActions />
 
       <main style={{
         flex: 1,
-        marginLeft: 'var(--sidebar-width)',
+        marginLeft: sidebarWidth,
         minHeight: '100vh',
         position: 'relative',
         zIndex: 1,
         display: 'flex',
         flexDirection: 'column',
+        transition: 'margin-left .22s ease',
       }}>
         <div style={{ flex: 1 }}>
           <Outlet />
