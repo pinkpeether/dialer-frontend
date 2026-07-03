@@ -64,7 +64,7 @@ export default function TopOperatorActions() {
   const toggleVoiceDesk = () => {
     const button = Array.from(document.querySelectorAll('button')).find(item => {
       const text = item.textContent?.toLowerCase() || ''
-      return text.includes('hide desk') || text.includes('open desk')
+      return !item.classList.contains('ptdt-hide-desk-pill') && (text.includes('hide desk') || text.includes('open desk'))
     }) as HTMLButtonElement | undefined
     button?.click()
     setDeskHidden(current => !current)
