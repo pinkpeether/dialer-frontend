@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Activity, Radio, Code2 } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Activity, Radio, Code2, X } from 'lucide-react'
 import { authAPI }      from '../api/auth.api'
 import { useAuthStore } from '../store/auth.store'
 import ThemeToggle      from '../components/ThemeToggle'
@@ -28,7 +28,7 @@ const loginResponsiveCss = `
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(390px, 1fr);
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
   gap: 0;
   position: relative;
   z-index: 1;
@@ -155,6 +155,106 @@ const loginResponsiveCss = `
   min-width: 0;
 }
 
+.ptdt-login-access-card {
+  width: 100%;
+  max-width: 460px;
+  padding: 34px;
+  border-radius: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ptdt-login-access-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 28px;
+  right: 28px;
+  height: 2px;
+  background: linear-gradient(90deg, #fb0b8c 0%, #8057d7 50%, #2ae97b 100%);
+  border-radius: 2px;
+  opacity: 0.9;
+}
+
+.ptdt-login-access-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(251,11,140,0.08);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  margin-bottom: 22px;
+}
+
+.ptdt-login-access-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+
+.ptdt-login-access-copy {
+  color: var(--text-2);
+  font-size: 14.5px;
+  line-height: 1.65;
+  margin: 0 0 24px;
+}
+
+.ptdt-login-access-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.ptdt-login-access-metric {
+  padding: 13px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.06);
+}
+
+.ptdt-login-access-metric-label {
+  display: block;
+  font-size: 10px;
+  color: var(--text-3);
+  font-weight: 800;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.ptdt-login-access-metric-value {
+  display: block;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ptdt-login-open-button {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  font-size: 14.5px;
+}
+
+.ptdt-login-access-note {
+  margin-top: 16px;
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.6;
+  text-align: center;
+}
+
 .ptdt-login-card {
   width: 100%;
   max-width: 440px;
@@ -259,6 +359,48 @@ const loginResponsiveCss = `
   text-align: center;
 }
 
+.ptdt-login-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(6, 10, 22, 0.58);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.ptdt-login-modal-card {
+  width: min(100%, 460px);
+  max-height: min(92dvh, 720px);
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 28px 90px rgba(15,23,42,0.32);
+}
+
+.ptdt-login-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-glass-hi);
+  color: var(--text-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ptdt-login-modal-close:hover {
+  color: var(--text);
+  border-color: rgba(251,11,140,0.38);
+}
+
 @media (max-width: 980px) {
   .ptdt-login-theme-toggle {
     top: 14px;
@@ -336,8 +478,27 @@ const loginResponsiveCss = `
   .ptdt-login-card-wrap {
     align-items: flex-start;
     justify-content: center;
-    padding: 0 12px 20px;
+    padding: 0 18px 24px;
     width: 100%;
+  }
+
+  .ptdt-login-access-card {
+    max-width: 560px;
+    padding: 24px 18px 20px;
+    border-radius: 22px;
+  }
+
+  .ptdt-login-access-title {
+    font-size: 27px;
+  }
+
+  .ptdt-login-access-copy {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  .ptdt-login-access-grid {
+    margin-bottom: 18px;
   }
 
   .ptdt-login-card {
@@ -367,6 +528,16 @@ const loginResponsiveCss = `
     margin-top: 16px;
     padding-top: 14px;
     font-size: 10.5px;
+  }
+
+  .ptdt-login-modal-backdrop {
+    align-items: flex-start;
+    padding: 72px 14px 18px;
+    overflow-y: auto;
+  }
+
+  .ptdt-login-modal-card {
+    max-height: none;
   }
 }
 
@@ -414,6 +585,19 @@ const loginResponsiveCss = `
     padding: 0 10px 18px;
   }
 
+  .ptdt-login-access-card {
+    padding: 20px 14px 16px;
+    border-radius: 18px;
+  }
+
+  .ptdt-login-access-title {
+    font-size: 24px;
+  }
+
+  .ptdt-login-access-grid {
+    grid-template-columns: 1fr;
+  }
+
   .ptdt-login-card {
     padding: 20px 14px 16px;
     border-radius: 18px;
@@ -442,6 +626,30 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false)
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
+  const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const emailInputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    if (!isLoginOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const focusTimer = window.setTimeout(() => emailInputRef.current?.focus(), 80)
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || loading) return
+      setError('')
+      setShowPass(false)
+      setIsLoginOpen(false)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.clearTimeout(focusTimer)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [isLoginOpen, loading])
 
 const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault()
@@ -454,10 +662,23 @@ const handleLogin = async (e: React.FormEvent) => {
     const msg = (err as { response?: { data?: { message?: string } } })
       ?.response?.data?.message || 'Login failed'
     setError(msg)
+    setIsLoginOpen(true)
   } finally {
     setLoading(false)
   }
 }
+
+  const openLoginModal = () => {
+    setError('')
+    setIsLoginOpen(true)
+  }
+
+  const closeLoginModal = () => {
+    if (loading) return
+    setError('')
+    setShowPass(false)
+    setIsLoginOpen(false)
+  }
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '14px 14px 14px 44px',
@@ -468,6 +689,110 @@ const handleLogin = async (e: React.FormEvent) => {
     transition: 'all 0.2s',
     fontFamily: 'var(--font-body)',
   }
+
+  const loginCard = (
+    <motion.div
+      initial={{ opacity: 0, y: 30, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
+      className="glass-hi ptdt-login-card ptdt-login-modal-card"
+    >
+      <button
+        type="button"
+        className="ptdt-login-modal-close"
+        onClick={closeLoginModal}
+        aria-label="Close sign in dialog"
+        disabled={loading}
+      >
+        <X size={16} />
+      </button>
+
+      <div className="ptdt-login-card-accent" />
+
+      <div className="ptdt-login-card-header">
+        <h2 id="ptdt-login-modal-title" className="ptdt-login-card-title">
+          Welcome back
+        </h2>
+        <p className="ptdt-login-card-desc">
+          Sign in to access your operator dashboard.
+        </p>
+      </div>
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="ptdt-login-error"
+        >
+          {error}
+        </motion.div>
+      )}
+
+      <form onSubmit={handleLogin}>
+        <div style={{ marginBottom: 18 }}>
+          <label className="mono ptdt-login-label">
+            Email
+          </label>
+          <div className="ptdt-login-input-wrap">
+            <Mail size={16} color="var(--text-3)" className="ptdt-login-input-icon" />
+            <input
+              ref={emailInputRef}
+              type="email" value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="admin@ptdt.taxi"
+              required style={inputStyle}
+              onFocus={e => { e.target.style.borderColor = 'var(--pink)'; e.target.style.boxShadow = '0 0 0 3px rgba(251,11,140,0.12)' }}
+              onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 28 }}>
+          <label className="mono ptdt-login-label">
+            Password
+          </label>
+          <div className="ptdt-login-input-wrap">
+            <Lock size={16} color="var(--text-3)" className="ptdt-login-input-icon" />
+            <input
+              type={showPass ? 'text' : 'password'}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••••••"
+              required style={inputStyle}
+              onFocus={e => { e.target.style.borderColor = 'var(--pink)'; e.target.style.boxShadow = '0 0 0 3px rgba(251,11,140,0.12)' }}
+              onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass(p => !p)}
+              className="ptdt-login-password-toggle"
+              aria-label={showPass ? 'Hide password' : 'Show password'}
+            >
+              {showPass ? <EyeOff size={16}/> : <Eye size={16}/>}
+            </button>
+          </div>
+        </div>
+
+        <motion.button
+          type="submit"
+          disabled={loading}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
+          className="btn-brand ptdt-login-submit"
+        >
+          {loading ? (
+            <>Authenticating…</>
+          ) : (
+            <>Sign in to Console <ArrowRight size={16}/></>
+          )}
+        </motion.button>
+      </form>
+
+      <div className="ptdt-login-security-note">
+        <ShieldCheck size={12}/> Secured with end-to-end encryption
+      </div>
+    </motion.div>
+  )
 
   return (
     <div className="ptdt-login-root">
@@ -586,100 +911,72 @@ const handleLogin = async (e: React.FormEvent) => {
           </div>
         </motion.div>
 
-        {/* ================= RIGHT — Login card ================= */}
+        {/* ================= RIGHT — Console access CTA ================= */}
         <div className="ptdt-login-card-wrap">
           <motion.div
             initial={{ opacity: 0, y: 30, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
-            className="glass-hi ptdt-login-card"
+            className="glass-hi ptdt-login-access-card"
           >
-            {/* Top accent line */}
-            <div className="ptdt-login-card-accent" />
-
-            <div className="ptdt-login-card-header">
-              <h2 className="ptdt-login-card-title">
-                Welcome back
-              </h2>
-              <p className="ptdt-login-card-desc">
-                Sign in to access your operator dashboard.
-              </p>
+            <div className="mono ptdt-login-access-kicker">
+              <ShieldCheck size={13} color="var(--green-2)" />
+              Secure Console Access
             </div>
 
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="ptdt-login-error"
-              >
-                {error}
-              </motion.div>
-            )}
+            <h2 className="ptdt-login-access-title">
+              Your command center is ready.
+            </h2>
 
-            <form onSubmit={handleLogin}>
-              <div style={{ marginBottom: 18 }}>
-                <label className="mono ptdt-login-label">
-                  Email
-                </label>
-                <div className="ptdt-login-input-wrap">
-                  <Mail size={16} color="var(--text-3)" className="ptdt-login-input-icon" />
-                  <input
-                    type="email" value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="admin@ptdt.taxi"
-                    required style={inputStyle}
-                    onFocus={e => { e.target.style.borderColor = 'var(--pink)'; e.target.style.boxShadow = '0 0 0 3px rgba(251,11,140,0.12)' }}
-                    onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
-                  />
-                </div>
+            <p className="ptdt-login-access-copy">
+              Open the secure sign-in panel to manage campaigns, agents, calls,
+              customer accounts, and real-time operations from one protected workspace.
+            </p>
+
+            <div className="ptdt-login-access-grid">
+              <div className="ptdt-login-access-metric">
+                <span className="mono ptdt-login-access-metric-label">Workspace</span>
+                <span className="ptdt-login-access-metric-value">Operator Console</span>
               </div>
-
-              <div style={{ marginBottom: 28 }}>
-                <label className="mono ptdt-login-label">
-                  Password
-                </label>
-                <div className="ptdt-login-input-wrap">
-                  <Lock size={16} color="var(--text-3)" className="ptdt-login-input-icon" />
-                  <input
-                    type={showPass ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    required style={inputStyle}
-                    onFocus={e => { e.target.style.borderColor = 'var(--pink)'; e.target.style.boxShadow = '0 0 0 3px rgba(251,11,140,0.12)' }}
-                    onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass(p => !p)}
-                    className="ptdt-login-password-toggle"
-                  >
-                    {showPass ? <EyeOff size={16}/> : <Eye size={16}/>}
-                  </button>
-                </div>
+              <div className="ptdt-login-access-metric">
+                <span className="mono ptdt-login-access-metric-label">Access</span>
+                <span className="ptdt-login-access-metric-value">Authorized Users</span>
               </div>
+            </div>
 
-              <motion.button
-                type="submit"
-                disabled={loading}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                className="btn-brand ptdt-login-submit"
-              >
-                {loading ? (
-                  <>Authenticating…</>
-                ) : (
-                  <>Sign in to Console <ArrowRight size={16}/></>
-                )}
-              </motion.button>
-            </form>
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              className="btn-brand ptdt-login-open-button"
+              onClick={openLoginModal}
+            >
+              Open Sign in Console <ArrowRight size={16} />
+            </motion.button>
 
-            <div className="ptdt-login-security-note">
-              <ShieldCheck size={12}/> Secured with end-to-end encryption
+            <div className="ptdt-login-access-note">
+              Login details stay inside a focused secure pop-up, keeping the landing page clean and client-facing.
             </div>
           </motion.div>
         </div>
       </div>
+
+      {isLoginOpen && (
+        <motion.div
+          className="ptdt-login-modal-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.18 }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ptdt-login-modal-title"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeLoginModal()
+          }}
+        >
+          {loginCard}
+        </motion.div>
+      )}
     </div>
   )
 }
