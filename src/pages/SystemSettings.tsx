@@ -469,7 +469,7 @@ export default function SystemSettings() {
   const recordingEnabled = form.recordingEnabled
 
   return (
-    <div className="ptdt-mobile-page ptdt-mobile-page-system-settings" style={{ padding: '32px 36px', maxWidth: 900, margin: '0 auto' }}>
+    <div className="ptdt-mobile-page ptdt-mobile-page-system-settings" style={{ padding: '32px 36px', maxWidth: 1180, margin: '0 auto' }}>
       <style>{PTDT_MOBILE_PAGE_CSS}</style>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
         <div className="eyebrow pink" style={{ marginBottom: 14 }}>
@@ -508,113 +508,119 @@ export default function SystemSettings() {
           </div>
         ) : (
           <>
-            <SettingField
-              label="Default Timezone"
-              description="Used for campaign windows, callback timing, and scheduler defaults."
-              icon={<Clock3 size={17} />}
-            >
-              <input
-                value={String(form.defaultTimezone || '')}
-                onChange={e => setField('defaultTimezone', e.target.value)}
-                placeholder="Asia/Karachi"
-                style={inputStyle}
-              />
-            </SettingField>
+            <div className="ptdt-system-settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0 18px', alignItems: 'start' }}>
+              <div>
+                <SettingField
+                  label="Default Timezone"
+                  description="Used for campaign windows, callback timing, and scheduler defaults."
+                  icon={<Clock3 size={17} />}
+                >
+                  <input
+                    value={String(form.defaultTimezone || '')}
+                    onChange={e => setField('defaultTimezone', e.target.value)}
+                    placeholder="Asia/Karachi"
+                    style={inputStyle}
+                  />
+                </SettingField>
 
-            <SettingField
-              label="Default Dialing Ratio"
-              description="Controls how many calls progressive/predictive campaigns may place per ready agent."
-              icon={<SlidersHorizontal size={17} />}
-            >
-              <input
-                type="number"
-                min={1}
-                value={form.defaultDialingRatio}
-                onChange={e => setField('defaultDialingRatio', Number(e.target.value))}
-                style={inputStyle}
-              />
-            </SettingField>
+                <SettingField
+                  label="Default Dialing Ratio"
+                  description="Controls calls per ready agent for progressive/predictive campaigns."
+                  icon={<SlidersHorizontal size={17} />}
+                >
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.defaultDialingRatio}
+                    onChange={e => setField('defaultDialingRatio', Number(e.target.value))}
+                    style={inputStyle}
+                  />
+                </SettingField>
 
-            <SettingField
-              label="Retry Delay"
-              description="Default wait time before retrying retryable outcomes like no-answer or voicemail."
-              icon={<TimerReset size={17} />}
-            >
-              <input
-                type="number"
-                min={1}
-                value={form.defaultRetryDelayMinutes}
-                onChange={e => setField('defaultRetryDelayMinutes', Number(e.target.value))}
-                style={inputStyle}
-              />
-            </SettingField>
+                <SettingField
+                  label="Retry Delay"
+                  description="Wait time before retrying retryable outcomes."
+                  icon={<TimerReset size={17} />}
+                >
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.defaultRetryDelayMinutes}
+                    onChange={e => setField('defaultRetryDelayMinutes', Number(e.target.value))}
+                    style={inputStyle}
+                  />
+                </SettingField>
 
-            <SettingField
-              label="Max Retries"
-              description="Default retry cap for new or system-managed calling workflows."
-              icon={<RotateCcw size={17} />}
-            >
-              <input
-                type="number"
-                min={0}
-                value={form.defaultMaxRetries}
-                onChange={e => setField('defaultMaxRetries', Number(e.target.value))}
-                style={inputStyle}
-              />
-            </SettingField>
+                <SettingField
+                  label="Max Retries"
+                  description="Default retry cap for calling workflows."
+                  icon={<RotateCcw size={17} />}
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.defaultMaxRetries}
+                    onChange={e => setField('defaultMaxRetries', Number(e.target.value))}
+                    style={inputStyle}
+                  />
+                </SettingField>
+              </div>
 
-            <SettingField
-              label="Call Timeout"
-              description="Maximum ringing window before the app treats a call attempt as expired."
-              icon={<Settings2 size={17} />}
-            >
-              <input
-                type="number"
-                min={5}
-                value={form.callTimeoutSeconds}
-                onChange={e => setField('callTimeoutSeconds', Number(e.target.value))}
-                style={inputStyle}
-              />
-            </SettingField>
+              <div>
+                <SettingField
+                  label="Call Timeout"
+                  description="Ringing window before a call attempt expires."
+                  icon={<Settings2 size={17} />}
+                >
+                  <input
+                    type="number"
+                    min={5}
+                    value={form.callTimeoutSeconds}
+                    onChange={e => setField('callTimeoutSeconds', Number(e.target.value))}
+                    style={inputStyle}
+                  />
+                </SettingField>
 
-            <SettingField
-              label="Callback Reminder"
-              description="Lead time before a scheduled callback should surface to the agent."
-              icon={<Clock3 size={17} />}
-            >
-              <input
-                type="number"
-                min={1}
-                value={form.callbackReminderMinutes}
-                onChange={e => setField('callbackReminderMinutes', Number(e.target.value))}
-                style={inputStyle}
-              />
-            </SettingField>
+                <SettingField
+                  label="Callback Reminder"
+                  description="Lead time before scheduled callback alerts."
+                  icon={<Clock3 size={17} />}
+                >
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.callbackReminderMinutes}
+                    onChange={e => setField('callbackReminderMinutes', Number(e.target.value))}
+                    style={inputStyle}
+                  />
+                </SettingField>
 
-            <SettingField
-              label="Low Contact Threshold"
-              description="Campaign alert threshold for low remaining callable contacts."
-              icon={<SlidersHorizontal size={17} />}
-            >
-              <input
-                type="number"
-                min={0}
-                value={form.lowContactThreshold}
-                onChange={e => setField('lowContactThreshold', Number(e.target.value))}
-                style={inputStyle}
-              />
-            </SettingField>
+                <SettingField
+                  label="Low Contact Threshold"
+                  description="Alert threshold for low callable contacts."
+                  icon={<SlidersHorizontal size={17} />}
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.lowContactThreshold}
+                    onChange={e => setField('lowContactThreshold', Number(e.target.value))}
+                    style={inputStyle}
+                  />
+                </SettingField>
 
-            <SettingField
-              label="Recording Enabled"
-              description="Global default for surfacing recording controls and saved recording access."
-              icon={<Radio size={17} />}
-            >
-              <RecordingToggle
-                checked={recordingEnabled}
-                onChange={next => setField('recordingEnabled', next)}
-              />
-            </SettingField>
+                <SettingField
+                  label="Recording Enabled"
+                  description="Default recording controls and access."
+                  icon={<Radio size={17} />}
+                >
+                  <RecordingToggle
+                    checked={recordingEnabled}
+                    onChange={next => setField('recordingEnabled', next)}
+                  />
+                </SettingField>
+              </div>
+            </div>
 
             <div
               style={{

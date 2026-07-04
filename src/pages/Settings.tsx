@@ -473,7 +473,7 @@ export default function Settings() {
         : 'Not Registered'
 
   return (
-    <div className="ptdt-mobile-page ptdt-mobile-page-settings" style={{ padding: '32px 36px', maxWidth: 900, margin: '0 auto' }}>
+    <div className="ptdt-mobile-page ptdt-mobile-page-settings" style={{ padding: '32px 36px', maxWidth: 1320, margin: '0 auto' }}>
       <style>{PTDT_MOBILE_PAGE_CSS}</style>
 
       {/* Header */}
@@ -489,7 +489,7 @@ export default function Settings() {
         </p>
       </motion.div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="ptdt-settings-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 20, alignItems: 'start' }}>
 
         {/* Profile section */}
         <SectionCard title="Profile" subtitle="Update your display name and contact info." icon={<UserRound size={17} />} tone="pink">
@@ -543,7 +543,7 @@ export default function Settings() {
 
         {/* Password section */}
         <SectionCard title="Change Password" subtitle="Use a strong password of at least 8 characters." icon={<KeyRound size={17} />} tone="purple">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 460 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <FormRow label="Current Password">
               <PwInput value={currentPw} onChange={setCurrentPw} show={showCurrentPw} onToggle={() => setShowCurrentPw(p => !p)} placeholder="Current password" />
             </FormRow>
