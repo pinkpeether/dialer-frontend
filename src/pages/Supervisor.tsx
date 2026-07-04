@@ -5,7 +5,6 @@ import { Activity, Headset, Phone, Shield } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
 import { agentsAPI } from '../api/agents.api'
 import { AGENT_STATUS_EVENTS } from '../constants/socketEvents'
-import OperationalStatusPills from '../components/OperationalStatusPills'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
 
 type AgentStatus = 'OFFLINE' | 'READY' | 'BUSY' | 'WRAP_UP'
@@ -84,7 +83,6 @@ export default function Supervisor() {
   }, [agentsQuery.data])
 
   const loading = agentsQuery.isLoading
-  const load = async () => { await agentsQuery.refetch() }
 
   useEffect(() => {
     const handler = (data: unknown) => {
@@ -127,7 +125,7 @@ export default function Supervisor() {
   }
 
   return <div className="ptdt-page">
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}><div className="eyebrow pink" style={{ marginBottom: 14 }}><Shield size={11} /> PTDT-Dialer Supervisor</div><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}><div><h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 3.2vw, 42px)', fontWeight: 900, lineHeight: 1.05, color: 'var(--text)', letterSpacing: '-0.04em', marginBottom: 10 }}>Supervisor <span className="gradient-brand-text">Monitor</span></h1><p style={{ fontSize: 14.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><span className="pulse-dot pink" />Live agent grid grouped by customer — refreshes every 30s. Last: {lastRefresh.toLocaleTimeString()}</p></div><OperationalStatusPills onRefresh={() => void load()} /></div></motion.div>
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}><div className="eyebrow pink" style={{ marginBottom: 14 }}><Shield size={11} /> PTDT-Dialer Supervisor</div><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}><div><h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 3.2vw, 42px)', fontWeight: 900, lineHeight: 1.05, color: 'var(--text)', letterSpacing: '-0.04em', marginBottom: 10 }}>Supervisor <span className="gradient-brand-text">Monitor</span></h1><p style={{ fontSize: 14.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><span className="pulse-dot pink" />Live agent grid grouped by customer — refreshes every 30s. Last: {lastRefresh.toLocaleTimeString()}</p></div></div></motion.div>
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 28 }}>{[{ label: 'Total Agents', value: counts.total, color: 'var(--pink)' }, { label: 'Ready', value: counts.ready, color: '#00a747' }, { label: 'On Call', value: counts.busy, color: '#fb0b8c' }, { label: 'Wrap Up', value: counts.wrapUp, color: '#f0b90b' }, { label: 'Offline', value: counts.offline, color: 'var(--text-3)' }].map(card => <div key={card.label} className="glass lift" style={{ padding: '14px 16px' }}><div className="mono" style={{ fontSize: 9.5, color: 'var(--text-3)', letterSpacing: 1.2, fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>{card.label}</div><div style={{ fontSize: 26, fontWeight: 900, color: card.color }}>{card.value}</div></div>)}</div>
     {loading ? <div className="glass" style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}>Loading agents…</div> : agents.length === 0 ? <div className="glass" style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}><Headset size={36} style={{ marginBottom: 12, opacity: 0.3 }} /><div>No agents found — ensure backend returns data from <span className="mono">/agents</span></div></div> : <div style={{ display: 'grid', gap: 12 }}>{groupedAccounts.map((group, groupIndex) => {
       const isOpen = expandedGroups[group.key] ?? groupIndex === 0

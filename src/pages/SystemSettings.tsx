@@ -4,6 +4,15 @@ import { motion } from 'framer-motion'
 import { Clock3, Radio, RefreshCw, RotateCcw, Save, Settings2, SlidersHorizontal, TimerReset } from 'lucide-react'
 import { settingsAPI } from '../api/settings.api'
 
+const DEFAULT_TIMEZONE_OPTIONS = [
+  'Asia/Karachi',
+  'UTC',
+  'America/New_York',
+  'America/Chicago',
+  'America/Los_Angeles',
+  'Europe/London',
+]
+
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
   .ptdt-mobile-page {
@@ -515,12 +524,15 @@ export default function SystemSettings() {
                   description="Used for campaign windows, callback timing, and scheduler defaults."
                   icon={<Clock3 size={17} />}
                 >
-                  <input
+                  <select
                     value={String(form.defaultTimezone || '')}
                     onChange={e => setField('defaultTimezone', e.target.value)}
-                    placeholder="Asia/Karachi"
                     style={inputStyle}
-                  />
+                  >
+                    {DEFAULT_TIMEZONE_OPTIONS.map(zone => (
+                      <option key={zone} value={zone}>{zone}</option>
+                    ))}
+                  </select>
                 </SettingField>
 
                 <SettingField

@@ -296,7 +296,7 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
 
         {!collapsed && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 6px 0', borderTop: '1px solid var(--border)', marginTop: 8 }}>
           <ThemeToggle />
-          <span className="mono" style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: 'var(--text-3)', fontWeight: 950, letterSpacing: 1.05, textTransform: 'uppercase', whiteSpace: 'nowrap', textAlign: 'right' }}>Appearance/Theme</span>
+          <span className="mono" style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: 'var(--text-3)', fontWeight: 950, letterSpacing: 1.05, textTransform: 'uppercase', whiteSpace: 'nowrap', textAlign: 'left', marginRight: 8 }}>Appearance/Theme</span>
           <button type="button" onClick={() => onCollapsedChange?.(true)} aria-label="Collapse sidebar" title="Collapse sidebar" style={{ width: 38, height: 38, borderRadius: 13, border: '1px solid rgba(255,255,255,.58)', background: 'linear-gradient(145deg, rgba(15,23,42,.96), rgba(15,23,42,.88))', color: '#fff', display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px rgba(255,255,255,.42), 0 0 0 4px rgba(15,23,42,.14), 0 10px 20px rgba(15,23,42,.20)', cursor: 'pointer', flexShrink: 0 }}><ChevronLeft size={17} strokeWidth={3} /></button>
         </div>}
 
