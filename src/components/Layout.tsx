@@ -106,10 +106,9 @@ export default function Layout() {
       <div className="grid-overlay" />
 
       <Sidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
-      <TopOperatorActions />
       <DynamicCallerIdDialerSelector />
 
-      <main style={{
+      <main className="ptdt-layout-main" style={{
         flex: 1,
         marginLeft: sidebarWidth,
         minHeight: '100vh',
@@ -119,6 +118,7 @@ export default function Layout() {
         flexDirection: 'column',
         transition: 'margin-left .22s ease',
       }}>
+        <TopOperatorActions />
         <div style={{ flex: 1 }}>
           <Outlet />
         </div>
