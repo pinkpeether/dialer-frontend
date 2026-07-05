@@ -34,7 +34,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const displayProviderName = (provider?: string) => {
   const value = String(provider || 'Custom').trim()
-  return value.toLowerCase().includes('illyvoip') ? 'Custom' : value
+  return value.toLowerCase().includes('illyvoip') ? 'PTDT' : value.replace(/_/g, ' ')
 }
 
 const emptyConfig: SmsConfig = {

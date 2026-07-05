@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Download, Search } from 'lucide-react'
 import { recordingStorageProAPI, type RecordingSearchParams } from '../api/recordingStoragePro.api'
+import { cleanDisplayText } from '../utils/displayText'
 
 type RecordingItem = {
   id: number
@@ -168,8 +169,8 @@ export default function RecordingSearchPanel() {
               <tr key={item.id} style={{ borderBottom: '1px solid var(--border-soft)' }}>
                 <td style={{ padding: '12px 10px', verticalAlign: 'top' }}>
                   <div style={{ fontWeight: 700 }}>#{item.id}</div>
-                  <div style={{ color: 'var(--text-3)', fontSize: 12 }}>{item.status || '—'} / {item.disposition || '—'}</div>
-                  <div style={{ color: 'var(--text-3)', fontSize: 11.5 }}>{item.recordingSid || 'No recording ref'}</div>
+                  <div style={{ color: 'var(--text-3)', fontSize: 12 }}>{cleanDisplayText(item.status)} / {cleanDisplayText(item.disposition)}</div>
+                  <div style={{ color: 'var(--text-3)', fontSize: 11.5 }}>{cleanDisplayText(item.recordingSid, 'No recording ref')}</div>
                 </td>
                 <td style={{ padding: '12px 10px', verticalAlign: 'top' }}>
                   <div>{item.contact?.name || 'Unknown'}</div>
@@ -177,7 +178,7 @@ export default function RecordingSearchPanel() {
                 </td>
                 <td style={{ padding: '12px 10px', verticalAlign: 'top' }}>
                   <div>{item.campaign?.name || '—'}</div>
-                  <div style={{ color: 'var(--text-3)', fontSize: 12 }}>{item.campaign?.mode || ''}</div>
+                  <div style={{ color: 'var(--text-3)', fontSize: 12 }}>{cleanDisplayText(item.campaign?.mode, '')}</div>
                 </td>
                 <td style={{ padding: '12px 10px', verticalAlign: 'top' }}>
                   <div>{item.agent?.name || 'Unassigned'}</div>
@@ -187,7 +188,7 @@ export default function RecordingSearchPanel() {
                 <td style={{ padding: '12px 10px', verticalAlign: 'top' }}>{formatDate(item.startedAt)}</td>
                 <td style={{ padding: '12px 10px', verticalAlign: 'top' }}>
                   <div style={{ fontSize: 12 }}>Transcript: {item.transcript && !item.transcript.deletedAt ? 'YES' : 'NO'}</div>
-                  <div style={{ fontSize: 12 }}>Insight: {item.insight && !item.insight.deletedAt ? item.insight.sentiment || 'YES' : 'NO'}</div>
+                  <div style={{ fontSize: 12 }}>Insight: {item.insight && !item.insight.deletedAt ? cleanDisplayText(item.insight.sentiment, 'YES') : 'NO'}</div>
                 </td>
                 <td style={{ padding: '12px 10px', verticalAlign: 'top' }}>
                   <button type="button" disabled={!item.downloadable} onClick={() => void downloadRecording(item.id)} className="ptdt-action-btn" style={{ opacity: item.downloadable ? 1 : 0.45 }}>

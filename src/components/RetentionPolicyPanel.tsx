@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ShieldAlert, Trash2 } from 'lucide-react'
 import { recordingStorageProAPI, type RecordingRetentionPolicy } from '../api/recordingStoragePro.api'
 import PtdtDialog, { type PtdtDialogState } from './PtdtDialog'
+import { cleanDisplayText } from '../utils/displayText'
 
 const defaultPolicy: RecordingRetentionPolicy = {
   enabled: false,
@@ -154,7 +155,7 @@ export default function RetentionPolicyPanel() {
             <PreviewMetric label="Est. Duration" value={`${String((preview as Record<string, unknown>).estimatedDurationSeconds || 0)} sec`} />
           </div>
           <pre style={{ marginTop: 14, maxHeight: 280, overflow: 'auto', borderRadius: 16, background: '#0f1020', color: '#f8fafc', padding: 14, fontSize: 12, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {JSON.stringify(preview, null, 2)}
+            {cleanDisplayText(JSON.stringify(preview, null, 2))}
           </pre>
         </div>
       )}

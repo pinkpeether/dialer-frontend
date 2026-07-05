@@ -22,13 +22,18 @@ export default function ThemeToggle({ compact = false }: Props) {
         padding: compact ? 0 : 3,
         justifyContent: compact ? 'center' : 'flex-start',
         borderRadius: 999,
-        background: 'var(--bg-glass)',
-        border: '1px solid var(--border-strong)',
+        background: compact
+          ? 'var(--bg-glass)'
+          : 'linear-gradient(135deg, rgba(255,255,255,.98), rgba(255,247,219,.92))',
+        border: compact ? '1px solid var(--border-strong)' : '1px solid rgba(240,185,11,.48)',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         color: 'var(--text-3)',
         cursor: 'pointer',
         overflow: 'hidden',
+        boxShadow: compact
+          ? undefined
+          : '0 10px 24px rgba(240,185,11,.18), 0 0 0 4px rgba(240,185,11,.08)',
       }}
     >
       {compact ? (
@@ -46,7 +51,7 @@ export default function ThemeToggle({ compact = false }: Props) {
             color: isDark ? '#fff' : '#7c2d12',
             boxShadow: isDark
               ? '0 4px 14px rgba(251,11,140,0.45)'
-              : '0 4px 14px rgba(240,185,11,0.45)',
+              : '0 5px 18px rgba(240,185,11,0.62), 0 0 0 3px rgba(240,185,11,.18)',
           }}
         >
           {isDark ? <Moon size={14} /> : <Sun size={14} />}
