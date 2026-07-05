@@ -125,7 +125,7 @@ export default function RecordingSearchPanel() {
           <div className="eyebrow pink" style={{ marginBottom: 10 }}>
             <Search size={12} /> Search & Download
           </div>
-          <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Recording Search</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 21 }}>Recording Search</h2>
           <p style={{ color: 'var(--text-3)', marginTop: 8 }}>
             Filter by phone, campaign, agent, source, date range, duration, and transcript presence.
           </p>

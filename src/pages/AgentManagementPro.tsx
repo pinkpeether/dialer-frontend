@@ -185,7 +185,7 @@ export default function AgentManagementPro() {
   const activeReminders = useMemo(() => overview?.reminders || [], [overview])
 
   return (
-    <div className="ptdt-page ptdt-pro-page">
+    <div className="ptdt-page ptdt-pro-page ptdt-agent-management-pro-page">
       <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>

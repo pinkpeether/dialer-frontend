@@ -57,7 +57,7 @@ export default function StorageOverviewPanel() {
           <div className="eyebrow pink" style={{ marginBottom: 10 }}>
             <Database size={12} /> Storage Overview
           </div>
-          <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Storage & Capacity</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 21 }}>Storage & Capacity</h2>
           <p style={{ color: 'var(--text-3)', marginTop: 8 }}>
             Storage: {cleanDisplayText(overview?.provider)} · Bucket: {cleanDisplayText(overview?.bucket)}
           </p>

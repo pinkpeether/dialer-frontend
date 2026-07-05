@@ -86,7 +86,7 @@ export default function LiveAiConsole() {
         <aside className="glass-hi" style={{ borderRadius: 24, padding: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             <Radio size={18} color="var(--pink)" />
-            <h2 style={{ fontFamily: 'var(--font-display)', margin: 0 }}>Active Sessions</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 21 }}>Active Sessions</h2>
           </div>
 
           {sessions.length === 0 ? (

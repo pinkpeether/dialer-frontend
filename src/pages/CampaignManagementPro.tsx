@@ -184,7 +184,7 @@ export default function CampaignManagementPro() {
   ]
 
   return (
-    <div className="ptdt-page ptdt-pro-page">
+    <div className="ptdt-page ptdt-pro-page ptdt-campaign-management-pro">
       <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
@@ -247,7 +247,7 @@ export default function CampaignManagementPro() {
 
       <div className="ptdt-pro-grid two-col" style={{ marginBottom: 18 }}>
         <section className="ptdt-card" style={{ padding: 18 }}>
-          <div className="eyebrow pink" style={{ marginBottom: 10 }}>
+          <div className="eyebrow purple" style={{ marginBottom: 10 }}>
             <CopyPlus size={12} /> Clone Campaign
           </div>
           <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Clone Setup</h2>
@@ -276,7 +276,7 @@ export default function CampaignManagementPro() {
         </section>
 
         <section className="ptdt-card" style={{ padding: 18 }}>
-          <div className="eyebrow pink" style={{ marginBottom: 10 }}>
+          <div className="eyebrow green" style={{ marginBottom: 10 }}>
             <Upload size={12} /> Bulk Import
           </div>
           <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Contacts Upload</h2>
@@ -300,7 +300,7 @@ export default function CampaignManagementPro() {
       <section className="ptdt-card" style={{ padding: 18, marginBottom: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 14 }}>
           <div>
-            <div className="eyebrow pink" style={{ marginBottom: 10 }}>
+            <div className="eyebrow purple" style={{ marginBottom: 10 }}>
               <Settings2 size={12} /> Runtime Controls
             </div>
             <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Dial Settings</h2>
@@ -375,7 +375,7 @@ export default function CampaignManagementPro() {
       </section>
 
       <section className="ptdt-card" style={{ padding: 18 }}>
-        <div className="eyebrow pink" style={{ marginBottom: 10 }}>
+        <div className="eyebrow green" style={{ marginBottom: 10 }}>
           <FileText size={12} /> End-of-Campaign
         </div>
         <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>PDF Report</h2>

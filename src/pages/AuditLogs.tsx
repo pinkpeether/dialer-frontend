@@ -265,7 +265,7 @@ export default function AuditLogs() {
   }
 
   return (
-    <div className="ptdt-page">
+    <div className="ptdt-page ptdt-audit-logs-page">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
         <div className="eyebrow pink" style={{ marginBottom: 14 }}>
           <ShieldCheck size={11} /> PTDT-Dialer Security

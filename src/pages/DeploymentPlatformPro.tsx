@@ -78,7 +78,7 @@ export default function DeploymentPlatformPro() {
   }, [])
 
   return (
-    <div className="ptdt-page ptdt-pro-page">
+    <div className="ptdt-page ptdt-pro-page ptdt-deployment-platform-page">
       <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>

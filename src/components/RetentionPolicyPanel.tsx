@@ -117,7 +117,7 @@ export default function RetentionPolicyPanel() {
         <div className="eyebrow pink" style={{ marginBottom: 10 }}>
           <ShieldAlert size={12} /> Retention Policy
         </div>
-        <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Auto-Purge Controls</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 21 }}>Auto-Purge Controls</h2>
         <p style={{ color: 'var(--text-3)', marginTop: 8 }}>
           Configure 90-day style retention, preview candidates, and run controlled purge batches.
         </p>

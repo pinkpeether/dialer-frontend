@@ -36,10 +36,10 @@ const fieldLabelStyle: React.CSSProperties = {
 const requiredStar = <span style={{ color: danger }}> *</span>
 
 const switchStyle = (active: boolean, pending: boolean): React.CSSProperties => ({
-  width: 66,
-  height: 34,
+  width: 52,
+  height: 26,
   borderRadius: 999,
-  padding: 3,
+  padding: 2,
   border: active ? '1px solid rgba(0,167,71,.62)' : '1px solid rgba(148,163,184,.52)',
   background: active ? 'linear-gradient(135deg,#13b85f,#08a64f)' : 'linear-gradient(135deg,#f3f4f6,#d9dce2)',
   display: 'flex',
@@ -50,8 +50,8 @@ const switchStyle = (active: boolean, pending: boolean): React.CSSProperties => 
 })
 
 const switchKnob: React.CSSProperties = {
-  width: 26,
-  height: 26,
+  width: 20,
+  height: 20,
   borderRadius: '50%',
   background: '#fff',
   boxShadow: '0 4px 10px rgba(15,23,42,.22)',
@@ -220,7 +220,7 @@ export default function TeamUsersV3() {
   const tableHeader = <thead><tr>{['User', 'Email', 'Role', 'Status', 'Active', 'Actions'].map(label => <th key={label} style={{ textAlign: 'left', padding: 14, borderBottom: '1px solid var(--border)' }}>{label}</th>)}</tr></thead>
 
   return (
-    <div className="ptdt-page">
+    <div className="ptdt-page ptdt-team-users-page">
       <PtdtBusyOverlay active={busy} label="Applying team user changes..." />
       <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
 

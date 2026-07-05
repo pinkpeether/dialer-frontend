@@ -537,7 +537,7 @@ export default function Calls() {
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', marginBottom: 18, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 42, height: 42, borderRadius: 16, display: 'grid', placeItems: 'center', background: 'linear-gradient(145deg,rgba(251,11,140,0.25),rgba(0,245,160,0.12))', border: '1px solid var(--border)', boxShadow: '0 0 26px rgba(251,11,140,0.18)', flexShrink: 0 }}><PhoneCall size={20} color={brand.green} /></div>
-          <div><div style={{ fontSize: 20, fontWeight: 950 }}>Call History</div><div style={{ fontSize: 12, color: brand.muted, marginTop: 3 }}>Backend-backed SIP and campaign call records.</div></div>
+          <div><div className="ptdt-page-title" style={{ margin: 0 }}>Call History</div><div style={{ fontSize: 12, color: brand.muted, marginTop: 3 }}>Backend-backed SIP and campaign call records.</div></div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 11px', borderRadius: 999, border: '1px solid var(--border)', background: brand.surface, fontSize: 11, color: brand.muted }}><Clock size={14} /><span>Page {data?.page ?? page} - {data?.total ?? 0} calls</span></div>
       </div>

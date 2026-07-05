@@ -13,3 +13,22 @@
 .ptdt-dialer-left-rail .ptdt-dialer-side-status-stack{position:relative;left:auto;top:auto;width:100%;z-index:auto;display:flex;flex-direction:column;gap:12px}
 .ptdt-dialer-left-rail .ptdt-caller-id-status-row{display:none}
 @media(max-width:900px){.ptdt-dialer-page-desk-controls{justify-content:flex-start;margin:0 0 14px}.ptdt-dialer-left-rail{position:relative;top:auto;width:100%}}
+
+.ptdt-team-users-page table td,
+.ptdt-platform-admin-page table td{font-size:12px!important;line-height:1.35;padding:10px 12px!important}
+.ptdt-team-users-page table th,
+.ptdt-platform-admin-page table th{font-size:10px!important;padding:10px 12px!important}
+.ptdt-team-users-page .badge,
+.ptdt-platform-admin-page .badge{font-size:10px!important;padding:4px 8px!important}
+.ptdt-campaign-management-pro .ptdt-card h2,
+.ptdt-agent-management-pro-page .ptdt-card h2,
+.ptdt-agent-management-pro-page h2,
+.ptdt-deployment-platform-page .ptdt-card h2{font-size:20px!important;line-height:1.14!important}
+.ptdt-campaign-management-pro .ptdt-card p,
+.ptdt-agent-management-pro-page .ptdt-card p,
+.ptdt-deployment-platform-page .ptdt-card p{font-size:12.5px!important;line-height:1.5!important}
+.ptdt-campaign-management-pro .ptdt-card{border-color:rgba(128,87,215,.18)}
+.ptdt-campaign-management-pro .ptdt-card:nth-of-type(2n){border-color:rgba(0,167,71,.20)}
+.ptdt-campaign-management-pro .ptdt-card:nth-of-type(3n){border-color:rgba(100,116,139,.20)}
+.ptdt-advanced-dialing-sample table td{font-size:12px!important}
+.ptdt-audit-logs-page table td:nth-child(4){font-size:80%!important}

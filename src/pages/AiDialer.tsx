@@ -135,7 +135,7 @@ const pageCss = `
 
 .ptdt-ai-timer {
   font-family: var(--font-display);
-  font-size: clamp(46px, 7vw, 86px);
+  font-size: clamp(37px, 5.6vw, 69px);
   line-height: .92;
   letter-spacing: -0.055em;
   font-weight: 950;
