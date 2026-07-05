@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -6,10 +6,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Filter,
   PhoneCall,
   PhoneIncoming,
   PhoneOutgoing,
+  Search,
 } from 'lucide-react'
 import { callsAPI } from '../api/calls.api'
 import CallDispositionModal from '../components/CallDispositionModal'
@@ -348,8 +348,8 @@ function groupCallsByCustomer(calls: CallRow[]): CustomerCallGroup[] {
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
 }
 
-function FieldShell({ children, flex = '0 0 auto', borderless = false }: { children: ReactNode; flex?: string; borderless?: boolean }) {
-  return <div className={borderless ? 'ptdt-calls-search-shell' : undefined} style={{ flex, minWidth: 0, height: borderless ? 44 : 36, display: 'flex', alignItems: 'center', gap: 9, borderRadius: 999, border: borderless ? 0 : '1px solid var(--border-strong)', background: borderless ? 'rgba(255,255,255,.88)' : 'var(--surface)', padding: borderless ? '0 16px' : '0 11px', boxShadow: borderless ? '0 12px 28px rgba(15,23,42,.08)' : undefined }}>{children}</div>
+function FieldShell({ children, flex = '0 0 auto', borderless = false, onClick }: { children: ReactNode; flex?: string; borderless?: boolean; onClick?: () => void }) {
+  return <div onClick={onClick} className={borderless ? 'ptdt-calls-search-shell' : undefined} style={{ flex, minWidth: 0, height: borderless ? 52 : 36, position: borderless ? 'relative' : undefined, display: 'flex', alignItems: 'center', gap: 13, borderRadius: 999, border: borderless ? '1px solid rgba(148,163,184,.26)' : '1px solid var(--border-strong)', background: borderless ? 'rgba(255,255,255,.92)' : 'var(--surface)', padding: borderless ? '0 18px' : '0 11px', boxShadow: borderless ? '0 8px 20px rgba(15,23,42,.06)' : undefined, cursor: borderless ? 'text' : undefined }}>{children}</div>
 }
 
 function DetailField({ label, value, color, mono }: { label: string; value: string; color?: string; mono?: boolean }) {
@@ -382,6 +382,7 @@ export default function Calls() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
   const [draftStartDate, setDraftStartDate] = useState('')
   const [draftEndDate, setDraftEndDate] = useState('')
   const [datePickerOpen, setDatePickerOpen] = useState(false)
@@ -544,7 +545,20 @@ export default function Calls() {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14, alignItems: 'center' }}>
-        <FieldShell flex="1 1 260px" borderless><Filter size={14} color={brand.cyan} /><input className="ptdt-calls-search-input" type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search number, name, campaign, agent, customer..." style={{ all: 'unset', flex: '1 1 auto', minWidth: 0, height: '100%', color: brand.ink, fontSize: 12 }} /></FieldShell>
+        <FieldShell flex="1 1 260px" borderless onClick={() => searchInputRef.current?.focus()}>
+          <Search size={18} color={brand.pink} style={{ flexShrink: 0 }} />
+          <span className="ptdt-calls-search-display" aria-hidden="true" style={{ color: search ? brand.ink : undefined }}>{search || 'Search number, name, campaign, agent, customer...'}</span>
+          <input
+            ref={searchInputRef}
+            className="ptdt-calls-search-input"
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search call history"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </FieldShell>
         <select value={directionFilter || ''} onChange={(e) => updateParam('direction', e.target.value || null)} style={{ height: 36, borderRadius: 999, border: '1px solid var(--border-strong)', background: brand.surface, color: brand.ink, fontSize: 12, padding: '0 10px' }}><option value="">All directions</option><option value="outgoing">Outgoing</option><option value="incoming">Incoming</option></select>
         <select value={statusFilter || ''} onChange={(e) => updateParam('status', e.target.value || null)} style={{ height: 36, borderRadius: 999, border: '1px solid var(--border-strong)', background: brand.surface, color: brand.ink, fontSize: 12, padding: '0 10px' }}><option value="">All statuses</option><option value="answered">Answered</option><option value="missed">Missed</option><option value="failed">Failed</option><option value="queued">Queued</option><option value="in_progress">In progress</option><option value="completed">Completed</option></select>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>

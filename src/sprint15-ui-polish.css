@@ -39,7 +39,18 @@
 .ptdt-dialer-status-pill>span{width:12px;height:12px;border-radius:999px;box-shadow:0 0 0 5px rgba(0,167,71,.08)}
 .ptdt-dialer-status-pill .mono{font-size:10px;color:var(--text-3);font-weight:950;letter-spacing:2.2px}
 .ptdt-dialer-status-pill strong{display:block;margin-top:3px;font-size:14px;font-weight:950}
-.ptdt-calls-search-shell input::placeholder{color:rgba(100,116,139,.72)}
+.ptdt-calls-search-display{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color:rgba(148,163,184,.86);
+  font-size:15px;
+  font-weight:500;
+  line-height:1;
+  pointer-events:none;
+}
 .ptdt-calls-search-input,
 .ptdt-calls-search-input:focus,
 .ptdt-calls-search-input:focus-visible,
@@ -47,13 +58,15 @@
 .ptdt-calls-search-shell input:focus,
 .ptdt-calls-search-shell input:focus-visible{
   all:unset!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:2!important;
   display:block!important;
-  flex:1 1 auto!important;
-  width:auto!important;
-  max-width:none!important;
-  min-width:0!important;
+  width:100%!important;
+  max-width:100%!important;
   height:100%!important;
-  box-sizing:border-box!important;
+  opacity:0!important;
+  cursor:text!important;
   border:0!important;
   border-color:transparent!important;
   outline:0!important;
@@ -64,10 +77,11 @@
   appearance:none!important;
   -webkit-appearance:none!important;
   border-radius:0!important;
-  color:var(--text)!important;
-  font-size:12px!important;
+  color:transparent!important;
+  caret-color:transparent!important;
+  font-size:16px!important;
   font-family:inherit!important;
-  line-height:44px!important;
+  line-height:52px!important;
   padding:0!important;
   margin:0!important;
 }
