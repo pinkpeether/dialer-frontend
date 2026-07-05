@@ -17,7 +17,6 @@ import { useAuthStore }     from '../store/auth.store'
 import { useSipStore }      from '../store/sip.store'
 import { useLiveDashboard } from '../hooks/useLiveDashboard'
 import StatsCard            from '../components/StatsCard'
-import OperationalStatusPills from '../components/OperationalStatusPills'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -562,7 +561,6 @@ export default function Dashboard() {
             Pipeline online · monitoring {dashboardActiveCalls.length} live call{dashboardActiveCalls.length === 1 ? '' : 's'}
           </p>
         </div>
-        <OperationalStatusPills />
       </motion.div>
 
       {/* Stats grid */}

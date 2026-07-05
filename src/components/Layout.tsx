@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import TopOperatorActions from './TopOperatorActions'
 import { useSipStore } from '../store/sip.store'
 import { useAuthStore } from '../store/auth.store'
 import { authAPI } from '../api/auth.api'
 import PtdtDialog from './PtdtDialog'
-import DynamicCallerIdDialerSelector from './DynamicCallerIdDialerSelector'
+import PtdtAnimatedSlogan from './PtdtAnimatedSlogan'
 
 export default function Layout() {
   const sipConfig = useSipStore(s => s.config)
@@ -17,6 +18,14 @@ export default function Layout() {
   const autoRegisterKeyRef = useRef('')
   const autoRegisterInFlightRef = useRef(false)
   const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem('ptdt-sidebar-collapsed') === '1'
+  })
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') window.localStorage.setItem('ptdt-sidebar-collapsed', sidebarCollapsed ? '1' : '0')
+  }, [sidebarCollapsed])
 
   useEffect(() => {
     const ready = Boolean(
@@ -67,6 +76,8 @@ export default function Layout() {
     void unregisterSip().catch(() => undefined)
   }, [logout, navigate, unregisterSip])
 
+  const sidebarWidth = sidebarCollapsed ? 96 : 324
+
   return (
     <div
       onClickCapture={requestSignOut}
@@ -75,7 +86,8 @@ export default function Layout() {
         minHeight: '100vh',
         position: 'relative',
         background: 'var(--bg)',
-      }}
+        '--sidebar-current-width': `${sidebarWidth}px`,
+      } as React.CSSProperties}
     >
       <PtdtDialog
         dialog={confirmSignOut ? {
@@ -93,18 +105,18 @@ export default function Layout() {
       </div>
       <div className="grid-overlay" />
 
-      <Sidebar />
-      <DynamicCallerIdDialerSelector />
-
-      <main style={{
+      <Sidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
+      <main className="ptdt-layout-main" style={{
         flex: 1,
-        marginLeft: 'var(--sidebar-width)',
+        marginLeft: sidebarWidth,
         minHeight: '100vh',
         position: 'relative',
         zIndex: 1,
         display: 'flex',
         flexDirection: 'column',
+        transition: 'margin-left .22s ease',
       }}>
+        <TopOperatorActions />
         <div style={{ flex: 1 }}>
           <Outlet />
         </div>
@@ -131,8 +143,7 @@ export default function Layout() {
             Copyrights © <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>PTDT-Dialer</span>
             {' · '}Pink Taxi Group Ltd · United Kingdom. All rights reserved.
             {' · '}
-            Trust the <span style={{ color: 'var(--pink)', fontWeight: 700 }}>{'{ Code }'}</span>,{' '}
-            <span style={{ color: 'var(--green-2)', fontWeight: 700 }}>// Not the Cult!</span>
+            <PtdtAnimatedSlogan style={{ fontSize: 'inherit', lineHeight: 'inherit' }} />
           </span>
         </footer>
       </main>

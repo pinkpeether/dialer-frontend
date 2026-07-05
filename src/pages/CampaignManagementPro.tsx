@@ -1,8 +1,10 @@
-import { useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { CopyPlus, Download, RefreshCw, Settings2, Upload, FileText, Layers3 } from 'lucide-react'
 import CampaignScriptEditor from '../components/CampaignScriptEditor'
 import AgentScriptPopup from '../components/AgentScriptPopup'
 import { campaignManagementProAPI, type CampaignDialSettingsPayload } from '../api/campaignManagementPro.api'
+import TimezonePicker from '../components/TimezonePicker'
+import { getGlobalTimezones } from '../utils/timezones'
 
 type Message = {
   type: 'success' | 'error' | 'info'
@@ -32,6 +34,24 @@ const numberInputStyle: CSSProperties = {
   ...inputStyle,
   appearance: 'textfield',
 }
+const fieldLabelStyle: CSSProperties = {
+  display: 'block',
+  marginBottom: 7,
+  color: 'var(--text-2)',
+  fontSize: 11,
+  fontWeight: 950,
+  letterSpacing: 0.9,
+  textTransform: 'uppercase',
+}
+
+function RuntimeField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label style={{ display: 'grid', gap: 0, minWidth: 0 }}>
+      <span style={fieldLabelStyle}>{label}</span>
+      {children}
+    </label>
+  )
+}
 
 export default function CampaignManagementPro() {
   const [campaignId, setCampaignId] = useState('')
@@ -48,6 +68,7 @@ export default function CampaignManagementPro() {
     timezone: 'Asia/Karachi',
   })
   const [busy, setBusy] = useState(false)
+  const globalTimezones = useMemo(() => getGlobalTimezones(), [])
 
   const id = Number(campaignId)
   const validCampaignId = Number.isFinite(id) && id > 0
@@ -184,7 +205,7 @@ export default function CampaignManagementPro() {
   ]
 
   return (
-    <div className="ptdt-page ptdt-pro-page">
+    <div className="ptdt-page ptdt-pro-page ptdt-campaign-management-pro">
       <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
@@ -247,7 +268,7 @@ export default function CampaignManagementPro() {
 
       <div className="ptdt-pro-grid two-col" style={{ marginBottom: 18 }}>
         <section className="ptdt-card" style={{ padding: 18 }}>
-          <div className="eyebrow pink" style={{ marginBottom: 10 }}>
+          <div className="eyebrow purple" style={{ marginBottom: 10 }}>
             <CopyPlus size={12} /> Clone Campaign
           </div>
           <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Clone Setup</h2>
@@ -276,7 +297,7 @@ export default function CampaignManagementPro() {
         </section>
 
         <section className="ptdt-card" style={{ padding: 18 }}>
-          <div className="eyebrow pink" style={{ marginBottom: 10 }}>
+          <div className="eyebrow green" style={{ marginBottom: 10 }}>
             <Upload size={12} /> Bulk Import
           </div>
           <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Contacts Upload</h2>
@@ -300,7 +321,7 @@ export default function CampaignManagementPro() {
       <section className="ptdt-card" style={{ padding: 18, marginBottom: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 14 }}>
           <div>
-            <div className="eyebrow pink" style={{ marginBottom: 10 }}>
+            <div className="eyebrow purple" style={{ marginBottom: 10 }}>
               <Settings2 size={12} /> Runtime Controls
             </div>
             <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Dial Settings</h2>
@@ -313,69 +334,79 @@ export default function CampaignManagementPro() {
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-          <select
-            value={dialSettings.mode || 'PROGRESSIVE'}
-            onChange={event => setDialSettings(current => ({ ...current, mode: event.target.value }))}
-            style={inputStyle}
-          >
-            <option value="MANUAL">MANUAL</option>
-            <option value="PREVIEW">PREVIEW</option>
-            <option value="PROGRESSIVE">PROGRESSIVE</option>
-            <option value="PREDICTIVE">PREDICTIVE</option>
-          </select>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={dialSettings.dialingRatio || 1}
-            onChange={event => setDialSettings(current => ({ ...current, dialingRatio: Number(event.target.value) }))}
-            placeholder="Dial ratio"
-            style={numberInputStyle}
-          />
-          <input
-            type="number"
-            min={0}
-            max={20}
-            value={dialSettings.maxRetries || 0}
-            onChange={event => setDialSettings(current => ({ ...current, maxRetries: Number(event.target.value) }))}
-            placeholder="Max retries"
-            style={numberInputStyle}
-          />
-          <input
-            type="number"
-            min={30}
-            value={dialSettings.retryDelay || 300}
-            onChange={event => setDialSettings(current => ({ ...current, retryDelay: Number(event.target.value) }))}
-            placeholder="Retry delay"
-            style={numberInputStyle}
-          />
-          <input
-            type="time"
-            value={dialSettings.startTime || ''}
-            onChange={event => setDialSettings(current => ({ ...current, startTime: event.target.value }))}
-            style={inputStyle}
-          />
-          <input
-            type="time"
-            value={dialSettings.endTime || ''}
-            onChange={event => setDialSettings(current => ({ ...current, endTime: event.target.value }))}
-            style={inputStyle}
-          />
-          <input
-            value={dialSettings.timezone || ''}
-            onChange={event => setDialSettings(current => ({ ...current, timezone: event.target.value }))}
-            placeholder="Timezone e.g. Asia/Karachi"
-            style={inputStyle}
-          />
-          <button type="button" className="btn-brand" onClick={() => void saveDialSettings()} disabled={busy || !validCampaignId}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, alignItems: 'end' }}>
+          <RuntimeField label="Dialing Mode">
+            <select
+              value={dialSettings.mode || 'PROGRESSIVE'}
+              onChange={event => setDialSettings(current => ({ ...current, mode: event.target.value }))}
+              style={inputStyle}
+            >
+              <option value="MANUAL">MANUAL</option>
+              <option value="PREVIEW">PREVIEW</option>
+              <option value="PROGRESSIVE">PROGRESSIVE</option>
+              <option value="PREDICTIVE">PREDICTIVE</option>
+            </select>
+          </RuntimeField>
+          <RuntimeField label="Dialing Ratio">
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={dialSettings.dialingRatio || 1}
+              onChange={event => setDialSettings(current => ({ ...current, dialingRatio: Number(event.target.value) }))}
+              style={numberInputStyle}
+            />
+          </RuntimeField>
+          <RuntimeField label="Max Retries">
+            <input
+              type="number"
+              min={0}
+              max={20}
+              value={dialSettings.maxRetries || 0}
+              onChange={event => setDialSettings(current => ({ ...current, maxRetries: Number(event.target.value) }))}
+              style={numberInputStyle}
+            />
+          </RuntimeField>
+          <RuntimeField label="Retry Delay">
+            <input
+              type="number"
+              min={30}
+              value={dialSettings.retryDelay || 300}
+              onChange={event => setDialSettings(current => ({ ...current, retryDelay: Number(event.target.value) }))}
+              style={numberInputStyle}
+            />
+          </RuntimeField>
+          <RuntimeField label="Start Time">
+            <input
+              type="time"
+              value={dialSettings.startTime || ''}
+              onChange={event => setDialSettings(current => ({ ...current, startTime: event.target.value }))}
+              style={inputStyle}
+            />
+          </RuntimeField>
+          <RuntimeField label="End Time">
+            <input
+              type="time"
+              value={dialSettings.endTime || ''}
+              onChange={event => setDialSettings(current => ({ ...current, endTime: event.target.value }))}
+              style={inputStyle}
+            />
+          </RuntimeField>
+          <RuntimeField label="Timezone *">
+            <TimezonePicker
+              value={dialSettings.timezone || 'Asia/Karachi'}
+              onChange={timezone => setDialSettings(current => ({ ...current, timezone }))}
+              globalTimezones={globalTimezones}
+            />
+          </RuntimeField>
+          <button type="button" className="btn-brand" onClick={() => void saveDialSettings()} disabled={busy || !validCampaignId} style={{ minHeight: 42 }}>
             Save Settings
           </button>
         </div>
       </section>
 
       <section className="ptdt-card" style={{ padding: 18 }}>
-        <div className="eyebrow pink" style={{ marginBottom: 10 }}>
+        <div className="eyebrow green" style={{ marginBottom: 10 }}>
           <FileText size={12} /> End-of-Campaign
         </div>
         <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>PDF Report</h2>

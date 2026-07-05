@@ -418,9 +418,10 @@ export default function SpoofingManagement() {
         <div className="eyebrow green" style={{ marginBottom: 12 }}>Commercial Account</div>
 
         <div
+          className="dynamic-cid-form-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: isPlatformAdmin ? 'minmax(280px, 1.05fr) minmax(260px, 1fr) auto' : 'minmax(260px, 1fr) auto',
+            gridTemplateColumns: isPlatformAdmin ? 'minmax(220px, .9fr) minmax(220px, 1fr) auto' : 'minmax(220px, 1fr) auto',
             gap: 14,
             alignItems: 'center',
           }}
@@ -482,7 +483,7 @@ export default function SpoofingManagement() {
 
       <div className="glass" style={{ overflow: 'hidden', padding: 0, opacity: accountsLoading ? 0.42 : 1, transition: 'opacity .18s ease' }}>
         <div style={{ overflowX: 'auto' }}>
-          <table className="ptdt-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1460 }}>
+          <table className="ptdt-table dynamic-cid-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1180, tableLayout: 'fixed' }}>
             <thead>
               <tr style={{ background: 'var(--bg-glass)' }}>
                 <th style={{ padding: '15px 18px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>CID Number</th>
@@ -529,25 +530,25 @@ export default function SpoofingManagement() {
                     transition: 'opacity .18s ease',
                   }}
                 >
-                  <td className="mono" style={{ padding: '22px 18px', fontWeight: 900, fontSize: 17, whiteSpace: 'nowrap' }}>
+                  <td className="mono" style={{ padding: '18px 14px', fontWeight: 900, fontSize: 15.5, whiteSpace: 'nowrap' }}>
                     {record.displayNumber}
                   </td>
 
-                  <td style={{ padding: '22px 18px', fontSize: 14, lineHeight: 1.35, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '18px 14px', fontSize: 12.5, lineHeight: 1.35, fontWeight: 800, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
                     {selectedAccount ? accountLabel(selectedAccount) : record.commercialAccountId ? `#${record.commercialAccountId}` : '—'}
                   </td>
 
-                  <td style={{ padding: '22px 18px', textAlign: 'center' }}>
+                  <td style={{ padding: '18px 14px', textAlign: 'center' }}>
                     <span className="badge" style={{ color: statusColor(record.approvalStatus), border: `1px solid ${statusColor(record.approvalStatus)}`, fontWeight: 900 }}>
                       {statusLabel(record.approvalStatus)}
                     </span>
                   </td>
 
-                  <td style={{ padding: '22px 18px', textAlign: 'center' }}>
+                  <td style={{ padding: '18px 14px', textAlign: 'center' }}>
                     {record.isUsable ? <span className="badge badge-answered">YES</span> : <span className="badge badge-pending">NO</span>}
                   </td>
 
-                  <td style={{ padding: '22px 18px', textAlign: 'center' }}>
+                  <td style={{ padding: '18px 14px', textAlign: 'center' }}>
                     {isPlatformAdmin ? (
                       statusSwitch(
                         record,
@@ -560,7 +561,7 @@ export default function SpoofingManagement() {
                     )}
                   </td>
 
-                  <td style={{ padding: '22px 18px', textAlign: 'center' }}>
+                  <td style={{ padding: '18px 14px', textAlign: 'center' }}>
                     {isPlatformAdmin ? (
                       statusSwitch(
                         record,
@@ -573,7 +574,7 @@ export default function SpoofingManagement() {
                     )}
                   </td>
 
-                  <td style={{ padding: '22px 18px', textAlign: 'center' }}>
+                  <td style={{ padding: '18px 14px', textAlign: 'center' }}>
                     {isPlatformAdmin ? (
                       <button
                         className="ptdt-action-btn danger"

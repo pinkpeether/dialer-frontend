@@ -42,7 +42,7 @@ export default function IpWhitelistPanel({ policy, onPolicyUpdated }: Props) {
     <div className="glass" style={{ padding: 18 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         <div>
-          <h2 style={{ margin: 0 }}>Admin IP Whitelist</h2>
+          <h2 style={{ margin: 0, fontSize: 21, lineHeight: 1.15 }}>Admin IP Whitelist</h2>
           <p style={{ margin: '6px 0 0', color: 'var(--text-3)', lineHeight: 1.6 }}>
             Pilot-safe admin IP policy. Supports exact IP and simple prefix wildcard like `192.168.0.*`.
           </p>

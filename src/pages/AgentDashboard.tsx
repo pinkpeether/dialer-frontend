@@ -7,6 +7,7 @@ import {
   Radio, RefreshCw, ShieldCheck, UserRound, Wifi,
 } from 'lucide-react'
 import DispositionPanel, { type DispositionSubmitPayload } from '../components/DispositionPanel'
+import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
 import { callsAPI } from '../api/calls.api'
 import { campaignsAPI } from '../api/campaigns.api'
 import { agentsAPI } from '../api/agents.api'
@@ -14,6 +15,7 @@ import { useAuthStore } from '../store/auth.store'
 import { useSipStore } from '../store/sip.store'
 import { SOCKET_EVENTS } from '../constants/socketEvents'
 import { getSocketUrl } from '../utils/socketUrl'
+import { cleanDisplayText } from '../utils/displayText'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -256,6 +258,17 @@ type RecentCallRow = {
   disposition?: string
   durationSeconds?: number
   createdAt: string
+  commercialAccount: {
+    id: number | null
+    name: string
+    code: string
+    status: string
+  }
+}
+
+type RecentCallGroup = RecentCallRow['commercialAccount'] & {
+  key: string
+  calls: RecentCallRow[]
 }
 
 type LiveStats = {
@@ -388,6 +401,35 @@ const nestedName = (value: unknown) => {
   return stringValue(value.name || value.title || value.fullName)
 }
 
+const fallbackRecentAccount = { id: null, name: 'PTDT Super Admin', code: '—', status: '—' }
+
+const normalizeRecentAccount = (row: Record<string, unknown>): RecentCallRow['commercialAccount'] => {
+  const campaign = isRecord(row.campaign) ? row.campaign : null
+  const directAccount = isRecord(row.commercialAccount) ? row.commercialAccount : null
+  const campaignAccount = isRecord(campaign?.commercialAccount) ? campaign?.commercialAccount as Record<string, unknown> : null
+  const account = directAccount || campaignAccount
+  if (!account) return fallbackRecentAccount
+
+  const numericId = Number(account.id)
+  return {
+    id: Number.isFinite(numericId) ? numericId : null,
+    name: cleanDisplayText(account.name, fallbackRecentAccount.name),
+    code: cleanDisplayText(account.code, fallbackRecentAccount.code),
+    status: cleanDisplayText(account.status, fallbackRecentAccount.status),
+  }
+}
+
+const groupRecentCallsByCustomer = (calls: RecentCallRow[]): RecentCallGroup[] => {
+  const map = new Map<string, RecentCallGroup>()
+  calls.forEach(call => {
+    const account = call.commercialAccount || fallbackRecentAccount
+    const key = account.id ? `account-${account.id}` : `account-${account.name}`
+    if (!map.has(key)) map.set(key, { ...account, key, calls: [] })
+    map.get(key)?.calls.push(call)
+  })
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+}
+
 const normalizeToken = (value: unknown) => (
   stringValue(value).trim().toLowerCase().replace(/[\s-]+/g, '_')
 )
@@ -452,6 +494,8 @@ export default function AgentDashboard() {
   // Recent calls
   const [recentCalls, setRecentCalls] = useState<RecentCallRow[]>(cached?.recentCalls ?? [])
   const [recentLoading, setRecentLoading] = useState(!cached?.recentCalls?.length)
+  const [expandedRecentGroups, setExpandedRecentGroups] = useState<Record<string, boolean>>({})
+  const groupedRecentCalls = useMemo(() => groupRecentCallsByCustomer(recentCalls), [recentCalls])
 
   // Campaign progress
   const [campaigns, setCampaigns] = useState<CampaignProgress[]>(cached?.campaigns ?? [])
@@ -528,6 +572,7 @@ export default function AgentDashboard() {
           disposition: stringValue(c.disposition) || undefined,
           durationSeconds: numberValue(c.durationSeconds ?? c.duration ?? c.duration_seconds) || undefined,
           createdAt: stringValue(c.createdAt || c.startedAt || c.updatedAt, new Date().toISOString()),
+          commercialAccount: normalizeRecentAccount(c),
         }))
       setRecentCalls(nextRecentCalls)
       writeAgentDashboardCache({ recentCalls: nextRecentCalls })
@@ -940,9 +985,9 @@ export default function AgentDashboard() {
                   <DispositionPanel onSubmit={handleDisposition} />
                 </motion.div>
               ) : (
-                <motion.div key="idle" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={{ minHeight: 330, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-3)' }}>
-                  <div style={{ width: 82, height: 82, borderRadius: 26, background: 'linear-gradient(135deg,rgba(251,11,140,0.16),rgba(128,87,215,0.10))', border: '1px solid rgba(251,11,140,0.20)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, color: 'var(--pink)', boxShadow: 'var(--shadow-pink)' }}>
-                    <Phone size={34} />
+                <motion.div key="idle" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={{ minHeight: 297, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-3)' }}>
+                  <div style={{ width: 74, height: 74, borderRadius: 24, background: 'linear-gradient(135deg,rgba(251,11,140,0.16),rgba(128,87,215,0.10))', border: '1px solid rgba(251,11,140,0.20)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, color: 'var(--pink)', boxShadow: 'var(--shadow-pink)' }}>
+                    <Phone size={30} />
                   </div>
                   <h2 className="display" style={{ color: 'var(--text)', fontSize: 24, fontWeight: 900, marginBottom: 8 }}>
                     Waiting for next call
@@ -972,70 +1017,80 @@ export default function AgentDashboard() {
 
             {recentLoading ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>Loading…</div>
-            ) : recentCalls.length === 0 ? (
+            ) : groupedRecentCalls.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>No calls yet today.</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {recentCalls.map((call, i) => (
-                  <motion.div
-                    key={call.id}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '28px 1fr auto auto',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: '10px 12px',
-                      borderRadius: 14,
-                      background: i % 2 === 0 ? 'rgba(255,255,255,0.025)' : 'transparent',
-                    }}
-                  >
-                    {/* Direction icon */}
-                    <div style={{
-                      width: 28, height: 28, borderRadius: 10,
-                      display: 'grid', placeItems: 'center',
-                      background: call.direction === 'inbound' ? 'rgba(0,245,160,0.12)' : 'rgba(251,11,140,0.12)',
-                      color: call.direction === 'inbound' ? 'var(--green-2)' : 'var(--pink)',
-                    }}>
-                      {call.direction === 'inbound'
-                        ? <ArrowDownLeft size={14} />
-                        : <ArrowUpRight size={14} />}
-                    </div>
+              <div style={{ display: 'grid', gap: 10 }}>
+                {groupedRecentCalls.map((group, groupIndex) => {
+                  const isOpen = expandedRecentGroups[group.key] ?? groupIndex === 0
+                  const answered = group.calls.filter(call => call.status === 'ANSWERED').length
+                  const missed = group.calls.filter(call => call.status === 'MISSED').length
+                  return (
+                    <div key={group.key} className="glass" style={{ overflow: 'hidden', padding: 0 }}>
+                      <CustomerAccordionHeader isOpen={isOpen} onClick={() => setExpandedRecentGroups(prev => ({ ...prev, [group.key]: !isOpen }))} name={group.name} meta={`Customer Code: ${cleanDisplayText(group.code)} · Status: ${cleanDisplayText(group.status)}`} badges={[{ label: `${group.calls.length} Calls` }, { label: `${answered} Answered`, color: 'var(--green-2)', bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${missed} Missed`, color: '#f0b90b', bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }]} />
+                      {isOpen && (
+                        <div style={{ ...customerAccordionBodyStyle, padding: 8 }}>
+                          {group.calls.map((call, i) => (
+                            <motion.div
+                              key={call.id}
+                              initial={{ opacity: 0, x: -8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.03 }}
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: '28px 1fr auto auto',
+                                alignItems: 'center',
+                                gap: 12,
+                                padding: '10px 12px',
+                                borderRadius: 14,
+                                background: i % 2 === 0 ? 'rgba(255,255,255,0.025)' : 'transparent',
+                              }}
+                            >
+                              <div style={{
+                                width: 28, height: 28, borderRadius: 10,
+                                display: 'grid', placeItems: 'center',
+                                background: call.direction === 'inbound' ? 'rgba(0,245,160,0.12)' : 'rgba(251,11,140,0.12)',
+                                color: call.direction === 'inbound' ? 'var(--green-2)' : 'var(--pink)',
+                              }}>
+                                {call.direction === 'inbound'
+                                  ? <ArrowDownLeft size={14} />
+                                  : <ArrowUpRight size={14} />}
+                              </div>
 
-                    {/* Name + number */}
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {call.remoteName || call.remoteNumber}
-                      </div>
-                      {call.remoteName && (
-                        <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)' }}>{call.remoteNumber}</div>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {call.remoteName || call.remoteNumber}
+                                </div>
+                                {call.remoteName && (
+                                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)' }}>{call.remoteNumber}</div>
+                                )}
+                              </div>
+
+                              <span style={{
+                                padding: '3px 8px', borderRadius: 999, fontSize: 10, fontWeight: 800,
+                                background: call.disposition === 'ANSWERED' || call.status === 'ANSWERED'
+                                  ? 'rgba(0,167,71,0.14)' : 'rgba(255,59,95,0.12)',
+                                color: call.disposition === 'ANSWERED' || call.status === 'ANSWERED'
+                                  ? 'var(--green-2)' : 'rgba(255,59,95,0.90)',
+                                border: `1px solid ${call.disposition === 'ANSWERED' || call.status === 'ANSWERED' ? 'rgba(0,167,71,0.24)' : 'rgba(255,59,95,0.22)'}`,
+                                whiteSpace: 'nowrap',
+                              }}>
+                                {cleanDisplayText(call.disposition || call.status)}
+                              </span>
+
+                              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                <div className="mono" style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 700 }}>
+                                  {formatDuration(call.durationSeconds)}
+                                </div>
+                                <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{timeAgo(call.createdAt)}</div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
                       )}
                     </div>
-
-                    {/* Disposition / status pill */}
-                    <span style={{
-                      padding: '3px 8px', borderRadius: 999, fontSize: 10, fontWeight: 800,
-                      background: call.disposition === 'ANSWERED' || call.status === 'ANSWERED'
-                        ? 'rgba(0,167,71,0.14)' : 'rgba(255,59,95,0.12)',
-                      color: call.disposition === 'ANSWERED' || call.status === 'ANSWERED'
-                        ? 'var(--green-2)' : 'rgba(255,59,95,0.90)',
-                      border: `1px solid ${call.disposition === 'ANSWERED' || call.status === 'ANSWERED' ? 'rgba(0,167,71,0.24)' : 'rgba(255,59,95,0.22)'}`,
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {call.disposition || call.status}
-                    </span>
-
-                    {/* Duration + time ago */}
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div className="mono" style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 700 }}>
-                        {formatDuration(call.durationSeconds)}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{timeAgo(call.createdAt)}</div>
-                    </div>
-                  </motion.div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </motion.section>

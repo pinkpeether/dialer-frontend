@@ -36,10 +36,10 @@ const fieldLabelStyle: React.CSSProperties = {
 const requiredStar = <span style={{ color: danger }}> *</span>
 
 const switchStyle = (active: boolean, pending: boolean): React.CSSProperties => ({
-  width: 66,
-  height: 34,
+  width: 52,
+  height: 26,
   borderRadius: 999,
-  padding: 3,
+  padding: 2,
   border: active ? '1px solid rgba(0,167,71,.62)' : '1px solid rgba(148,163,184,.52)',
   background: active ? 'linear-gradient(135deg,#13b85f,#08a64f)' : 'linear-gradient(135deg,#f3f4f6,#d9dce2)',
   display: 'flex',
@@ -50,12 +50,14 @@ const switchStyle = (active: boolean, pending: boolean): React.CSSProperties => 
 })
 
 const switchKnob: React.CSSProperties = {
-  width: 26,
-  height: 26,
+  width: 20,
+  height: 20,
   borderRadius: '50%',
   background: '#fff',
   boxShadow: '0 4px 10px rgba(15,23,42,.22)',
 }
+
+const teamUserColumnWidths = ['23%', '25%', '15%', '13%', '10%', '14%']
 
 const roleLabel = (role: unknown) => {
   if (role === 'CUSTOMER_ADMIN') return 'Customer Admin'
@@ -208,19 +210,19 @@ export default function TeamUsersV3() {
     const canToggleActive = !isSelf && (!isSupervisor || user.role === 'AGENT')
     const statusStyle = active ? { color: green, bg: 'rgba(0,167,71,.10)' } : { color: 'var(--text-3)', bg: 'var(--bg-2)' }
     return <tr key={Number(user.id)} style={{ borderBottom: '1px solid var(--border)' }}>
-      <td style={{ padding: 14, fontWeight: 900 }}>{editingId === Number(user.id) ? <input value={editingName} onChange={event => setEditingName(event.target.value)} style={{ ...inputStyle, maxWidth: 260, minHeight: 38 }} autoFocus /> : String(user.name || '—')}<br /><span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{String(user.agentCode || '')}</span></td>
-      <td style={{ padding: 14 }}>{String(user.email || '—')}</td>
-      <td style={{ padding: 14 }}>{roleLabel(user.role)}</td>
-      <td style={{ padding: 14 }}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}` }}>{String(user.status)}</span></td>
+      <td style={{ padding: 14, fontWeight: 900, fontSize: 16.8 }}>{editingId === Number(user.id) ? <input value={editingName} onChange={event => setEditingName(event.target.value)} style={{ ...inputStyle, maxWidth: 260, minHeight: 38 }} autoFocus /> : String(user.name || '—')}<br /><span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{String(user.agentCode || '')}</span></td>
+      <td style={{ padding: 14, fontSize: 16.8, fontWeight: 750 }}>{String(user.email || '—')}</td>
+      <td style={{ padding: 14, fontSize: 16.8, fontWeight: 800 }}>{roleLabel(user.role)}</td>
+      <td style={{ padding: 14 }}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}`, fontSize: 11 }}>{String(user.status)}</span></td>
       <td style={{ padding: 14 }}>{isSelf ? <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }}><ShieldCheck size={13} /> Signed in</span> : canToggleActive ? <button type="button" role="switch" aria-checked={active} disabled={pendingId === Number(user.id)} onClick={() => void setUserActive(user, !active)} style={switchStyle(active, pendingId === Number(user.id))}><span style={switchKnob} /></button> : <span className="badge" style={{ color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>Protected</span>}</td>
       <td style={{ padding: 14 }}><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{editingId === Number(user.id) ? <><button type="button" className="ptdt-action-btn" disabled={pendingId === Number(user.id)} onClick={() => void saveEditUser(user)}><Save size={13} /> Save</button><button type="button" className="ptdt-action-btn" onClick={cancelEditUser}><X size={13} /> Cancel</button></> : !isSelf && (!isSupervisor || user.role === 'AGENT') ? <button type="button" className="ptdt-action-btn" onClick={() => startEditUser(user)}><Pencil size={13} /> Edit</button> : null}{isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setArmedEmail(''); setFinalTarget(user) }}>Cleanup</button> : null}{isSelf || (isSupervisor && user.role !== 'AGENT') ? <span style={{ color: 'var(--text-3)' }}>—</span> : null}</div></td>
     </tr>
   }
 
-  const tableHeader = <thead><tr>{['User', 'Email', 'Role', 'Status', 'Active', 'Actions'].map(label => <th key={label} style={{ textAlign: 'left', padding: 14, borderBottom: '1px solid var(--border)' }}>{label}</th>)}</tr></thead>
+  const tableHeader = <thead><tr>{['User', 'Email', 'Role', 'Status', 'Active', 'Actions'].map((label, index) => <th key={label} style={{ width: teamUserColumnWidths[index], textAlign: 'left', padding: 14, borderBottom: '1px solid var(--border)', fontSize: 15.5, fontWeight: 950, letterSpacing: 0.7, color: 'var(--text-2)' }}>{label}</th>)}</tr></thead>
 
   return (
-    <div className="ptdt-page">
+    <div className="ptdt-page ptdt-team-users-page">
       <PtdtBusyOverlay active={busy} label="Applying team user changes..." />
       <PtdtDialog dialog={dialog} onClose={() => setDialog(null)} />
 
@@ -237,8 +239,8 @@ export default function TeamUsersV3() {
         const agentCount = group.users.filter(user => user.role === 'AGENT').length
         const supervisorCount = group.users.filter(user => user.role === 'SUPERVISOR').length
         const adminCount = group.users.filter(user => user.role === 'CUSTOMER_ADMIN').length
-        return <div key={group.key} className="glass" style={{ overflow: 'hidden' }}><CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.users.length} Users` }, { label: `${agentCount} Agents`, color: green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${supervisorCount} Supervisors`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }, ...(adminCount > 0 ? [{ label: `${adminCount} Customer Admins`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }] : [])]} />{isOpen && <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>{tableHeader}<tbody>{group.users.map(renderUserRow)}</tbody></table></div>}</div>
-      })}</div> : <div className="glass" style={{ padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>{tableHeader}<tbody>{agents.map(renderUserRow)}</tbody></table></div>}
+        return <div key={group.key} className="glass" style={{ overflow: 'hidden' }}><CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.users.length} Users` }, { label: `${agentCount} Agents`, color: green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${supervisorCount} Supervisors`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }, ...(adminCount > 0 ? [{ label: `${adminCount} Customer Admins`, color: 'var(--text-2)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }] : [])]} />{isOpen && <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '100%', tableLayout: 'fixed' }}>{tableHeader}<tbody>{group.users.map(renderUserRow)}</tbody></table></div>}</div>
+      })}</div> : <div className="glass" style={{ padding: 0, overflow: 'hidden' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '100%', tableLayout: 'fixed' }}>{tableHeader}<tbody>{agents.map(renderUserRow)}</tbody></table></div>}
     </div>
   )
 }

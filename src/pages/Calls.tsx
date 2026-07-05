@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -6,16 +6,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Filter,
   PhoneCall,
   PhoneIncoming,
   PhoneOutgoing,
+  Search,
 } from 'lucide-react'
 import { callsAPI } from '../api/calls.api'
 import CallDispositionModal from '../components/CallDispositionModal'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
 import type { DispositionValue } from '../components/DispositionPanel'
 import { mergeMasterCustomerGroups, useMasterCustomerAccounts } from '../hooks/useMasterCustomerAccounts'
+import { cleanDisplayText } from '../utils/displayText'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -347,8 +348,8 @@ function groupCallsByCustomer(calls: CallRow[]): CustomerCallGroup[] {
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
 }
 
-function FieldShell({ children, flex = '0 0 auto' }: { children: ReactNode; flex?: string }) {
-  return <div style={{ flex, minWidth: 0, height: 36, display: 'flex', alignItems: 'center', gap: 8, borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', padding: '0 11px' }}>{children}</div>
+function FieldShell({ children, flex = '0 0 auto', borderless = false, onClick }: { children: ReactNode; flex?: string; borderless?: boolean; onClick?: () => void }) {
+  return <div onClick={onClick} className={borderless ? 'ptdt-calls-search-shell' : undefined} style={{ flex, minWidth: 0, height: borderless ? 52 : 36, position: borderless ? 'relative' : undefined, display: 'flex', alignItems: 'center', gap: 13, borderRadius: 999, border: borderless ? '1px solid rgba(148,163,184,.26)' : '1px solid var(--border-strong)', background: borderless ? 'rgba(255,255,255,.92)' : 'var(--surface)', padding: borderless ? '0 18px' : '0 11px', boxShadow: borderless ? '0 8px 20px rgba(15,23,42,.06)' : undefined, cursor: borderless ? 'text' : undefined }}>{children}</div>
 }
 
 function DetailField({ label, value, color, mono }: { label: string; value: string; color?: string; mono?: boolean }) {
@@ -381,6 +382,7 @@ export default function Calls() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
   const [draftStartDate, setDraftStartDate] = useState('')
   const [draftEndDate, setDraftEndDate] = useState('')
   const [datePickerOpen, setDatePickerOpen] = useState(false)
@@ -537,13 +539,26 @@ export default function Calls() {
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', marginBottom: 18, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 42, height: 42, borderRadius: 16, display: 'grid', placeItems: 'center', background: 'linear-gradient(145deg,rgba(251,11,140,0.25),rgba(0,245,160,0.12))', border: '1px solid var(--border)', boxShadow: '0 0 26px rgba(251,11,140,0.18)', flexShrink: 0 }}><PhoneCall size={20} color={brand.green} /></div>
-          <div><div style={{ fontSize: 20, fontWeight: 950 }}>Call History</div><div style={{ fontSize: 12, color: brand.muted, marginTop: 3 }}>Backend-backed SIP and campaign call records.</div></div>
+          <div><div className="ptdt-page-title" style={{ margin: 0 }}>Call History</div><div style={{ fontSize: 12, color: brand.muted, marginTop: 3 }}>Backend-backed SIP and campaign call records.</div></div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 11px', borderRadius: 999, border: '1px solid var(--border)', background: brand.surface, fontSize: 11, color: brand.muted }}><Clock size={14} /><span>Page {data?.page ?? page} - {data?.total ?? 0} calls</span></div>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14, alignItems: 'center' }}>
-        <FieldShell flex="1 1 260px"><Filter size={14} color={brand.cyan} /><input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search number, name, campaign, agent, customer..." style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', color: brand.ink, fontSize: 12, outline: 'none' }} /></FieldShell>
+        <FieldShell flex="1 1 260px" borderless onClick={() => searchInputRef.current?.focus()}>
+          <Search size={18} color={brand.pink} style={{ flexShrink: 0 }} />
+          <span className="ptdt-calls-search-display" aria-hidden="true" style={{ color: search ? brand.ink : undefined }}>{search || 'Search number, name, campaign, agent, customer...'}</span>
+          <input
+            ref={searchInputRef}
+            className="ptdt-calls-search-input"
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search call history"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </FieldShell>
         <select value={directionFilter || ''} onChange={(e) => updateParam('direction', e.target.value || null)} style={{ height: 36, borderRadius: 999, border: '1px solid var(--border-strong)', background: brand.surface, color: brand.ink, fontSize: 12, padding: '0 10px' }}><option value="">All directions</option><option value="outgoing">Outgoing</option><option value="incoming">Incoming</option></select>
         <select value={statusFilter || ''} onChange={(e) => updateParam('status', e.target.value || null)} style={{ height: 36, borderRadius: 999, border: '1px solid var(--border-strong)', background: brand.surface, color: brand.ink, fontSize: 12, padding: '0 10px' }}><option value="">All statuses</option><option value="answered">Answered</option><option value="missed">Missed</option><option value="failed">Failed</option><option value="queued">Queued</option><option value="in_progress">In progress</option><option value="completed">Completed</option></select>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -570,7 +585,7 @@ export default function Calls() {
           const pending = group.calls.filter(call => call.isDynamicCallerIdBackendCall && call.status === 'unknown').length
           return (
             <div key={group.key} style={{ ...glassPanel, borderRadius: 20, overflow: 'hidden' }}>
-              <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.calls.length} Calls` }, { label: `${completed} Completed`, color: brand.green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${missed} Missed`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(pending > 0 ? [{ label: `${pending} Pending`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : [])]} />
+              <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${cleanDisplayText(group.code)} · Status: ${cleanDisplayText(group.status)}`} badges={[{ label: `${group.calls.length} Calls` }, { label: `${completed} Completed`, color: brand.green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${missed} Missed`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(pending > 0 ? [{ label: `${pending} Pending`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : [])]} />
               {isOpen && <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto', overflowY: 'hidden' }}><CallsTableHeader /><div>{group.calls.map(renderCallRow)}</div></div>}
             </div>
           )

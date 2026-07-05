@@ -179,7 +179,7 @@ export default function LiveAiAssistantPanel({ callId, compact = false }: Props)
           <p style={{ margin: 0, letterSpacing: 3, textTransform: 'uppercase', fontSize: 12, color: 'var(--pink)', fontWeight: 900 }}>
             Live AI Assistant
           </p>
-          <h2 style={{ margin: '8px 0 6px', fontSize: compact ? 22 : 30 }}>Realtime Call Intelligence</h2>
+          <h2 style={{ margin: '8px 0 6px', fontSize: compact ? 20 : 24 }}>Realtime Call Intelligence</h2>
           <p style={{ margin: 0, color: 'var(--text-3)', lineHeight: 1.6 }}>
             Live transcript chunks, answer detection, sentiment alerts, smart script hints, auto disposition, and callback suggestions.
           </p>

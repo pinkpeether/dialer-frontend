@@ -110,7 +110,7 @@ export default function CallControls() {
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
             <ShieldCheck size={14} /> Supervisor Call-Control Console
           </div>
-          <h1 className="ptdt-page-title" style={{ fontSize: 'clamp(34px, 5vw, 58px)', margin: 0 }}>
+          <h1 className="ptdt-page-title" style={{ margin: 0 }}>
             Advanced <span className="gradient-brand-text">Call Controls</span>
           </h1>
           <p className="ptdt-page-desc" style={{ marginTop: 12 }}>

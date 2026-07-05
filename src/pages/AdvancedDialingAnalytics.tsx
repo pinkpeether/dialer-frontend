@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Activity, AlertTriangle, BarChart3, CheckCircle2, Gauge, Phone, Play, RefreshCw, ShieldAlert, Sparkles, Square, Zap } from 'lucide-react'
 import { advancedDialingAPI } from '../api/advancedDialing.api'
+import { cleanDisplayText } from '../utils/displayText'
 
 type DialingMetrics = {
   generatedAt?: string
@@ -392,7 +393,7 @@ function BaselineMetricsPanel({ metrics }: { metrics: DialingMetrics | null }) {
 function RecentCallsTable({ calls }: { calls: RecentDialingCall[] }) {
   if (calls.length === 0) return <EmptyState text="No recent calls available." />
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div className="ptdt-advanced-dialing-sample" style={{ overflowX: 'auto' }}>
       <table className="ptdt-table" style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -407,12 +408,12 @@ function RecentCallsTable({ calls }: { calls: RecentDialingCall[] }) {
         <tbody>
           {calls.slice(0, 20).map(call => (
             <tr key={call.id} className="table-row" style={{ borderBottom: '1px solid var(--border)' }}>
-              <td style={{ padding: '10px 8px', fontWeight: 800 }}>#{call.id}</td>
-              <td style={{ padding: '10px 8px' }}>{call.campaignId || '-'}</td>
-              <td style={{ padding: '10px 8px' }}>{call.agentId || '-'}</td>
-              <td style={{ padding: '10px 8px' }}>{call.status || '-'}</td>
-              <td style={{ padding: '10px 8px' }}>{call.disposition || '-'}</td>
-              <td style={{ padding: '10px 8px' }}>{fmtDate(call.startedAt || undefined)}</td>
+              <td style={{ padding: '8px 8px', fontWeight: 800 }}>#{call.id}</td>
+              <td style={{ padding: '8px 8px' }}>{call.campaignId || '-'}</td>
+              <td style={{ padding: '8px 8px' }}>{call.agentId || '-'}</td>
+              <td style={{ padding: '8px 8px' }}>{cleanDisplayText(call.status, '-')}</td>
+              <td style={{ padding: '8px 8px' }}>{cleanDisplayText(call.disposition, '-')}</td>
+              <td style={{ padding: '8px 8px' }}>{fmtDate(call.startedAt || undefined)}</td>
             </tr>
           ))}
         </tbody>

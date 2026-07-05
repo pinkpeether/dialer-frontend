@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Database, RefreshCw } from 'lucide-react'
 import { recordingStorageProAPI } from '../api/recordingStoragePro.api'
+import { cleanDisplayText } from '../utils/displayText'
 
 type Overview = {
   provider?: string
@@ -56,9 +57,9 @@ export default function StorageOverviewPanel() {
           <div className="eyebrow pink" style={{ marginBottom: 10 }}>
             <Database size={12} /> Storage Overview
           </div>
-          <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Storage & Capacity</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 21 }}>Storage & Capacity</h2>
           <p style={{ color: 'var(--text-3)', marginTop: 8 }}>
-            Storage: {overview?.provider || '—'} · Bucket: {overview?.bucket || '—'}
+            Storage: {cleanDisplayText(overview?.provider)} · Bucket: {cleanDisplayText(overview?.bucket)}
           </p>
         </div>
         <button type="button" className="ptdt-action-btn" onClick={() => void load()} disabled={loading}>
@@ -85,7 +86,7 @@ export default function StorageOverviewPanel() {
           <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', letterSpacing: 1.1, textTransform: 'uppercase', marginBottom: 10 }}>By Source</div>
           {(overview?.bySource || []).map(row => (
             <div key={row.source} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border-soft)' }}>
-              <span>{row.source}</span>
+              <span>{cleanDisplayText(row.source)}</span>
               <strong>{row.count}</strong>
             </div>
           ))}
@@ -95,7 +96,7 @@ export default function StorageOverviewPanel() {
           <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', letterSpacing: 1.1, textTransform: 'uppercase', marginBottom: 10 }}>By Status</div>
           {(overview?.byStatus || []).map(row => (
             <div key={row.status} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border-soft)' }}>
-              <span>{row.status}</span>
+              <span>{cleanDisplayText(row.status)}</span>
               <strong>{row.count}</strong>
             </div>
           ))}
@@ -105,7 +106,7 @@ export default function StorageOverviewPanel() {
           <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', letterSpacing: 1.1, textTransform: 'uppercase', marginBottom: 10 }}>Capabilities</div>
           {Object.entries(overview?.storageCapabilities || {}).map(([key, value]) => (
             <div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border-soft)' }}>
-              <span>{key}</span>
+              <span>{cleanDisplayText(key)}</span>
               <strong style={{ color: value ? 'var(--green-2)' : 'var(--text-3)' }}>{value ? 'YES' : 'NO'}</strong>
             </div>
           ))}

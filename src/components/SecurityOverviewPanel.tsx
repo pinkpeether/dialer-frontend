@@ -63,7 +63,7 @@ export default function SecurityOverviewPanel({ overview, checklist }: Props) {
       <div className="glass" style={{ padding: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
           <div>
-            <h2 style={{ margin: 0 }}>Security Hardening Checklist</h2>
+            <h2 style={{ margin: 0, fontSize: 21, lineHeight: 1.15 }}>Security Hardening Checklist</h2>
             <p style={{ margin: '6px 0 0', color: 'var(--text-3)', lineHeight: 1.6 }}>
               Helmet, rate limits, CORS, IP whitelist, session policy, and backup guardrails.
             </p>

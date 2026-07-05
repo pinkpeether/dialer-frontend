@@ -45,7 +45,7 @@ export default function BackupRestorePanel({ policy, onPolicyUpdated }: Props) {
     <div className="glass" style={{ padding: 18 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         <div>
-          <h2 style={{ margin: 0 }}>Backup & Restore Guardrails</h2>
+          <h2 style={{ margin: 0, fontSize: 21, lineHeight: 1.15 }}>Backup & Restore Guardrails</h2>
           <p style={{ margin: '6px 0 0', color: 'var(--text-3)', lineHeight: 1.6 }}>
             Export redacted pilot backup and validate restore files without writing to DB.
           </p>
