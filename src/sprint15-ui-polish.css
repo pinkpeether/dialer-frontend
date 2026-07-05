@@ -39,15 +39,21 @@
 .ptdt-dialer-status-pill>span{width:12px;height:12px;border-radius:999px;box-shadow:0 0 0 5px rgba(0,167,71,.08)}
 .ptdt-dialer-status-pill .mono{font-size:10px;color:var(--text-3);font-weight:950;letter-spacing:2.2px}
 .ptdt-dialer-status-pill strong{display:block;margin-top:3px;font-size:14px;font-weight:950}
-.ptdt-animated-slogan{display:inline-flex;align-items:center;justify-content:center;color:var(--text-2);font-family:var(--font-display);font-size:13px;line-height:1.25;white-space:pre}
-.ptdt-animated-slogan.is-compact{display:inline-block;font-family:var(--font-mono);font-size:10.5px;line-height:1.45}
-.ptdt-animated-slogan-line{display:inline}
-.ptdt-animated-slogan-cursor{display:inline-block;width:1.5px;height:1.1em;margin-left:1px;background:var(--text-3);vertical-align:-0.15em;animation:ptdt-slogan-blink .72s steps(1) infinite}
-.ptdt-animated-slogan-cult{position:relative;display:inline-block}
-.ptdt-animated-slogan-cult::before,.ptdt-animated-slogan-cult::after{content:"";position:absolute;left:0;right:0;background:#ff2f00;border-radius:2px;transform:scaleX(0);transform-origin:left;transition:transform .8s ease-in-out}
-.ptdt-animated-slogan-cult::before{top:50%;height:.06em}
-.ptdt-animated-slogan-cult::after{bottom:.05em;height:.12em}
-.ptdt-animated-slogan.is-finished .ptdt-animated-slogan-cult::before,.ptdt-animated-slogan.is-finished .ptdt-animated-slogan-cult::after{transform:scaleX(1)}
+.ptdt-animated-slogan.slogan{font-size:clamp(18px,4.5vw,24px);white-space:pre;font-family:'Space Grotesk',sans-serif;display:inline-flex;align-items:center;color:#334155;line-height:1}
+.ptdt-animated-slogan.slogan.is-compact{font-size:12.5px;white-space:nowrap}
+.ptdt-animated-slogan.slogan .char{display:none}
+.ptdt-animated-slogan.slogan .char.visible{display:inline}
+.ptdt-animated-slogan.slogan .light{font-weight:300;color:#cbd5e1;letter-spacing:-.05em}
+.ptdt-animated-slogan.slogan .code{font-family:'Fira Code',monospace;font-weight:700;color:#EB4491;letter-spacing:-.01em}
+.ptdt-animated-slogan.slogan .gray{font-weight:300;color:#94a3b8;letter-spacing:-.05em}
+.ptdt-animated-slogan.slogan .cult{font-weight:700;color:#002FFF;position:relative;letter-spacing:-.01em}
+.ptdt-animated-slogan.slogan .cult::before,.ptdt-animated-slogan.slogan .cult::after{content:"";position:absolute;left:0;right:0;background:#FF2F00;border-radius:2px;transform:scaleX(0);transform-origin:left;transition:transform .8s ease-in-out}
+.ptdt-animated-slogan.slogan .cult::before{top:50%;height:.06em}
+.ptdt-animated-slogan.slogan .cult::after{bottom:.05em;height:.12em}
+.ptdt-animated-slogan.slogan.finished .cult::before,.ptdt-animated-slogan.slogan.finished .cult::after{transform:scaleX(1)}
+.ptdt-animated-slogan.slogan .brackets{font-family:'Fira Code',monospace;color:#57BF39;font-weight:700}
+.ptdt-animated-slogan.slogan .exclamation{font-weight:700;color:#FF2F00}
+.ptdt-animated-slogan.slogan .cursor{display:inline-block;width:1.5px;height:1.1em;background:#cbd5e1;margin-left:1px;animation:ptdt-slogan-blink .72s steps(1) infinite;vertical-align:middle}
 @keyframes ptdt-slogan-blink{0%,100%{opacity:1}50%{opacity:0}}
 .ptdt-calls-search-display{
   flex:1 1 auto;
