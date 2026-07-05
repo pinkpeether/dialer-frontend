@@ -34,3 +34,11 @@
 .ptdt-audit-logs-page table td:nth-child(4){font-size:80%!important}
 .ptdt-mobile-page-settings,
 .ptdt-mobile-page-system-settings{width:min(100%,1560px)!important;max-width:1560px!important}
+.ptdt-dialer-status-strip{display:flex;align-items:center;gap:12px;margin:0 0 16px 0;position:relative;z-index:2}
+.ptdt-dialer-status-pill{min-height:58px;padding:10px 20px;border-radius:24px;border:1px solid var(--border);background:var(--bg-glass-hi);box-shadow:0 12px 28px rgba(15,23,42,.10),inset 0 1px 0 rgba(255,255,255,.75);display:flex;align-items:center;gap:12px}
+.ptdt-dialer-status-pill>span{width:12px;height:12px;border-radius:999px;box-shadow:0 0 0 5px rgba(0,167,71,.08)}
+.ptdt-dialer-status-pill .mono{font-size:10px;color:var(--text-3);font-weight:950;letter-spacing:2.2px}
+.ptdt-dialer-status-pill strong{display:block;margin-top:3px;font-size:14px;font-weight:950}
+.ptdt-calls-search-shell input::placeholder{color:rgba(100,116,139,.72)}
+[data-theme="dark"] .ptdt-calls-search-shell{background:rgba(255,255,255,.08)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important}
+@media(max-width:900px){.ptdt-dialer-status-strip{flex-wrap:wrap;margin-left:0}.ptdt-dialer-status-pill{min-height:48px;border-radius:18px;padding:9px 14px}}

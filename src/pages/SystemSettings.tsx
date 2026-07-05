@@ -3,15 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Clock3, Radio, RefreshCw, RotateCcw, Save, Settings2, SlidersHorizontal, TimerReset } from 'lucide-react'
 import { settingsAPI } from '../api/settings.api'
-
-const DEFAULT_TIMEZONE_OPTIONS = [
-  'Asia/Karachi',
-  'UTC',
-  'America/New_York',
-  'America/Chicago',
-  'America/Los_Angeles',
-  'Europe/London',
-]
+import TimezonePicker from '../components/TimezonePicker'
+import { getGlobalTimezones } from '../utils/timezones'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -476,6 +469,7 @@ export default function SystemSettings() {
   }
 
   const recordingEnabled = form.recordingEnabled
+  const globalTimezones = useMemo(() => getGlobalTimezones(), [])
 
   return (
     <div className="ptdt-mobile-page ptdt-mobile-page-system-settings" style={{ padding: '32px 36px', maxWidth: 1320, margin: '0 auto' }}>
@@ -524,15 +518,11 @@ export default function SystemSettings() {
                   description="Used for campaign windows, callback timing, and scheduler defaults."
                   icon={<Clock3 size={17} />}
                 >
-                  <select
+                  <TimezonePicker
                     value={String(form.defaultTimezone || '')}
-                    onChange={e => setField('defaultTimezone', e.target.value)}
-                    style={inputStyle}
-                  >
-                    {DEFAULT_TIMEZONE_OPTIONS.map(zone => (
-                      <option key={zone} value={zone}>{zone}</option>
-                    ))}
-                  </select>
+                    onChange={timezone => setField('defaultTimezone', timezone)}
+                    globalTimezones={globalTimezones}
+                  />
                 </SettingField>
 
                 <SettingField

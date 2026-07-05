@@ -813,6 +813,23 @@ export default function Dialer() {
         </div>
       </motion.div>
 
+      <div className="ptdt-dialer-status-strip">
+        <div className="ptdt-dialer-status-pill">
+          <span style={{ background: sipColor }} />
+          <div>
+            <div className="mono">SIP</div>
+            <strong style={{ color: sipColor }}>{sipLabel}</strong>
+          </div>
+        </div>
+        <div className="ptdt-dialer-status-pill">
+          <span style={{ background: socketConnected ? 'var(--green-2)' : 'var(--pink)' }} />
+          <div>
+            <div className="mono">REALTIME</div>
+            <strong style={{ color: socketConnected ? 'var(--green-2)' : 'var(--pink)' }}>{socketConnected ? 'Online' : 'Offline'}</strong>
+          </div>
+        </div>
+      </div>
+
       <div className="ptdt-dialer-page-desk-controls">
         <div className="ptdt-dialer-idle-pill">
           <span />

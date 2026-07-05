@@ -349,7 +349,7 @@ function groupCallsByCustomer(calls: CallRow[]): CustomerCallGroup[] {
 }
 
 function FieldShell({ children, flex = '0 0 auto', borderless = false }: { children: ReactNode; flex?: string; borderless?: boolean }) {
-  return <div style={{ flex, minWidth: 0, height: 36, display: 'flex', alignItems: 'center', gap: 8, borderRadius: 999, border: borderless ? '1px solid transparent' : '1px solid var(--border-strong)', background: 'var(--surface)', padding: '0 11px' }}>{children}</div>
+  return <div className={borderless ? 'ptdt-calls-search-shell' : undefined} style={{ flex, minWidth: 0, height: borderless ? 44 : 36, display: 'flex', alignItems: 'center', gap: 9, borderRadius: 999, border: borderless ? '1px solid transparent' : '1px solid var(--border-strong)', background: borderless ? 'rgba(255,255,255,.88)' : 'var(--surface)', padding: borderless ? '0 16px' : '0 11px', boxShadow: borderless ? '0 12px 28px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.9)' : undefined }}>{children}</div>
 }
 
 function DetailField({ label, value, color, mono }: { label: string; value: string; color?: string; mono?: boolean }) {

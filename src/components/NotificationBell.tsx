@@ -154,22 +154,22 @@ export default function NotificationBell() {
             exit={{ opacity: 0, y: 6, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 380, damping: 28 }}
             style={{
-              position: 'fixed',
-              left: 14,
-              bottom: 92,
-              width: 'calc(var(--sidebar-width) - 28px)',
-              maxHeight: 'min(420px, calc(100vh - 130px))',
+              position: 'absolute',
+              right: 0,
+              top: 'calc(100% + 10px)',
+              width: 'min(360px, calc(100vw - 32px))',
+              maxHeight: 'min(420px, calc(100vh - 150px))',
               overflowY: 'auto',
-              borderRadius: 24,
-              background: 'linear-gradient(150deg,rgba(8,5,18,0.98),rgba(16,10,30,0.97))',
-              border: '1px solid rgba(255,255,255,0.13)',
-              boxShadow: '0 24px 60px rgba(0,0,0,0.55), 0 0 40px rgba(251,11,140,0.12)',
-              zIndex: 9999,
+              borderRadius: 22,
+              background: 'var(--bg-glass-hi)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 24px 60px rgba(15,23,42,0.18), 0 0 24px rgba(251,11,140,0.10)',
+              zIndex: 10050,
             }}
           >
             {/* Header */}
-            <div style={{ padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)', position: 'sticky', top: 0, background: 'rgba(8,5,18,0.95)', backdropFilter: 'blur(8px)', zIndex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 900, color: '#fff' }}>Notifications</div>
+            <div style={{ padding: '14px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--bg-glass-hi)', backdropFilter: 'blur(8px)', zIndex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--text)' }}>Notifications</div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 {unreadCount > 0 && (
                   <button type="button" onClick={markAllRead} style={{ fontSize: 10.5, color: 'var(--pink)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 800 }}>
@@ -181,7 +181,7 @@ export default function NotificationBell() {
 
             {/* Items */}
             {notifications.length === 0 ? (
-              <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
                 No notifications yet
               </div>
             ) : notifications.map(n => {
@@ -194,7 +194,7 @@ export default function NotificationBell() {
                   style={{
                     padding: '12px 14px',
                     cursor: n.link ? 'pointer' : 'default',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    borderBottom: '1px solid var(--border-soft)',
                     background: n.read ? 'transparent' : 'rgba(251,11,140,0.05)',
                     display: 'flex', gap: 12, alignItems: 'flex-start',
                     transition: 'background 0.15s',
@@ -205,17 +205,17 @@ export default function NotificationBell() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: n.read ? 600 : 900, color: '#fff' }}>{n.title}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: n.read ? 600 : 900, color: 'var(--text)' }}>{n.title}</div>
                       <button
                         type="button"
                         onClick={e => { e.stopPropagation(); dismiss(n.id) }}
-                        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.30)', cursor: 'pointer', padding: 0, flexShrink: 0, display: 'grid', placeItems: 'center' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: 0, flexShrink: 0, display: 'grid', placeItems: 'center' }}
                       >
                         <X size={12} />
                       </button>
                     </div>
-                    <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', marginTop: 2, lineHeight: 1.4 }}>{n.body}</div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', marginTop: 4 }}>{timeAgo(n.timestamp)}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 2, lineHeight: 1.4 }}>{n.body}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>{timeAgo(n.timestamp)}</div>
                   </div>
                   {!n.read && (
                     <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--pink)', flexShrink: 0, marginTop: 6, boxShadow: '0 0 8px rgba(251,11,140,0.60)' }} />
