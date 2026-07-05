@@ -257,7 +257,7 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
           Trust the <span style={{ color: 'var(--pink)' }}>{`{ Code }`}</span>,<br /><span style={{ color: 'var(--green-2)' }}>// </span> Not the Cult!
         </div>}
 
-        <nav style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: collapsed ? 8 : 5, overflowY: 'auto', overflowX: 'hidden', paddingRight: collapsed ? 0 : 2, paddingBottom: 8 }}>
+        <nav style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: collapsed ? 8 : 5, overflowY: 'auto', overflowX: 'hidden', paddingRight: collapsed ? 0 : 2, paddingBottom: collapsed ? 8 : 30 }}>
           {!collapsed && <div className="mono" style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1.5, padding: '0 12px 8px', fontWeight: 800 }}>Navigation</div>}
           {groups.map(group => {
             const Icon = group.icon
