@@ -43,9 +43,9 @@
 .ptdt-animated-slogan.slogan.is-compact{font-size:12.5px;white-space:nowrap}
 .ptdt-animated-slogan.slogan .char{display:none}
 .ptdt-animated-slogan.slogan .char.visible{display:inline}
-.ptdt-animated-slogan.slogan .light{font-weight:300;color:#cbd5e1;letter-spacing:-.05em}
+.ptdt-animated-slogan.slogan .light{font-weight:300;color:#000;letter-spacing:-.05em}
 .ptdt-animated-slogan.slogan .code{font-family:'Fira Code',monospace;font-weight:700;color:#EB4491;letter-spacing:-.01em}
-.ptdt-animated-slogan.slogan .gray{font-weight:300;color:#94a3b8;letter-spacing:-.05em}
+.ptdt-animated-slogan.slogan .gray{font-weight:300;color:#000;letter-spacing:-.05em}
 .ptdt-animated-slogan.slogan .cult{font-weight:700;color:#002FFF;position:relative;letter-spacing:-.01em}
 .ptdt-animated-slogan.slogan .cult::before,.ptdt-animated-slogan.slogan .cult::after{content:"";position:absolute;left:0;right:0;background:#FF2F00;border-radius:2px;transform:scaleX(0);transform-origin:left;transition:transform .8s ease-in-out}
 .ptdt-animated-slogan.slogan .cult::before{top:50%;height:.06em}
@@ -53,7 +53,8 @@
 .ptdt-animated-slogan.slogan.finished .cult::before,.ptdt-animated-slogan.slogan.finished .cult::after{transform:scaleX(1)}
 .ptdt-animated-slogan.slogan .brackets{font-family:'Fira Code',monospace;color:#57BF39;font-weight:700}
 .ptdt-animated-slogan.slogan .exclamation{font-weight:700;color:#FF2F00}
-.ptdt-animated-slogan.slogan .cursor{display:inline-block;width:1.5px;height:1.1em;background:#cbd5e1;margin-left:1px;animation:ptdt-slogan-blink .72s steps(1) infinite;vertical-align:middle}
+.ptdt-animated-slogan.slogan .cursor{display:inline-block;width:1.5px;height:1.1em;background:#000;margin-left:1px;animation:ptdt-slogan-blink .72s steps(1) infinite;vertical-align:middle}
+.ptdt-animated-slogan.slogan.finished .cursor{animation:ptdt-slogan-blink .72s steps(1) infinite!important}
 @keyframes ptdt-slogan-blink{0%,100%{opacity:1}50%{opacity:0}}
 .ptdt-calls-search-display{
   flex:1 1 auto;
