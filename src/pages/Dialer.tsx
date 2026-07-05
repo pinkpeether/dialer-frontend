@@ -7,6 +7,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { dialerAPI }    from '../api/dialer.api'
+import { agentsAPI } from '../api/agents.api'
 import { callsAPI }     from '../api/calls.api'
 import { campaignsAPI } from '../api/campaigns.api'
 import { contactsAPI }  from '../api/contacts.api'
@@ -18,6 +19,7 @@ import CallDispositionModal from '../components/CallDispositionModal'
 import DynamicCallerIdDialerSelector from '../components/DynamicCallerIdDialerSelector'
 import { useToast } from '../hooks/useToast'
 import { getSocketUrl } from '../utils/socketUrl'
+import { SOCKET_EVENTS } from '../constants/socketEvents'
 
 
 type DispositionRequest = {
@@ -30,6 +32,15 @@ type DispositionRequest = {
 type VoiceDeskActivity = {
   label: string
   active: boolean
+}
+
+type AgentDialerStatus = 'ONLINE' | 'READY' | 'BUSY' | 'WRAP_UP' | 'OFFLINE'
+
+const normalizeAgentDialerStatus = (status?: unknown): AgentDialerStatus => {
+  const next = String(status || '').toUpperCase()
+  return (['ONLINE', 'READY', 'BUSY', 'WRAP_UP', 'OFFLINE'] as AgentDialerStatus[]).includes(next as AgentDialerStatus)
+    ? (next as AgentDialerStatus)
+    : 'ONLINE'
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -219,6 +230,7 @@ function NoticeModal({
 
 export default function Dialer() {
   const user = useAuthStore(s => s.user)
+  const updateUser = useAuthStore(s => s.updateUser)
   const [campaigns,    setCampaigns]    = useState<Record<string,unknown>[]>([])
   const [selectedCamp, setSelectedCamp] = useState<number | null>(null)
   const [contacts,     setContacts]     = useState<Record<string,unknown>[]>([])
@@ -226,7 +238,7 @@ export default function Dialer() {
   const [isDialing,    setIsDialing]    = useState(false)
   const [muted,        setMuted]        = useState(false)
   const [elapsed,      setElapsed]      = useState(0)
-  const [agentStatus,  setAgentStatus]  = useState<'OFFLINE'|'READY'>('OFFLINE')
+  const [agentStatus,  setAgentStatus]  = useState<AgentDialerStatus>(() => normalizeAgentDialerStatus(user?.status))
   const [loading,      setLoading]      = useState(false)
   const [message,      setMessage]      = useState('')
   const [socketConnected, setSocketConnected] = useState(false)
@@ -259,6 +271,7 @@ export default function Dialer() {
   const sipReady = sipModeEnabled && sipStatus === 'registered'
   const lastLiveSipCallRef = useRef<typeof liveSipCall>(null)
   const sipManualRoutingSeenRef = useRef(false)
+  const wrapUpTimerRef = useRef<number | null>(null)
   const socketRef = useRef<Socket | null>(null)
   const toast = useToast()
   void user
@@ -315,6 +328,34 @@ export default function Dialer() {
     }
   }, [])
 
+  const syncAgentDialerStatus = useCallback((next: AgentDialerStatus) => {
+    if (wrapUpTimerRef.current && next !== 'WRAP_UP') {
+      window.clearTimeout(wrapUpTimerRef.current)
+      wrapUpTimerRef.current = null
+    }
+    setAgentStatus(next)
+    updateUser({ status: next })
+    socketRef.current?.emit(SOCKET_EVENTS.AGENT_STATUS, next)
+    void agentsAPI.updateMyStatus(next)
+      .then(() => socketRef.current?.emit(SOCKET_EVENTS.AGENT_STATUS, next))
+      .catch(() => undefined)
+  }, [updateUser])
+
+  const startWrapUpStatus = useCallback(() => {
+    syncAgentDialerStatus('WRAP_UP')
+    if (wrapUpTimerRef.current) window.clearTimeout(wrapUpTimerRef.current)
+    wrapUpTimerRef.current = window.setTimeout(() => {
+      wrapUpTimerRef.current = null
+      syncAgentDialerStatus('READY')
+    }, 30_000)
+  }, [syncAgentDialerStatus])
+
+  useEffect(() => {
+    return () => {
+      if (wrapUpTimerRef.current) window.clearTimeout(wrapUpTimerRef.current)
+    }
+  }, [])
+
   const handleManualRefresh = useCallback(() => {
     void fetchActiveCampaigns()
     if (selectedCamp) void fetchPendingContacts(selectedCamp)
@@ -358,8 +399,9 @@ export default function Dialer() {
     setLoading(false)
     setEndingCall(false)
     setMessage('SIP call declined or ended')
+    startWrapUpStatus()
     toast.info('SIP call declined or ended')
-  }, [activeCall, endingCall, liveSipCall, sipStatus, toast])
+  }, [activeCall, endingCall, liveSipCall, sipStatus, startWrapUpStatus, toast])
 
   const fmt = (s: number) =>
     `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`
@@ -523,6 +565,7 @@ export default function Dialer() {
         setActiveCall({ ...contact, callSid: callRecord.callSid })
         setLastCallId(callRecord.id)
       }
+      syncAgentDialerStatus('BUSY')
       setMessage(`📞 Calling ${contact.phone}…`)
       toast.info(`Calling ${String(contact.name || contact.phone)}...`)
     } catch (err) {
@@ -556,6 +599,7 @@ export default function Dialer() {
     setElapsed(0)
     setMuted(false)
     setMessage('📵 Call ended')
+    startWrapUpStatus()
     toast.info('Call ended')
 
     if (dispositionCallId) {
@@ -590,9 +634,10 @@ export default function Dialer() {
     setElapsed(0)
     setMuted(false)
     setEndingCall(false)
+    syncAgentDialerStatus('READY')
     setMessage('Call state reset locally')
     toast.warning('Call state reset locally')
-  }, [resetSipCallState, toast])
+  }, [resetSipCallState, syncAgentDialerStatus, toast])
 
   const filtered = sourceContacts.filter(c =>
     !search ||
@@ -893,7 +938,7 @@ export default function Dialer() {
           </div>
           <motion.button
             whileTap={{ scale: 0.98 }}
-            onClick={() => setAgentStatus(s => s === 'READY' ? 'OFFLINE' : 'READY')}
+            onClick={() => syncAgentDialerStatus(agentStatus === 'READY' ? 'ONLINE' : 'READY')}
             style={{
               width: '100%', padding: '12px 14px',
               background: agentStatus === 'READY' ? 'rgba(0,167,71,0.10)' : 'var(--bg-glass)',
@@ -912,7 +957,7 @@ export default function Dialer() {
               background: agentStatus === 'READY' ? 'var(--green-2)' : 'var(--muted)',
               boxShadow: agentStatus === 'READY' ? '0 0 6px rgba(0,167,71,0.22)' : 'none',
             }} />
-            {agentStatus === 'READY' ? 'READY' : 'OFFLINE'}
+            {agentStatus === 'READY' ? 'READY' : agentStatus === 'WRAP_UP' ? 'WRAP-UP' : agentStatus === 'BUSY' ? 'BUSY' : 'NOT READY'}
           </motion.button>
         </div>
 
@@ -1045,7 +1090,7 @@ export default function Dialer() {
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
           onClick={isDialing ? handleStopCampaign : handleStartCampaign}
-          disabled={loading || agentStatus === 'OFFLINE'}
+          disabled={loading || agentStatus !== 'READY'}
           style={{
             width: '100%', padding: '13px',
             background: isDialing ? '#ef4444' : 'var(--grad-brand)',
@@ -1053,8 +1098,8 @@ export default function Dialer() {
             borderRadius: 'var(--radius-md)',
             color: '#fff', fontWeight: 700, fontSize: 14,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            opacity: (loading || agentStatus === 'OFFLINE') ? 0.5 : 1,
-            cursor: (loading || agentStatus === 'OFFLINE') ? 'not-allowed' : 'pointer',
+            opacity: (loading || agentStatus !== 'READY') ? 0.5 : 1,
+            cursor: (loading || agentStatus !== 'READY') ? 'not-allowed' : 'pointer',
             boxShadow: isDialing ? '0 8px 18px rgba(239,68,68,0.16)' : '0 8px 18px rgba(251,11,140,0.16)',
             letterSpacing: 0.3,
           }}
@@ -1089,7 +1134,7 @@ export default function Dialer() {
           </button>
         )}
 
-        {agentStatus === 'OFFLINE' && !isDialing && (
+        {agentStatus !== 'READY' && !isDialing && (
           <div style={{
             fontSize: 11.5, color: 'var(--warning)',
             textAlign: 'center',

@@ -9,10 +9,12 @@ interface Props {
   color:  string
   bg:     string
   index?: number
+  onClick?: () => void
+  title?: string
 }
 
 export default function StatsCard({
-  label, value, sub, icon, color, bg, index = 0,
+  label, value, sub, icon, color, bg, index = 0, onClick, title,
 }: Props) {
   return (
     <motion.div
@@ -21,11 +23,23 @@ export default function StatsCard({
       transition={{ delay: index * 0.06, duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
       whileHover={{ y: -4 }}
       className="glass lift"
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      title={title}
+      onClick={onClick}
+      onKeyDown={event => {
+        if (!onClick) return
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onClick()
+        }
+      }}
       style={{
         position: 'relative',
         padding: 22,
         borderRadius: 20,
         overflow: 'hidden',
+        cursor: onClick ? 'pointer' : undefined,
       }}
     >
       {/* Top accent line */}

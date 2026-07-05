@@ -49,9 +49,14 @@ export default function TopOperatorActions() {
       <div className="ptdt-top-operator-actions">
         <div className="ptdt-top-operator-row">
           <NotificationBell />
-          <div className="ptdt-top-operator-role">
+          <div className="ptdt-top-operator-role" style={{ minHeight: 54, padding: '7px 15px', alignItems: 'center' }}>
             <ShieldCheck size={14} />
-            <span>{roleLabel(user?.role)}</span>
+            <span style={{ display: 'grid', gap: 2, lineHeight: 1.08 }}>
+              <span>{roleLabel(user?.role)}</span>
+              <span style={{ fontSize: 9.5, fontWeight: 850, letterSpacing: 0, textTransform: 'none', opacity: 0.86 }}>
+                {user?.email || 'signed-in account'}
+              </span>
+            </span>
           </div>
           <button type="button" className="ptdt-top-operator-signout" onClick={requestSignOut}>
             <LogOut size={14} />

@@ -57,7 +57,7 @@ const switchKnob: React.CSSProperties = {
   boxShadow: '0 4px 10px rgba(15,23,42,.22)',
 }
 
-const teamUserColumnWidths = ['23%', '25%', '15%', '13%', '10%', '14%']
+const teamUserColumnWidths = ['20%', '22%', '12%', '12%', '14%', '8%', '12%']
 
 const roleLabel = (role: unknown) => {
   if (role === 'CUSTOMER_ADMIN') return 'Customer Admin'
@@ -72,6 +72,50 @@ const statusStyleFor = (status: unknown) => {
   if (normalized === 'BUSY') return { color: 'var(--pink)', bg: 'rgba(251,11,140,.10)' }
   if (normalized === 'WRAP_UP') return { color: '#f0b90b', bg: 'rgba(240,185,11,.12)' }
   return { color: 'var(--text-3)', bg: 'var(--bg-2)' }
+}
+
+const liveStatus = (status: unknown) => String(status || 'OFFLINE').toUpperCase()
+
+const isPresenceOnline = (status: unknown, active: boolean) => {
+  if (!active) return false
+  return ['ONLINE', 'READY', 'BUSY', 'WRAP_UP'].includes(liveStatus(status))
+}
+
+const presenceLabel = (status: unknown, active: boolean) => {
+  if (!active) return 'Disabled'
+  return isPresenceOnline(status, active) ? 'Online' : 'Offline'
+}
+
+const presenceStyleFor = (status: unknown, active: boolean) => {
+  if (isPresenceOnline(status, active)) return { color: green, bg: 'rgba(0,167,71,.10)' }
+  return { color: 'var(--text-3)', bg: 'var(--bg-2)' }
+}
+
+const dialerStatusLabel = (status: unknown, active: boolean) => {
+  if (!active) return 'Disabled'
+  const normalized = liveStatus(status)
+  if (normalized === 'READY') return 'Ready'
+  if (normalized === 'BUSY') return 'Busy'
+  if (normalized === 'WRAP_UP') return 'Wrap-up'
+  if (normalized === 'ONLINE') return 'Not Ready'
+  return 'Offline'
+}
+
+const roleStyleFor = (role: unknown, status: unknown, active: boolean): React.CSSProperties => {
+  if (role === 'SUPERVISOR') {
+    const online = isPresenceOnline(status, active)
+    return {
+      color: online ? green : 'var(--text-3)',
+      background: online ? 'rgba(0,167,71,.10)' : 'var(--bg-2)',
+      border: `1px solid ${online ? 'rgba(0,167,71,.30)' : 'var(--border)'}`,
+      borderRadius: 999,
+      padding: '5px 9px',
+      display: 'inline-flex',
+      width: 'fit-content',
+      fontWeight: 950,
+    }
+  }
+  return { color: 'var(--text)', fontWeight: 850 }
 }
 
 const accountForUser = (user: TeamUser) => {
@@ -216,18 +260,20 @@ export default function TeamUsersV3() {
     const isSelf = Number(user.id) === Number(currentUser?.id)
     const active = Boolean(user.isActive)
     const canToggleActive = !isSelf && (!isSupervisor || user.role === 'AGENT')
-    const statusStyle = statusStyleFor(user.status)
+    const statusStyle = presenceStyleFor(user.status, active)
+    const dialerStyle = active ? statusStyleFor(user.status) : { color: 'var(--text-3)', bg: 'var(--bg-2)' }
     return <tr key={Number(user.id)} style={{ borderBottom: '1px solid var(--border)' }}>
       <td style={{ padding: 14, fontWeight: 900, fontSize: 16.8 }}>{editingId === Number(user.id) ? <input value={editingName} onChange={event => setEditingName(event.target.value)} style={{ ...inputStyle, maxWidth: 260, minHeight: 38 }} autoFocus /> : String(user.name || '—')}<br /><span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{String(user.agentCode || '')}</span></td>
       <td style={{ padding: 14, fontSize: 16.8, fontWeight: 750 }}>{String(user.email || '—')}</td>
-      <td style={{ padding: 14, fontSize: 16.8, fontWeight: 800 }}>{roleLabel(user.role)}</td>
-      <td style={{ padding: 14 }}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}`, fontSize: 11 }}>{String(user.status)}</span></td>
+      <td style={{ padding: 14, fontSize: 15.8 }}><span style={roleStyleFor(user.role, user.status, active)}>{roleLabel(user.role)}</span></td>
+      <td style={{ padding: 14 }}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}`, fontSize: 11 }}>{presenceLabel(user.status, active)}</span></td>
+      <td style={{ padding: 14 }}><span className="badge" style={{ color: dialerStyle.color, background: dialerStyle.bg, border: `1px solid ${dialerStyle.color}`, fontSize: 11 }}>{dialerStatusLabel(user.status, active)}</span></td>
       <td style={{ padding: 14 }}>{isSelf ? <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }}><ShieldCheck size={13} /> Signed in</span> : canToggleActive ? <button type="button" role="switch" aria-checked={active} disabled={pendingId === Number(user.id)} onClick={() => void setUserActive(user, !active)} style={switchStyle(active, pendingId === Number(user.id))}><span style={switchKnob} /></button> : <span className="badge" style={{ color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}>Protected</span>}</td>
       <td style={{ padding: 14 }}><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{editingId === Number(user.id) ? <><button type="button" className="ptdt-action-btn" disabled={pendingId === Number(user.id)} onClick={() => void saveEditUser(user)}><Save size={13} /> Save</button><button type="button" className="ptdt-action-btn" onClick={cancelEditUser}><X size={13} /> Cancel</button></> : !isSelf && (!isSupervisor || user.role === 'AGENT') ? <button type="button" className="ptdt-action-btn" onClick={() => startEditUser(user)}><Pencil size={13} /> Edit</button> : null}{isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setArmedEmail(''); setFinalTarget(user) }}>Cleanup</button> : null}{isSelf || (isSupervisor && user.role !== 'AGENT') ? <span style={{ color: 'var(--text-3)' }}>—</span> : null}</div></td>
     </tr>
   }
 
-  const tableHeader = <thead><tr>{['User', 'Email', 'Role', 'Status', 'Active', 'Actions'].map((label, index) => <th key={label} style={{ width: teamUserColumnWidths[index], textAlign: 'left', padding: 14, borderBottom: '1px solid var(--border)', fontSize: 15.5, fontWeight: 950, letterSpacing: 0.7, color: 'var(--text-2)' }}>{label}</th>)}</tr></thead>
+  const tableHeader = <thead><tr>{['User', 'Email', 'Role', 'Status', 'Dialer Status', 'Active', 'Actions'].map((label, index) => <th key={label} style={{ width: teamUserColumnWidths[index], textAlign: 'left', padding: 14, borderBottom: '1px solid var(--border)', fontSize: 15.5, fontWeight: 950, letterSpacing: 0.7, color: 'var(--text-2)' }}>{label}</th>)}</tr></thead>
 
   return (
     <div className="ptdt-page ptdt-team-users-page">

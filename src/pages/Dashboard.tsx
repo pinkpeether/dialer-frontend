@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Phone, Users, Megaphone, TrendingUp, Activity, Radio,
@@ -451,6 +452,7 @@ const tooltipStyle = {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const [cached] = useState(() => readDashboardCache(user?.id, user?.role))
   const [stats, setStats] = useState<Stats | null>(normalizeStats(cached?.stats) ?? null)
@@ -566,16 +568,16 @@ export default function Dashboard() {
   const cards = safeStats ? [
     { label: 'Total Agents',     value: safeStats.agents.total,
       sub: `${safeStats.agents.online} online · ${safeStats.agents.ready} ready`,
-      icon: <Users size={18}/>,      color: COL_PINK,   bg: 'rgba(251,11,140,0.10)' },
+      icon: <Users size={18}/>,      color: COL_PINK,   bg: 'rgba(251,11,140,0.10)', to: '/agents' },
     { label: 'Active Campaigns', value: safeStats.campaigns.active,
       sub: `${safeStats.campaigns.total} total campaigns`,
-      icon: <Megaphone size={18}/>,  color: COL_GREEN,  bg: 'rgba(0,167,71,0.10)' },
+      icon: <Megaphone size={18}/>,  color: COL_GREEN,  bg: 'rgba(0,167,71,0.10)', to: '/campaigns' },
     { label: 'Total Contacts',   value: safeStats.contacts.total,
       sub: `${safeStats.contacts.pending} pending`,
-      icon: <Phone size={18}/>,      color: COL_PURPLE, bg: 'rgba(128,87,215,0.10)' },
+      icon: <Phone size={18}/>,      color: COL_PURPLE, bg: 'rgba(128,87,215,0.10)', to: '/contacts' },
     { label: 'Answer Rate',      value: `${safeStats.contacts.answerRate ?? 0}%`,
       sub: `${safeStats.contacts.answered} answered`,
-      icon: <TrendingUp size={18}/>, color: COL_GOLD,   bg: 'rgba(240,185,11,0.10)' },
+      icon: <TrendingUp size={18}/>, color: COL_GOLD,   bg: 'rgba(240,185,11,0.10)', to: undefined },
   ] : []
 
   const greeting = (() => {
@@ -617,7 +619,7 @@ export default function Dashboard() {
         gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
         gap: 16, marginBottom: 28,
       }}>
-        {cards.map((card, i) => <StatsCard key={i} index={i} {...card}/>)}
+        {cards.map((card, i) => <StatsCard key={i} index={i} {...card} onClick={card.to ? () => navigate(card.to) : undefined} title={card.to ? `Open ${card.label}` : undefined}/>)}
       </div>
 
       {/* Charts row */}
