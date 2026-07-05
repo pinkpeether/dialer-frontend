@@ -25,7 +25,7 @@ export const useAgents = (params?: {
     setError(null)
     try {
       const [listData, statsData] = await Promise.all([
-        agentsAPI.getAll(stableParams),
+        agentsAPI.getAll(stableParams, { silent: options.silent }),
         agentsAPI.getStats({ silent: options.silent }),
       ])
       setAgents(listData.agents || [])

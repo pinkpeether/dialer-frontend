@@ -10,12 +10,12 @@ export const agentsAPI = {
     search?: string
     status?: string
     isActive?: boolean
-  }) => {
+  }, options?: ApiSwrOptions) => {
     return swr(swrKey('agents:list', params), async ({ silent }) => {
       const config = { params }
-      const res = await api.get('/agents', silent ? silentOverlayConfig(config) : config)
+      const res = await api.get('/agents', (silent || options?.silent) ? silentOverlayConfig(config) : config)
       return res.data.data
-    })
+    }, options)
   },
 
   getById: async (id: number) => {

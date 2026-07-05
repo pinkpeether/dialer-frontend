@@ -338,6 +338,35 @@ const numberValue = (value: unknown, fallback = 0) => {
   return fallback
 }
 
+const buildDashboardAgentStatsFromRoster = (payload: unknown): Stats['agents'] | null => {
+  const rows = extractList<Record<string, unknown>>(payload, ['agents', 'items', 'results', 'data'])
+  if (rows.length === 0) return null
+  const trackedRows = rows.filter(row => {
+    const role = stringValue(row.role).toUpperCase()
+    return !role || role === 'AGENT' || role === 'SUPERVISOR'
+  })
+  const roster = trackedRows.length > 0 ? trackedRows : rows
+  const statusOf = (row: Record<string, unknown>) => stringValue(row.status, 'OFFLINE').toUpperCase()
+  const onlineStatuses = new Set(['ONLINE', 'READY', 'BUSY', 'WRAP_UP'])
+  return {
+    total: roster.length,
+    online: roster.filter(row => onlineStatuses.has(statusOf(row))).length,
+    ready: roster.filter(row => statusOf(row) === 'READY').length,
+    busy: roster.filter(row => statusOf(row) === 'BUSY').length,
+  }
+}
+
+const loadDashboardAgentStats = async (options: { silent?: boolean } = {}) => {
+  try {
+    const roster = await agentsAPI.getAll({ limit: 500 }, options)
+    const rosterStats = buildDashboardAgentStatsFromRoster(roster)
+    if (rosterStats) return rosterStats
+  } catch {
+    // Fall back to legacy aggregate endpoint if roster loading is unavailable.
+  }
+  return agentsAPI.getStats(options)
+}
+
 const nestedName = (value: unknown) => {
   if (!isRecord(value)) return ''
   return stringValue(value.name || value.fullName || value.title)
@@ -449,7 +478,7 @@ export default function Dashboard() {
     const load = async () => {
       const requestOptions = { silent: Boolean(cached) }
       const [a, c, ct] = await Promise.all([
-        agentsAPI.getStats(requestOptions),
+        loadDashboardAgentStats(requestOptions),
         campaignsAPI.getStats(requestOptions),
         contactsAPI.getStats(undefined, requestOptions),
       ])
@@ -464,7 +493,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (Object.keys(agentStatuses).length === 0) return
     clearSwrByPrefix('agents')
-    void agentsAPI.getStats({ silent: true })
+    void loadDashboardAgentStats({ silent: true })
       .then(agentStats => {
         setStats(current => {
           const nextStats = normalizeStats({
