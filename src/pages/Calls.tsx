@@ -349,7 +349,7 @@ function groupCallsByCustomer(calls: CallRow[]): CustomerCallGroup[] {
 }
 
 function FieldShell({ children, flex = '0 0 auto', borderless = false }: { children: ReactNode; flex?: string; borderless?: boolean }) {
-  return <div className={borderless ? 'ptdt-calls-search-shell' : undefined} style={{ flex, minWidth: 0, height: borderless ? 44 : 36, display: 'flex', alignItems: 'center', gap: 9, borderRadius: 999, border: borderless ? '1px solid transparent' : '1px solid var(--border-strong)', background: borderless ? 'rgba(255,255,255,.88)' : 'var(--surface)', padding: borderless ? '0 16px' : '0 11px', boxShadow: borderless ? '0 12px 28px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.9)' : undefined }}>{children}</div>
+  return <div className={borderless ? 'ptdt-calls-search-shell' : undefined} style={{ flex, minWidth: 0, height: borderless ? 44 : 36, display: 'flex', alignItems: 'center', gap: 9, borderRadius: 999, border: borderless ? 0 : '1px solid var(--border-strong)', background: borderless ? 'rgba(255,255,255,.88)' : 'var(--surface)', padding: borderless ? '0 16px' : '0 11px', boxShadow: borderless ? '0 12px 28px rgba(15,23,42,.08)' : undefined }}>{children}</div>
 }
 
 function DetailField({ label, value, color, mono }: { label: string; value: string; color?: string; mono?: boolean }) {
@@ -544,7 +544,7 @@ export default function Calls() {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14, alignItems: 'center' }}>
-        <FieldShell flex="1 1 260px" borderless><Filter size={14} color={brand.cyan} /><input className="ptdt-calls-search-input" type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search number, name, campaign, agent, customer..." style={{ flex: 1, minWidth: 0, height: '100%', border: 0, borderColor: 'transparent', background: 'transparent', color: brand.ink, fontSize: 12, outline: 0, boxShadow: 'none', margin: 0, padding: 0, appearance: 'none', WebkitAppearance: 'none' }} /></FieldShell>
+        <FieldShell flex="1 1 260px" borderless><Filter size={14} color={brand.cyan} /><input className="ptdt-calls-search-input" type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search number, name, campaign, agent, customer..." style={{ all: 'unset', flex: '1 1 auto', minWidth: 0, height: '100%', color: brand.ink, fontSize: 12 }} /></FieldShell>
         <select value={directionFilter || ''} onChange={(e) => updateParam('direction', e.target.value || null)} style={{ height: 36, borderRadius: 999, border: '1px solid var(--border-strong)', background: brand.surface, color: brand.ink, fontSize: 12, padding: '0 10px' }}><option value="">All directions</option><option value="outgoing">Outgoing</option><option value="incoming">Incoming</option></select>
         <select value={statusFilter || ''} onChange={(e) => updateParam('status', e.target.value || null)} style={{ height: 36, borderRadius: 999, border: '1px solid var(--border-strong)', background: brand.surface, color: brand.ink, fontSize: 12, padding: '0 10px' }}><option value="">All statuses</option><option value="answered">Answered</option><option value="missed">Missed</option><option value="failed">Failed</option><option value="queued">Queued</option><option value="in_progress">In progress</option><option value="completed">Completed</option></select>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
