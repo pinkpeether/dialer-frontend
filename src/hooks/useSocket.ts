@@ -8,6 +8,7 @@ const SOCKET_DEBUG = import.meta.env.VITE_SOCKET_DEBUG === 'true'
 
 let socketInstance: Socket | null = null
 let socketListenersAttached = false
+const socketSubscribers = new Set<{ event: string; handler: (...args: unknown[]) => void }>()
 
 export const useSocket = () => {
   const { token } = useAuthStore()
@@ -24,6 +25,7 @@ export const useSocket = () => {
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
       })
+      socketSubscribers.forEach(({ event, handler }) => socketInstance?.on(event, handler))
     }
 
     socketRef.current = socketInstance
@@ -54,8 +56,11 @@ export const useSocket = () => {
   }, [])
 
   const on = useCallback((event: SocketEventName | string, handler: (...args: unknown[]) => void) => {
+    const subscription = { event, handler }
+    socketSubscribers.add(subscription)
     socketInstance?.on(event, handler)
     return () => {
+      socketSubscribers.delete(subscription)
       socketInstance?.off(event, handler)
     }
   }, [])
@@ -82,4 +87,5 @@ export const disconnectSocket = () => {
   socketInstance?.disconnect()
   socketInstance = null
   socketListenersAttached = false
+  socketSubscribers.clear()
 }

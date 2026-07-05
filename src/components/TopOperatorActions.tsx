@@ -6,6 +6,7 @@ import { useSipStore } from '../store/sip.store'
 import { authAPI } from '../api/auth.api'
 import NotificationBell from './NotificationBell'
 import PtdtDialog, { type PtdtDialogState } from './PtdtDialog'
+import { markPresenceOfflineBeforeLogout } from '../hooks/useAgentPresence'
 
 const roleLabel = (role?: string) => {
   if (role === 'CUSTOMER_ADMIN') return 'Customer Admin'
@@ -26,6 +27,7 @@ export default function TopOperatorActions() {
   const performSignOut = useCallback(() => {
     const sessionToken = localStorage.getItem('jd_token')
     setDialog(null)
+    markPresenceOfflineBeforeLogout()
     logout()
     navigate('/login', { replace: true })
     void authAPI.logout(sessionToken).catch(() => undefined)

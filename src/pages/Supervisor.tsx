@@ -7,13 +7,14 @@ import { agentsAPI } from '../api/agents.api'
 import { AGENT_STATUS_EVENTS } from '../constants/socketEvents'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
 
-type AgentStatus = 'OFFLINE' | 'READY' | 'BUSY' | 'WRAP_UP'
+type AgentStatus = 'OFFLINE' | 'ONLINE' | 'READY' | 'BUSY' | 'WRAP_UP'
 type CustomerAccount = { id: number | null; name: string; code: string; status: string }
 type AgentRow = { id: number | string; name: string; agentCode: string; status: AgentStatus; callsToday?: number; activeSince?: number; commercialAccount: CustomerAccount | null }
 type CustomerGroup = CustomerAccount & { key: string; agents: AgentRow[] }
 
 const STATUS_THEME: Record<AgentStatus, { color: string; bg: string; dot: string; label: string }> = {
   OFFLINE: { color: 'var(--text-3)', bg: 'var(--bg-glass)', dot: 'rgba(255,255,255,0.20)', label: 'Offline' },
+  ONLINE: { color: '#00a747', bg: 'rgba(0,167,71,0.10)', dot: '#00a747', label: 'Online' },
   READY: { color: '#00a747', bg: 'rgba(0,167,71,0.10)', dot: '#00a747', label: 'Ready' },
   BUSY: { color: '#fb0b8c', bg: 'rgba(251,11,140,0.10)', dot: '#fb0b8c', label: 'On Call' },
   WRAP_UP: { color: '#f0b90b', bg: 'rgba(240,185,11,0.12)', dot: '#f0b90b', label: 'Wrap Up' },
@@ -25,7 +26,7 @@ const num = (v: unknown, fb = 0) => { const n = Number(v); return Number.isFinit
 
 const normalizeStatus = (v: unknown): AgentStatus => {
   const s = String(v || '').toUpperCase()
-  return (['OFFLINE', 'READY', 'BUSY', 'WRAP_UP'] as AgentStatus[]).includes(s as AgentStatus) ? (s as AgentStatus) : 'OFFLINE'
+  return (['OFFLINE', 'ONLINE', 'READY', 'BUSY', 'WRAP_UP'] as AgentStatus[]).includes(s as AgentStatus) ? (s as AgentStatus) : 'OFFLINE'
 }
 
 const accountForAgent = (agent: Record<string, unknown>): CustomerAccount | null => {
@@ -110,7 +111,7 @@ export default function Supervisor() {
     return () => window.clearInterval(t)
   }, [agents])
 
-  const counts = useMemo(() => ({ total: agents.length, ready: agents.filter(a => a.status === 'READY').length, busy: agents.filter(a => a.status === 'BUSY').length, wrapUp: agents.filter(a => a.status === 'WRAP_UP').length, offline: agents.filter(a => a.status === 'OFFLINE').length }), [agents])
+  const counts = useMemo(() => ({ total: agents.length, online: agents.filter(a => a.status === 'ONLINE').length, ready: agents.filter(a => a.status === 'READY').length, busy: agents.filter(a => a.status === 'BUSY').length, wrapUp: agents.filter(a => a.status === 'WRAP_UP').length, offline: agents.filter(a => a.status === 'OFFLINE').length }), [agents])
   const groupedAccounts = useMemo(() => groupAgentsByCustomer(agents), [agents])
   const toggleGroup = (key: string, currentlyOpen = false) => setExpandedGroups(prev => ({ ...prev, [key]: !currentlyOpen }))
 
@@ -126,13 +127,14 @@ export default function Supervisor() {
 
   return <div className="ptdt-page">
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}><div className="eyebrow pink" style={{ marginBottom: 14 }}><Shield size={11} /> PTDT-Dialer Supervisor</div><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}><div><h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 3.2vw, 42px)', fontWeight: 900, lineHeight: 1.05, color: 'var(--text)', letterSpacing: '-0.04em', marginBottom: 10 }}>Supervisor <span className="gradient-brand-text">Monitor</span></h1><p style={{ fontSize: 14.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><span className="pulse-dot pink" />Live agent grid grouped by customer — refreshes every 30s. Last: {lastRefresh.toLocaleTimeString()}</p></div></div></motion.div>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 28 }}>{[{ label: 'Total Agents', value: counts.total, color: 'var(--pink)' }, { label: 'Ready', value: counts.ready, color: '#00a747' }, { label: 'On Call', value: counts.busy, color: '#fb0b8c' }, { label: 'Wrap Up', value: counts.wrapUp, color: '#f0b90b' }, { label: 'Offline', value: counts.offline, color: 'var(--text-3)' }].map(card => <div key={card.label} className="glass lift" style={{ padding: '14px 16px' }}><div className="mono" style={{ fontSize: 9.5, color: 'var(--text-3)', letterSpacing: 1.2, fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>{card.label}</div><div style={{ fontSize: 26, fontWeight: 900, color: card.color }}>{card.value}</div></div>)}</div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 28 }}>{[{ label: 'Total Agents', value: counts.total, color: 'var(--pink)' }, { label: 'Online', value: counts.online, color: '#00a747' }, { label: 'Ready', value: counts.ready, color: '#00a747' }, { label: 'On Call', value: counts.busy, color: '#fb0b8c' }, { label: 'Wrap Up', value: counts.wrapUp, color: '#f0b90b' }, { label: 'Offline', value: counts.offline, color: 'var(--text-3)' }].map(card => <div key={card.label} className="glass lift" style={{ padding: '14px 16px' }}><div className="mono" style={{ fontSize: 9.5, color: 'var(--text-3)', letterSpacing: 1.2, fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>{card.label}</div><div style={{ fontSize: 26, fontWeight: 900, color: card.color }}>{card.value}</div></div>)}</div>
     {loading ? <div className="glass" style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}>Loading agents…</div> : agents.length === 0 ? <div className="glass" style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}><Headset size={36} style={{ marginBottom: 12, opacity: 0.3 }} /><div>No agents found — ensure backend returns data from <span className="mono">/agents</span></div></div> : <div style={{ display: 'grid', gap: 12 }}>{groupedAccounts.map((group, groupIndex) => {
       const isOpen = expandedGroups[group.key] ?? groupIndex === 0
+      const online = group.agents.filter(agent => agent.status === 'ONLINE').length
       const ready = group.agents.filter(agent => agent.status === 'READY').length
       const busy = group.agents.filter(agent => agent.status === 'BUSY').length
       const offline = group.agents.filter(agent => agent.status === 'OFFLINE').length
-      return <div key={group.key} className="glass" style={{ overflow: 'hidden' }}><CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.agents.length} Agents` }, { label: `${ready} Ready`, color: '#00a747', bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${busy} On Call`, color: '#fb0b8c', bg: 'rgba(251,11,140,.10)', border: '1px solid rgba(251,11,140,.28)' }, { label: `${offline} Offline`, color: 'var(--text-3)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }]} />{isOpen && <div style={{ ...customerAccordionBodyStyle, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, padding: 16 }}>{group.agents.map(renderAgentCard)}</div>}</div>
+      return <div key={group.key} className="glass" style={{ overflow: 'hidden' }}><CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.agents.length} Agents` }, { label: `${online} Online`, color: '#00a747', bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${ready} Ready`, color: '#00a747', bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${busy} On Call`, color: '#fb0b8c', bg: 'rgba(251,11,140,.10)', border: '1px solid rgba(251,11,140,.28)' }, { label: `${offline} Offline`, color: 'var(--text-3)', bg: 'var(--bg-2)', border: '1px solid var(--border)' }]} />{isOpen && <div style={{ ...customerAccordionBodyStyle, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, padding: 16 }}>{group.agents.map(renderAgentCard)}</div>}</div>
     })}</div>}
   </div>
 }

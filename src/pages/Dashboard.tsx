@@ -13,6 +13,7 @@ import { campaignsAPI }     from '../api/campaigns.api'
 import { contactsAPI }      from '../api/contacts.api'
 import { callsAPI }         from '../api/calls.api'
 import { reportsAPI, type ReportTrendRow } from '../api/reports.api'
+import { clearSwrByPrefix } from '../api/swrCache'
 import { useAuthStore }     from '../store/auth.store'
 import { useSipStore }      from '../store/sip.store'
 import { useLiveDashboard } from '../hooks/useLiveDashboard'
@@ -426,7 +427,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(normalizeStats(cached?.stats) ?? null)
   const [recentCallData, setRecentCallData] = useState<CallLog[]>(cached?.recentCallData ?? [])
   const [recentHistory, setRecentHistory] = useState<DashboardRecentCall[]>(cached?.recentHistory ?? [])
-  const { activeCalls, recentCalls } = useLiveDashboard()
+  const { agentStatuses, activeCalls, recentCalls } = useLiveDashboard()
   const sipActiveCall = useSipStore(s => s.activeCall)
   const sipStatus = useSipStore(s => s.status)
 
@@ -459,6 +460,24 @@ export default function Dashboard() {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (Object.keys(agentStatuses).length === 0) return
+    clearSwrByPrefix('agents')
+    void agentsAPI.getStats({ silent: true })
+      .then(agentStats => {
+        setStats(current => {
+          const nextStats = normalizeStats({
+            agents: agentStats,
+            campaigns: current?.campaigns,
+            contacts: current?.contacts,
+          }) || EMPTY_STATS
+          writeDashboardCache(user?.id, user?.role, { stats: nextStats })
+          return nextStats
+        })
+      })
+      .catch(() => undefined)
+  }, [agentStatuses, user?.id, user?.role])
 
   useEffect(() => {
     const loadCalls = async () => {

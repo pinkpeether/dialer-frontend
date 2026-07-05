@@ -66,6 +66,14 @@ const roleLabel = (role: unknown) => {
   return 'Agent'
 }
 
+const statusStyleFor = (status: unknown) => {
+  const normalized = String(status || 'OFFLINE').toUpperCase()
+  if (normalized === 'ONLINE' || normalized === 'READY') return { color: green, bg: 'rgba(0,167,71,.10)' }
+  if (normalized === 'BUSY') return { color: 'var(--pink)', bg: 'rgba(251,11,140,.10)' }
+  if (normalized === 'WRAP_UP') return { color: '#f0b90b', bg: 'rgba(240,185,11,.12)' }
+  return { color: 'var(--text-3)', bg: 'var(--bg-2)' }
+}
+
 const accountForUser = (user: TeamUser) => {
   const direct = user.commercialAccount as Record<string, unknown> | null | undefined
   if (direct?.id || direct?.name) return direct
@@ -208,7 +216,7 @@ export default function TeamUsersV3() {
     const isSelf = Number(user.id) === Number(currentUser?.id)
     const active = Boolean(user.isActive)
     const canToggleActive = !isSelf && (!isSupervisor || user.role === 'AGENT')
-    const statusStyle = active ? { color: green, bg: 'rgba(0,167,71,.10)' } : { color: 'var(--text-3)', bg: 'var(--bg-2)' }
+    const statusStyle = statusStyleFor(user.status)
     return <tr key={Number(user.id)} style={{ borderBottom: '1px solid var(--border)' }}>
       <td style={{ padding: 14, fontWeight: 900, fontSize: 16.8 }}>{editingId === Number(user.id) ? <input value={editingName} onChange={event => setEditingName(event.target.value)} style={{ ...inputStyle, maxWidth: 260, minHeight: 38 }} autoFocus /> : String(user.name || '—')}<br /><span className="mono" style={{ color: 'var(--text-3)', fontSize: 11 }}>{String(user.agentCode || '')}</span></td>
       <td style={{ padding: 14, fontSize: 16.8, fontWeight: 750 }}>{String(user.email || '—')}</td>

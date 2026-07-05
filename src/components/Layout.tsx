@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/auth.store'
 import { authAPI } from '../api/auth.api'
 import PtdtDialog from './PtdtDialog'
 import PtdtAnimatedSlogan from './PtdtAnimatedSlogan'
+import { markPresenceOfflineBeforeLogout, useAgentPresence } from '../hooks/useAgentPresence'
 
 export default function Layout() {
   const sipConfig = useSipStore(s => s.config)
@@ -22,6 +23,7 @@ export default function Layout() {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem('ptdt-sidebar-collapsed') === '1'
   })
+  useAgentPresence()
 
   useEffect(() => {
     if (typeof window !== 'undefined') window.localStorage.setItem('ptdt-sidebar-collapsed', sidebarCollapsed ? '1' : '0')
@@ -70,6 +72,7 @@ export default function Layout() {
   const performSignOut = useCallback(() => {
     const token = localStorage.getItem('jd_token')
     setConfirmSignOut(false)
+    markPresenceOfflineBeforeLogout()
     logout()
     navigate('/login', { replace: true })
     void authAPI.logout(token).catch(() => undefined)

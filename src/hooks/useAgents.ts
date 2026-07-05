@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { agentsAPI } from '../api/agents.api'
+import { clearSwrByPrefix } from '../api/swrCache'
+import { AGENT_STATUS_EVENTS } from '../constants/socketEvents'
+import { useSocket } from './useSocket'
 
 export const useAgents = (params?: {
   page?: number
@@ -15,14 +18,15 @@ export const useAgents = (params?: {
   const [pagination, setPagination] = useState<Record<string,unknown> | null>(null)
   const [loading,    setLoading]    = useState(false)
   const [error,      setError]      = useState<string | null>(null)
+  const { on } = useSocket()
 
-  const fetch = useCallback(async () => {
-    setLoading(true)
+  const fetch = useCallback(async (options: { silent?: boolean } = {}) => {
+    if (!options.silent) setLoading(true)
     setError(null)
     try {
       const [listData, statsData] = await Promise.all([
         agentsAPI.getAll(stableParams),
-        agentsAPI.getStats(),
+        agentsAPI.getStats({ silent: options.silent }),
       ])
       setAgents(listData.agents || [])
       setPagination(listData.pagination || null)
@@ -30,11 +34,20 @@ export const useAgents = (params?: {
     } catch (err: unknown) {
       setError((err as Error).message || 'Failed to load agents')
     } finally {
-      setLoading(false)
+      if (!options.silent) setLoading(false)
     }
   }, [stableParams])
 
   useEffect(() => { fetch() }, [fetch])
+
+  useEffect(() => {
+    const handler = () => {
+      clearSwrByPrefix('agents')
+      void fetch({ silent: true })
+    }
+    const cleanups = AGENT_STATUS_EVENTS.map(event => on(event, handler))
+    return () => cleanups.forEach(cleanup => cleanup())
+  }, [fetch, on])
 
   const createAgent = async (data: Record<string,unknown>) => {
     const agent = await agentsAPI.create(data as never)

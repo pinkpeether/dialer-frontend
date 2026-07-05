@@ -224,7 +224,7 @@ const PTDT_MOBILE_PAGE_CSS = `
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type AgentStatus = 'OFFLINE' | 'READY' | 'BUSY' | 'WRAP_UP'
+type AgentStatus = 'OFFLINE' | 'ONLINE' | 'READY' | 'BUSY' | 'WRAP_UP'
 
 type SocketIncomingPayload = {
   callId?: number
@@ -322,6 +322,7 @@ const writeAgentDashboardCache = (patch: Partial<Omit<AgentDashboardCache, 'save
 
 const statusTheme: Record<AgentStatus, { label: string; color: string; bg: string }> = {
   OFFLINE: { label: 'Offline', color: 'var(--text-3)',  bg: 'var(--bg-glass)' },
+  ONLINE:  { label: 'Online',  color: 'var(--green-2)', bg: 'rgba(0,167,71,0.10)' },
   READY:   { label: 'Ready',   color: 'var(--green-2)', bg: 'rgba(0,167,71,0.10)' },
   BUSY:    { label: 'Busy',    color: 'var(--pink)',    bg: 'rgba(251,11,140,0.10)' },
   WRAP_UP: { label: 'Wrap Up', color: 'var(--warning)', bg: 'rgba(240,185,11,0.12)' },
@@ -899,6 +900,7 @@ export default function AgentDashboard() {
             <div style={{ color: statusTheme[agentStatus].color, fontSize: 22, fontWeight: 900 }}>{statusTheme[agentStatus].label}</div>
             <div style={{ color: 'var(--text-3)', fontSize: 12.5, marginTop: 4 }}>
               {agentStatus === 'READY' ? 'Waiting for next routed call.'
+                : agentStatus === 'ONLINE' ? 'Signed in and available for dashboard monitoring.'
                 : agentStatus === 'BUSY' ? 'Active call in progress.'
                 : 'Agent is not accepting calls.'}
             </div>
