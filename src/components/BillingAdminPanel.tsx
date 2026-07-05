@@ -29,7 +29,7 @@ export default function BillingAdminPanel({ billing }: { billing: BillingData | 
   return (
     <div className="glass" style={{ padding: 18 }}>
       <div style={{ marginBottom: 14 }}>
-        <h2 style={{ margin: 0 }}>Billing / Voice Service Overview</h2>
+        <h2 style={{ margin: 0, fontSize: 21, lineHeight: 1.15 }}>Billing / Voice Service Overview</h2>
         <p style={{ margin: '6px 0 0', color: 'var(--text-3)', lineHeight: 1.6 }}>
           Call gateway, AI, Railway and Supabase readiness in one admin view.
         </p>

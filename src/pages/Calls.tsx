@@ -16,6 +16,7 @@ import CallDispositionModal from '../components/CallDispositionModal'
 import CustomerAccordionHeader, { customerAccordionBodyStyle } from '../components/CustomerAccordionHeader'
 import type { DispositionValue } from '../components/DispositionPanel'
 import { mergeMasterCustomerGroups, useMasterCustomerAccounts } from '../hooks/useMasterCustomerAccounts'
+import { cleanDisplayText } from '../utils/displayText'
 
 const PTDT_MOBILE_PAGE_CSS = `
 @media (max-width: 900px) {
@@ -347,8 +348,8 @@ function groupCallsByCustomer(calls: CallRow[]): CustomerCallGroup[] {
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
 }
 
-function FieldShell({ children, flex = '0 0 auto' }: { children: ReactNode; flex?: string }) {
-  return <div style={{ flex, minWidth: 0, height: 36, display: 'flex', alignItems: 'center', gap: 8, borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', padding: '0 11px' }}>{children}</div>
+function FieldShell({ children, flex = '0 0 auto', borderless = false }: { children: ReactNode; flex?: string; borderless?: boolean }) {
+  return <div style={{ flex, minWidth: 0, height: 36, display: 'flex', alignItems: 'center', gap: 8, borderRadius: 999, border: borderless ? '1px solid transparent' : '1px solid var(--border-strong)', background: 'var(--surface)', padding: '0 11px' }}>{children}</div>
 }
 
 function DetailField({ label, value, color, mono }: { label: string; value: string; color?: string; mono?: boolean }) {
@@ -543,7 +544,7 @@ export default function Calls() {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14, alignItems: 'center' }}>
-        <FieldShell flex="1 1 260px"><Filter size={14} color={brand.cyan} /><input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search number, name, campaign, agent, customer..." style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', color: brand.ink, fontSize: 12, outline: 'none' }} /></FieldShell>
+        <FieldShell flex="1 1 260px" borderless><Filter size={14} color={brand.cyan} /><input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search number, name, campaign, agent, customer..." style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', color: brand.ink, fontSize: 12, outline: 'none', boxShadow: 'none' }} /></FieldShell>
         <select value={directionFilter || ''} onChange={(e) => updateParam('direction', e.target.value || null)} style={{ height: 36, borderRadius: 999, border: '1px solid var(--border-strong)', background: brand.surface, color: brand.ink, fontSize: 12, padding: '0 10px' }}><option value="">All directions</option><option value="outgoing">Outgoing</option><option value="incoming">Incoming</option></select>
         <select value={statusFilter || ''} onChange={(e) => updateParam('status', e.target.value || null)} style={{ height: 36, borderRadius: 999, border: '1px solid var(--border-strong)', background: brand.surface, color: brand.ink, fontSize: 12, padding: '0 10px' }}><option value="">All statuses</option><option value="answered">Answered</option><option value="missed">Missed</option><option value="failed">Failed</option><option value="queued">Queued</option><option value="in_progress">In progress</option><option value="completed">Completed</option></select>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -570,7 +571,7 @@ export default function Calls() {
           const pending = group.calls.filter(call => call.isDynamicCallerIdBackendCall && call.status === 'unknown').length
           return (
             <div key={group.key} style={{ ...glassPanel, borderRadius: 20, overflow: 'hidden' }}>
-              <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${group.code} · Status: ${group.status}`} badges={[{ label: `${group.calls.length} Calls` }, { label: `${completed} Completed`, color: brand.green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${missed} Missed`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(pending > 0 ? [{ label: `${pending} Pending`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : [])]} />
+              <CustomerAccordionHeader isOpen={isOpen} onClick={() => toggleGroup(group.key, isOpen)} name={group.name} meta={`Customer Code: ${cleanDisplayText(group.code)} · Status: ${cleanDisplayText(group.status)}`} badges={[{ label: `${group.calls.length} Calls` }, { label: `${completed} Completed`, color: brand.green, bg: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)' }, { label: `${missed} Missed`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }, ...(pending > 0 ? [{ label: `${pending} Pending`, color: brand.gold, bg: 'rgba(240,185,11,.12)', border: '1px solid rgba(240,185,11,.28)' }] : [])]} />
               {isOpen && <div style={{ ...customerAccordionBodyStyle, overflowX: 'auto', overflowY: 'hidden' }}><CallsTableHeader /><div>{group.calls.map(renderCallRow)}</div></div>}
             </div>
           )

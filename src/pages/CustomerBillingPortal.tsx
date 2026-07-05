@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BadgeDollarSign, Building2, CreditCard, RefreshCw, Users, WalletCards } from 'lucide-react'
 import { administrationApi, type AccountMembership, type AdminCommercialAccount } from '../api/administration.api'
+import { cleanDisplayText } from '../utils/displayText'
 
 const card = { padding: 18, borderRadius: 18 } as const
 const CACHE_KEY = 'ptdt-customer-billing:last-good'
@@ -100,13 +101,13 @@ function AccountHealthTable({ accounts }: { accounts: AdminCommercialAccount[] }
               return (
                 <tr key={account.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '14px 16px' }}>
-                    <div style={{ fontWeight: 950, color: 'var(--text)' }}>{account.name}</div>
-                    <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginTop: 3 }}>{account.code}</div>
+                    <div style={{ fontWeight: 950, color: 'var(--text)' }}>{cleanDisplayText(account.name)}</div>
+                    <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginTop: 3 }}>{cleanDisplayText(account.code)}</div>
                   </td>
                   <td style={{ padding: '14px 16px', color: 'var(--text-2)', fontWeight: 800 }}>{planName(account)}</td>
                   <td style={{ padding: '14px 16px' }}>
                     <span className="badge" style={{ color: stateColor(subscriptionState), background: 'var(--bg-2)', border: `1px solid ${stateColor(subscriptionState)}` }}>
-                      {subscriptionState}
+                      {cleanDisplayText(subscriptionState)}
                     </span>
                   </td>
                   <td className="mono" style={{ padding: '14px 16px', color: 'var(--text)' }}>{money(account.wallet?.availableBalance, account.currency)}</td>
@@ -118,7 +119,7 @@ function AccountHealthTable({ accounts }: { accounts: AdminCommercialAccount[] }
                   <td className="mono" style={{ padding: '14px 16px', color: 'var(--text-2)' }}>{activeMembers.length}</td>
                   <td className="mono" style={{ padding: '14px 16px', color: 'var(--text-2)' }}>{cidUsers}</td>
                   <td style={{ padding: '14px 16px', color: 'var(--text-3)' }}>
-                    {activeAddons.length ? activeAddons.map(item => item.addon?.name || item.addon?.code).join(', ') : '—'}
+                    {activeAddons.length ? activeAddons.map(item => cleanDisplayText(item.addon?.name || item.addon?.code)).join(', ') : '—'}
                   </td>
                 </tr>
               )
@@ -152,7 +153,7 @@ function MembershipSelector({ memberships, selectedMembership, platformAccounts,
         style={{ marginTop: 12, maxWidth: 420 }}
       >
         {memberships.map(item => (
-          <option key={item.id} value={item.id}>{item.account?.name || `Account #${item.accountId}`} — {item.accountRole}</option>
+          <option key={item.id} value={item.id}>{cleanDisplayText(item.account?.name || `Account #${item.accountId}`)} — {cleanDisplayText(item.accountRole)}</option>
         ))}
       </select>
     </div>
@@ -171,7 +172,7 @@ function SelectedAccountDetails({ account, selectedMembership }: { account: Admi
         <div className="glass" style={card}>
           <div className="eyebrow pink"><CreditCard size={12} /> Current Plan</div>
           <h2 style={{ margin: '10px 0 4px', fontSize: 26, fontWeight: 950 }}>{subscription?.plan?.name || 'No active plan'}</h2>
-          <p style={{ margin: 0, color: stateColor(subscription?.status || 'INACTIVE'), fontWeight: 900 }}>{subscription?.status || 'INACTIVE'}</p>
+          <p style={{ margin: 0, color: stateColor(subscription?.status || 'INACTIVE'), fontWeight: 900 }}>{cleanDisplayText(subscription?.status || 'INACTIVE')}</p>
         </div>
         <div className="glass" style={card}>
           <div className="eyebrow green"><WalletCards size={12} /> Calling Balance</div>
@@ -190,9 +191,9 @@ function SelectedAccountDetails({ account, selectedMembership }: { account: Admi
           <div>
             <div className="eyebrow green"><Users size={12} /> Account Access</div>
             <h2 style={{ margin: '8px 0 4px', fontSize: 22, fontWeight: 950 }}>{account.name}</h2>
-            <p style={{ margin: 0, color: 'var(--text-3)' }}>Your account role: <strong>{selectedMembership?.accountRole || '—'}</strong></p>
+            <p style={{ margin: 0, color: 'var(--text-3)' }}>Your account role: <strong>{cleanDisplayText(selectedMembership?.accountRole)}</strong></p>
           </div>
-          <span className="ptdt-chip">{account.code}</span>
+          <span className="ptdt-chip">{cleanDisplayText(account.code)}</span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 18 }}>
@@ -217,7 +218,7 @@ function SelectedAccountDetails({ account, selectedMembership }: { account: Admi
           {activeAddons.length === 0 ? (
             <span style={{ color: 'var(--text-3)' }}>No paid add-ons active.</span>
           ) : activeAddons.map(item => (
-            <span key={item.id} className="ptdt-chip" style={{ color: 'var(--green-2)' }}>{item.addon?.name || item.addon?.code}</span>
+            <span key={item.id} className="ptdt-chip" style={{ color: 'var(--green-2)' }}>{cleanDisplayText(item.addon?.name || item.addon?.code)}</span>
           ))}
         </div>
       </div>

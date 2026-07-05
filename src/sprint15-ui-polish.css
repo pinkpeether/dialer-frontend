@@ -32,3 +32,5 @@
 .ptdt-campaign-management-pro .ptdt-card:nth-of-type(3n){border-color:rgba(100,116,139,.20)}
 .ptdt-advanced-dialing-sample table td{font-size:12px!important}
 .ptdt-audit-logs-page table td:nth-child(4){font-size:80%!important}
+.ptdt-mobile-page-settings,
+.ptdt-mobile-page-system-settings{width:min(100%,1560px)!important;max-width:1560px!important}

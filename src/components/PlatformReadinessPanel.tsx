@@ -1,3 +1,5 @@
+import { cleanDisplayText } from '../utils/displayText'
+
 type ReadinessStatus = 'READY' | 'CONFIGURED' | 'MISSING' | 'WARNING' | 'OPTIONAL'
 
 type ReadinessItem = {
@@ -44,7 +46,7 @@ export default function PlatformReadinessPanel({ overview }: Props) {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <div>
             <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginBottom: 8, letterSpacing: 1 }}>OVERALL DEPLOYMENT STATUS</div>
-            <h2 style={{ margin: 0 }}>Deployment / Platform Readiness</h2>
+            <h2 style={{ margin: 0, fontSize: 21, lineHeight: 1.15 }}>Deployment / Platform Readiness</h2>
             <p style={{ margin: '8px 0 0', color: 'var(--text-3)' }}>Generated: {new Date(overview.generatedAt).toLocaleString()}</p>
           </div>
           <StatusBadge status={overview.overallStatus} />
@@ -54,7 +56,7 @@ export default function PlatformReadinessPanel({ overview }: Props) {
           {Object.entries(overview.totals || {}).map(([key, value]) => (
             <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 14, background: 'var(--bg-glass)', padding: 14, textAlign: 'center' }}>
               <div className="mono" style={{ fontSize: 22, fontWeight: 900 }}>{value}</div>
-              <div style={{ color: 'var(--text-3)', fontSize: 12, marginTop: 6 }}>{key}</div>
+              <div style={{ color: 'var(--text-3)', fontSize: 12, marginTop: 6 }}>{cleanDisplayText(key)}</div>
             </div>
           ))}
         </div>
@@ -64,8 +66,8 @@ export default function PlatformReadinessPanel({ overview }: Props) {
         <div key={section.key} className="glass" style={{ padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: 14 }}>
             <div>
-              <h3 style={{ margin: 0 }}>{section.title}</h3>
-              <p style={{ margin: '6px 0 0', color: 'var(--text-3)', lineHeight: 1.6 }}>{section.summary}</p>
+              <h3 style={{ margin: 0, fontSize: 17, lineHeight: 1.2, color: 'var(--text-2)' }}>{cleanDisplayText(section.title)}</h3>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-3)', lineHeight: 1.6 }}>{cleanDisplayText(section.summary)}</p>
             </div>
             <StatusBadge status={section.status} />
           </div>
@@ -74,11 +76,11 @@ export default function PlatformReadinessPanel({ overview }: Props) {
             {section.items.map(item => (
               <div key={item.key} style={{ border: '1px solid var(--border)', borderRadius: 14, background: 'var(--bg-glass)', padding: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <div style={{ fontWeight: 800 }}>{item.label}</div>
+                  <div style={{ fontWeight: 800, color: 'var(--text-2)', fontSize: 13.5 }}>{cleanDisplayText(item.label)}</div>
                   <StatusBadge status={item.status} />
                 </div>
-                <p style={{ margin: '8px 0 0', color: 'var(--text-3)', lineHeight: 1.6 }}>{item.detail}</p>
-                {item.action && <p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.6 }}><strong>Action:</strong> {item.action}</p>}
+                <p style={{ margin: '8px 0 0', color: 'var(--text-3)', lineHeight: 1.6 }}>{cleanDisplayText(item.detail)}</p>
+                {item.action && <p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.6 }}><strong>Action:</strong> {cleanDisplayText(item.action)}</p>}
               </div>
             ))}
           </div>
@@ -93,7 +95,7 @@ function StatusBadge({ status }: { status: ReadinessStatus }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, borderRadius: 999, padding: '7px 12px', background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontWeight: 900, fontSize: 11 }}>
       <span style={{ width: 8, height: 8, borderRadius: 999, background: s.color }} />
-      {status}
+      {cleanDisplayText(status)}
     </span>
   )
 }

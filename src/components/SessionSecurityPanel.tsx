@@ -52,7 +52,7 @@ export default function SessionSecurityPanel({ policy, onPolicyUpdated }: Props)
     <div className="glass" style={{ padding: 18 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         <div>
-          <h2 style={{ margin: 0 }}>Single-Session Management</h2>
+          <h2 style={{ margin: 0, fontSize: 21, lineHeight: 1.15 }}>Single-Session Management</h2>
           <p style={{ margin: '6px 0 0', color: 'var(--text-3)', lineHeight: 1.6 }}>
             Detect duplicate live sessions and disconnect stale sessions safely.
           </p>
