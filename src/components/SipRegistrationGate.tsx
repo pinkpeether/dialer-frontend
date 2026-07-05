@@ -15,13 +15,13 @@ const gateInputStyle: React.CSSProperties = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: 16,
-  border: '1px solid rgba(148,163,184,.28)',
-  background: 'rgba(255,255,255,.74)',
-  color: 'var(--text)',
+  border: '1px solid var(--ptdt-sip-gate-input-border, rgba(148,163,184,.32))',
+  background: 'var(--ptdt-sip-gate-input-bg, rgba(255,255,255,.92))',
+  color: 'var(--ptdt-sip-gate-input-text, var(--text))',
   fontSize: 13,
   fontWeight: 800,
   outline: 'none',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,.85)',
+  boxShadow: 'inset 0 1px 0 var(--ptdt-sip-gate-input-highlight, rgba(255,255,255,.85))',
 }
 
 const gateLabelStyle: React.CSSProperties = {
@@ -108,14 +108,14 @@ export default function SipRegistrationGate({ open }: { open: boolean }) {
             initial={{ opacity: 0, y: 18, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            className="glass"
+            className="glass ptdt-sip-gate-card"
             style={{
               width: 'min(760px, 100%)',
               borderRadius: 30,
               padding: 28,
-              background: 'linear-gradient(135deg, rgba(255,246,251,.96), rgba(244,255,249,.96), rgba(255,255,255,.96))',
-              border: '1px solid rgba(255,255,255,.62)',
-              boxShadow: '0 34px 90px rgba(15,23,42,.28)',
+              background: 'var(--ptdt-sip-gate-card-bg, linear-gradient(135deg, rgba(255,246,251,.96), rgba(244,255,249,.96), rgba(255,255,255,.96)))',
+              border: '1px solid var(--ptdt-sip-gate-card-border, rgba(255,255,255,.62))',
+              boxShadow: 'var(--ptdt-sip-gate-card-shadow, 0 34px 90px rgba(15,23,42,.28))',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
@@ -140,13 +140,13 @@ export default function SipRegistrationGate({ open }: { open: boolean }) {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
               <label style={gateLabelStyle}>Enable SIP Mode
-                <select value={form.enabled ? 'yes' : 'no'} onChange={event => update('enabled', event.target.value === 'yes')} style={gateInputStyle}>
+                <select className="ptdt-sip-gate-input" value={form.enabled ? 'yes' : 'no'} onChange={event => update('enabled', event.target.value === 'yes')} style={gateInputStyle}>
                   <option value="yes">Enabled</option>
                   <option value="no">Disabled</option>
                 </select>
               </label>
               <label style={gateLabelStyle}>Transport
-                <select value={form.transport} onChange={event => update('transport', event.target.value as SipTransport)} style={gateInputStyle}>
+                <select className="ptdt-sip-gate-input" value={form.transport} onChange={event => update('transport', event.target.value as SipTransport)} style={gateInputStyle}>
                   <option value="WSS">WSS</option>
                   <option value="WS">WS</option>
                   <option value="TLS">TLS</option>
@@ -155,22 +155,22 @@ export default function SipRegistrationGate({ open }: { open: boolean }) {
                 </select>
               </label>
               <label style={gateLabelStyle}>SIP Username
-                <input value={form.username} onChange={event => update('username', event.target.value)} placeholder="1001" style={gateInputStyle} />
+                <input className="ptdt-sip-gate-input" value={form.username} onChange={event => update('username', event.target.value)} placeholder="1001" style={gateInputStyle} />
               </label>
               <label style={gateLabelStyle}>SIP Password
-                <input value={form.password} onChange={event => update('password', event.target.value)} placeholder="••••••••" type="password" style={gateInputStyle} />
+                <input className="ptdt-sip-gate-input" value={form.password} onChange={event => update('password', event.target.value)} placeholder="••••••••" type="password" style={gateInputStyle} />
               </label>
               <label style={gateLabelStyle}>SIP Domain / Host
-                <input value={form.domain} onChange={event => update('domain', event.target.value)} placeholder="pbx.ptdt.taxi" style={gateInputStyle} />
+                <input className="ptdt-sip-gate-input" value={form.domain} onChange={event => update('domain', event.target.value)} placeholder="pbx.ptdt.taxi" style={gateInputStyle} />
               </label>
               <label style={gateLabelStyle}>SIP Port
-                <input value={form.port || ''} onChange={event => update('port', event.target.value)} placeholder="5060 / 5061 / 8089" style={gateInputStyle} />
+                <input className="ptdt-sip-gate-input" value={form.port || ''} onChange={event => update('port', event.target.value)} placeholder="5060 / 5061 / 8089" style={gateInputStyle} />
               </label>
               <label style={{ ...gateLabelStyle, gridColumn: '1 / -1' }}>SIP WebSocket Server
-                <input value={form.webSocketServer} onChange={event => update('webSocketServer', event.target.value)} placeholder="wss://pbx.ptdt.taxi:8089/ws" style={gateInputStyle} />
+                <input className="ptdt-sip-gate-input" value={form.webSocketServer} onChange={event => update('webSocketServer', event.target.value)} placeholder="wss://pbx.ptdt.taxi:8089/ws" style={gateInputStyle} />
               </label>
               <label style={{ ...gateLabelStyle, gridColumn: '1 / -1' }}>Display Name
-                <input value={form.displayName || ''} onChange={event => update('displayName', event.target.value)} placeholder="Agent display name" style={gateInputStyle} />
+                <input className="ptdt-sip-gate-input" value={form.displayName || ''} onChange={event => update('displayName', event.target.value)} placeholder="Agent display name" style={gateInputStyle} />
               </label>
             </div>
 

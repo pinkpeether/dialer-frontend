@@ -102,7 +102,7 @@ export default function TopOperatorActions() {
             <ShieldCheck size={14} />
             <span style={{ display: 'grid', gap: 2, lineHeight: 1.08 }}>
               <span>{roleLabel(user?.role)}</span>
-              <span style={{ fontSize: 9.5, fontWeight: 850, letterSpacing: 0, textTransform: 'none', opacity: 0.86 }}>
+              <span style={{ fontSize: 10.8, fontWeight: 900, letterSpacing: 0, textTransform: 'none', opacity: 0.9 }}>
                 {user?.email || 'signed-in account'}
               </span>
             </span>
