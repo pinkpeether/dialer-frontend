@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react
 import { Outlet, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopOperatorActions from './TopOperatorActions'
-import DynamicCallerIdDialerSelector from './DynamicCallerIdDialerSelector'
 import { useSipStore } from '../store/sip.store'
 import { useAuthStore } from '../store/auth.store'
 import { authAPI } from '../api/auth.api'
@@ -106,8 +105,6 @@ export default function Layout() {
       <div className="grid-overlay" />
 
       <Sidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
-      <DynamicCallerIdDialerSelector />
-
       <main className="ptdt-layout-main" style={{
         flex: 1,
         marginLeft: sidebarWidth,

@@ -478,7 +478,7 @@ export default function SystemSettings() {
   const recordingEnabled = form.recordingEnabled
 
   return (
-    <div className="ptdt-mobile-page ptdt-mobile-page-system-settings" style={{ padding: '32px 36px', maxWidth: 1180, margin: '0 auto' }}>
+    <div className="ptdt-mobile-page ptdt-mobile-page-system-settings" style={{ padding: '32px 36px', maxWidth: 1320, margin: '0 auto' }}>
       <style>{PTDT_MOBILE_PAGE_CSS}</style>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
         <div className="eyebrow pink" style={{ marginBottom: 14 }}>

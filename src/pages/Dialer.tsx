@@ -15,6 +15,7 @@ import { useSipStore } from '../store/sip.store'
 import FloatingDialer from '../components/FloatingDialer'
 import SipActiveCallOverlay from '../components/SipActiveCallOverlay'
 import CallDispositionModal from '../components/CallDispositionModal'
+import DynamicCallerIdDialerSelector from '../components/DynamicCallerIdDialerSelector'
 import { useToast } from '../hooks/useToast'
 import { getSocketUrl } from '../utils/socketUrl'
 
@@ -812,6 +813,16 @@ export default function Dialer() {
         </div>
       </motion.div>
 
+      <div className="ptdt-dialer-page-desk-controls">
+        <div className="ptdt-dialer-idle-pill">
+          <span />
+          {hiddenDeskStatus.label}
+        </div>
+        <button type="button" className="ptdt-hide-desk-pill" onClick={() => setVoiceDeskOpen(open => !open)}>
+          {voiceDeskOpen ? 'Hide Desk' : 'Open Desk'}
+        </button>
+      </div>
+
       <div className="ptdt-dialer-shell" style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(300px, 340px) minmax(0, 1fr)',
@@ -819,6 +830,7 @@ export default function Dialer() {
         minHeight: 'calc(100vh - 210px)',
       }}>
 
+      <div className="ptdt-dialer-left-rail">
       {/* ============== LEFT — Control Panel ============== */}
       <motion.aside
         initial={{ opacity: 0, x: -20 }}
@@ -1092,6 +1104,8 @@ export default function Dialer() {
           </motion.div>
         )}
       </motion.aside>
+      <DynamicCallerIdDialerSelector />
+      </div>
 
       {/* ============== RIGHT — Embedded Voice Desk ============== */}
       <motion.section
