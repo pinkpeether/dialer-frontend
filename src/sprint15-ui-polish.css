@@ -104,3 +104,84 @@
 }
 [data-theme="dark"] .ptdt-calls-search-shell{background:rgba(255,255,255,.08)!important;box-shadow:0 12px 28px rgba(15,23,42,.08)!important}
 @media(max-width:900px){.ptdt-dialer-status-strip{flex-wrap:wrap;margin-left:0}.ptdt-dialer-status-pill{min-height:48px;border-radius:18px;padding:9px 14px}}
+
+.ptdt-top-operator-actions{
+  position:sticky!important;
+  top:0!important;
+  z-index:70!important;
+  padding-top:12px!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(255,255,255,.76) 72%,rgba(255,255,255,.34))!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+}
+[data-theme="dark"] .ptdt-top-operator-actions{
+  background:linear-gradient(180deg,rgba(12,10,20,.92),rgba(12,10,20,.76) 72%,rgba(12,10,20,.34))!important;
+}
+.ptdt-top-operator-dialer-pills{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.ptdt-dialer-status-pill.compact{
+  min-height:42px;
+  padding:8px 14px;
+  border-radius:18px;
+}
+.ptdt-dialer-status-pill.compact>span{
+  width:10px;
+  height:10px;
+}
+.ptdt-dialer-status-pill.compact .mono{
+  font-size:8.5px;
+  letter-spacing:1.4px;
+}
+.ptdt-dialer-status-pill.compact strong{
+  font-size:12px;
+}
+.ptdt-top-operator-actions.is-dialer-page{
+  padding-bottom:12px!important;
+  margin-bottom:0!important;
+}
+.ptdt-top-operator-actions.is-dialer-page .ptdt-top-operator-row{
+  width:100%;
+  gap:10px;
+}
+.ptdt-top-operator-actions.is-dialer-page::after{
+  filter:blur(1.55px);
+  box-shadow:0 1px 11px rgba(100,116,139,.30);
+}
+.ptdt-dialer-page{
+  padding-top:10px!important;
+}
+.ptdt-dialer-header{
+  margin-bottom:12px!important;
+}
+.ptdt-dialer-page>.ptdt-dialer-status-strip{
+  display:none!important;
+}
+.ptdt-dialer-page-desk-controls{
+  margin:-12px 4px 10px auto!important;
+}
+.ptdt-dialer-shell{
+  min-height:calc(100vh - 152px)!important;
+}
+@media(max-width:900px){
+  .ptdt-top-operator-actions{
+    position:sticky!important;
+    top:0!important;
+  }
+  .ptdt-top-operator-dialer-pills{
+    width:100%;
+    order:2;
+  }
+  .ptdt-top-operator-actions.is-dialer-page .ptdt-top-operator-row{
+    justify-content:flex-start;
+  }
+  .ptdt-dialer-page{
+    padding-top:12px!important;
+  }
+  .ptdt-dialer-page-desk-controls{
+    margin:0 0 12px!important;
+  }
+}
