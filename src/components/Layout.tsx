@@ -143,7 +143,7 @@ export default function Layout() {
             Copyrights © <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>PTDT-Dialer</span>
             {' · '}Pink Taxi Group Ltd · United Kingdom. All rights reserved.
             {' · '}
-            <PtdtAnimatedSlogan />
+            <PtdtAnimatedSlogan style={{ fontSize: 'inherit', lineHeight: 'inherit' }} />
           </span>
         </footer>
       </main>
