@@ -42,6 +42,7 @@ import {
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/auth.store'
 import ThemeToggle from './ThemeToggle'
+import PtdtAnimatedSlogan from './PtdtAnimatedSlogan'
 
 type NavItem = { to: string; icon: ElementType; label: string; roles?: string[]; color?: string }
 type NavGroup = { key: string; label: string; icon: ElementType; roles?: string[]; color?: string; items: string[] }
@@ -254,7 +255,7 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
         </div>
 
         {!collapsed && <div style={{ padding: '8px 10px', marginBottom: 10, borderRadius: 14, background: 'linear-gradient(135deg, rgba(251,11,140,0.08), rgba(128,87,215,0.08))', border: '1px solid var(--border)', fontSize: 10.5, fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.45 }}>
-          Trust the <span style={{ color: 'var(--pink)' }}>{`{ Code }`}</span>,<br /><span style={{ color: 'var(--green-2)' }}>// </span> Not the Cult!
+          <PtdtAnimatedSlogan compact />
         </div>}
 
         <nav style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: collapsed ? 8 : 5, overflowY: 'auto', overflowX: 'hidden', paddingRight: collapsed ? 0 : 2, paddingBottom: collapsed ? 8 : 30 }}>

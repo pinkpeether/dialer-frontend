@@ -6,6 +6,7 @@ import { useSipStore } from '../store/sip.store'
 import { useAuthStore } from '../store/auth.store'
 import { authAPI } from '../api/auth.api'
 import PtdtDialog from './PtdtDialog'
+import PtdtAnimatedSlogan from './PtdtAnimatedSlogan'
 
 export default function Layout() {
   const sipConfig = useSipStore(s => s.config)
@@ -142,8 +143,7 @@ export default function Layout() {
             Copyrights © <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>PTDT-Dialer</span>
             {' · '}Pink Taxi Group Ltd · United Kingdom. All rights reserved.
             {' · '}
-            Trust the <span style={{ color: 'var(--pink)', fontWeight: 700 }}>{'{ Code }'}</span>,{' '}
-            <span style={{ color: 'var(--green-2)', fontWeight: 700 }}>// Not the Cult!</span>
+            <PtdtAnimatedSlogan />
           </span>
         </footer>
       </main>
