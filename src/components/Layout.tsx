@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/auth.store'
 import { authAPI } from '../api/auth.api'
 import PtdtDialog from './PtdtDialog'
 import PtdtAnimatedSlogan from './PtdtAnimatedSlogan'
+import SipRegistrationGate from './SipRegistrationGate'
 import { markPresenceOfflineBeforeLogout, useAgentPresence } from '../hooks/useAgentPresence'
 
 export default function Layout() {
@@ -14,6 +15,7 @@ export default function Layout() {
   const sipStatus = useSipStore(s => s.status)
   const registerSip = useSipStore(s => s.register)
   const unregisterSip = useSipStore(s => s.unregister)
+  const user = useAuthStore(s => s.user)
   const logout = useAuthStore(s => s.logout)
   const navigate = useNavigate()
   const autoRegisterKeyRef = useRef('')
@@ -80,9 +82,12 @@ export default function Layout() {
   }, [logout, navigate, unregisterSip])
 
   const sidebarWidth = sidebarCollapsed ? 96 : 324
+  const sipReady = sipStatus === 'registered' || sipStatus === 'in_call' || sipStatus === 'incoming'
+  const sipGateLocked = user?.role === 'AGENT' && !sipReady
 
   return (
     <div
+      className={sipGateLocked ? 'ptdt-sip-lock-active' : undefined}
       onClickCapture={requestSignOut}
       style={{
         display: 'flex',
@@ -108,6 +113,7 @@ export default function Layout() {
       </div>
       <div className="grid-overlay" />
 
+      <SipRegistrationGate open={sipGateLocked} onSignOut={() => setConfirmSignOut(true)} />
       <Sidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
       <main className="ptdt-layout-main" style={{
         flex: 1,

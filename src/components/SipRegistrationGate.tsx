@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Headset, LockKeyhole, PhoneCall, Save, Wifi } from 'lucide-react'
+import { Headset, LockKeyhole, LogOut, PhoneCall, Save, Wifi } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { agentsAPI } from '../api/agents.api'
 import { SOCKET_EVENTS } from '../constants/socketEvents'
@@ -44,7 +44,7 @@ function fieldValue(config: SipAccountConfig): SipAccountConfig {
   }
 }
 
-export default function SipRegistrationGate({ open }: { open: boolean }) {
+export default function SipRegistrationGate({ open, onSignOut }: { open: boolean; onSignOut?: () => void }) {
   const navigate = useNavigate()
   const toast = useToast()
   const { emit } = useSocket()
@@ -104,6 +104,24 @@ export default function SipRegistrationGate({ open }: { open: boolean }) {
             backdropFilter: 'blur(10px)',
           }}
         >
+          {onSignOut && (
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="ptdt-top-operator-signout"
+              style={{
+                position: 'fixed',
+                top: 22,
+                right: 28,
+                zIndex: 2,
+                minHeight: 42,
+                padding: '0 16px',
+              }}
+            >
+              <LogOut size={14} />
+              <span>Sign Out</span>
+            </button>
+          )}
           <motion.div
             initial={{ opacity: 0, y: 18, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}

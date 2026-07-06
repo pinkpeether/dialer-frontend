@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom'
 import { Calendar, Headset, History, Phone, Settings2, Sparkles } from 'lucide-react'
 import { useAuthStore } from '../store/auth.store'
 import { useSipStore } from '../store/sip.store'
-import SipRegistrationGate from '../components/SipRegistrationGate'
 
 const workspaceCards = [
   {
@@ -53,11 +52,8 @@ export default function AgentWorkspace() {
       : 'Dialer idle'
 
   const sipReady = sipStatus === 'registered' || sipStatus === 'in_call' || sipStatus === 'incoming'
-  const mustRegisterSip = user?.role === 'AGENT' && !sipReady
-
   return (
     <div className="ptdt-page">
-      <SipRegistrationGate open={mustRegisterSip} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, marginBottom: 22, flexWrap: 'wrap' }}>
         <div>
           <div className="eyebrow" style={{ marginBottom: 14 }}>
