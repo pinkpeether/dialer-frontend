@@ -48,6 +48,7 @@ import CommercialControl     from './pages/CommercialControl'
 import CustomerOnboarding    from './pages/CustomerOnboarding'
 import PlatformAdministration from './pages/PlatformAdministration'
 import CustomerBillingPortal  from './pages/CustomerBillingPortal'
+import AttendanceIntegrity    from './pages/AttendanceIntegrity'
 import Unauthorized           from './pages/Unauthorized'
 import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
@@ -130,6 +131,7 @@ export default function App() {
             <Route path="/commercial-control" element={<RoleRoute roles={platformAdminRoles}><CommercialControl /></RoleRoute>} />
             <Route path="/customer-onboarding" element={<RoleRoute roles={platformAdminRoles}><CustomerOnboarding /></RoleRoute>} />
             <Route path="/platform/administration" element={<RoleRoute roles={platformAdminRoles}><PlatformAdministration /></RoleRoute>} />
+            <Route path="/attendance-integrity" element={<RoleRoute roles={adminSupervisorRoles}><AttendanceIntegrity /></RoleRoute>} />
             <Route path="/billing" element={<RoleRoute roles={billingRoles}><CustomerBillingPortal /></RoleRoute>} />
             <Route path="/unauthorized"       element={<Unauthorized />} />
             <Route path="*"                  element={<NotFound />}       />

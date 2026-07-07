@@ -17,6 +17,62 @@ type TimeClockState = {
   clockedIn: boolean
   startedAt: number | null
   lastClockOutAt?: number | null
+  sessionId?: string | null
+}
+
+type AttendanceSession = {
+  id: string
+  userId: number | string
+  name: string
+  email: string
+  role: string
+  clockInAt: number
+  clockOutAt?: number | null
+  workedSeconds?: number
+  status: 'Clocked-In' | 'Clocked-Out'
+  browser: string
+  os: string
+  timezone: string
+}
+
+const attendanceSessionsKey = 'ptdt-attendance:sessions'
+
+const detectBrowser = () => {
+  const ua = navigator.userAgent
+  if (ua.includes('Firefox')) return 'Firefox'
+  if (ua.includes('Edg/')) return 'Edge'
+  if (ua.includes('Chrome')) return 'Chrome'
+  if (ua.includes('Safari')) return 'Safari'
+  return 'Browser'
+}
+
+const detectOs = () => {
+  const platform = navigator.platform || navigator.userAgent
+  if (/Mac/i.test(platform)) return 'macOS'
+  if (/Win/i.test(platform)) return 'Windows'
+  if (/Linux/i.test(platform)) return 'Linux'
+  if (/iPhone|iPad|iPod/i.test(platform)) return 'iOS'
+  if (/Android/i.test(platform)) return 'Android'
+  return 'Unknown OS'
+}
+
+const readSessions = (): AttendanceSession[] => {
+  try {
+    const raw = window.localStorage.getItem(attendanceSessionsKey)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const writeSession = (session: AttendanceSession) => {
+  try {
+    const sessions = readSessions().filter(item => item.id !== session.id)
+    window.localStorage.setItem(attendanceSessionsKey, JSON.stringify([session, ...sessions].slice(0, 300)))
+  } catch {
+    /* ignore */
+  }
 }
 
 export default function TimeClockWidget() {
@@ -47,9 +103,46 @@ export default function TimeClockWidget() {
   if (!eligible) return null
 
   const toggle = () => {
-    setState(current => current.clockedIn
-      ? { clockedIn: false, startedAt: null, lastClockOutAt: Date.now() }
-      : { clockedIn: true, startedAt: Date.now(), lastClockOutAt: current.lastClockOutAt || null })
+    setState(current => {
+      const now = Date.now()
+      const userId = user?.id || 'guest'
+      const sessionId = current.sessionId || `att-${userId}-${now}`
+
+      if (current.clockedIn) {
+        const workedSeconds = current.startedAt ? Math.max(0, Math.floor((now - current.startedAt) / 1000)) : 0
+        writeSession({
+          id: sessionId,
+          userId,
+          name: user?.name || user?.email || 'PTDT User',
+          email: user?.email || '',
+          role: user?.role || 'USER',
+          clockInAt: current.startedAt || now,
+          clockOutAt: now,
+          workedSeconds,
+          status: 'Clocked-Out',
+          browser: detectBrowser(),
+          os: detectOs(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local',
+        })
+        return { clockedIn: false, startedAt: null, lastClockOutAt: now, sessionId: null }
+      }
+
+      writeSession({
+        id: sessionId,
+        userId,
+        name: user?.name || user?.email || 'PTDT User',
+        email: user?.email || '',
+        role: user?.role || 'USER',
+        clockInAt: now,
+        clockOutAt: null,
+        workedSeconds: 0,
+        status: 'Clocked-In',
+        browser: detectBrowser(),
+        os: detectOs(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local',
+      })
+      return { clockedIn: true, startedAt: now, lastClockOutAt: current.lastClockOutAt || null, sessionId }
+    })
   }
 
   return (
