@@ -13,6 +13,7 @@ import { agentsAPI }        from '../api/agents.api'
 import { campaignsAPI }     from '../api/campaigns.api'
 import { contactsAPI }      from '../api/contacts.api'
 import { callsAPI }         from '../api/calls.api'
+import { authAPI }          from '../api/auth.api'
 import { reportsAPI, type ReportTrendRow } from '../api/reports.api'
 import { clearSwrByPrefix } from '../api/swrCache'
 import { useAuthStore }     from '../store/auth.store'
@@ -454,6 +455,7 @@ const tooltipStyle = {
 export default function Dashboard() {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
+  const updateUser = useAuthStore(s => s.updateUser)
   const [cached] = useState(() => readDashboardCache(user?.id, user?.role))
   const [stats, setStats] = useState<Stats | null>(normalizeStats(cached?.stats) ?? null)
   const [recentCallData, setRecentCallData] = useState<CallLog[]>(cached?.recentCallData ?? [])
@@ -475,6 +477,24 @@ export default function Dashboard() {
         ...activeCalls.filter(call => call.phone !== sipActiveCall.remoteIdentity),
       ]
     : activeCalls
+
+  useEffect(() => {
+    let mounted = true
+    authAPI.getProfile()
+      .then(profile => {
+        if (!mounted || !profile) return
+        updateUser({
+          name: profile.name,
+          email: profile.email,
+          role: profile.role,
+          status: profile.status,
+          phone: profile.phone,
+          extension: profile.extension,
+        })
+      })
+      .catch(() => undefined)
+    return () => { mounted = false }
+  }, [updateUser])
 
   useEffect(() => {
     const load = async () => {

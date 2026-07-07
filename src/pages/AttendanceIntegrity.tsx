@@ -119,11 +119,19 @@ const cleanRole = (role?: string | null) => String(role || 'USER').replace(/_/g,
 const cleanStatus = (status?: string | null) => String(status || 'OFFLINE').replace(/_/g, ' ')
 
 const statusColor = (status: string) => {
-  const next = status.toUpperCase()
-  if (next.includes('CLOCKED-IN') || next.includes('READY') || next.includes('ONLINE')) return 'var(--green-2)'
-  if (next.includes('FLAG') || next.includes('MISSED') || next.includes('DISCONNECT')) return 'var(--danger)'
+  const next = status.replace(/_/g, ' ').toUpperCase()
+  if (next.includes('CLOCKED IN') || next.includes('READY') || next.includes('ONLINE')) return 'var(--green-2)'
+  if (next.includes('NO SESSION') || next.includes('FLAG') || next.includes('MISSED') || next.includes('DISCONNECT')) return 'var(--danger)'
   if (next.includes('REVIEW') || next.includes('PENDING') || next.includes('IDLE') || next.includes('BUSY')) return 'var(--warning)'
   return 'var(--text-3)'
+}
+
+const pillToneForStatus = (status: string): 'green' | 'pink' | 'gold' | 'red' | 'muted' => {
+  const color = statusColor(status)
+  if (color === 'var(--danger)') return 'red'
+  if (color === 'var(--green-2)') return 'green'
+  if (color === 'var(--warning)') return 'gold'
+  return status === 'Clocked-Out' || status === 'CLOCKED OUT' ? 'muted' : 'gold'
 }
 
 const readJson = <T,>(key: string, fallback: T): T => {
@@ -285,7 +293,7 @@ export default function AttendanceIntegrity() {
         workedSeconds: isRunningClockStatus(row.status) && row.session?.clockInAt
           ? secondsSince(row.session.clockInAt, nowMs)
           : row.activeSeconds || row.session?.totalWorkedSeconds || 0,
-        needsReview: row.needsReview,
+        needsReview: row.needsReview || row.status === 'NO_SESSION',
         clockInAt: row.session?.clockInAt || null,
         clockOutAt: row.session?.clockOutAt || null,
       }))
@@ -423,7 +431,7 @@ export default function AttendanceIntegrity() {
               ) : visibleRows.length === 0 ? (
                 <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-3)' }}>No supervisor or agent records found.</td></tr>
               ) : visibleRows.map(row => {
-                const tone = isRunningClockStatus(row.clockStatus) ? 'green' : row.clockStatus === 'Clocked-Out' || row.clockStatus === 'CLOCKED OUT' ? 'muted' : 'gold'
+                const tone = pillToneForStatus(row.clockStatus)
                 return (
                   <tr key={row.user.id}>
                     <td style={cellStyle}>
@@ -463,13 +471,13 @@ export default function AttendanceIntegrity() {
                               minHeight: 28,
                               padding: '0 10px',
                               borderRadius: 999,
-                              border: `1px solid ${row.needsReview ? 'var(--warning)' : 'var(--green-2)'}`,
-                              color: row.needsReview ? 'var(--warning)' : 'var(--green-2)',
+                              border: `1px solid ${row.needsReview ? 'var(--danger)' : 'var(--green-2)'}`,
+                              color: row.needsReview ? 'var(--danger)' : 'var(--green-2)',
                               background: 'var(--bg-glass)',
                               textTransform: 'uppercase',
                               whiteSpace: 'nowrap',
                               ...(row.needsReview ? { fontSize: 11, fontWeight: 950, letterSpacing: .5 } : cleanPillStyle),
-                            }}>{row.needsReview ? 'Needs Review' : 'Clean'}</span>
+                            }}>{row.needsReview ? 'Flagged' : 'Clean'}</span>
                             {row.needsReview && sessionId && (
                               <>
                                 <input

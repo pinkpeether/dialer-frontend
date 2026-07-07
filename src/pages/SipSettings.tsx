@@ -218,6 +218,7 @@ export default function SipSettings() {
           <div className="ptdt-sip-fields-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
             <Field label="Enable SIP Mode">
               <select
+                className="ptdt-sip-gate-input"
                 value={form.enabled ? 'yes' : 'no'}
                 onChange={e => update('enabled', e.target.value === 'yes')}
                 style={inputStyle}
@@ -229,6 +230,7 @@ export default function SipSettings() {
 
             <Field label="Transport">
               <select
+                className="ptdt-sip-gate-input"
                 value={form.transport}
                 onChange={e => update('transport', e.target.value as SipTransport)}
                 style={inputStyle}
@@ -242,40 +244,40 @@ export default function SipSettings() {
             </Field>
 
             <Field label="SIP Username">
-              <input value={form.username} onChange={e => update('username', e.target.value)} placeholder="1001" style={inputStyle}/>
+              <input className="ptdt-sip-gate-input" value={form.username} onChange={e => update('username', e.target.value)} placeholder="1001" style={inputStyle}/>
             </Field>
 
             <Field label="SIP Password">
-              <input value={form.password} onChange={e => update('password', e.target.value)} placeholder="••••••••" type="password" style={inputStyle}/>
+              <input className="ptdt-sip-gate-input" value={form.password} onChange={e => update('password', e.target.value)} placeholder="••••••••" type="password" style={inputStyle}/>
             </Field>
 
             <Field label="SIP Domain / Host">
-              <input value={form.domain} onChange={e => update('domain', e.target.value)} placeholder="sip.provider.com" style={inputStyle}/>
+              <input className="ptdt-sip-gate-input" value={form.domain} onChange={e => update('domain', e.target.value)} placeholder="sip.provider.com" style={inputStyle}/>
             </Field>
 
             <Field label="SIP Port">
-              <input value={form.port || ''} onChange={e => update('port', e.target.value)} placeholder="5060 / 5061 / provider-specific" style={inputStyle}/>
+              <input className="ptdt-sip-gate-input" value={form.port || ''} onChange={e => update('port', e.target.value)} placeholder="5060 / 5061 / provider-specific" style={inputStyle}/>
             </Field>
 
             <Field label="SIP WebSocket Server">
-              <input value={form.webSocketServer} onChange={e => update('webSocketServer', e.target.value)} placeholder="wss://sip.provider.com:7443" style={inputStyle}/>
+              <input className="ptdt-sip-gate-input" value={form.webSocketServer} onChange={e => update('webSocketServer', e.target.value)} placeholder="wss://sip.provider.com:7443" style={inputStyle}/>
             </Field>
 
             <Field label="Outbound Proxy">
-              <input value={form.outboundProxy || ''} onChange={e => update('outboundProxy', e.target.value)} placeholder="proxy.provider.com" style={inputStyle}/>
+              <input className="ptdt-sip-gate-input" value={form.outboundProxy || ''} onChange={e => update('outboundProxy', e.target.value)} placeholder="proxy.provider.com" style={inputStyle}/>
             </Field>
 
             <Field label="Display Name">
-              <input value={form.displayName || ''} onChange={e => update('displayName', e.target.value)} placeholder="John Doe" style={inputStyle}/>
+              <input className="ptdt-sip-gate-input" value={form.displayName || ''} onChange={e => update('displayName', e.target.value)} placeholder="John Doe" style={inputStyle}/>
             </Field>
 
             <Field label="Caller ID">
-              <input value={form.callerId || ''} onChange={e => update('callerId', e.target.value)} placeholder="+15551234567" style={inputStyle}/>
+              <input className="ptdt-sip-gate-input" value={form.callerId || ''} onChange={e => update('callerId', e.target.value)} placeholder="+15551234567" style={inputStyle}/>
             </Field>
 
             <div style={{ gridColumn: '1 / -1' }}>
               <Field label="STUN Server">
-                <input value={form.stunServer || ''} onChange={e => update('stunServer', e.target.value)} placeholder="stun.l.google.com:19302" style={inputStyle}/>
+                <input className="ptdt-sip-gate-input" value={form.stunServer || ''} onChange={e => update('stunServer', e.target.value)} placeholder="stun.l.google.com:19302" style={inputStyle}/>
               </Field>
             </div>
           </div>

@@ -224,8 +224,13 @@
 .ptdt-sip-gate-input,
 .ptdt-sip-gate-input:focus{
   background:var(--ptdt-sip-gate-input-bg)!important;
+  background-color:var(--ptdt-sip-gate-input-bg)!important;
+  background-image:none!important;
   color:var(--ptdt-sip-gate-input-text)!important;
   border-color:var(--ptdt-sip-gate-input-border)!important;
+  box-shadow:inset 0 1px 0 var(--ptdt-sip-gate-input-highlight, rgba(255,255,255,.85))!important;
+  -webkit-appearance:none;
+  appearance:none;
 }
 .ptdt-sip-gate-input::placeholder{
   color:rgba(100,116,139,.70);
@@ -236,10 +241,29 @@
 .ptdt-sip-gate-input:-webkit-autofill,
 .ptdt-sip-gate-input:-webkit-autofill:hover,
 .ptdt-sip-gate-input:-webkit-autofill:focus{
+  box-shadow:0 0 0 1000px var(--ptdt-sip-gate-input-bg) inset!important;
   -webkit-box-shadow:0 0 0 1000px var(--ptdt-sip-gate-input-bg) inset!important;
   -webkit-text-fill-color:var(--ptdt-sip-gate-input-text)!important;
   caret-color:var(--ptdt-sip-gate-input-text)!important;
   transition:background-color 9999s ease-out 0s!important;
+}
+
+.ptdt-sip-form-card .ptdt-sip-gate-input,
+.ptdt-sip-form-card .ptdt-sip-gate-input:focus,
+.ptdt-sip-form-card .ptdt-sip-gate-input:not(:placeholder-shown){
+  background:var(--bg-glass-hi)!important;
+  background-color:var(--bg-glass-hi)!important;
+  background-image:none!important;
+  color:var(--text)!important;
+}
+
+.ptdt-sip-form-card .ptdt-sip-gate-input:-webkit-autofill,
+.ptdt-sip-form-card .ptdt-sip-gate-input:-webkit-autofill:hover,
+.ptdt-sip-form-card .ptdt-sip-gate-input:-webkit-autofill:focus{
+  box-shadow:0 0 0 1000px var(--bg-glass-hi) inset!important;
+  -webkit-box-shadow:0 0 0 1000px var(--bg-glass-hi) inset!important;
+  -webkit-text-fill-color:var(--text)!important;
+  caret-color:var(--text)!important;
 }
 
 .ptdt-timeclock-widget{
