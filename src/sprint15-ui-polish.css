@@ -246,8 +246,8 @@
   display:flex;
   align-items:center;
   gap:10px;
-  min-height:50px;
-  padding:7px 9px 7px 12px;
+  min-height:58px;
+  padding:8px 10px 8px 12px;
   border-radius:18px;
   border:1px solid rgba(0,167,71,.24);
   background:linear-gradient(135deg,rgba(0,167,71,.12),rgba(251,11,140,.07));
@@ -272,11 +272,13 @@
 }
 .ptdt-timeclock-widget strong{
   display:block;
-  margin-top:2px;
+  margin-top:3px;
   color:var(--green-2);
-  font-size:13px;
+  font-size:26px;
+  line-height:1;
   font-weight:950;
   font-variant-numeric:tabular-nums;
+  letter-spacing:.2px;
 }
 .ptdt-timeclock-widget button{
   min-height:34px;

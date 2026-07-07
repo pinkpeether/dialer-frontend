@@ -278,6 +278,11 @@ export default function Dialer() {
   void user
 
   const campaignOptions = campaigns
+  const selectedCampaign = campaignOptions.find(c => Number(c.id) === Number(selectedCamp)) || null
+  const selectedCampaignName = selectedCampaign ? String(selectedCampaign.name || '') : ''
+  const selectedCampaignScript = selectedCampaign
+    ? String(selectedCampaign.script || selectedCampaign.callScript || selectedCampaign.agentScript || '')
+    : ''
   const sourceContacts = selectedCamp ? contacts : []
 
   const fetchActiveCampaigns = useCallback(async () => {
@@ -304,6 +309,22 @@ export default function Dialer() {
   useEffect(() => {
     void fetchActiveCampaigns()
   }, [fetchActiveCampaigns])
+
+  useEffect(() => {
+    if (!selectedCamp) return
+    if (selectedCampaign) return
+
+    setSelectedCamp(null)
+    setContacts([])
+    setActiveCall(current => {
+      if (!current) return current
+      const nestedCampaignId = isRecord(current.campaign) ? current.campaign.id : undefined
+      const currentCampaignId = Number(current.campaignId || current.campaign_id || nestedCampaignId)
+      return Number.isFinite(currentCampaignId) && currentCampaignId === Number(selectedCamp) ? null : current
+    })
+    setSearch('')
+    setMessage('Selected campaign was removed. Agent script cleared.')
+  }, [selectedCamp, selectedCampaign])
 
   useEffect(() => {
     if (!selectedCamp) return
@@ -1086,10 +1107,13 @@ export default function Dialer() {
           )}
         </AnimatePresence>
 
-        <AgentCallScriptPanel
-          activeCall={activeCall || liveSipCall || null}
-          campaignName={String(campaignOptions.find(c => Number(c.id) === Number(selectedCamp))?.name || '')}
-        />
+        {selectedCampaign && (
+          <AgentCallScriptPanel
+            activeCall={activeCall || liveSipCall || null}
+            campaignName={selectedCampaignName}
+            campaignScript={selectedCampaignScript}
+          />
+        )}
 
         {/* Start / Stop */}
         <motion.button
