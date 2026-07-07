@@ -71,13 +71,24 @@ const cellStyle: CSSProperties = {
 
 const compactDateCellStyle: CSSProperties = {
   ...cellStyle,
-  fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif',
-  fontSize: 11.2,
-  fontWeight: 700,
-  letterSpacing: -0.25,
+  fontFamily: '"Roboto Condensed", "Helvetica Neue", Arial, sans-serif',
+  fontSize: 12.9,
+  fontWeight: 800,
+  letterSpacing: 0,
   lineHeight: 1.25,
   whiteSpace: 'nowrap',
   color: 'var(--text-2)',
+}
+
+const cleanPillStyle: CSSProperties = {
+  justifyContent: 'center',
+  width: 74,
+  minWidth: 74,
+  maxWidth: 74,
+  fontFamily: 'var(--font-body)',
+  fontSize: 12.1,
+  letterSpacing: .35,
+  fontWeight: 950,
 }
 
 const pad = (value: number) => String(value).padStart(2, '0')
@@ -405,7 +416,7 @@ export default function AttendanceIntegrity() {
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-2)' }}>
                         <Fingerprint size={14} color="var(--pink)" />
                         <div>
-                          <div style={{ fontWeight: 900 }}>{readSessionText(row.session, 'browser') || 'No session yet'}</div>
+                          <div style={{ fontWeight: 900, fontSize: 12.8, lineHeight: 1.15 }}>{readSessionText(row.session, 'browser') || 'No session yet'}</div>
                           <div style={{ color: 'var(--text-3)', fontSize: 12 }}>{readSessionText(row.session, 'operatingSystem') || readSessionText(row.session, 'os') || 'Device pending'} · {readSessionText(row.session, 'timezone') || '—'}</div>
                         </div>
                       </div>
@@ -414,8 +425,20 @@ export default function AttendanceIntegrity() {
                       {(() => {
                         const sessionId = readSessionNumber(row.session, 'id')
                         return (
-                          <div style={{ display: 'grid', gap: 8, minWidth: 220 }}>
-                            <Pill tone={row.needsReview ? 'gold' : 'green'}>{row.needsReview ? 'Needs Review' : 'Clean'}</Pill>
+                          <div style={{ display: 'grid', gap: 8, minWidth: row.needsReview ? 220 : 82, maxWidth: row.needsReview ? 260 : 90 }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              minHeight: 28,
+                              padding: '0 10px',
+                              borderRadius: 999,
+                              border: `1px solid ${row.needsReview ? 'var(--warning)' : 'var(--green-2)'}`,
+                              color: row.needsReview ? 'var(--warning)' : 'var(--green-2)',
+                              background: 'var(--bg-glass)',
+                              textTransform: 'uppercase',
+                              whiteSpace: 'nowrap',
+                              ...(row.needsReview ? { fontSize: 11, fontWeight: 950, letterSpacing: .5 } : cleanPillStyle),
+                            }}>{row.needsReview ? 'Needs Review' : 'Clean'}</span>
                             {row.needsReview && sessionId && (
                               <>
                                 <input
