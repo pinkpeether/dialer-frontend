@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Clock3, LogIn, LogOut } from 'lucide-react'
 import { useAuthStore } from '../store/auth.store'
+import { attendanceIntegrityApi, type AttendanceMetadata } from '../api/attendanceIntegrity.api'
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
@@ -18,6 +19,7 @@ type TimeClockState = {
   startedAt: number | null
   lastClockOutAt?: number | null
   sessionId?: string | null
+  backendSessionId?: number | null
 }
 
 type AttendanceSession = {
@@ -75,6 +77,25 @@ const writeSession = (session: AttendanceSession) => {
   }
 }
 
+const attendanceMetadata = (sessionId?: number | null): AttendanceMetadata => ({
+  ...(sessionId ? { sessionId } : {}),
+  browser: detectBrowser(),
+  operatingSystem: detectOs(),
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local',
+  userAgent: navigator.userAgent,
+  currentUrl: window.location.href,
+  tabVisible: document.visibilityState === 'visible',
+  lastInteractionAt: new Date().toISOString(),
+  mouseActivity: true,
+  keyboardActivity: true,
+  deviceFingerprint: [
+    navigator.userAgent,
+    navigator.language,
+    Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local',
+    `${window.screen.width}x${window.screen.height}`,
+  ].join('|'),
+})
+
 export default function TimeClockWidget() {
   const user = useAuthStore(state => state.user)
   const storageKey = useMemo(() => `ptdt-timeclock:${user?.id || 'guest'}`, [user?.id])
@@ -98,6 +119,46 @@ export default function TimeClockWidget() {
     if (!state.clockedIn) return undefined
     const timer = window.setInterval(() => tick(value => value + 1), 1000)
     return () => window.clearInterval(timer)
+  }, [state.clockedIn])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!eligible) return undefined
+    void attendanceIntegrityApi.getMe({ silent: true })
+      .then(({ session }) => {
+        if (cancelled || !session) return
+        if (session.status !== 'CLOCKED_IN' && session.status !== 'IDLE' && session.status !== 'ON_BREAK') return
+        setState(current => current.clockedIn ? current : {
+          clockedIn: true,
+          startedAt: new Date(session.clockInAt).getTime(),
+          lastClockOutAt: current.lastClockOutAt || null,
+          sessionId: session.sessionKey,
+          backendSessionId: session.id,
+        })
+      })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [eligible])
+
+  useEffect(() => {
+    if (!state.clockedIn || !state.backendSessionId) return undefined
+    const sendHeartbeat = () => {
+      void attendanceIntegrityApi.heartbeat(attendanceMetadata(state.backendSessionId)).catch(() => undefined)
+    }
+    sendHeartbeat()
+    const timer = window.setInterval(sendHeartbeat, 30_000)
+    return () => window.clearInterval(timer)
+  }, [state.backendSessionId, state.clockedIn])
+
+  useEffect(() => {
+    if (!state.clockedIn) return undefined
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = 'Active Work Session Detected. Please Clock-Out before exiting if your shift has ended.'
+      return event.returnValue
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [state.clockedIn])
 
   if (!eligible) return null
@@ -124,6 +185,7 @@ export default function TimeClockWidget() {
           os: detectOs(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local',
         })
+        void attendanceIntegrityApi.clockOut(attendanceMetadata(current.backendSessionId)).catch(() => undefined)
         return { clockedIn: false, startedAt: null, lastClockOutAt: now, sessionId: null }
       }
 
@@ -139,9 +201,19 @@ export default function TimeClockWidget() {
         status: 'Clocked-In',
         browser: detectBrowser(),
         os: detectOs(),
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local',
-      })
-      return { clockedIn: true, startedAt: now, lastClockOutAt: current.lastClockOutAt || null, sessionId }
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local',
+        })
+      void attendanceIntegrityApi.clockIn(attendanceMetadata())
+        .then(session => {
+          setState(latest => latest.clockedIn ? {
+            ...latest,
+            startedAt: new Date(session.clockInAt).getTime(),
+            sessionId: session.sessionKey,
+            backendSessionId: session.id,
+          } : latest)
+        })
+        .catch(() => undefined)
+      return { clockedIn: true, startedAt: now, lastClockOutAt: current.lastClockOutAt || null, sessionId, backendSessionId: null }
     })
   }
 

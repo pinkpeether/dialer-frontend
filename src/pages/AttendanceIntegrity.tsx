@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Activity, AlertTriangle, Clock3, Fingerprint, RefreshCw, ShieldCheck, UserCheck } from 'lucide-react'
 import { agentsAPI } from '../api/agents.api'
+import { attendanceIntegrityApi, type AttendanceOverviewRow } from '../api/attendanceIntegrity.api'
 import { useAuthStore } from '../store/auth.store'
 
 type TeamUser = {
@@ -78,7 +79,7 @@ const formatDuration = (seconds: number) => {
   return `${pad(hours)}:${pad(minutes)}:${pad(secs)}`
 }
 
-const formatDate = (value?: number | null) => {
+const formatDate = (value?: number | string | null) => {
   if (!value) return '—'
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString()
@@ -113,6 +114,12 @@ const latestSessionFor = (sessions: AttendanceSession[], user: TeamUser) => {
 }
 
 const localClockStateFor = (user: TeamUser) => readJson<TimeClockState>(`ptdt-timeclock:${user.id}`, { clockedIn: false, startedAt: null })
+
+const readSessionText = (session: unknown, key: string) => {
+  if (!session || typeof session !== 'object') return ''
+  const value = (session as Record<string, unknown>)[key]
+  return typeof value === 'string' ? value : ''
+}
 
 function Pill({ children, tone = 'muted' }: { children: ReactNode; tone?: 'green' | 'pink' | 'gold' | 'red' | 'muted' }) {
   const color =
@@ -159,6 +166,14 @@ export default function AttendanceIntegrity() {
   const currentUser = useAuthStore(state => state.user)
   const [users, setUsers] = useState<TeamUser[]>([])
   const [sessions, setSessions] = useState<AttendanceSession[]>(() => readSessions())
+  const [backendRows, setBackendRows] = useState<AttendanceOverviewRow[]>([])
+  const [backendSummary, setBackendSummary] = useState<{
+    totalUsers: number
+    clockedIn: number
+    unexpectedDisconnects: number
+    needsReview: number
+    redFlags: number
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [, tick] = useState(0)
@@ -168,14 +183,26 @@ export default function AttendanceIntegrity() {
     setError('')
     setSessions(readSessions())
     try {
-      const data = await agentsAPI.getAll({ limit: 250 }, { silent })
+      const overview = await attendanceIntegrityApi.overview({ limit: 250 }, { silent })
+      setBackendRows(overview.rows || [])
+      setBackendSummary(overview.summary)
+      setUsers((overview.rows || []).map(row => row.user))
+    } catch (backendError) {
+      try {
+      const data = await agentsAPI.getAll({ limit: 250 }, { silent: true })
       const rows = Array.isArray(data?.agents) ? data.agents : Array.isArray(data) ? data : []
       const teamRows = rows
         .filter((row: TeamUser) => ['AGENT', 'SUPERVISOR'].includes(String(row.role || '').toUpperCase()))
         .map((row: TeamUser) => row)
       setUsers(teamRows)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load team users.')
+      setBackendRows([])
+      setBackendSummary(null)
+      setError(`Backend attendance feed unavailable. Showing local fallback data. ${backendError instanceof Error ? backendError.message : ''}`.trim())
+      } catch (err) {
+        setBackendRows([])
+        setBackendSummary(null)
+        setError(err instanceof Error ? err.message : 'Could not load team users.')
+      }
     } finally {
       setLoading(false)
     }
@@ -190,7 +217,22 @@ export default function AttendanceIntegrity() {
     return () => window.clearInterval(refresh)
   }, [])
 
-  const rows = useMemo(() => users.map(user => {
+  const rows = useMemo(() => {
+    if (backendRows.length > 0) {
+      return backendRows.map(row => ({
+        user: row.user,
+        role: String(row.user.role || '').toUpperCase(),
+        session: row.session,
+        clockStatus: cleanStatus(row.status),
+        dialerStatus: cleanStatus(row.user.status),
+        workedSeconds: row.activeSeconds || row.session?.totalWorkedSeconds || 0,
+        needsReview: row.needsReview,
+        clockInAt: row.session?.clockInAt || null,
+        clockOutAt: row.session?.clockOutAt || null,
+      }))
+    }
+
+    return users.map(user => {
     const localState = localClockStateFor(user)
     const session = latestSessionFor(sessions, user)
     const activeStartedAt = localState.clockedIn ? localState.startedAt || session?.clockInAt || null : null
@@ -212,10 +254,11 @@ export default function AttendanceIntegrity() {
       clockInAt: activeStartedAt || session?.clockInAt || null,
       clockOutAt: session?.clockOutAt || localState.lastClockOutAt || null,
     }
-  }), [sessions, users])
+    })
+  }, [backendRows, sessions, users])
 
-  const clockedInCount = rows.filter(row => row.clockStatus === 'Clocked-In').length
-  const reviewCount = rows.filter(row => row.needsReview).length
+  const clockedInCount = backendSummary?.clockedIn ?? rows.filter(row => row.clockStatus === 'Clocked-In' || row.clockStatus === 'CLOCKED IN').length
+  const reviewCount = backendSummary?.needsReview ?? rows.filter(row => row.needsReview).length
   const supervisorCount = rows.filter(row => row.role === 'SUPERVISOR').length
   const agentCount = rows.filter(row => row.role === 'AGENT').length
 
@@ -245,7 +288,7 @@ export default function AttendanceIntegrity() {
         <div>
           <div className="mono" style={{ color: 'var(--pink)', fontWeight: 950, fontSize: 10.5, letterSpacing: 1.3 }}>LIVE SOURCE</div>
           <p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.55, fontSize: 13 }}>
-            Team presence comes from the existing Agents API. Clock session rows use local TimeClock records until backend attendance endpoints are connected.
+            Team presence and attendance sessions come from the backend Attendance Integrity API. Local TimeClock records are only used as emergency fallback.
           </p>
         </div>
         <div>
@@ -257,7 +300,7 @@ export default function AttendanceIntegrity() {
         <div>
           <div className="mono" style={{ color: 'var(--warning)', fontWeight: 950, fontSize: 10.5, letterSpacing: 1.3 }}>NEXT BACKEND LAYER</div>
           <p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.55, fontSize: 13 }}>
-            Heartbeat, public IP, immutable audit log, missed clock-out, and supervisor approval need backend persistence for cross-browser monitoring.
+            Heartbeat, public IP, immutable audit log, stale heartbeat detection, disconnect flags, and supervisor review are persisted through the backend layer.
           </p>
         </div>
       </div>
@@ -308,8 +351,8 @@ export default function AttendanceIntegrity() {
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-2)' }}>
                         <Fingerprint size={14} color="var(--pink)" />
                         <div>
-                          <div style={{ fontWeight: 900 }}>{row.session?.browser || 'Backend required'}</div>
-                          <div style={{ color: 'var(--text-3)', fontSize: 12 }}>{row.session?.os || 'Cross-browser trace pending'} · {row.session?.timezone || '—'}</div>
+                          <div style={{ fontWeight: 900 }}>{readSessionText(row.session, 'browser') || 'No session yet'}</div>
+                          <div style={{ color: 'var(--text-3)', fontSize: 12 }}>{readSessionText(row.session, 'operatingSystem') || readSessionText(row.session, 'os') || 'Device pending'} · {readSessionText(row.session, 'timezone') || '—'}</div>
                         </div>
                       </div>
                     </td>
@@ -329,7 +372,7 @@ export default function AttendanceIntegrity() {
           Current viewer
         </div>
         <div style={{ color: 'var(--text-2)', fontSize: 13.5, lineHeight: 1.6 }}>
-          {currentUser?.name || currentUser?.email || 'PTDT User'} can use this page as the dedicated Attendance Integrity monitor. Backend persistence should be added next to make Agent/Supervisor Clock records visible across different browsers and machines.
+          {currentUser?.name || currentUser?.email || 'PTDT User'} can use this page as the dedicated Attendance Integrity monitor. Clock records, heartbeat events, disconnect flags, and supervisor review state are now backend-backed.
         </div>
       </div>
     </div>

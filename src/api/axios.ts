@@ -52,6 +52,7 @@ const managedGetPrefixes = [
   '/dynamic-caller-id',
   '/customer-onboarding',
   '/account-review',
+  '/attendance-integrity',
   '/live-monitoring-advanced',
   '/live-ai',
   '/notifications-alerts-pro',
