@@ -20,6 +20,12 @@ type TimeClockState = {
   sessionId?: string | null
 }
 
+type AttendancePageCache = {
+  savedAt: string
+  users: TeamUser[]
+  backendRows: AttendanceOverviewRow[]
+}
+
 type AttendanceSession = {
   id: string
   userId: number | string
@@ -36,6 +42,7 @@ type AttendanceSession = {
 }
 
 const attendanceSessionsKey = 'ptdt-attendance:sessions'
+const attendancePageCacheKey = 'ptdt-attendance-integrity:page-cache:v1'
 
 const pageStyle: CSSProperties = {
   padding: '32px 36px',
@@ -130,6 +137,16 @@ const readJson = <T,>(key: string, fallback: T): T => {
 
 const readSessions = () => readJson<AttendanceSession[]>(attendanceSessionsKey, []).filter(Boolean)
 
+const readPageCache = () => readJson<AttendancePageCache | null>(attendancePageCacheKey, null)
+
+const writePageCache = (cache: Omit<AttendancePageCache, 'savedAt'>) => {
+  try {
+    window.localStorage.setItem(attendancePageCacheKey, JSON.stringify({ ...cache, savedAt: new Date().toISOString() }))
+  } catch {
+    // Attendance cache is best-effort; backend remains the source of truth.
+  }
+}
+
 const latestSessionFor = (sessions: AttendanceSession[], user: TeamUser) => {
   const uid = String(user.id)
   return sessions.find(item => String(item.userId) === uid || (user.email && item.email === user.email)) || null
@@ -204,10 +221,13 @@ function MetricCard({ icon, label, value, tone = 'green' }: { icon: ReactNode; l
 
 export default function AttendanceIntegrity() {
   const currentUser = useAuthStore(state => state.user)
-  const [users, setUsers] = useState<TeamUser[]>([])
+  const [cachedPage] = useState(() => readPageCache())
+  const [hasInitialCache] = useState(() => Boolean(cachedPage?.backendRows?.length || cachedPage?.users?.length))
+  const [users, setUsers] = useState<TeamUser[]>(() => cachedPage?.users ?? [])
   const [sessions, setSessions] = useState<AttendanceSession[]>(() => readSessions())
-  const [backendRows, setBackendRows] = useState<AttendanceOverviewRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const [backendRows, setBackendRows] = useState<AttendanceOverviewRow[]>(() => cachedPage?.backendRows ?? [])
+  const [loading, setLoading] = useState(!hasInitialCache)
+  const [refreshing, setRefreshing] = useState(hasInitialCache)
   const [error, setError] = useState('')
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [reviewingSessionId, setReviewingSessionId] = useState<number | null>(null)
@@ -215,12 +235,15 @@ export default function AttendanceIntegrity() {
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true)
+    if (silent) setRefreshing(true)
     setError('')
     setSessions(readSessions())
     try {
       const overview = await attendanceIntegrityApi.overview({ limit: 250 }, { silent })
       setBackendRows(overview.rows || [])
-      setUsers((overview.rows || []).map(row => row.user))
+      const nextUsers = (overview.rows || []).map(row => row.user)
+      setUsers(nextUsers)
+      writePageCache({ backendRows: overview.rows || [], users: nextUsers })
     } catch (backendError) {
       try {
       const data = await agentsAPI.getAll({ limit: 250 }, { silent: true })
@@ -230,6 +253,7 @@ export default function AttendanceIntegrity() {
         .map((row: TeamUser) => row)
       setUsers(teamRows)
       setBackendRows([])
+      writePageCache({ backendRows: [], users: teamRows })
       setError(`Backend attendance feed unavailable. Showing local fallback data. ${backendError instanceof Error ? backendError.message : ''}`.trim())
       } catch (err) {
         setBackendRows([])
@@ -237,17 +261,18 @@ export default function AttendanceIntegrity() {
       }
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
   useEffect(() => {
-    void load()
+    void load(hasInitialCache)
     const refresh = window.setInterval(() => {
       setSessions(readSessions())
       setNowMs(Date.now())
     }, 1000)
     return () => window.clearInterval(refresh)
-  }, [])
+  }, [hasInitialCache])
 
   const rows = useMemo(() => {
     if (backendRows.length > 0) {
@@ -338,9 +363,15 @@ export default function AttendanceIntegrity() {
           </p>
         </div>
         <button type="button" className="ptdt-action-btn" onClick={() => void load()} disabled={loading}>
-          <RefreshCw size={14} /> {loading ? 'Refreshing' : 'Refresh'}
+          <RefreshCw size={14} /> {loading || refreshing ? 'Refreshing' : 'Refresh'}
         </button>
       </div>
+
+      {!error && refreshing && visibleRows.length > 0 && (
+        <div style={{ margin: '-8px 0 16px', padding: '10px 13px', borderRadius: 15, border: '1px solid rgba(16,185,129,.2)', color: 'var(--green-2)', background: 'rgba(16,185,129,.08)', fontWeight: 850, fontSize: 12.5 }}>
+          Showing cached attendance data while refreshing in the background.
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 18 }}>
         <MetricCard icon={<UserCheck size={17} />} label="Supervisors" value={supervisorCount} tone="pink" />

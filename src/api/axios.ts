@@ -122,6 +122,15 @@ const overlayTextFor = (method: string, path: string) => {
   if (path.includes('/commercial-control/admin/accounts') || path.includes('/administration/platform/overview')) {
     return { message: 'Fetching commercial accounts...', followupMessage: 'Preparing account list...', successMessage: 'Accounts ready' }
   }
+  if (path.includes('/attendance-integrity/sessions')) {
+    return { message: 'Saving attendance review...', followupMessage: 'Updating audit trail...', successMessage: 'Attendance review saved' }
+  }
+  if (path.includes('/attendance-integrity/overview')) {
+    return { message: 'Loading Attendance Integrity...', followupMessage: 'Checking live sessions...', successMessage: 'Attendance monitor ready' }
+  }
+  if (path.includes('/attendance-integrity')) {
+    return { message: 'Syncing attendance data...', followupMessage: 'Updating session state...', successMessage: 'Attendance synced' }
+  }
   if (path.includes('/dynamic-caller-id')) {
     return { message: 'Loading Dynamic Caller ID data...', followupMessage: 'Almost done...', successMessage: 'Account loaded' }
   }
