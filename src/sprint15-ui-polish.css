@@ -342,7 +342,7 @@
 }
 .ptdt-timeclock-date span{
   color:var(--text-3);
-  font-size:8.2px;
+  font-size:10px;
   line-height:1;
   font-weight:950;
   letter-spacing:.8px;
@@ -351,7 +351,7 @@
 }
 .ptdt-timeclock-date b{
   color:var(--text);
-  font-size:12px;
+  font-size:15px;
   line-height:1.05;
   font-weight:950;
   font-variant-numeric:tabular-nums;
