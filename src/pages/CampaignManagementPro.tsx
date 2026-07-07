@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { CopyPlus, Download, RefreshCw, Settings2, Upload, FileText, Layers3 } from 'lucide-react'
 import CampaignScriptEditor from '../components/CampaignScriptEditor'
 import AgentScriptPopup from '../components/AgentScriptPopup'
+import CrmCsvTemplatePanel from '../components/CrmCsvTemplatePanel'
 import { campaignManagementProAPI, type CampaignDialSettingsPayload } from '../api/campaignManagementPro.api'
 import TimezonePicker from '../components/TimezonePicker'
 import { getGlobalTimezones } from '../utils/timezones'
@@ -304,6 +305,7 @@ export default function CampaignManagementPro() {
           <p style={{ color: 'var(--text-3)', marginTop: 8, marginBottom: 14 }}>
             CSV and TSV work immediately. XLSX requires optional backend `xlsx` support.
           </p>
+          <CrmCsvTemplatePanel />
           <div style={{ display: 'grid', gap: 12 }}>
             <input
               type="file"

@@ -17,6 +17,7 @@ import FloatingDialer from '../components/FloatingDialer'
 import SipActiveCallOverlay from '../components/SipActiveCallOverlay'
 import CallDispositionModal from '../components/CallDispositionModal'
 import DynamicCallerIdDialerSelector from '../components/DynamicCallerIdDialerSelector'
+import AgentCallScriptPanel from '../components/AgentCallScriptPanel'
 import { useToast } from '../hooks/useToast'
 import { getSocketUrl } from '../utils/socketUrl'
 import { SOCKET_EVENTS } from '../constants/socketEvents'
@@ -1084,6 +1085,11 @@ export default function Dialer() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <AgentCallScriptPanel
+          activeCall={activeCall || liveSipCall || null}
+          campaignName={String(campaignOptions.find(c => Number(c.id) === Number(selectedCamp))?.name || '')}
+        />
 
         {/* Start / Stop */}
         <motion.button

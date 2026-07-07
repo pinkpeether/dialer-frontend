@@ -241,3 +241,169 @@
   caret-color:var(--ptdt-sip-gate-input-text)!important;
   transition:background-color 9999s ease-out 0s!important;
 }
+
+.ptdt-timeclock-widget{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:50px;
+  padding:7px 9px 7px 12px;
+  border-radius:18px;
+  border:1px solid rgba(0,167,71,.24);
+  background:linear-gradient(135deg,rgba(0,167,71,.12),rgba(251,11,140,.07));
+  box-shadow:0 12px 30px rgba(15,23,42,.10),inset 0 1px 0 rgba(255,255,255,.72);
+  color:var(--text);
+}
+.ptdt-timeclock-icon{
+  width:34px;
+  height:34px;
+  border-radius:13px;
+  display:grid;
+  place-items:center;
+  color:var(--green-2);
+  background:rgba(0,167,71,.12);
+  border:1px solid rgba(0,167,71,.24);
+}
+.ptdt-timeclock-label{
+  font-size:8.5px;
+  color:var(--text-3);
+  font-weight:950;
+  letter-spacing:1.2px;
+}
+.ptdt-timeclock-widget strong{
+  display:block;
+  margin-top:2px;
+  color:var(--green-2);
+  font-size:13px;
+  font-weight:950;
+  font-variant-numeric:tabular-nums;
+}
+.ptdt-timeclock-widget button{
+  min-height:34px;
+  border-radius:999px;
+  border:1px solid rgba(0,167,71,.28);
+  padding:0 11px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:10.5px;
+  font-weight:950;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.ptdt-timeclock-widget button.is-in{
+  color:var(--green-2);
+  background:rgba(0,167,71,.12);
+}
+.ptdt-timeclock-widget button.is-out{
+  color:var(--pink);
+  border-color:rgba(251,11,140,.28);
+  background:rgba(251,11,140,.10);
+}
+[data-theme="dark"] .ptdt-timeclock-widget{
+  background:linear-gradient(135deg,rgba(0,167,71,.16),rgba(251,11,140,.10));
+  box-shadow:0 14px 32px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.07);
+}
+
+.ptdt-agent-script-card,.ptdt-crm-template-card{
+  border:1px solid var(--border);
+  background:var(--bg-glass-hi);
+  border-radius:22px;
+  box-shadow:var(--shadow-sm);
+}
+.ptdt-agent-script-card{
+  padding:16px;
+  display:grid;
+  gap:12px;
+}
+.ptdt-agent-script-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.ptdt-agent-script-icon{
+  width:34px;
+  height:34px;
+  border-radius:13px;
+  display:grid;
+  place-items:center;
+  background:rgba(251,11,140,.10);
+  border:1px solid rgba(251,11,140,.22);
+  color:var(--pink);
+}
+.ptdt-agent-script-head .mono{
+  font-size:8.5px;
+  color:var(--text-3);
+  font-weight:950;
+  letter-spacing:1.2px;
+}
+.ptdt-agent-script-head strong{
+  color:var(--text);
+  font-size:13.5px;
+}
+.ptdt-agent-script-body{
+  display:grid;
+  gap:8px;
+}
+.ptdt-agent-script-body p{
+  margin:0;
+  color:var(--text-2);
+  font-size:12.3px;
+  line-height:1.45;
+}
+.ptdt-agent-script-body b{
+  color:var(--pink);
+}
+.ptdt-agent-script-footer{
+  display:flex;
+  gap:8px;
+  align-items:flex-start;
+  color:var(--text-3);
+  font-size:11.5px;
+  line-height:1.4;
+  padding-top:4px;
+}
+
+.ptdt-crm-template-card{
+  padding:16px;
+  display:grid;
+  grid-template-columns:minmax(240px,.9fr) minmax(280px,1.2fr) auto;
+  gap:14px;
+  align-items:center;
+  margin-bottom:18px;
+}
+.ptdt-crm-template-copy h3{
+  margin:8px 0 4px;
+  color:var(--text);
+  font-size:18px;
+  font-weight:950;
+}
+.ptdt-crm-template-copy p{
+  margin:0;
+  color:var(--text-3);
+  font-size:12.8px;
+  line-height:1.5;
+}
+.ptdt-crm-template-fields{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+}
+.ptdt-crm-template-fields span{
+  border:1px solid rgba(128,87,215,.22);
+  background:rgba(128,87,215,.08);
+  color:var(--purple);
+  border-radius:999px;
+  padding:6px 9px;
+  font-size:10.5px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.55px;
+}
+
+@media(max-width:1100px){
+  .ptdt-crm-template-card{grid-template-columns:1fr}
+}
+@media(max-width:900px){
+  .ptdt-timeclock-widget{width:100%;justify-content:space-between}
+}

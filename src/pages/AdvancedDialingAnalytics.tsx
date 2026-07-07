@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Activity, AlertTriangle, BarChart3, CheckCircle2, Gauge, Phone, Play, RefreshCw, ShieldAlert, Sparkles, Square, Zap } from 'lucide-react'
+import { Activity, AlertTriangle, BarChart3, CheckCircle2, Gauge, PauseCircle, Phone, Play, RefreshCw, ShieldAlert, Sparkles, Square, Zap } from 'lucide-react'
 import { advancedDialingAPI } from '../api/advancedDialing.api'
 import { cleanDisplayText } from '../utils/displayText'
 
@@ -70,6 +70,7 @@ type EngineStatus = {
 
 const METRICS_CACHE_KEY = 'ptdt-advanced-dialing-metrics'
 const ENGINE_CAMPAIGN_KEY = 'ptdt-advanced-dialing-engine-campaign-id'
+const PREDICTIVE_PAUSE_KEY = 'ptdt-advanced-dialing-predictive-paused'
 
 const fmtPercent = (value?: number) => {
   if (!Number.isFinite(value)) return '0%'
@@ -115,6 +116,9 @@ export default function AdvancedDialingAnalytics() {
   const [previewError, setPreviewError] = useState('')
   const [engineCampaignId, setEngineCampaignId] = useState(readEngineCampaignId)
   const [engineBusy, setEngineBusy] = useState(false)
+  const [predictivePaused, setPredictivePaused] = useState(() => {
+    try { return window.localStorage.getItem(PREDICTIVE_PAUSE_KEY) === '1' } catch { return false }
+  })
 
   const metricsQuery = useQuery<DialingMetrics>({
     queryKey: ['advanced-dialing', 'metrics'],
@@ -196,6 +200,14 @@ export default function AdvancedDialingAnalytics() {
     try { window.localStorage.setItem(ENGINE_CAMPAIGN_KEY, String(next)) } catch { /* ignore */ }
   }
 
+  const togglePredictivePause = () => {
+    setPredictivePaused(current => {
+      const next = !current
+      try { window.localStorage.setItem(PREDICTIVE_PAUSE_KEY, next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }
+
   const engineAction = async (action: 'start' | 'stop' | 'tick') => {
     setEngineBusy(true)
     setPreviewError('')
@@ -263,17 +275,26 @@ export default function AdvancedDialingAnalytics() {
                 <input className="ptdt-input" type="number" min={1} value={engineCampaignId} onChange={event => setCampaignId(event.target.value)} />
               </label>
               <div className="ptdt-toolbar" style={{ justifyContent: 'flex-start' }}>
-                <button className="btn-brand" type="button" onClick={() => void engineAction('start')} disabled={engineBusy}>
+                <button className="btn-brand" type="button" onClick={() => void engineAction('start')} disabled={engineBusy || predictivePaused}>
                   <Play size={14} /> Start Engine
                 </button>
                 <button className="ptdt-action-btn danger" type="button" onClick={() => void engineAction('stop')} disabled={engineBusy}>
                   <Square size={14} /> Stop
                 </button>
-                <button className="ptdt-action-btn" type="button" onClick={() => void engineAction('tick')} disabled={engineBusy}>
+                <button className="ptdt-action-btn" type="button" onClick={() => void engineAction('tick')} disabled={engineBusy || predictivePaused}>
                   <RefreshCw size={14} /> Run Tick
+                </button>
+                <button className={predictivePaused ? 'ptdt-action-btn danger' : 'ptdt-action-btn'} type="button" onClick={togglePredictivePause}>
+                  <PauseCircle size={14} /> {predictivePaused ? 'Predictive Paused' : 'Pause Predictive'}
                 </button>
               </div>
             </div>
+
+            {predictivePaused && (
+              <div style={{ marginTop: 14, padding: 12, borderRadius: 16, border: '1px solid rgba(239,68,68,.30)', background: 'rgba(239,68,68,.10)', color: 'var(--danger)', fontSize: 12.5, fontWeight: 850 }}>
+                Predictive dialing is paused for this operator session. Start and tick actions stay locked until predictive dialing is resumed.
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginTop: 16 }}>
               <MiniStat label="Running" value={engineStatus?.running ? 'YES' : 'NO'} />
