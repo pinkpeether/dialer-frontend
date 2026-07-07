@@ -64,7 +64,7 @@ const teamUserHeaderStyle = (index: number): React.CSSProperties => ({
   textAlign: index <= 1 ? 'left' : 'center',
   padding: '16px 18px',
   borderBottom: '1px solid var(--border)',
-  fontSize: 24,
+  fontSize: 31.2,
   fontWeight: 950,
   letterSpacing: 0.85,
   color: 'var(--text-2)',
@@ -293,12 +293,12 @@ export default function TeamUsersV3() {
     const statusStyle = presenceStyleFor(user.status, active)
     const dialerStyle = active ? statusStyleFor(user.status) : { color: 'var(--text-3)', bg: 'var(--bg-2)' }
     return <tr key={Number(user.id)} style={{ borderBottom: '1px solid var(--border)', minHeight: 102 }}>
-      <td style={{ ...teamUserCellStyle(0), fontWeight: 900, fontSize: 22.2, lineHeight: 1.2 }}>{editingId === Number(user.id) ? <input value={editingName} onChange={event => setEditingName(event.target.value)} style={{ ...inputStyle, maxWidth: 260, minHeight: 38 }} autoFocus /> : String(user.name || '—')}<br /><span className="mono" style={{ color: 'var(--text-3)', fontSize: 14.6 }}>{String(user.agentCode || '')}</span></td>
-      <td style={{ ...teamUserCellStyle(1), fontSize: 22.2, fontWeight: 780 }}>{String(user.email || '—')}</td>
-      <td style={{ ...teamUserCellStyle(2), fontSize: 20.9 }}><span style={roleStyleFor(user.role, user.status, active)}>{roleLabel(user.role)}</span></td>
-      <td style={teamUserCellStyle(3)}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}`, fontSize: 14.6 }}>{presenceLabel(user.status, active)}</span></td>
-      <td style={teamUserCellStyle(4)}><span className="badge" style={{ color: dialerStyle.color, background: dialerStyle.bg, border: `1px solid ${dialerStyle.color}`, fontSize: 14.6 }}>{dialerStatusLabel(user.status, active)}</span></td>
-      <td style={teamUserCellStyle(5)}>{isSelf ? <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)', fontSize: 14.4 }}><ShieldCheck size={13} /> Signed in</span> : canToggleActive ? <button type="button" role="switch" aria-checked={active} disabled={pendingId === Number(user.id)} onClick={() => void setUserActive(user, !active)} style={switchStyle(active, pendingId === Number(user.id))}><span style={switchKnob} /></button> : <span className="badge" style={{ color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border)', fontSize: 14.4 }}>Protected</span>}</td>
+      <td style={{ ...teamUserCellStyle(0), fontWeight: 900, fontSize: 27.8, lineHeight: 1.18 }}>{editingId === Number(user.id) ? <input value={editingName} onChange={event => setEditingName(event.target.value)} style={{ ...inputStyle, maxWidth: 260, minHeight: 38 }} autoFocus /> : String(user.name || '—')}<br /><span className="mono" style={{ color: 'var(--text-3)', fontSize: 18.3 }}>{String(user.agentCode || '')}</span></td>
+      <td style={{ ...teamUserCellStyle(1), fontSize: 27.8, fontWeight: 780 }}>{String(user.email || '—')}</td>
+      <td style={{ ...teamUserCellStyle(2), fontSize: 26.1 }}><span style={roleStyleFor(user.role, user.status, active)}>{roleLabel(user.role)}</span></td>
+      <td style={teamUserCellStyle(3)}><span className="badge" style={{ color: statusStyle.color, background: statusStyle.bg, border: `1px solid ${statusStyle.color}`, fontSize: 18.3 }}>{presenceLabel(user.status, active)}</span></td>
+      <td style={teamUserCellStyle(4)}><span className="badge" style={{ color: dialerStyle.color, background: dialerStyle.bg, border: `1px solid ${dialerStyle.color}`, fontSize: 18.3 }}>{dialerStatusLabel(user.status, active)}</span></td>
+      <td style={teamUserCellStyle(5)}>{isSelf ? <span className="badge" style={{ color: green, background: 'rgba(0,167,71,.10)', border: '1px solid rgba(0,167,71,.28)', fontSize: 18 }}><ShieldCheck size={13} /> Signed in</span> : canToggleActive ? <button type="button" role="switch" aria-checked={active} disabled={pendingId === Number(user.id)} onClick={() => void setUserActive(user, !active)} style={switchStyle(active, pendingId === Number(user.id))}><span style={switchKnob} /></button> : <span className="badge" style={{ color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border)', fontSize: 18 }}>Protected</span>}</td>
       <td style={teamUserCellStyle(6)}><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>{editingId === Number(user.id) ? <><button type="button" className="ptdt-action-btn" disabled={pendingId === Number(user.id)} onClick={() => void saveEditUser(user)}><Save size={13} /> Save</button><button type="button" className="ptdt-action-btn" onClick={cancelEditUser}><X size={13} /> Cancel</button></> : !isSelf && (!isSupervisor || user.role === 'AGENT') ? <button type="button" className="ptdt-action-btn" onClick={() => startEditUser(user)}><Pencil size={13} /> Edit</button> : null}{isPlatformAdmin && !isSelf ? <button type="button" className="ptdt-action-btn danger" onClick={() => { setConfirmEmail(''); setArmedEmail(''); setFinalTarget(user) }}>Cleanup</button> : null}{isSelf || (isSupervisor && user.role !== 'AGENT') ? <span style={{ color: 'var(--text-3)' }}>—</span> : null}</div></td>
     </tr>
   }
