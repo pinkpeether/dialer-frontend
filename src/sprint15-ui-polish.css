@@ -369,10 +369,15 @@
 .ptdt-crm-template-card{
   padding:16px;
   display:grid;
-  grid-template-columns:minmax(240px,.9fr) minmax(280px,1.2fr) auto;
+  grid-template-columns:minmax(220px,.9fr) minmax(260px,1fr) minmax(170px,max-content);
   gap:14px;
   align-items:center;
   margin-bottom:18px;
+}
+.ptdt-crm-template-card > button{
+  justify-self:end;
+  max-width:100%;
+  white-space:nowrap;
 }
 .ptdt-crm-template-copy h3{
   margin:8px 0 4px;
@@ -403,8 +408,13 @@
   letter-spacing:.55px;
 }
 
+@media(max-width:1320px){
+  .ptdt-crm-template-card{grid-template-columns:minmax(220px,.9fr) minmax(260px,1fr)}
+  .ptdt-crm-template-card > button{grid-column:1 / -1;justify-self:end}
+}
 @media(max-width:1100px){
   .ptdt-crm-template-card{grid-template-columns:1fr}
+  .ptdt-crm-template-card > button{justify-self:stretch}
 }
 @media(max-width:900px){
   .ptdt-timeclock-widget{width:100%;justify-content:space-between}

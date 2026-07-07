@@ -69,6 +69,17 @@ const cellStyle: CSSProperties = {
   verticalAlign: 'middle',
 }
 
+const compactDateCellStyle: CSSProperties = {
+  ...cellStyle,
+  fontFamily: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif',
+  fontSize: 11.2,
+  fontWeight: 700,
+  letterSpacing: -0.25,
+  lineHeight: 1.25,
+  whiteSpace: 'nowrap',
+  color: 'var(--text-2)',
+}
+
 const pad = (value: number) => String(value).padStart(2, '0')
 
 const formatDuration = (seconds: number) => {
@@ -121,6 +132,17 @@ const readSessionText = (session: unknown, key: string) => {
   return typeof value === 'string' ? value : ''
 }
 
+const isRunningClockStatus = (status?: string | null) => {
+  const next = String(status || '').replace(/_/g, ' ').toUpperCase()
+  return ['CLOCKED IN', 'IDLE', 'ON BREAK', 'PENDING SUPERVISOR REVIEW'].includes(next)
+}
+
+const secondsSince = (value: unknown, nowMs: number) => {
+  if (!value) return 0
+  const startedAt = new Date(value as string | number).getTime()
+  return Number.isFinite(startedAt) ? Math.max(0, Math.floor((nowMs - startedAt) / 1000)) : 0
+}
+
 function Pill({ children, tone = 'muted' }: { children: ReactNode; tone?: 'green' | 'pink' | 'gold' | 'red' | 'muted' }) {
   const color =
     tone === 'green' ? 'var(--green-2)' :
@@ -167,16 +189,9 @@ export default function AttendanceIntegrity() {
   const [users, setUsers] = useState<TeamUser[]>([])
   const [sessions, setSessions] = useState<AttendanceSession[]>(() => readSessions())
   const [backendRows, setBackendRows] = useState<AttendanceOverviewRow[]>([])
-  const [backendSummary, setBackendSummary] = useState<{
-    totalUsers: number
-    clockedIn: number
-    unexpectedDisconnects: number
-    needsReview: number
-    redFlags: number
-  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [, tick] = useState(0)
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true)
@@ -185,7 +200,6 @@ export default function AttendanceIntegrity() {
     try {
       const overview = await attendanceIntegrityApi.overview({ limit: 250 }, { silent })
       setBackendRows(overview.rows || [])
-      setBackendSummary(overview.summary)
       setUsers((overview.rows || []).map(row => row.user))
     } catch (backendError) {
       try {
@@ -196,11 +210,9 @@ export default function AttendanceIntegrity() {
         .map((row: TeamUser) => row)
       setUsers(teamRows)
       setBackendRows([])
-      setBackendSummary(null)
       setError(`Backend attendance feed unavailable. Showing local fallback data. ${backendError instanceof Error ? backendError.message : ''}`.trim())
       } catch (err) {
         setBackendRows([])
-        setBackendSummary(null)
         setError(err instanceof Error ? err.message : 'Could not load team users.')
       }
     } finally {
@@ -212,7 +224,7 @@ export default function AttendanceIntegrity() {
     void load()
     const refresh = window.setInterval(() => {
       setSessions(readSessions())
-      tick(value => value + 1)
+      setNowMs(Date.now())
     }, 1000)
     return () => window.clearInterval(refresh)
   }, [])
@@ -225,7 +237,9 @@ export default function AttendanceIntegrity() {
         session: row.session,
         clockStatus: cleanStatus(row.status),
         dialerStatus: cleanStatus(row.user.status),
-        workedSeconds: row.activeSeconds || row.session?.totalWorkedSeconds || 0,
+        workedSeconds: isRunningClockStatus(row.status) && row.session?.clockInAt
+          ? secondsSince(row.session.clockInAt, nowMs)
+          : row.activeSeconds || row.session?.totalWorkedSeconds || 0,
         needsReview: row.needsReview,
         clockInAt: row.session?.clockInAt || null,
         clockOutAt: row.session?.clockOutAt || null,
@@ -237,7 +251,7 @@ export default function AttendanceIntegrity() {
     const session = latestSessionFor(sessions, user)
     const activeStartedAt = localState.clockedIn ? localState.startedAt || session?.clockInAt || null : null
     const workedSeconds = activeStartedAt
-      ? Math.floor((Date.now() - activeStartedAt) / 1000)
+      ? Math.floor((nowMs - Number(activeStartedAt)) / 1000)
       : session?.workedSeconds || 0
     const role = String(user.role || '').toUpperCase()
     const dialerStatus = cleanStatus(user.status)
@@ -255,12 +269,20 @@ export default function AttendanceIntegrity() {
       clockOutAt: session?.clockOutAt || localState.lastClockOutAt || null,
     }
     })
-  }, [backendRows, sessions, users])
+  }, [backendRows, nowMs, sessions, users])
 
-  const clockedInCount = backendSummary?.clockedIn ?? rows.filter(row => row.clockStatus === 'Clocked-In' || row.clockStatus === 'CLOCKED IN').length
-  const reviewCount = backendSummary?.needsReview ?? rows.filter(row => row.needsReview).length
-  const supervisorCount = rows.filter(row => row.role === 'SUPERVISOR').length
-  const agentCount = rows.filter(row => row.role === 'AGENT').length
+  const viewerRole = String(currentUser?.role || '').toUpperCase()
+  const viewerId = currentUser?.id
+  const visibleRows = useMemo(() => (
+    viewerRole === 'SUPERVISOR'
+      ? rows.filter(row => Number(row.user.id) !== Number(viewerId))
+      : rows
+  ), [rows, viewerId, viewerRole])
+
+  const clockedInCount = visibleRows.filter(row => isRunningClockStatus(row.clockStatus)).length
+  const reviewCount = visibleRows.filter(row => row.needsReview).length
+  const supervisorCount = visibleRows.filter(row => row.role === 'SUPERVISOR').length
+  const agentCount = visibleRows.filter(row => row.role === 'AGENT').length
 
   return (
     <div className="ptdt-page ptdt-attendance-integrity-page" style={pageStyle}>
@@ -322,12 +344,12 @@ export default function AttendanceIntegrity() {
               </tr>
             </thead>
             <tbody>
-              {loading && rows.length === 0 ? (
+              {loading && visibleRows.length === 0 ? (
                 <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-3)' }}>Loading attendance integrity data...</td></tr>
-              ) : rows.length === 0 ? (
+              ) : visibleRows.length === 0 ? (
                 <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-3)' }}>No supervisor or agent records found.</td></tr>
-              ) : rows.map(row => {
-                const tone = row.clockStatus === 'Clocked-In' ? 'green' : row.clockStatus === 'Clocked-Out' ? 'muted' : 'gold'
+              ) : visibleRows.map(row => {
+                const tone = isRunningClockStatus(row.clockStatus) ? 'green' : row.clockStatus === 'Clocked-Out' || row.clockStatus === 'CLOCKED OUT' ? 'muted' : 'gold'
                 return (
                   <tr key={row.user.id}>
                     <td style={cellStyle}>
@@ -344,9 +366,9 @@ export default function AttendanceIntegrity() {
                       </div>
                     </td>
                     <td style={cellStyle}><Pill tone={tone}>{row.clockStatus}</Pill></td>
-                    <td className="mono" style={{ ...cellStyle, color: row.clockStatus === 'Clocked-In' ? 'var(--green-2)' : 'var(--text)', fontSize: 16, fontWeight: 950 }}>{formatDuration(row.workedSeconds)}</td>
-                    <td style={cellStyle}>{formatDate(row.clockInAt)}</td>
-                    <td style={cellStyle}>{formatDate(row.clockOutAt)}</td>
+                    <td className="mono" style={{ ...cellStyle, color: isRunningClockStatus(row.clockStatus) ? 'var(--green-2)' : 'var(--text)', fontSize: 16, fontWeight: 950 }}>{formatDuration(row.workedSeconds)}</td>
+                    <td style={compactDateCellStyle}>{formatDate(row.clockInAt)}</td>
+                    <td style={compactDateCellStyle}>{formatDate(row.clockOutAt)}</td>
                     <td style={cellStyle}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-2)' }}>
                         <Fingerprint size={14} color="var(--pink)" />
