@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import { Activity, AlertTriangle, Clock3, Fingerprint, RefreshCw, ShieldCheck, UserCheck } from 'lucide-react'
+import { Activity, AlertTriangle, CheckCircle2, Clock3, Fingerprint, RefreshCw, ShieldCheck, UserCheck } from 'lucide-react'
 import { agentsAPI } from '../api/agents.api'
 import { attendanceIntegrityApi, type AttendanceOverviewRow } from '../api/attendanceIntegrity.api'
 import { useAuthStore } from '../store/auth.store'
@@ -132,6 +132,13 @@ const readSessionText = (session: unknown, key: string) => {
   return typeof value === 'string' ? value : ''
 }
 
+const readSessionNumber = (session: unknown, key: string) => {
+  if (!session || typeof session !== 'object') return null
+  const value = (session as Record<string, unknown>)[key]
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 const isRunningClockStatus = (status?: string | null) => {
   const next = String(status || '').replace(/_/g, ' ').toUpperCase()
   return ['CLOCKED IN', 'IDLE', 'ON BREAK', 'PENDING SUPERVISOR REVIEW'].includes(next)
@@ -192,6 +199,8 @@ export default function AttendanceIntegrity() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [nowMs, setNowMs] = useState(() => Date.now())
+  const [reviewingSessionId, setReviewingSessionId] = useState<number | null>(null)
+  const [reviewNotes, setReviewNotes] = useState<Record<number, string>>({})
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true)
@@ -284,6 +293,29 @@ export default function AttendanceIntegrity() {
   const supervisorCount = visibleRows.filter(row => row.role === 'SUPERVISOR').length
   const agentCount = visibleRows.filter(row => row.role === 'AGENT').length
 
+  const saveReview = async (sessionId: number, removeFlag: boolean) => {
+    const notes = (reviewNotes[sessionId] || '').trim()
+    if (removeFlag && !notes) {
+      setError('Supervisor review reason is required before clearing an attendance flag.')
+      return
+    }
+    setReviewingSessionId(sessionId)
+    setError('')
+    try {
+      await attendanceIntegrityApi.review(sessionId, {
+        notes: notes || 'Reviewed from Attendance Integrity monitor.',
+        removeFlag,
+        ...(removeFlag ? {} : { status: 'PENDING_SUPERVISOR_REVIEW' }),
+      })
+      setReviewNotes(current => ({ ...current, [sessionId]: '' }))
+      await load(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Attendance review could not be saved.')
+    } finally {
+      setReviewingSessionId(null)
+    }
+  }
+
   return (
     <div className="ptdt-page ptdt-attendance-integrity-page" style={pageStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap', marginBottom: 26 }}>
@@ -320,9 +352,9 @@ export default function AttendanceIntegrity() {
           </p>
         </div>
         <div>
-          <div className="mono" style={{ color: 'var(--warning)', fontWeight: 950, fontSize: 10.5, letterSpacing: 1.3 }}>NEXT BACKEND LAYER</div>
+          <div className="mono" style={{ color: 'var(--warning)', fontWeight: 950, fontSize: 10.5, letterSpacing: 1.3 }}>BACKEND INTEGRITY LAYER</div>
           <p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.55, fontSize: 13 }}>
-            Heartbeat, public IP, immutable audit log, stale heartbeat detection, disconnect flags, and supervisor review are persisted through the backend layer.
+            Heartbeat, public IP, immutable audit events, stale heartbeat detection, disconnect flags, and supervisor review actions are active and persisted.
           </p>
         </div>
       </div>
@@ -379,7 +411,54 @@ export default function AttendanceIntegrity() {
                       </div>
                     </td>
                     <td style={cellStyle}>
-                      <Pill tone={row.needsReview ? 'gold' : 'green'}>{row.needsReview ? 'Needs Review' : 'Clean'}</Pill>
+                      {(() => {
+                        const sessionId = readSessionNumber(row.session, 'id')
+                        return (
+                          <div style={{ display: 'grid', gap: 8, minWidth: 220 }}>
+                            <Pill tone={row.needsReview ? 'gold' : 'green'}>{row.needsReview ? 'Needs Review' : 'Clean'}</Pill>
+                            {row.needsReview && sessionId && (
+                              <>
+                                <input
+                                  value={reviewNotes[sessionId] || ''}
+                                  onChange={event => setReviewNotes(current => ({ ...current, [sessionId]: event.target.value }))}
+                                  placeholder="Supervisor review reason..."
+                                  style={{
+                                    width: '100%',
+                                    minHeight: 34,
+                                    borderRadius: 12,
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--bg-glass-hi)',
+                                    color: 'var(--text)',
+                                    padding: '0 10px',
+                                    fontSize: 11.5,
+                                    outline: 'none',
+                                  }}
+                                />
+                                <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                                  <button
+                                    type="button"
+                                    className="ptdt-action-btn"
+                                    disabled={reviewingSessionId === sessionId}
+                                    onClick={() => void saveReview(sessionId, false)}
+                                    style={{ minHeight: 30, padding: '0 10px', fontSize: 10.5 }}
+                                  >
+                                    Review
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="ptdt-action-btn active"
+                                    disabled={reviewingSessionId === sessionId}
+                                    onClick={() => void saveReview(sessionId, true)}
+                                    style={{ minHeight: 30, padding: '0 10px', fontSize: 10.5 }}
+                                  >
+                                    <CheckCircle2 size={12} /> Clear Flag
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </td>
                   </tr>
                 )
