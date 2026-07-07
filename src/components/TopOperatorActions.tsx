@@ -32,6 +32,11 @@ export default function TopOperatorActions() {
   const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
   const isDialerPage = location.pathname === '/dialer'
   const showTimeClock = user?.role === 'AGENT' || user?.role === 'SUPERVISOR'
+  const roleCardClass = user?.role === 'SUPERVISOR'
+    ? ' is-supervisor'
+    : user?.role === 'AGENT'
+      ? ' is-agent'
+      : ''
   const sipLabel = sipConfig.enabled
     ? sipStatus === 'registered'
       ? 'SIP Registered'
@@ -102,7 +107,7 @@ export default function TopOperatorActions() {
               </div>
             )}
             <NotificationBell />
-            <div className="ptdt-top-operator-role" style={{ minHeight: 54, padding: '7px 15px', alignItems: 'center' }}>
+            <div className={`ptdt-top-operator-role${roleCardClass}`} style={{ minHeight: 54, padding: '7px 15px', alignItems: 'center' }}>
               <ShieldCheck size={14} />
               <span style={{ display: 'grid', gap: 2, lineHeight: 1.08 }}>
                 <span>{roleLabel(user?.role)}</span>

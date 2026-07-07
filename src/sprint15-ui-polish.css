@@ -116,6 +116,22 @@
   -webkit-backdrop-filter:blur(18px)!important;
   box-shadow:0 16px 26px rgba(100,116,139,.14)!important;
 }
+.ptdt-top-operator-role.is-supervisor{
+  background:linear-gradient(145deg,#efe7ff 0%,#cdb8ff 46%,#8057d7 100%)!important;
+  color:#3b187a!important;
+}
+.ptdt-top-operator-role.is-agent{
+  background:linear-gradient(145deg,#ffe6f4 0%,#ff9dd2 46%,#fb0b8c 100%)!important;
+  color:#6f003f!important;
+}
+[data-theme="dark"] .ptdt-top-operator-role.is-supervisor{
+  background:linear-gradient(145deg,#3b187a 0%,#6d3fd0 52%,#a98cff 100%)!important;
+  color:#fff!important;
+}
+[data-theme="dark"] .ptdt-top-operator-role.is-agent{
+  background:linear-gradient(145deg,#6f003f 0%,#d00b76 52%,#ff8eca 100%)!important;
+  color:#fff!important;
+}
 [data-theme="dark"] .ptdt-top-operator-actions{
   background:linear-gradient(180deg,rgba(13,15,22,.96),rgba(13,15,22,.92))!important;
   box-shadow:0 18px 30px rgba(0,0,0,.44)!important;
@@ -304,6 +320,43 @@
   font-variant-numeric:tabular-nums;
   letter-spacing:.2px;
 }
+.ptdt-timeclock-copy{
+  display:grid;
+  gap:4px;
+}
+.ptdt-timeclock-readout{
+  display:flex;
+  align-items:flex-end;
+  gap:10px;
+}
+.ptdt-timeclock-date{
+  display:grid;
+  gap:1px;
+  min-width:74px;
+  padding:5px 9px;
+  border-radius:13px;
+  border:1px solid rgba(128,87,215,.18);
+  background:linear-gradient(135deg,rgba(128,87,215,.10),rgba(255,255,255,.72));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72);
+  transform:translateY(-1px);
+}
+.ptdt-timeclock-date span{
+  color:var(--text-3);
+  font-size:8.2px;
+  line-height:1;
+  font-weight:950;
+  letter-spacing:.8px;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.ptdt-timeclock-date b{
+  color:var(--text);
+  font-size:12px;
+  line-height:1.05;
+  font-weight:950;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
 .ptdt-timeclock-widget button{
   min-height:34px;
   border-radius:999px;
@@ -329,6 +382,11 @@
 [data-theme="dark"] .ptdt-timeclock-widget{
   background:linear-gradient(135deg,rgba(0,167,71,.16),rgba(251,11,140,.10));
   box-shadow:0 14px 32px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.07);
+}
+[data-theme="dark"] .ptdt-timeclock-date{
+  background:linear-gradient(135deg,rgba(128,87,215,.22),rgba(15,23,42,.72));
+  border-color:rgba(203,213,225,.16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
 }
 
 .ptdt-agent-script-card,.ptdt-crm-template-card{

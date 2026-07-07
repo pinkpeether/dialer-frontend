@@ -14,6 +14,11 @@ const formatElapsed = (startedAt: number | null) => {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
 }
 
+const formatDateTime = (value: Date) => ({
+  date: value.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: '2-digit' }),
+  time: value.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
+})
+
 type TimeClockState = {
   clockedIn: boolean
   startedAt: number | null
@@ -162,6 +167,7 @@ export default function TimeClockWidget() {
   }, [state.clockedIn])
 
   if (!eligible) return null
+  const currentDateTime = formatDateTime(new Date())
 
   const toggle = () => {
     setState(current => {
@@ -220,9 +226,15 @@ export default function TimeClockWidget() {
   return (
     <div className="ptdt-timeclock-widget">
       <div className="ptdt-timeclock-icon"><Clock3 size={15} /></div>
-      <div>
+      <div className="ptdt-timeclock-copy">
         <div className="mono ptdt-timeclock-label">{state.clockedIn ? 'CLOCKED IN' : 'CLOCKED OUT'}</div>
-        <strong>{formatElapsed(state.startedAt)}</strong>
+        <div className="ptdt-timeclock-readout">
+          <strong>{formatElapsed(state.startedAt)}</strong>
+          <div className="ptdt-timeclock-date">
+            <span>{currentDateTime.date}</span>
+            <b>{currentDateTime.time}</b>
+          </div>
+        </div>
       </div>
       <button type="button" onClick={toggle} className={state.clockedIn ? 'is-out' : 'is-in'}>
         {state.clockedIn ? <LogOut size={13} /> : <LogIn size={13} />}
