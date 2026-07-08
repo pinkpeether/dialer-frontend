@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Activity, AlertTriangle, CheckCircle2, Clock3, Fingerprint, RefreshCw, ShieldCheck, UserCheck } from 'lucide-react'
 import { agentsAPI } from '../api/agents.api'
 import { attendanceIntegrityApi, type AttendanceOverviewRow } from '../api/attendanceIntegrity.api'
@@ -241,13 +241,13 @@ export default function AttendanceIntegrity() {
   const [reviewingSessionId, setReviewingSessionId] = useState<number | null>(null)
   const [reviewNotes, setReviewNotes] = useState<Record<number, string>>({})
 
-  const load = async (silent = false) => {
+  const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     if (silent) setRefreshing(true)
     setError('')
     setSessions(readSessions())
     try {
-      const overview = await attendanceIntegrityApi.overview({ limit: 250 }, { silent })
+      const overview = await attendanceIntegrityApi.overview({ limit: 250 }, { silent, fresh: true })
       setBackendRows(overview.rows || [])
       const nextUsers = (overview.rows || []).map(row => row.user)
       setUsers(nextUsers)
@@ -271,7 +271,7 @@ export default function AttendanceIntegrity() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     void load(hasInitialCache)
@@ -280,7 +280,7 @@ export default function AttendanceIntegrity() {
       setNowMs(Date.now())
     }, 1000)
     return () => window.clearInterval(refresh)
-  }, [hasInitialCache])
+  }, [hasInitialCache, load])
 
   const rows = useMemo(() => {
     if (backendRows.length > 0) {
@@ -331,6 +331,14 @@ export default function AttendanceIntegrity() {
       ? rows.filter(row => Number(row.user.id) !== Number(viewerId))
       : rows
   ), [rows, viewerId, viewerRole])
+
+  useEffect(() => {
+    if (!visibleRows.length) return undefined
+    const refresh = window.setInterval(() => {
+      void load(true)
+    }, 60_000)
+    return () => window.clearInterval(refresh)
+  }, [load, visibleRows.length])
 
   const clockedInCount = visibleRows.filter(row => isRunningClockStatus(row.clockStatus)).length
   const reviewCount = visibleRows.filter(row => row.needsReview).length

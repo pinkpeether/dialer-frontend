@@ -285,108 +285,121 @@
 .ptdt-timeclock-widget{
   display:flex;
   align-items:center;
-  gap:10px;
-  min-height:58px;
-  padding:8px 10px 8px 12px;
-  border-radius:18px;
-  border:1px solid rgba(0,167,71,.24);
-  background:linear-gradient(135deg,rgba(0,167,71,.12),rgba(251,11,140,.07));
-  box-shadow:0 12px 30px rgba(15,23,42,.10),inset 0 1px 0 rgba(255,255,255,.72);
+  gap:16px;
+  min-height:70px;
+  padding:10px 14px 10px 16px;
+  border-radius:20px;
+  border:1px solid rgba(148,163,184,.24);
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,255,255,.88));
+  box-shadow:0 12px 28px rgba(15,23,42,.08),inset 0 1px 0 rgba(255,255,255,.90);
   color:var(--text);
 }
 .ptdt-timeclock-icon{
-  width:34px;
-  height:34px;
-  border-radius:13px;
+  width:28px;
+  height:28px;
+  border-radius:999px;
   display:grid;
   place-items:center;
-  color:var(--green-2);
-  background:rgba(0,167,71,.12);
-  border:1px solid rgba(0,167,71,.24);
+  color:var(--purple);
+  background:rgba(128,87,215,.08);
+  border:1px solid rgba(128,87,215,.22);
+  flex:0 0 auto;
 }
 .ptdt-timeclock-label{
-  font-size:8.5px;
+  font-size:15px;
   color:var(--text-3);
-  font-weight:950;
-  letter-spacing:1.2px;
+  font-weight:800;
+  letter-spacing:1px;
+  line-height:1;
+  white-space:nowrap;
 }
 .ptdt-timeclock-widget strong{
   display:block;
-  margin-top:3px;
+  margin-top:4px;
   color:var(--green-2);
-  font-size:26px;
+  font-size:28px;
   line-height:1;
   font-weight:950;
   font-variant-numeric:tabular-nums;
-  letter-spacing:.2px;
+  letter-spacing:1.3px;
+}
+.ptdt-timeclock-widget.is-clocked-out strong{
+  color:var(--pink);
 }
 .ptdt-timeclock-copy{
   display:grid;
-  gap:4px;
+  gap:0;
+  min-width:158px;
 }
-.ptdt-timeclock-readout{
-  display:flex;
-  align-items:flex-end;
-  gap:10px;
+.ptdt-timeclock-divider{
+  width:1px;
+  align-self:stretch;
+  min-height:48px;
+  background:linear-gradient(180deg,transparent,rgba(148,163,184,.48),transparent);
 }
 .ptdt-timeclock-date{
   display:grid;
-  gap:1px;
-  min-width:74px;
-  padding:5px 9px;
-  border-radius:13px;
-  border:1px solid rgba(128,87,215,.18);
-  background:linear-gradient(135deg,rgba(128,87,215,.10),rgba(255,255,255,.72));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.72);
-  transform:translateY(-1px);
+  gap:4px;
+  min-width:108px;
+  padding:0 4px;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+  transform:none;
 }
 .ptdt-timeclock-date span{
   color:var(--text-3);
-  font-size:10px;
+  font-size:14px;
   line-height:1;
-  font-weight:950;
-  letter-spacing:.8px;
+  font-weight:850;
+  letter-spacing:.85px;
   text-transform:uppercase;
   white-space:nowrap;
 }
 .ptdt-timeclock-date b{
   color:var(--text);
-  font-size:15px;
+  font-size:21px;
   line-height:1.05;
   font-weight:950;
   font-variant-numeric:tabular-nums;
   white-space:nowrap;
 }
 .ptdt-timeclock-widget button{
-  min-height:34px;
-  border-radius:999px;
-  border:1px solid rgba(0,167,71,.28);
-  padding:0 11px;
+  min-height:48px;
+  min-width:150px;
+  border-radius:16px;
+  border:1px solid rgba(0,167,71,.24);
+  padding:0 20px;
   display:inline-flex;
   align-items:center;
+  justify-content:center;
   gap:6px;
-  font-size:10.5px;
+  font-size:21px;
   font-weight:950;
   cursor:pointer;
   white-space:nowrap;
+  text-transform:lowercase;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 8px 18px rgba(15,23,42,.06);
 }
 .ptdt-timeclock-widget button.is-in{
-  color:var(--green-2);
-  background:rgba(0,167,71,.12);
+  color:#7f123f;
+  border-color:rgba(251,11,140,.22);
+  background:linear-gradient(135deg,rgba(255,222,235,.92),rgba(255,197,218,.86));
 }
 .ptdt-timeclock-widget button.is-out{
-  color:var(--pink);
-  border-color:rgba(251,11,140,.28);
-  background:rgba(251,11,140,.10);
+  color:#064e3b;
+  border-color:rgba(0,167,71,.24);
+  background:linear-gradient(135deg,rgba(220,252,231,.94),rgba(187,247,208,.86));
 }
 [data-theme="dark"] .ptdt-timeclock-widget{
-  background:linear-gradient(135deg,rgba(0,167,71,.16),rgba(251,11,140,.10));
+  background:linear-gradient(180deg,rgba(17,24,39,.96),rgba(15,23,42,.88));
+  border-color:rgba(203,213,225,.15);
   box-shadow:0 14px 32px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.07);
 }
 [data-theme="dark"] .ptdt-timeclock-date{
-  background:linear-gradient(135deg,rgba(128,87,215,.22),rgba(15,23,42,.72));
-  border-color:rgba(203,213,225,.16);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  background:transparent;
+  border-color:transparent;
+  box-shadow:none;
 }
 
 .ptdt-agent-script-card,.ptdt-crm-template-card{
@@ -499,5 +512,8 @@
   .ptdt-crm-template-card > button{justify-self:stretch}
 }
 @media(max-width:900px){
-  .ptdt-timeclock-widget{width:100%;justify-content:space-between}
+  .ptdt-timeclock-widget{width:100%;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .ptdt-timeclock-copy{min-width:130px}
+  .ptdt-timeclock-date{min-width:92px}
+  .ptdt-timeclock-widget button{min-width:130px;font-size:17px}
 }

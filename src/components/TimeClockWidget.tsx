@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Clock3, LogIn, LogOut } from 'lucide-react'
+import { Clock9, LogIn, LogOut } from 'lucide-react'
 import { useAuthStore } from '../store/auth.store'
 import { attendanceIntegrityApi, type AttendanceMetadata } from '../api/attendanceIntegrity.api'
 
@@ -15,7 +15,7 @@ const formatElapsed = (startedAt: number | null) => {
 }
 
 const formatDateTime = (value: Date) => ({
-  date: value.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: '2-digit' }),
+  date: value.toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short' }),
   time: value.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
 })
 
@@ -129,7 +129,7 @@ export default function TimeClockWidget() {
   useEffect(() => {
     let cancelled = false
     if (!eligible) return undefined
-    void attendanceIntegrityApi.getMe({ silent: true })
+    void attendanceIntegrityApi.getMe({ silent: true, fresh: true })
       .then(({ session }) => {
         if (cancelled || !session) return
         if (session.status !== 'CLOCKED_IN' && session.status !== 'IDLE' && session.status !== 'ON_BREAK') return
@@ -224,17 +224,16 @@ export default function TimeClockWidget() {
   }
 
   return (
-    <div className="ptdt-timeclock-widget">
-      <div className="ptdt-timeclock-icon"><Clock3 size={15} /></div>
+    <div className={`ptdt-timeclock-widget ${state.clockedIn ? 'is-clocked-in' : 'is-clocked-out'}`}>
+      <div className="ptdt-timeclock-icon"><Clock9 size={18} /></div>
       <div className="ptdt-timeclock-copy">
         <div className="mono ptdt-timeclock-label">{state.clockedIn ? 'CLOCKED IN' : 'CLOCKED OUT'}</div>
-        <div className="ptdt-timeclock-readout">
-          <strong>{formatElapsed(state.startedAt)}</strong>
-          <div className="ptdt-timeclock-date">
-            <span>{currentDateTime.date}</span>
-            <b>{currentDateTime.time}</b>
-          </div>
-        </div>
+        <strong>{formatElapsed(state.startedAt)}</strong>
+      </div>
+      <div className="ptdt-timeclock-divider" />
+      <div className="ptdt-timeclock-date">
+        <span>{currentDateTime.date}</span>
+        <b>{currentDateTime.time}</b>
       </div>
       <button type="button" onClick={toggle} className={state.clockedIn ? 'is-out' : 'is-in'}>
         {state.clockedIn ? <LogOut size={13} /> : <LogIn size={13} />}

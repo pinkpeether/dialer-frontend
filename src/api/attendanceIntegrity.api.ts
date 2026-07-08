@@ -1,5 +1,5 @@
 import api from './axios'
-import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
+import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey, writeSwr } from './swrCache'
 
 export type AttendanceSessionStatus =
   | 'CLOCKED_IN'
@@ -83,26 +83,33 @@ export type AttendanceMetadata = {
 }
 
 const prefix = 'attendance-integrity'
+type AttendanceSwrOptions = { silent?: boolean; fresh?: boolean }
 
 export const attendanceIntegrityApi = {
-  getMe: async (options?: { silent?: boolean }) => swr(
-    swrKey(prefix, { type: 'me' }),
-    async ({ silent }) => {
+  getMe: async (options?: AttendanceSwrOptions) => {
+    const key = swrKey(prefix, { type: 'me' })
+    const request = async (silent: boolean) => {
       const res = await api.get('/attendance-integrity/me', (silent || options?.silent) ? silentOverlayConfig() : undefined)
-      return res.data.data as { session: AttendanceSession | null }
-    },
-    options,
-  ),
+      const data = res.data.data as { session: AttendanceSession | null }
+      writeSwr(key, data)
+      return data
+    }
+    if (options?.fresh) return request(Boolean(options.silent))
+    return swr(key, async ({ silent }) => request(silent), options)
+  },
 
-  overview: async (params?: { status?: string; from?: string; to?: string; limit?: number }, options?: { silent?: boolean }) => swr(
-    swrKey(prefix, { type: 'overview', ...params }),
-    async ({ silent }) => {
+  overview: async (params?: { status?: string; from?: string; to?: string; limit?: number }, options?: AttendanceSwrOptions) => {
+    const key = swrKey(prefix, { type: 'overview', ...params })
+    const request = async (silent: boolean) => {
       const config = { params }
       const res = await api.get('/attendance-integrity/overview', (silent || options?.silent) ? silentOverlayConfig(config) : config)
-      return res.data.data as AttendanceOverview
-    },
-    options,
-  ),
+      const data = res.data.data as AttendanceOverview
+      writeSwr(key, data)
+      return data
+    }
+    if (options?.fresh) return request(Boolean(options.silent))
+    return swr(key, async ({ silent }) => request(silent), options)
+  },
 
   clockIn: async (metadata: AttendanceMetadata) => {
     const res = await api.post('/attendance-integrity/clock-in', metadata)
