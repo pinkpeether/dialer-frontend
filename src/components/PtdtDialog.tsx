@@ -84,7 +84,7 @@ export default function PtdtDialog({ dialog, onClose }: { dialog: PtdtDialogStat
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginTop: 24, flexWrap: 'wrap' }}>
             {dialog.onConfirm && (
               <button type="button" onClick={onClose} style={{
                 background: 'var(--bg-glass)',

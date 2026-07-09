@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import {
   AlertTriangle,
@@ -61,7 +61,7 @@ const inputStyle: CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 14,
   background: 'var(--bg-glass-hi)',
-  color: 'var(--text)',
+  color: 'color-mix(in srgb, var(--text) 30%, var(--text-3) 70%)',
   padding: '0 12px',
   fontWeight: 850,
   outline: 'none',
@@ -88,12 +88,12 @@ const riskTone = (row: WorkforceUserRow) => {
   return { label: 'Clean', color: 'var(--green-2)' }
 }
 
-function SectionHeader({ icon, title, subtitle, action }: { icon: ReactNode; title: string; subtitle?: string; action?: ReactNode }) {
+function SectionHeader({ icon, title, subtitle, action, subtitleSize = 15 }: { icon: ReactNode; title: string; subtitle?: string; action?: ReactNode; subtitleSize?: number }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', marginBottom: 16 }}>
       <div>
         <div className="eyebrow pink" style={{ marginBottom: 10 }}>{icon}{title}</div>
-        {subtitle && <p style={{ margin: 0, color: 'var(--text-3)', fontSize: 13.5, lineHeight: 1.5 }}>{subtitle}</p>}
+        {subtitle && <p style={{ margin: 0, color: 'var(--text-3)', fontSize: subtitleSize, lineHeight: 1.55 }}>{subtitle}</p>}
       </div>
       {action}
     </div>
@@ -110,10 +110,10 @@ function MetricCard({ icon, label, value, sub, color = 'var(--pink)' }: { icon: 
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
         <span style={{ width: 36, height: 36, borderRadius: 14, display: 'grid', placeItems: 'center', color, background: `color-mix(in srgb, ${color} 13%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 28%, transparent)` }}>{icon}</span>
-        <span className="mono" style={{ color: 'var(--text-3)', fontSize: 10, fontWeight: 950, letterSpacing: 1.1, textTransform: 'uppercase' }}>{label}</span>
+        <span className="mono" style={{ color: 'var(--text-3)', fontSize: 15, fontWeight: 950, letterSpacing: 1.1, textTransform: 'uppercase' }}>{label}</span>
       </div>
-      <div style={{ marginTop: 13, fontSize: 30, fontWeight: 950, color: 'var(--text)', lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 12.5, fontWeight: 800 }}>{sub}</div>}
+      <div style={{ marginTop: 13, fontSize: 30, fontWeight: 950, color: 'color-mix(in srgb, var(--text) 30%, var(--text-3) 70%)', lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 14, fontWeight: 800 }}>{sub}</div>}
     </motion.div>
   )
 }
@@ -121,7 +121,7 @@ function MetricCard({ icon, label, value, sub, color = 'var(--pink)' }: { icon: 
 function FilterField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label style={{ display: 'grid', gap: 7 }}>
-      <span className="mono" style={{ color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950, letterSpacing: 1.1, textTransform: 'uppercase' }}>{label}</span>
+      <span className="mono" style={{ color: 'var(--text-3)', fontSize: 11.6, fontWeight: 950, letterSpacing: 1.1, textTransform: 'uppercase' }}>{label}</span>
       {children}
     </label>
   )
@@ -129,7 +129,7 @@ function FilterField({ label, children }: { label: string; children: ReactNode }
 
 function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <div style={{ padding: 34, color: 'var(--text-3)', textAlign: 'center', fontWeight: 850 }}>
+    <div style={{ padding: 34, color: 'var(--text-3)', textAlign: 'center', fontWeight: 850, fontSize: 15 }}>
       {children}
     </div>
   )
@@ -213,6 +213,7 @@ export default function WorkforceIntelligencePage() {
   const setRisk = useWorkforceIntelligenceStore(state => state.setRisk)
   const { data, loading, refreshing, error, reload } = useWorkforceIntelligence(filters)
   const [selectedId, setSelectedId] = useState<string | number | null>(null)
+  const insightRef = useRef<HTMLDivElement | null>(null)
 
   const rows = useMemo(() => data?.rows || [], [data?.rows])
   const selectedRow = rows.find(row => String(row.id) === String(selectedId)) || rows[0] || null
@@ -221,6 +222,12 @@ export default function WorkforceIntelligencePage() {
   const rewardReady = rows.filter(row => row.productivity.achievements.length > 0).slice(0, 6)
   const riskRows = rows.filter(row => row.redFlags.length > 0).slice(0, 8)
   const scoreBars = rows.slice(0, 8).map(row => ({ name: row.name.split(' ')[0] || row.name, score: row.scores.overall || 0, risk: row.scores.risk || 0 }))
+  const inspectRow = (id: string | number) => {
+    setSelectedId(id)
+    window.requestAnimationFrame(() => {
+      insightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }
 
   return (
     <div className="ptdt-page ptdt-workforce-intelligence-page" style={pageStyle}>
@@ -228,7 +235,7 @@ export default function WorkforceIntelligencePage() {
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 13 }}><Sparkles size={12} /> Workforce Intelligence</div>
           <h1 className="ptdt-page-title">Workforce <span className="gradient-brand-text">Intelligence</span></h1>
-          <p className="ptdt-page-desc" style={{ maxWidth: 820 }}>
+          <p className="ptdt-page-desc" style={{ maxWidth: 900, fontSize: 18.5, lineHeight: 1.55 }}>
             One operating view for productivity, attendance integrity, coaching risk, call output, AI review, and reward readiness.
           </p>
         </div>
@@ -342,12 +349,18 @@ export default function WorkforceIntelligencePage() {
               </div>
             </div>
 
-            <AgentDeepDive row={selectedRow} />
+            <div ref={insightRef}>
+              <AgentDeepDive row={selectedRow} />
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 18, marginBottom: 18 }}>
             <div style={{ ...panelStyle, padding: 22 }}>
-              <SectionHeader icon={<Award size={13} />} title="Score Matrix" subtitle="Composite score and risk score by user." />
+              <SectionHeader
+                icon={<Award size={13} />}
+                title="Score Matrix"
+                subtitle="Composite score combines available backend signals: productivity, AI quality, attendance, reliability, sales, compliance, learning, customer experience, and inverse risk. Missing metrics are not guessed."
+              />
               <div style={{ height: 260 }}>
                 {scoreBars.length ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -373,7 +386,7 @@ export default function WorkforceIntelligencePage() {
                       <span style={{ width: 34, height: 34, borderRadius: 13, display: 'grid', placeItems: 'center', background: 'rgba(240,185,11,.12)', color: 'var(--warning)' }}><Flame size={16} /></span>
                       <span>
                         <strong style={{ display: 'block', fontSize: 13.5 }}>{row.name}</strong>
-                        <span style={{ color: 'var(--text-3)', fontSize: 12 }}>{row.productivity.achievements.join(' · ')}</span>
+                        <span style={{ color: 'var(--text-3)', fontSize: 13.2 }}>{row.productivity.achievements.join(' · ')}</span>
                       </span>
                     </span>
                     <ScorePill score={row.scores.overall} />
@@ -404,7 +417,7 @@ export default function WorkforceIntelligencePage() {
                         <td className="mono" style={{ padding: 16, fontWeight: 950, color: 'var(--text)' }}>#{row.rank}</td>
                         <td style={{ padding: 16 }}>
                           <div style={{ fontWeight: 950, color: 'var(--text)' }}>{row.name}</div>
-                          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginTop: 4 }}>{row.email}</div>
+                          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 12.1, marginTop: 4 }}>{row.email}</div>
                         </td>
                         <td style={{ padding: 16, color: row.role === 'SUPERVISOR' ? 'var(--pink)' : 'var(--green-2)', fontWeight: 950 }}>{row.role.replace(/_/g, ' ')}</td>
                         <td style={{ padding: 16 }}>
@@ -417,11 +430,11 @@ export default function WorkforceIntelligencePage() {
                         <td className="mono" style={{ padding: 16, color: 'var(--text)', fontWeight: 950 }}>{formatSeconds(row.attendance.workedSeconds)}</td>
                         <td style={{ padding: 16 }}>
                           <strong style={{ display: 'block', color: 'var(--text)' }}>{row.calls.callsMade}</strong>
-                          <span style={{ color: 'var(--text-3)', fontSize: 12 }}>{row.calls.callsConnected} connected</span>
+                          <span style={{ color: 'var(--text-3)', fontSize: 13.2 }}>{row.calls.callsConnected} connected</span>
                         </td>
                         <td style={{ padding: 16 }}>
                           <ScorePill score={row.quality.qaScore} />
-                          <div style={{ color: 'var(--text-3)', fontSize: 11.5, marginTop: 5 }}>{row.quality.aiReviewedCalls} AI reviewed</div>
+                          <div style={{ color: 'var(--text-3)', fontSize: 12.7, marginTop: 5 }}>{row.quality.aiReviewedCalls} AI reviewed</div>
                         </td>
                         <td style={{ padding: 16, display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                           <ScorePill score={row.scores.overall} />
@@ -432,7 +445,14 @@ export default function WorkforceIntelligencePage() {
                           <span className="mono" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 82, height: 30, borderRadius: 999, border: `1px solid ${tone.color}`, color: tone.color, background: 'var(--bg-glass)', fontWeight: 950, fontSize: 11 }}>{tone.label}</span>
                         </td>
                         <td style={{ padding: 16 }}>
-                          <button type="button" className="ptdt-action-btn" onClick={() => setSelectedId(row.id)} style={{ minHeight: 34, padding: '0 12px' }}>Inspect</button>
+                          <button
+                            type="button"
+                            className={String(selectedRow?.id) === String(row.id) ? 'ptdt-action-btn active' : 'ptdt-action-btn'}
+                            onClick={() => inspectRow(row.id)}
+                            style={{ minHeight: 34, padding: '0 12px' }}
+                          >
+                            {String(selectedRow?.id) === String(row.id) ? 'Inspecting' : 'Inspect'}
+                          </button>
                         </td>
                       </tr>
                     )
@@ -444,12 +464,12 @@ export default function WorkforceIntelligencePage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 18 }}>
             <div style={{ ...panelStyle, padding: 22 }}>
-              <SectionHeader icon={<AlertTriangle size={13} />} title="Red Flag Operations" subtitle="Disciplinary, coaching, and attendance risk surfaced from backend records." />
+              <SectionHeader icon={<AlertTriangle size={13} />} title="Red Flag Operations" subtitle="Disciplinary, coaching, and attendance risk surfaced from backend records." subtitleSize={17.5} />
               <div style={{ display: 'grid', gap: 10 }}>
                 {riskRows.length ? riskRows.map(row => row.redFlags.map(flag => (
                   <div key={`${row.id}-${flag.key}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, .5fr) minmax(0, 1fr) auto', gap: 12, alignItems: 'center', padding: 13, borderRadius: 17, border: `1px solid ${flag.severity === 'critical' ? 'rgba(239,68,68,.28)' : 'rgba(240,185,11,.28)'}`, background: 'var(--bg-glass)' }}>
                     <strong style={{ color: 'var(--text)' }}>{row.name}</strong>
-                    <span style={{ color: 'var(--text-2)', fontSize: 13 }}>{flag.detail}</span>
+                    <span style={{ color: 'var(--text-2)', fontSize: 17, lineHeight: 1.45 }}>{flag.detail}</span>
                     <span className="mono" style={{ color: flag.severity === 'critical' ? 'var(--danger)' : 'var(--warning)', fontWeight: 950, fontSize: 11 }}>{flag.label}</span>
                   </div>
                 ))) : <EmptyState>No red flags in the selected range.</EmptyState>}
@@ -457,7 +477,7 @@ export default function WorkforceIntelligencePage() {
             </div>
 
             <div style={{ ...panelStyle, padding: 22 }}>
-              <SectionHeader icon={<Target size={13} />} title="Executive Decisions" subtitle="Immediate action groups for coaching, reward, and operational control." />
+              <SectionHeader icon={<Target size={13} />} title="Executive Decisions" subtitle="Immediate action groups for coaching, reward, and operational control." subtitleSize={17.5} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
                 <DecisionBox icon={<TrendingUp size={17} />} label="Reward Ready" value={topPerformers.length} color="var(--green-2)" names={topPerformers.map(row => row.name)} />
                 <DecisionBox icon={<TrendingDown size={17} />} label="Coaching Queue" value={rows.filter(row => row.quality.coachingRecommendations.length > 0).length} color="var(--warning)" names={rows.filter(row => row.quality.coachingRecommendations.length > 0).slice(0, 3).map(row => row.name)} />
@@ -484,7 +504,7 @@ function DecisionBox({ icon, label, value, color, names }: { icon: ReactNode; la
         <span className="mono" style={{ fontSize: 10.5, fontWeight: 950, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</span>
       </div>
       <div style={{ marginTop: 9, fontSize: 28, fontWeight: 950, color: 'var(--text)' }}>{value}</div>
-      <div style={{ minHeight: 36, color: 'var(--text-3)', fontSize: 12.2, lineHeight: 1.45 }}>
+      <div style={{ minHeight: 36, color: 'var(--text-3)', fontSize: 15.9, lineHeight: 1.45 }}>
         {names.length ? names.join(' · ') : 'No users in this group.'}
       </div>
     </div>

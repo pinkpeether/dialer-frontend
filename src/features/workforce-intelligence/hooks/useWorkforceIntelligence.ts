@@ -40,6 +40,19 @@ const writeWorkforceCache = (filters: WorkforceFilters, data: WorkforceIntellige
   }
 }
 
+const emptyAttendanceOverview = {
+  summary: {
+    totalUsers: 0,
+    clockedIn: 0,
+    unexpectedDisconnects: 0,
+    needsReview: 0,
+    redFlags: 0,
+  },
+  rows: [],
+  serverTime: new Date().toISOString(),
+  heartbeatTimeoutSeconds: 0,
+}
+
 export const useWorkforceIntelligence = (filters: WorkforceFilters) => {
   const [state, setState] = useState<WorkforceQueryState>(() => {
     const cached = readWorkforceCache(filters)
@@ -90,11 +103,11 @@ export const useWorkforceIntelligence = (filters: WorkforceFilters) => {
         leaderboard,
         campaigns,
       ] = await Promise.all([
-        attendanceIntegrityApi.overview({ limit: 500 }, { silent: silent || hasCachedData, fresh: !silent && !hasCachedData }),
-        reportsAPI.getAgentBreakdown(reportFilters),
-        reportsAPI.getCallTrend({ ...reportFilters, granularity: filters.range === 'yearly' ? 'week' : 'day' }, { silent: silent || hasCachedData }),
-        aiCallsAPI.getLogs({ limit: 250 }),
-        agentManagementAPI.getLeaderboard({ from: filters.from, to: filters.to, limit: 250 }, { silent: silent || hasCachedData }),
+        attendanceIntegrityApi.overview({ limit: 500 }, { silent: silent || hasCachedData, fresh: !silent && !hasCachedData }).catch(() => emptyAttendanceOverview),
+        reportsAPI.getAgentBreakdown(reportFilters).catch(() => []),
+        reportsAPI.getCallTrend({ ...reportFilters, granularity: filters.range === 'yearly' ? 'week' : 'day' }, { silent: silent || hasCachedData }).catch(() => []),
+        aiCallsAPI.getLogs({ limit: 250 }).catch(() => ({ items: [] })),
+        agentManagementAPI.getLeaderboard({ from: filters.from, to: filters.to, limit: 250 }, { silent: silent || hasCachedData }).catch(() => []),
         campaignsAPI.getAll({ limit: 500 }, { silent: true }).catch(() => null),
       ])
 
