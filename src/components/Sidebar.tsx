@@ -5,6 +5,7 @@ import {
   BarChart3,
   BellRing,
   BookUser,
+  Brain,
   BriefcaseBusiness,
   Building2,
   Calendar,
@@ -84,6 +85,7 @@ const NAV: NavItem[] = [
   { to: '/agents', icon: Users, label: 'Agents / Team Users', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
   { to: '/agent-management-pro', icon: Users, label: 'Agent Management Pro', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.purple },
   { to: '/attendance-integrity', icon: Clock3, label: 'Attendance Integrity', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.green },
+  { to: '/workforce-intelligence', icon: Brain, label: 'Workforce Intelligence', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.pink },
   { to: '/calls', icon: History, label: 'Call History', color: COLORS.gold },
   { to: '/callbacks', icon: Calendar, label: 'Callbacks', color: COLORS.orange },
   { to: '/supervisor', icon: Eye, label: 'Supervisor', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.purple },
@@ -134,7 +136,7 @@ const CONSOLE_GROUPS: NavGroup[] = [
   { key: 'administration', label: 'ADMINISTRATION', icon: Crown, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/customer-onboarding', '/commercial-control', '/platform/administration'] },
   { key: 'ai-dialer', label: 'AI DIALER', icon: Radio, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/ai-dialer', '/ai-dialer/logs'] },
   { key: 'dialer', label: 'DIALER', icon: Phone, color: COLORS.green, items: ['/dialer', '/sip-settings', '/advanced-dialing'] },
-  { key: 'agents', label: 'AGENTS', icon: Users, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/agents', '/agent-management-pro', '/attendance-integrity'] },
+  { key: 'agents', label: 'AGENTS', icon: Users, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/agents', '/agent-management-pro', '/attendance-integrity', '/workforce-intelligence'] },
   { key: 'campaigns', label: 'CAMPAIGNS', icon: Megaphone, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/campaigns', '/campaign-management-pro'] },
   { key: 'spoofing', label: 'SPOOFING MANAGEMENT', icon: PhoneCall, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/admin/spoofing'] },
   { key: 'sms', label: 'SMS MANAGEMENT', icon: MessageSquareText, color: COLORS.green, items: ['/sms'] },
@@ -252,7 +254,30 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
       <aside className={`ptdt-sidebar ${mobileOpen ? 'is-open' : ''} ${collapsed ? 'is-collapsed' : ''}`} style={{ width: sidebarWidth, height: '100vh', background: 'var(--bg-glass-hi)', backdropFilter: 'blur(22px) saturate(160%)', WebkitBackdropFilter: 'blur(22px) saturate(160%)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: collapsed ? '16px 10px' : '14px 14px 12px', position: 'fixed', top: 0, left: 0, zIndex: 30, boxShadow: 'var(--shadow-md)', boxSizing: 'border-box', overflowX: 'hidden', transition: 'width .22s ease, padding .22s ease' }}>
         <div style={{ position: 'relative', display: collapsed ? 'flex' : 'grid', gridTemplateColumns: collapsed ? undefined : 'minmax(104px, 128px) auto', justifyContent: 'center', alignItems: 'center', columnGap: 8, rowGap: 4, padding: collapsed ? '6px 0 18px' : '2px 2px 18px', marginBottom: collapsed ? 2 : 6, textAlign: 'center' }}>
           <button type="button" className="ptdt-mobile-sidebar-close" onClick={() => setMobileOpen(false)} aria-label="Close navigation menu" style={{ position: 'absolute', top: 0, right: 0 }}><X size={18} /></button>
-          <motion.img src="ptdt-main-logo.png" alt="PTDT" whileHover={{ scale: 1.04 }} transition={{ type: 'spring', stiffness: 280 }} style={{ width: collapsed ? 56 : 126, height: collapsed ? 56 : 82, objectFit: 'contain', borderRadius: 0, background: 'transparent', mixBlendMode: 'multiply', justifySelf: 'end' }} />
+          <motion.button
+            type="button"
+            aria-label="Go to main dashboard"
+            title="Go to main dashboard"
+            onClick={() => {
+              navigate('/dashboard')
+              closeMobileNav()
+            }}
+            whileHover={{ scale: 1.04 }}
+            transition={{ type: 'spring', stiffness: 280 }}
+            style={{
+              width: collapsed ? 56 : 126,
+              height: collapsed ? 56 : 82,
+              padding: 0,
+              border: 0,
+              background: 'transparent',
+              cursor: 'pointer',
+              justifySelf: 'end',
+              display: 'grid',
+              placeItems: 'center',
+            }}
+          >
+            <img src="ptdt-main-logo.png" alt="PTDT" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 0, background: 'transparent', mixBlendMode: 'multiply' }} />
+          </motion.button>
           {!collapsed && <><div style={{ fontFamily: 'var(--font-display)', fontSize: 31, fontWeight: 950, color: 'var(--text)', lineHeight: 1, letterSpacing: '-0.055em', justifySelf: 'start' }}>Dialer</div><div className="mono" style={{ gridColumn: '1 / -1', fontSize: 13, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 7.2, marginTop: -2, fontWeight: 800 }}>ADMIN CONSOLE</div></>}
         </div>
 
