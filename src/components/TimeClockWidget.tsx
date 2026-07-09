@@ -16,7 +16,7 @@ const formatElapsed = (startedAt: number | null) => {
 
 const formatDateTime = (value: Date) => ({
   date: value.toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short' }),
-  time: value.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
+  time: value.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
 })
 
 type TimeClockState = {
@@ -121,10 +121,10 @@ export default function TimeClockWidget() {
   }, [state, storageKey])
 
   useEffect(() => {
-    if (!state.clockedIn) return undefined
+    if (!eligible) return undefined
     const timer = window.setInterval(() => tick(value => value + 1), 1000)
     return () => window.clearInterval(timer)
-  }, [state.clockedIn])
+  }, [eligible])
 
   useEffect(() => {
     let cancelled = false
@@ -159,7 +159,7 @@ export default function TimeClockWidget() {
     if (!state.clockedIn) return undefined
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
-      event.returnValue = 'Active Work Session Detected. Please Clock-Out before exiting if your shift has ended.'
+      event.returnValue = 'Your Clock-In timer is still running. Please Clock Out before closing PTDT Dialer, otherwise this attendance session may be flagged for supervisor review.'
       return event.returnValue
     }
     window.addEventListener('beforeunload', onBeforeUnload)

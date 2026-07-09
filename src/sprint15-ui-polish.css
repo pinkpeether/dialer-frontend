@@ -289,7 +289,7 @@
   min-height:70px;
   padding:10px 14px 10px 16px;
   border-radius:20px;
-  border:1px solid rgba(148,163,184,.24);
+  border:1px solid rgba(100,116,139,.42);
   background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,255,255,.88));
   box-shadow:0 12px 28px rgba(15,23,42,.08),inset 0 1px 0 rgba(255,255,255,.90);
   color:var(--text);
@@ -340,7 +340,7 @@
 .ptdt-timeclock-date{
   display:grid;
   gap:4px;
-  min-width:108px;
+  min-width:122px;
   padding:0 4px;
   border:0;
   background:transparent;
@@ -358,23 +358,23 @@
 }
 .ptdt-timeclock-date b{
   color:var(--text);
-  font-size:21px;
+  font-size:19px;
   line-height:1.05;
   font-weight:950;
   font-variant-numeric:tabular-nums;
   white-space:nowrap;
 }
 .ptdt-timeclock-widget button{
-  min-height:48px;
-  min-width:150px;
+  min-height:42px;
+  min-width:126px;
   border-radius:16px;
   border:1px solid rgba(0,167,71,.24);
-  padding:0 20px;
+  padding:0 15px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   gap:6px;
-  font-size:21px;
+  font-size:17px;
   font-weight:950;
   cursor:pointer;
   white-space:nowrap;
@@ -382,7 +382,7 @@
   box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 8px 18px rgba(15,23,42,.06);
 }
 .ptdt-timeclock-widget button.is-in{
-  color:#7f123f;
+  color:var(--pink);
   border-color:rgba(251,11,140,.22);
   background:linear-gradient(135deg,rgba(255,222,235,.92),rgba(255,197,218,.86));
 }
@@ -393,7 +393,7 @@
 }
 [data-theme="dark"] .ptdt-timeclock-widget{
   background:linear-gradient(180deg,rgba(17,24,39,.96),rgba(15,23,42,.88));
-  border-color:rgba(203,213,225,.15);
+  border-color:rgba(203,213,225,.32);
   box-shadow:0 14px 32px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.07);
 }
 [data-theme="dark"] .ptdt-timeclock-date{

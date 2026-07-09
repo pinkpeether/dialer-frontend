@@ -450,8 +450,8 @@ export default function AttendanceIntegrity() {
                     <td style={cellStyle}>
                       <div style={{ display: 'grid', gap: 7 }}>
                         <Pill tone={statusColor(row.dialerStatus) === 'var(--green-2)' ? 'green' : 'muted'}>{row.dialerStatus}</Pill>
-                        <span style={{ color: row.user.isActive === false ? 'var(--danger)' : 'var(--green-2)', fontSize: 12, fontWeight: 900 }}>
-                          {row.user.isActive === false ? 'User inactive' : 'User active'}
+                        <span style={{ color: row.user.isActive === false ? 'var(--danger)' : 'var(--text-3)', fontSize: 12, fontWeight: 900 }}>
+                          {row.user.isActive === false ? 'Account inactive' : 'Account active'}
                         </span>
                       </div>
                     </td>
@@ -472,7 +472,7 @@ export default function AttendanceIntegrity() {
                       {(() => {
                         const sessionId = readSessionNumber(row.session, 'id')
                         return (
-                          <div style={{ display: 'grid', gap: 8, minWidth: row.needsReview ? 220 : 82, maxWidth: row.needsReview ? 260 : 90 }}>
+                          <div style={{ display: 'grid', gap: 8, minWidth: row.needsReview && sessionId ? 220 : row.needsReview ? 108 : 82, maxWidth: row.needsReview && sessionId ? 260 : row.needsReview ? 128 : 90 }}>
                             <span style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -484,7 +484,7 @@ export default function AttendanceIntegrity() {
                               background: 'var(--bg-glass)',
                               textTransform: 'uppercase',
                               whiteSpace: 'nowrap',
-                              ...(row.needsReview ? { fontSize: 11, fontWeight: 950, letterSpacing: .5 } : cleanPillStyle),
+                              ...(row.needsReview ? { justifyContent: 'center', width: 104, minWidth: 104, maxWidth: 104, fontSize: 11, fontWeight: 950, letterSpacing: .5 } : cleanPillStyle),
                             }}>{row.needsReview ? 'Flagged' : 'Clean'}</span>
                             {row.needsReview && sessionId && (
                               <>
