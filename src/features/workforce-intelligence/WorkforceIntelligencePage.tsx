@@ -64,6 +64,7 @@ const inputStyle: CSSProperties = {
   color: 'color-mix(in srgb, var(--text) 30%, var(--text-3) 70%)',
   padding: '0 12px',
   fontWeight: 850,
+  fontSize: 16,
   outline: 'none',
 }
 
@@ -88,7 +89,7 @@ const riskTone = (row: WorkforceUserRow) => {
   return { label: 'Clean', color: 'var(--green-2)' }
 }
 
-function SectionHeader({ icon, title, subtitle, action, subtitleSize = 15 }: { icon: ReactNode; title: string; subtitle?: string; action?: ReactNode; subtitleSize?: number }) {
+function SectionHeader({ icon, title, subtitle, action, subtitleSize = 13.5 }: { icon: ReactNode; title: string; subtitle?: string; action?: ReactNode; subtitleSize?: number }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', marginBottom: 16 }}>
       <div>
@@ -112,8 +113,8 @@ function MetricCard({ icon, label, value, sub, color = 'var(--pink)' }: { icon: 
         <span style={{ width: 36, height: 36, borderRadius: 14, display: 'grid', placeItems: 'center', color, background: `color-mix(in srgb, ${color} 13%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 28%, transparent)` }}>{icon}</span>
         <span className="mono" style={{ color: 'var(--text-3)', fontSize: 15, fontWeight: 950, letterSpacing: 1.1, textTransform: 'uppercase' }}>{label}</span>
       </div>
-      <div style={{ marginTop: 13, fontSize: 30, fontWeight: 950, color: 'color-mix(in srgb, var(--text) 30%, var(--text-3) 70%)', lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 14, fontWeight: 800 }}>{sub}</div>}
+      <div style={{ marginTop: 13, fontSize: 24, fontWeight: 950, color: 'color-mix(in srgb, var(--text) 30%, var(--text-3) 70%)', lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 12.6, fontWeight: 800 }}>{sub}</div>}
     </motion.div>
   )
 }
@@ -129,7 +130,7 @@ function FilterField({ label, children }: { label: string; children: ReactNode }
 
 function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <div style={{ padding: 34, color: 'var(--text-3)', textAlign: 'center', fontWeight: 850, fontSize: 15 }}>
+    <div style={{ padding: 34, color: 'var(--text-3)', textAlign: 'center', fontWeight: 850, fontSize: 13.5 }}>
       {children}
     </div>
   )
@@ -235,7 +236,7 @@ export default function WorkforceIntelligencePage() {
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 13 }}><Sparkles size={12} /> Workforce Intelligence</div>
           <h1 className="ptdt-page-title">Workforce <span className="gradient-brand-text">Intelligence</span></h1>
-          <p className="ptdt-page-desc" style={{ maxWidth: 900, fontSize: 18.5, lineHeight: 1.55 }}>
+          <p className="ptdt-page-desc" style={{ maxWidth: 'none', fontSize: 16.7, lineHeight: 1.45, whiteSpace: 'nowrap' }}>
             One operating view for productivity, attendance integrity, coaching risk, call output, AI review, and reward readiness.
           </p>
         </div>
@@ -366,7 +367,7 @@ export default function WorkforceIntelligencePage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={scoreBars} margin={{ top: 6, right: 12, left: -18, bottom: 0 }}>
                       <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                      <XAxis dataKey="name" tick={{ fill: 'var(--text-3)', fontSize: 11 }} />
+                      <XAxis dataKey="name" tick={{ fill: 'var(--text-3)', fontSize: 13.75, fontWeight: 900 }} />
                       <YAxis domain={[0, 100]} tick={{ fill: 'var(--text-3)', fontSize: 11 }} />
                       <Tooltip contentStyle={tooltipStyle} />
                       <Bar dataKey="score" fill="#00a747" radius={[10, 10, 0, 0]} name="Overall" />
@@ -386,7 +387,7 @@ export default function WorkforceIntelligencePage() {
                       <span style={{ width: 34, height: 34, borderRadius: 13, display: 'grid', placeItems: 'center', background: 'rgba(240,185,11,.12)', color: 'var(--warning)' }}><Flame size={16} /></span>
                       <span>
                         <strong style={{ display: 'block', fontSize: 13.5 }}>{row.name}</strong>
-                        <span style={{ color: 'var(--text-3)', fontSize: 13.2 }}>{row.productivity.achievements.join(' · ')}</span>
+                        <span style={{ color: 'var(--text-3)', fontSize: 11.9 }}>{row.productivity.achievements.join(' · ')}</span>
                       </span>
                     </span>
                     <ScorePill score={row.scores.overall} />
@@ -417,9 +418,9 @@ export default function WorkforceIntelligencePage() {
                         <td className="mono" style={{ padding: 16, fontWeight: 950, color: 'var(--text)' }}>#{row.rank}</td>
                         <td style={{ padding: 16 }}>
                           <div style={{ fontWeight: 950, color: 'var(--text)' }}>{row.name}</div>
-                          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 12.1, marginTop: 4 }}>{row.email}</div>
+                          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 10.9, marginTop: 4 }}>{row.email}</div>
                         </td>
-                        <td style={{ padding: 16, color: row.role === 'SUPERVISOR' ? 'var(--pink)' : 'var(--green-2)', fontWeight: 950 }}>{row.role.replace(/_/g, ' ')}</td>
+                        <td style={{ padding: 16, color: row.role === 'SUPERVISOR' ? 'var(--pink)' : 'var(--green-2)', fontWeight: 950, fontSize: 13.6 }}>{row.role.replace(/_/g, ' ')}</td>
                         <td style={{ padding: 16 }}>
                           <div className="mono" style={{ color: row.status === 'ONLINE' ? 'var(--green-2)' : 'var(--text-3)', fontWeight: 950 }}>{row.status}</div>
                           <div style={{ marginTop: 5, color: row.attendance.sipRegistered ? 'var(--green-2)' : 'var(--text-3)', fontWeight: 900, fontSize: 12 }}>{row.attendance.sipRegistered ? 'SIP Registered' : 'SIP Disabled'}</div>
@@ -430,11 +431,11 @@ export default function WorkforceIntelligencePage() {
                         <td className="mono" style={{ padding: 16, color: 'var(--text)', fontWeight: 950 }}>{formatSeconds(row.attendance.workedSeconds)}</td>
                         <td style={{ padding: 16 }}>
                           <strong style={{ display: 'block', color: 'var(--text)' }}>{row.calls.callsMade}</strong>
-                          <span style={{ color: 'var(--text-3)', fontSize: 13.2 }}>{row.calls.callsConnected} connected</span>
+                          <span style={{ color: 'var(--text-3)', fontSize: 11.9 }}>{row.calls.callsConnected} connected</span>
                         </td>
                         <td style={{ padding: 16 }}>
                           <ScorePill score={row.quality.qaScore} />
-                          <div style={{ color: 'var(--text-3)', fontSize: 12.7, marginTop: 5 }}>{row.quality.aiReviewedCalls} AI reviewed</div>
+                          <div style={{ color: 'var(--text-3)', fontSize: 11.4, marginTop: 5 }}>{row.quality.aiReviewedCalls} AI reviewed</div>
                         </td>
                         <td style={{ padding: 16, display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                           <ScorePill score={row.scores.overall} />
@@ -464,7 +465,7 @@ export default function WorkforceIntelligencePage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 18 }}>
             <div style={{ ...panelStyle, padding: 22 }}>
-              <SectionHeader icon={<AlertTriangle size={13} />} title="Red Flag Operations" subtitle="Disciplinary, coaching, and attendance risk surfaced from backend records." subtitleSize={17.5} />
+              <SectionHeader icon={<AlertTriangle size={13} />} title="Red Flag Operations" subtitle="Disciplinary, coaching, and attendance risk surfaced from backend records." subtitleSize={15.8} />
               <div style={{ display: 'grid', gap: 10 }}>
                 {riskRows.length ? riskRows.map(row => row.redFlags.map(flag => (
                   <div key={`${row.id}-${flag.key}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, .5fr) minmax(0, 1fr) auto', gap: 12, alignItems: 'center', padding: 13, borderRadius: 17, border: `1px solid ${flag.severity === 'critical' ? 'rgba(239,68,68,.28)' : 'rgba(240,185,11,.28)'}`, background: 'var(--bg-glass)' }}>
@@ -477,7 +478,7 @@ export default function WorkforceIntelligencePage() {
             </div>
 
             <div style={{ ...panelStyle, padding: 22 }}>
-              <SectionHeader icon={<Target size={13} />} title="Executive Decisions" subtitle="Immediate action groups for coaching, reward, and operational control." subtitleSize={17.5} />
+              <SectionHeader icon={<Target size={13} />} title="Executive Decisions" subtitle="Immediate action groups for coaching, reward, and operational control." subtitleSize={15.8} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
                 <DecisionBox icon={<TrendingUp size={17} />} label="Reward Ready" value={topPerformers.length} color="var(--green-2)" names={topPerformers.map(row => row.name)} />
                 <DecisionBox icon={<TrendingDown size={17} />} label="Coaching Queue" value={rows.filter(row => row.quality.coachingRecommendations.length > 0).length} color="var(--warning)" names={rows.filter(row => row.quality.coachingRecommendations.length > 0).slice(0, 3).map(row => row.name)} />
@@ -501,10 +502,10 @@ function DecisionBox({ icon, label, value, color, names }: { icon: ReactNode; la
     <div style={{ padding: 15, borderRadius: 18, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, color }}>
         {icon}
-        <span className="mono" style={{ fontSize: 10.5, fontWeight: 950, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</span>
+        <span className="mono" style={{ fontSize: 12.6, fontWeight: 950, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</span>
       </div>
       <div style={{ marginTop: 9, fontSize: 28, fontWeight: 950, color: 'var(--text)' }}>{value}</div>
-      <div style={{ minHeight: 36, color: 'var(--text-3)', fontSize: 15.9, lineHeight: 1.45 }}>
+      <div style={{ minHeight: 36, color: 'var(--text-3)', fontSize: 14.3, lineHeight: 1.45 }}>
         {names.length ? names.join(' · ') : 'No users in this group.'}
       </div>
     </div>
