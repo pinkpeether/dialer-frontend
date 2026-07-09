@@ -9,6 +9,13 @@ import PtdtDialog, { type PtdtDialogState } from './PtdtDialog'
 import { markPresenceOfflineBeforeLogout } from '../hooks/useAgentPresence'
 import { useSocket } from '../hooks/useSocket'
 import TimeClockWidget from './TimeClockWidget'
+import { attendanceIntegrityApi } from '../api/attendanceIntegrity.api'
+
+type LocalTimeClockState = {
+  clockedIn?: boolean
+  startedAt?: number | null
+  backendSessionId?: number | null
+}
 
 const roleLabel = (role?: string) => {
   if (role === 'CUSTOMER_ADMIN') return 'Customer Admin'
@@ -17,6 +24,18 @@ const roleLabel = (role?: string) => {
   if (role === 'SUPER_ADMIN') return 'PTDT Super Admin'
   if (role === 'ADMIN') return 'PTDT Admin'
   return role || 'Account'
+}
+
+const readActiveClockState = (userId?: number | string | null): LocalTimeClockState | null => {
+  if (!userId) return null
+  try {
+    const raw = window.localStorage.getItem(`ptdt-timeclock:${userId}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as LocalTimeClockState
+    return parsed?.clockedIn ? parsed : null
+  } catch {
+    return null
+  }
 }
 
 export default function TopOperatorActions() {
@@ -62,23 +81,43 @@ export default function TopOperatorActions() {
     }
   }, [socket])
 
-  const performSignOut = useCallback(() => {
+  const performSignOut = useCallback(async (options?: { flagAttendance?: boolean }) => {
     const sessionToken = localStorage.getItem('jd_token')
+    const activeClock = options?.flagAttendance ? readActiveClockState(user?.id) : null
     setDialog(null)
+    if (options?.flagAttendance) {
+      await attendanceIntegrityApi.disconnect({
+        ...(activeClock?.backendSessionId ? { sessionId: activeClock.backendSessionId } : {}),
+        currentUrl: window.location.href,
+        tabVisible: document.visibilityState === 'visible',
+        lastInteractionAt: new Date().toISOString(),
+      }).catch(() => undefined)
+    }
     markPresenceOfflineBeforeLogout()
     logout()
     navigate('/login', { replace: true })
     void authAPI.logout(sessionToken).catch(() => undefined)
     void unregisterSip().catch(() => undefined)
-  }, [logout, navigate, unregisterSip])
+  }, [logout, navigate, unregisterSip, user?.id])
 
   const requestSignOut = () => {
+    if ((user?.role === 'AGENT' || user?.role === 'SUPERVISOR') && readActiveClockState(user?.id)) {
+      setDialog({
+        tone: 'confirm',
+        title: 'Clock Out before signing out',
+        message: 'Your Clock-In timer is still running. Please Clock Out before signing out. If you sign out without Clock Out, this attendance session will be flagged for supervisor review.',
+        confirmLabel: 'Sign Out Anyway',
+        onConfirm: () => performSignOut({ flagAttendance: true }),
+      })
+      return
+    }
+
     setDialog({
       tone: 'confirm',
       title: 'Sign out?',
       message: 'Are you sure you want to sign out of PTDT Dialer?',
       confirmLabel: 'Sign Out',
-      onConfirm: performSignOut,
+      onConfirm: () => performSignOut(),
     })
   }
 

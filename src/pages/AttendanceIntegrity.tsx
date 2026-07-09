@@ -180,6 +180,14 @@ const isRunningClockStatus = (status?: string | null) => {
   return ['CLOCKED IN', 'IDLE', 'ON BREAK', 'PENDING SUPERVISOR REVIEW'].includes(next)
 }
 
+const isNoSessionStatus = (status?: string | null) => String(status || '').replace(/_/g, ' ').toUpperCase() === 'NO SESSION'
+
+const isBackendSipEnabled = (session: unknown, clockStatus?: string | null) => {
+  if (session) return true
+  const normalized = String(clockStatus || '').replace(/_/g, ' ').toUpperCase()
+  return normalized !== 'NO SESSION' && normalized !== 'AWAITING BACKEND FEED'
+}
+
 const secondsSince = (value: unknown, nowMs: number) => {
   if (!value) return 0
   const startedAt = new Date(value as string | number).getTime()
@@ -293,7 +301,9 @@ export default function AttendanceIntegrity() {
         workedSeconds: isRunningClockStatus(row.status) && row.session?.clockInAt
           ? secondsSince(row.session.clockInAt, nowMs)
           : row.activeSeconds || row.session?.totalWorkedSeconds || 0,
-        needsReview: row.needsReview || row.status === 'NO_SESSION',
+        needsReview: row.needsReview,
+        hasNoSession: row.status === 'NO_SESSION',
+        sipEnabled: isBackendSipEnabled(row.session, row.status),
         clockInAt: row.session?.clockInAt || null,
         clockOutAt: row.session?.clockOutAt || null,
       }))
@@ -310,6 +320,7 @@ export default function AttendanceIntegrity() {
     const dialerStatus = cleanStatus(user.status)
     const clockStatus = localState.clockedIn ? 'Clocked-In' : session?.status || 'Awaiting Backend Feed'
     const needsReview = workedSeconds > 43_200 || clockStatus === 'Awaiting Backend Feed'
+    const sipEnabled = Boolean(session || localState.clockedIn)
     return {
       user,
       role,
@@ -318,6 +329,8 @@ export default function AttendanceIntegrity() {
       dialerStatus,
       workedSeconds,
       needsReview,
+      hasNoSession: false,
+      sipEnabled,
       clockInAt: activeStartedAt || session?.clockInAt || null,
       clockOutAt: session?.clockOutAt || localState.lastClockOutAt || null,
     }
@@ -450,8 +463,8 @@ export default function AttendanceIntegrity() {
                     <td style={cellStyle}>
                       <div style={{ display: 'grid', gap: 7 }}>
                         <Pill tone={statusColor(row.dialerStatus) === 'var(--green-2)' ? 'green' : 'muted'}>{row.dialerStatus}</Pill>
-                        <span style={{ color: row.user.isActive === false ? 'var(--danger)' : 'var(--text-3)', fontSize: 12, fontWeight: 900 }}>
-                          {row.user.isActive === false ? 'Account inactive' : 'Account active'}
+                        <span style={{ color: row.user.isActive === false ? 'var(--danger)' : row.sipEnabled ? 'var(--green-2)' : 'var(--text-3)', fontSize: 12, fontWeight: 900 }}>
+                          {row.user.isActive === false ? 'Account inactive' : row.sipEnabled ? 'SIP Enabled' : 'SIP Disabled'}
                         </span>
                       </div>
                     </td>
@@ -471,21 +484,24 @@ export default function AttendanceIntegrity() {
                     <td style={cellStyle}>
                       {(() => {
                         const sessionId = readSessionNumber(row.session, 'id')
+                        const noSession = Boolean(row.hasNoSession) || isNoSessionStatus(row.clockStatus)
+                        const integrityLabel = noSession ? 'No Session' : row.needsReview ? 'Flagged' : 'Clean'
+                        const integrityColor = row.needsReview || noSession ? 'var(--danger)' : 'var(--green-2)'
                         return (
-                          <div style={{ display: 'grid', gap: 8, minWidth: row.needsReview && sessionId ? 220 : row.needsReview ? 108 : 82, maxWidth: row.needsReview && sessionId ? 260 : row.needsReview ? 128 : 90 }}>
+                          <div style={{ display: 'grid', gap: 8, minWidth: row.needsReview && sessionId ? 220 : noSession ? 112 : row.needsReview ? 108 : 82, maxWidth: row.needsReview && sessionId ? 260 : noSession ? 122 : row.needsReview ? 128 : 90 }}>
                             <span style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               minHeight: 28,
                               padding: '0 10px',
                               borderRadius: 999,
-                              border: `1px solid ${row.needsReview ? 'var(--danger)' : 'var(--green-2)'}`,
-                              color: row.needsReview ? 'var(--danger)' : 'var(--green-2)',
+                              border: `1px solid ${integrityColor}`,
+                              color: integrityColor,
                               background: 'var(--bg-glass)',
                               textTransform: 'uppercase',
                               whiteSpace: 'nowrap',
-                              ...(row.needsReview ? { justifyContent: 'center', width: 104, minWidth: 104, maxWidth: 104, fontSize: 11, fontWeight: 950, letterSpacing: .5 } : cleanPillStyle),
-                            }}>{row.needsReview ? 'Flagged' : 'Clean'}</span>
+                              ...(row.needsReview || noSession ? { justifyContent: 'center', width: noSession ? 112 : 104, minWidth: noSession ? 112 : 104, maxWidth: noSession ? 112 : 104, fontSize: 11, fontWeight: 950, letterSpacing: .5 } : cleanPillStyle),
+                            }}>{integrityLabel}</span>
                             {row.needsReview && sessionId && (
                               <>
                                 <input
