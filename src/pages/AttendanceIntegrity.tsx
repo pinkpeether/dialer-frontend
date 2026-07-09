@@ -11,6 +11,17 @@ type TeamUser = {
   role?: string | null
   status?: string | null
   isActive?: boolean
+  sipPresence?: {
+    enabled: boolean
+    registered: boolean
+    status: string
+    username?: string | null
+    transport?: string | null
+    domain?: string | null
+    lastRegisteredAt?: string | null
+    lastUnregisteredAt?: string | null
+    lastSeenAt?: string | null
+  } | null
 }
 
 type TimeClockState = {
@@ -182,10 +193,13 @@ const isRunningClockStatus = (status?: string | null) => {
 
 const isNoSessionStatus = (status?: string | null) => String(status || '').replace(/_/g, ' ').toUpperCase() === 'NO SESSION'
 
-const isBackendSipEnabled = (session: unknown, clockStatus?: string | null) => {
-  if (session) return true
-  const normalized = String(clockStatus || '').replace(/_/g, ' ').toUpperCase()
-  return normalized !== 'NO SESSION' && normalized !== 'AWAITING BACKEND FEED'
+const isSipRegistered = (user: TeamUser) => {
+  const presence = user.sipPresence
+  if (!presence) return false
+  const lastSeenAt = presence.lastSeenAt ? new Date(presence.lastSeenAt).getTime() : 0
+  if (!Number.isFinite(lastSeenAt) || Date.now() - lastSeenAt > 90_000) return false
+  const status = String(presence.status || '').toLowerCase()
+  return Boolean(presence.registered || ['registered', 'in_call', 'calling', 'incoming'].includes(status))
 }
 
 const secondsSince = (value: unknown, nowMs: number) => {
@@ -303,7 +317,7 @@ export default function AttendanceIntegrity() {
           : row.activeSeconds || row.session?.totalWorkedSeconds || 0,
         needsReview: row.needsReview,
         hasNoSession: row.status === 'NO_SESSION',
-        sipEnabled: isBackendSipEnabled(row.session, row.status),
+        sipEnabled: isSipRegistered(row.user),
         clockInAt: row.session?.clockInAt || null,
         clockOutAt: row.session?.clockOutAt || null,
       }))
@@ -320,7 +334,7 @@ export default function AttendanceIntegrity() {
     const dialerStatus = cleanStatus(user.status)
     const clockStatus = localState.clockedIn ? 'Clocked-In' : session?.status || 'Awaiting Backend Feed'
     const needsReview = workedSeconds > 43_200 || clockStatus === 'Awaiting Backend Feed'
-    const sipEnabled = Boolean(session || localState.clockedIn)
+    const sipEnabled = isSipRegistered(user)
     return {
       user,
       role,

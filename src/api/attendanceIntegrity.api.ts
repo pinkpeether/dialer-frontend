@@ -46,6 +46,17 @@ export type AttendanceOverviewRow = {
     role: string
     status: string
     isActive: boolean
+    sipPresence?: {
+      enabled: boolean
+      registered: boolean
+      status: string
+      username?: string | null
+      transport?: string | null
+      domain?: string | null
+      lastRegisteredAt?: string | null
+      lastUnregisteredAt?: string | null
+      lastSeenAt?: string | null
+    } | null
   }
   session: AttendanceSession | null
   status: AttendanceSessionStatus
@@ -133,6 +144,19 @@ export const attendanceIntegrityApi = {
     const res = await api.post('/attendance-integrity/disconnect', metadata, silentOverlayConfig())
     clearSwrByPrefix(prefix)
     return res.data.data as AttendanceSession
+  },
+
+  sipPresence: async (payload: {
+    enabled: boolean
+    status: string
+    username?: string
+    transport?: string
+    domain?: string
+    webSocketServer?: string
+  }) => {
+    const res = await api.post('/attendance-integrity/sip-presence', payload, silentOverlayConfig())
+    clearSwrByPrefix(prefix)
+    return res.data.data
   },
 
   review: async (sessionId: number, payload: { status?: string; notes?: string; removeFlag?: boolean }) => {

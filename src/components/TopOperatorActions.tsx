@@ -81,6 +81,25 @@ export default function TopOperatorActions() {
     }
   }, [socket])
 
+  useEffect(() => {
+    if (!showTimeClock) return undefined
+
+    const syncSipPresence = () => {
+      void attendanceIntegrityApi.sipPresence({
+        enabled: Boolean(sipConfig.enabled),
+        status: sipConfig.enabled ? sipStatus : 'disabled',
+        username: sipConfig.username,
+        transport: sipConfig.transport,
+        domain: sipConfig.domain,
+        webSocketServer: sipConfig.webSocketServer,
+      }).catch(() => undefined)
+    }
+
+    syncSipPresence()
+    const timer = window.setInterval(syncSipPresence, 30_000)
+    return () => window.clearInterval(timer)
+  }, [showTimeClock, sipConfig.domain, sipConfig.enabled, sipConfig.transport, sipConfig.username, sipConfig.webSocketServer, sipStatus])
+
   const performSignOut = useCallback(async (options?: { flagAttendance?: boolean }) => {
     const sessionToken = localStorage.getItem('jd_token')
     const activeClock = options?.flagAttendance ? readActiveClockState(user?.id) : null
