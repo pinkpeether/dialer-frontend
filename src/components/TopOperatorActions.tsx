@@ -8,7 +8,7 @@ import NotificationBell from './NotificationBell'
 import PtdtDialog, { type PtdtDialogState } from './PtdtDialog'
 import { markPresenceOfflineBeforeLogout } from '../hooks/useAgentPresence'
 import { useSocket } from '../hooks/useSocket'
-import TimeClockWidget from './TimeClockWidget'
+import TimeClockWidget, { TimeClockDateBadge } from './TimeClockWidget'
 import { attendanceIntegrityApi } from '../api/attendanceIntegrity.api'
 import { clearPtdtSessionCache } from '../services/sessionCleanup'
 
@@ -166,6 +166,7 @@ export default function TopOperatorActions() {
                 </div>
               </div>
             )}
+            {showTimeClock && <TimeClockDateBadge />}
             <NotificationBell />
             <div className={`ptdt-top-operator-role${roleCardClass}`} style={{ minHeight: 54, padding: '7px 15px', alignItems: 'center' }}>
               <ShieldCheck size={14} />

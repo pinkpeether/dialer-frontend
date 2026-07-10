@@ -19,6 +19,24 @@ const formatDateTime = (value: Date) => ({
   time: value.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
 })
 
+export function TimeClockDateBadge() {
+  const [, tick] = useState(0)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => tick(value => value + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const currentDateTime = formatDateTime(new Date())
+
+  return (
+    <div className="ptdt-timeclock-date">
+      <span>{currentDateTime.date}</span>
+      <b>{currentDateTime.time}</b>
+    </div>
+  )
+}
+
 type TimeClockState = {
   clockedIn: boolean
   startedAt: number | null
@@ -167,7 +185,6 @@ export default function TimeClockWidget() {
   }, [state.clockedIn])
 
   if (!eligible) return null
-  const currentDateTime = formatDateTime(new Date())
 
   const toggle = () => {
     setState(current => {
@@ -235,10 +252,6 @@ export default function TimeClockWidget() {
           {state.clockedIn ? <LogOut size={13} /> : <LogIn size={13} />}
           {state.clockedIn ? 'Clock Out' : 'Clock In'}
         </button>
-      </div>
-      <div className="ptdt-timeclock-date">
-        <span>{currentDateTime.date}</span>
-        <b>{currentDateTime.time}</b>
       </div>
     </div>
   )
