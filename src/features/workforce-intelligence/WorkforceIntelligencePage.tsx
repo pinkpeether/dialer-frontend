@@ -124,6 +124,60 @@ const commandTimerStyle: CSSProperties = {
   fontVariantNumeric: 'tabular-nums',
 }
 
+const commandHeaderStyle: CSSProperties = {
+  padding: '15px 12px',
+  textAlign: 'left',
+  color: 'var(--text-3)',
+  fontSize: 12.4,
+  fontWeight: 950,
+  letterSpacing: 1.35,
+  textTransform: 'uppercase',
+  borderBottom: '1px solid var(--border)',
+  lineHeight: 1.12,
+  verticalAlign: 'bottom',
+}
+
+const premiumToolbarButtonStyle: CSSProperties = {
+  minHeight: 42,
+  borderRadius: 16,
+  padding: '0 15px',
+  border: '1px solid color-mix(in srgb, var(--pink) 18%, var(--border))',
+  background: 'linear-gradient(135deg, var(--bg-glass-hi), color-mix(in srgb, var(--pink) 7%, var(--bg-glass-hi)))',
+  color: 'var(--text-2)',
+  boxShadow: '0 12px 26px rgba(15, 23, 42, .06)',
+  fontWeight: 950,
+  letterSpacing: .2,
+}
+
+const premiumPrimaryButtonStyle: CSSProperties = {
+  ...premiumToolbarButtonStyle,
+  border: '1px solid color-mix(in srgb, var(--pink) 42%, transparent)',
+  background: 'linear-gradient(135deg, var(--pink), color-mix(in srgb, var(--purple) 44%, var(--pink)))',
+  color: '#fff',
+  boxShadow: '0 16px 34px color-mix(in srgb, var(--pink) 22%, transparent)',
+}
+
+const premiumGreenButtonStyle: CSSProperties = {
+  ...premiumToolbarButtonStyle,
+  border: '1px solid color-mix(in srgb, var(--green-2) 34%, transparent)',
+  background: 'linear-gradient(135deg, color-mix(in srgb, var(--green-2) 11%, var(--bg-glass-hi)), var(--bg-glass-hi))',
+  color: 'var(--green-2)',
+}
+
+const commandHeaders = [
+  { key: 'user', lines: ['User'] },
+  { key: 'role', lines: ['Role'] },
+  { key: 'current-campaign', lines: ['Current', 'Campaign'] },
+  { key: 'current-queue', lines: ['Current', 'Queue'] },
+  { key: 'break-status', lines: ['Break', 'Status'] },
+  { key: 'todays-login', lines: ["Today's", 'Login'] },
+  { key: 'login-dialer', lines: ['Login', '/ Dialer'] },
+  { key: 'clock', lines: ['Clock'] },
+  { key: 'work', lines: ['Work'] },
+  { key: 'calls', lines: ['Calls'] },
+  { key: 'action', lines: ['Action'] },
+]
+
 const flagCategory = (flag: { key: string; label: string }) => {
   const text = `${flag.key} ${flag.label}`.toLowerCase()
   if (text.includes('sip') || text.includes('dialer')) return 'SIP'
@@ -458,16 +512,16 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
             <span className="mono" style={{ color: 'var(--text-2)', fontSize: 11.5, fontWeight: 950 }}>{activeSupervisors} Supervisors</span>
             <span className="mono" style={{ color: 'var(--text-2)', fontSize: 11.5, fontWeight: 950 }}>{aiCallCount} AI Reviews</span>
           </div>
-          <button type="button" className="ptdt-action-btn" onClick={() => void reload()} disabled={loading || refreshing}>
-            <RefreshCw size={14} /> {loading || refreshing ? 'Refreshing' : 'Refresh'}
+          <button type="button" className="ptdt-action-btn" style={premiumGreenButtonStyle} onClick={() => void reload()} disabled={loading || refreshing}>
+            <RefreshCw size={15} /> {loading || refreshing ? 'Refreshing' : 'Refresh'}
           </button>
-          <button type="button" className="ptdt-action-btn" onClick={() => exportWorkforceCsv(rows)} disabled={!rows.length}>
-            <Download size={14} /> CSV
+          <button type="button" className="ptdt-action-btn" style={premiumToolbarButtonStyle} onClick={() => exportWorkforceCsv(rows)} disabled={!rows.length}>
+            <Download size={15} /> CSV
           </button>
-          <button type="button" className="ptdt-action-btn" onClick={() => exportWorkforceExcel(rows)} disabled={!rows.length}>
-            <FileSpreadsheet size={14} /> Excel
+          <button type="button" className="ptdt-action-btn" style={premiumToolbarButtonStyle} onClick={() => exportWorkforceExcel(rows)} disabled={!rows.length}>
+            <FileSpreadsheet size={15} /> Excel
           </button>
-          <button type="button" className="ptdt-action-btn active" onClick={() => window.print()} disabled={!rows.length}>
+          <button type="button" className="ptdt-action-btn active" style={premiumPrimaryButtonStyle} onClick={() => window.print()} disabled={!rows.length}>
             PDF
           </button>
         </div>
@@ -548,7 +602,7 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
                   <div key={`${event.label}-${event.detail}`} style={{ display: 'grid', gridTemplateColumns: '54px minmax(0, 1fr)', gap: 12, alignItems: 'center' }}>
                     <span className="mono" style={{ color: 'var(--text-3)', fontSize: 11, fontWeight: 950 }}>{String(index + 1).padStart(2, '0')}</span>
                     <div style={{ padding: 12, borderRadius: 17, border: '1px solid var(--border)', background: 'var(--bg-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                      <DecisionPill label={event.label} color={event.color} fontSize={13.2} />
+                      <DecisionPill label={event.label} color={event.color} fontSize={15.2} />
                       <strong style={{ color: 'var(--text-2)', fontSize: 13.5, textAlign: 'right' }}>{event.detail}</strong>
                     </div>
                   </div>
@@ -727,8 +781,12 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
               <table style={{ width: '100%', minWidth: 1120, tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['User', 'Role', 'Current Campaign', 'Current Queue', 'Break Status', "Today's Login", 'Login / Dialer', 'Clock', 'Work', 'Calls', 'Action'].map(header => (
-                      <th key={header} className="mono" style={{ padding: '14px 12px', textAlign: 'left', color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950, letterSpacing: 1.2, textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{header}</th>
+                    {commandHeaders.map(header => (
+                      <th key={header.key} className="mono" style={commandHeaderStyle}>
+                        <span style={{ display: 'inline-grid', gap: 2 }}>
+                          {header.lines.map(line => <span key={line}>{line}</span>)}
+                        </span>
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -738,7 +796,6 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
                       <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: 12 }}>
                           <div className="mono" style={{ ...commandCellStyle, color: 'var(--text)' }}>{row.name}</div>
-                          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 10.9, marginTop: 4, fontWeight: 900 }}>{row.email}</div>
                         </td>
                         <td className="mono" style={{ padding: 12, color: row.role === 'SUPERVISOR' ? 'var(--pink)' : 'var(--green-2)', fontWeight: 950, fontSize: 13.6 }}>{row.role.replace(/_/g, ' ')}</td>
                         <td className="mono" style={{ padding: 12, ...commandCellStyle }}>{row.productivity.currentCampaign || 'Not assigned'}</td>
