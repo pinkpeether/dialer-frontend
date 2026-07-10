@@ -46,6 +46,9 @@ import { exportWorkforceCsv, exportWorkforceExcel, formatScore, formatSeconds } 
 const pageStyle: CSSProperties = {
   padding: '30px 34px 42px',
   maxWidth: 1720,
+  width: '100%',
+  boxSizing: 'border-box',
+  overflowX: 'hidden',
   margin: '0 auto',
 }
 
@@ -115,6 +118,20 @@ const complianceSignalCount = (rows: WorkforceUserRow[]) => rows.reduce((sum, ro
   + (row.attendance.sipRegistered ? 0 : 1)
 ), 0)
 
+const commandCellStyle: CSSProperties = {
+  color: 'var(--text-2)',
+  fontWeight: 950,
+  fontSize: 13.6,
+  letterSpacing: 0.2,
+  overflowWrap: 'anywhere',
+}
+
+const commandTimerStyle: CSSProperties = {
+  ...commandCellStyle,
+  color: 'var(--text)',
+  fontVariantNumeric: 'tabular-nums',
+}
+
 const flagCategory = (flag: { key: string; label: string }) => {
   const text = `${flag.key} ${flag.label}`.toLowerCase()
   if (text.includes('sip') || text.includes('dialer')) return 'SIP'
@@ -164,14 +181,14 @@ function MiniStat({ label, value, color = 'var(--text)' }: { label: string; valu
   )
 }
 
-function DecisionPill({ label, color }: { label: string; color: string }) {
+function DecisionPill({ label, color, fontSize = 11 }: { label: string; color: string; fontSize?: number }) {
   return (
     <span className="mono" style={{
       display: 'inline-flex',
       alignItems: 'center',
       gap: 7,
       color,
-      fontSize: 11,
+      fontSize,
       fontWeight: 950,
       letterSpacing: 1,
       textTransform: 'uppercase',
@@ -395,17 +412,17 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
     { icon: <Users size={17} />, label: 'Users Online', value: data ? data.summary.onlineUsers : 0, sub: `${data ? data.summary.totalUsers : 0} total users`, color: 'var(--purple)' },
     { icon: <Clock3 size={17} />, label: 'Clocked In', value: data ? data.summary.clockedInUsers : 0, sub: 'Attendance live', color: 'var(--green-2)' },
     { icon: <PhoneMetricIcon />, label: 'Active Calls', value: activeCalls, sub: `${data ? data.summary.callsConnected : 0} connected`, color: 'var(--pink)' },
-    { icon: <MegaphoneMetricIcon />, label: 'Current Campaign', value: rows.filter(row => row.productivity.currentCampaign).length, sub: selectedRow?.productivity.currentCampaign || 'No current campaign', color: 'var(--purple)' },
-    { icon: <Filter size={17} />, label: 'Current Queue', value: rows.filter(row => row.productivity.bestPerformingCampaign).length, sub: selectedRow?.productivity.bestPerformingCampaign || 'No queue assigned', color: 'var(--green-2)' },
+    { icon: <MegaphoneMetricIcon />, label: 'Live Campaigns', value: rows.filter(row => row.productivity.currentCampaign).length, sub: selectedRow?.productivity.currentCampaign || 'No current campaign', color: 'var(--purple)' },
+    { icon: <Filter size={17} />, label: 'Queues Active', value: rows.filter(row => row.productivity.bestPerformingCampaign).length, sub: selectedRow?.productivity.bestPerformingCampaign || 'No queue assigned', color: 'var(--green-2)' },
     { icon: <Clock3 size={17} />, label: 'Live Talk Time', value: data ? formatSeconds(data.summary.talkTimeSeconds) : '00:00:00', sub: 'Selected range', color: 'var(--warning)' },
     { icon: <ShieldAlert size={17} />, label: 'Attendance Alerts', value: data ? data.summary.flaggedUsers : 0, sub: `${complianceSignals} signal(s)`, color: complianceSignals ? 'var(--danger)' : 'var(--green-2)' },
     { icon: <AlertTriangle size={17} />, label: 'Red Flags', value: riskRows.length, sub: 'Supervisor review', color: riskRows.length ? 'var(--danger)' : 'var(--green-2)' },
   ]
   const intelligenceCards = [
     { icon: <Gauge size={17} />, label: 'AI Workforce Score', value: formatScore(data?.summary.averageOverallScore ?? null), sub: 'Composite score', color: scoreColor(data?.summary.averageOverallScore ?? null) },
-    { icon: <TrendingUp size={17} />, label: 'Productivity', value: percentLabel(productivityAverage), sub: formatSeconds(data?.summary.talkTimeSeconds ?? 0), color: 'var(--warning)' },
-    { icon: <CheckCircle2 size={17} />, label: 'Compliance', value: percentLabel(complianceAverage), sub: `${complianceSignals} signal(s)`, color: complianceSignals ? 'var(--warning)' : 'var(--green-2)' },
-    { icon: <ShieldAlert size={17} />, label: 'Attendance Integrity', value: percentLabel(attendanceIntegrityAverage), sub: `${data ? data.summary.flaggedUsers : 0} flagged user(s)`, color: data?.summary.flaggedUsers ? 'var(--danger)' : 'var(--green-2)' },
+    { icon: <TrendingUp size={17} />, label: 'Productivity Index', value: percentLabel(productivityAverage), sub: formatSeconds(data?.summary.talkTimeSeconds ?? 0), color: 'var(--warning)' },
+    { icon: <CheckCircle2 size={17} />, label: 'Compliance Score', value: percentLabel(complianceAverage), sub: `${complianceSignals} signal(s)`, color: complianceSignals ? 'var(--warning)' : 'var(--green-2)' },
+    { icon: <ShieldAlert size={17} />, label: 'Integrity Score', value: percentLabel(attendanceIntegrityAverage), sub: `${data ? data.summary.flaggedUsers : 0} flagged user(s)`, color: data?.summary.flaggedUsers ? 'var(--danger)' : 'var(--green-2)' },
     { icon: <Award size={17} />, label: 'Quality Trend', value: percentLabel(avgScore(rows.map(row => row.scores.aiQuality ?? row.quality.qaScore))), sub: 'QA and AI review', color: 'var(--purple)' },
     { icon: <Calendar size={17} />, label: 'Weekly Trend', value: heatmap.length, sub: 'Heatmap day(s)', color: 'var(--green-2)' },
     { icon: <Brain size={17} />, label: 'Coaching Queue', value: coachingRows.length, sub: 'Users need coaching', color: 'var(--purple)' },
@@ -432,7 +449,7 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 13 }}><Sparkles size={12} /> {pageEyebrow}</div>
           <h1 className="ptdt-page-title">Workforce <span className="gradient-brand-text">{isOperations ? 'Operations' : 'Intelligence'}</span></h1>
-          <p className="ptdt-page-desc" style={{ maxWidth: 'none', fontSize: 16.7, lineHeight: 1.45, whiteSpace: 'nowrap' }}>
+          <p className="ptdt-page-desc" style={{ maxWidth: 1180, fontSize: 16.7, lineHeight: 1.45 }}>
             {pageDescription}
           </p>
         </div>
@@ -534,7 +551,7 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
                   <div key={`${event.label}-${event.detail}`} style={{ display: 'grid', gridTemplateColumns: '54px minmax(0, 1fr)', gap: 12, alignItems: 'center' }}>
                     <span className="mono" style={{ color: 'var(--text-3)', fontSize: 11, fontWeight: 950 }}>{String(index + 1).padStart(2, '0')}</span>
                     <div style={{ padding: 12, borderRadius: 17, border: '1px solid var(--border)', background: 'var(--bg-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                      <DecisionPill label={event.label} color={event.color} />
+                      <DecisionPill label={event.label} color={event.color} fontSize={13.2} />
                       <strong style={{ color: 'var(--text-2)', fontSize: 13.5, textAlign: 'right' }}>{event.detail}</strong>
                     </div>
                   </div>
@@ -709,12 +726,12 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
             <div style={{ padding: 22, borderBottom: '1px solid var(--border)' }}>
               <SectionHeader icon={<Filter size={13} />} title="Workforce Command Table" subtitle="Drill down into productivity, attendance, dialer readiness, QA, and disciplinary risk." />
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', minWidth: 1680, borderCollapse: 'collapse' }}>
+            <div style={{ width: '100%', maxWidth: '100%', overflowX: 'auto', overscrollBehaviorX: 'contain' }}>
+              <table style={{ width: '100%', minWidth: 1380, tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
                     {['Rank', 'User', 'Role', 'Current Campaign', 'Current Queue', 'Break Status', "Today's Login", 'Last Activity', 'Login / Dialer', 'Clock', 'Work', 'Calls', 'Quality', 'Scores', 'AI Risk', 'Action'].map(header => (
-                      <th key={header} className="mono" style={{ padding: '14px 16px', textAlign: 'left', color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950, letterSpacing: 1.2, textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{header}</th>
+                      <th key={header} className="mono" style={{ padding: '14px 12px', textAlign: 'left', color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950, letterSpacing: 1.2, textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{header}</th>
                     ))}
                   </tr>
                 </thead>
@@ -723,47 +740,47 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
                     const tone = riskTone(row)
                     return (
                       <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td className="mono" style={{ padding: 16, fontWeight: 950, color: 'var(--text)' }}>#{row.rank}</td>
-                        <td style={{ padding: 16 }}>
-                          <div style={{ fontWeight: 950, color: 'var(--text)' }}>{row.name}</div>
-                          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 10.9, marginTop: 4 }}>{row.email}</div>
+                        <td className="mono" style={{ padding: 12, fontWeight: 950, color: 'var(--text)' }}>#{row.rank}</td>
+                        <td style={{ padding: 12 }}>
+                          <div className="mono" style={{ ...commandCellStyle, color: 'var(--text)' }}>{row.name}</div>
+                          <div className="mono" style={{ color: 'var(--text-3)', fontSize: 10.9, marginTop: 4, fontWeight: 900 }}>{row.email}</div>
                         </td>
-                        <td style={{ padding: 16, color: row.role === 'SUPERVISOR' ? 'var(--pink)' : 'var(--green-2)', fontWeight: 950, fontSize: 13.6 }}>{row.role.replace(/_/g, ' ')}</td>
-                        <td style={{ padding: 16, color: 'var(--text-2)', fontWeight: 850 }}>{row.productivity.currentCampaign || 'Not assigned'}</td>
-                        <td style={{ padding: 16, color: 'var(--text-2)', fontWeight: 850 }}>{row.productivity.bestPerformingCampaign || 'No queue'}</td>
-                        <td style={{ padding: 16, color: row.attendance.breakSeconds ? 'var(--warning)' : 'var(--text-3)', fontWeight: 900 }}>{row.attendance.breakSeconds ? formatSeconds(row.attendance.breakSeconds) : 'No break'}</td>
-                        <td style={{ padding: 16, color: row.attendance.workedSeconds ? 'var(--green-2)' : 'var(--text-3)', fontWeight: 900 }}>{row.attendance.workedSeconds ? formatSeconds(row.attendance.workedSeconds) : 'No session'}</td>
-                        <td style={{ padding: 16, color: 'var(--text-2)', fontWeight: 850 }}>{row.attendance.clockStatus.replace(/_/g, ' ')}</td>
-                        <td style={{ padding: 16 }}>
+                        <td className="mono" style={{ padding: 12, color: row.role === 'SUPERVISOR' ? 'var(--pink)' : 'var(--green-2)', fontWeight: 950, fontSize: 13.6 }}>{row.role.replace(/_/g, ' ')}</td>
+                        <td className="mono" style={{ padding: 12, ...commandCellStyle }}>{row.productivity.currentCampaign || 'Not assigned'}</td>
+                        <td className="mono" style={{ padding: 12, ...commandCellStyle }}>{row.productivity.bestPerformingCampaign || 'No queue'}</td>
+                        <td className="mono" style={{ padding: 12, color: row.attendance.breakSeconds ? 'var(--warning)' : 'var(--text-3)', fontWeight: 950, fontSize: 13.6 }}>{row.attendance.breakSeconds ? formatSeconds(row.attendance.breakSeconds) : 'No break'}</td>
+                        <td className="mono" style={{ padding: 12, ...(row.attendance.workedSeconds ? { ...commandTimerStyle, color: 'var(--green-2)' } : { ...commandCellStyle, color: 'var(--text-3)' }) }}>{row.attendance.workedSeconds ? formatSeconds(row.attendance.workedSeconds) : 'No session'}</td>
+                        <td className="mono" style={{ padding: 12, ...commandCellStyle }}>{row.attendance.clockStatus.replace(/_/g, ' ')}</td>
+                        <td style={{ padding: 12 }}>
                           <div className="mono" style={{ color: row.status === 'ONLINE' ? 'var(--green-2)' : 'var(--text-3)', fontWeight: 950 }}>{row.status}</div>
                           <div style={{ marginTop: 5, color: row.attendance.sipRegistered ? 'var(--green-2)' : 'var(--text-3)', fontWeight: 900, fontSize: 12 }}>{row.attendance.sipRegistered ? 'SIP Registered' : 'SIP Disabled'}</div>
                         </td>
-                        <td style={{ padding: 16 }}>
+                        <td style={{ padding: 12 }}>
                           <span className="mono" style={{ color: row.attendance.clockStatus.includes('DISCONNECT') || row.attendance.clockStatus.includes('MISSED') || row.attendance.clockStatus === 'NO SESSION' ? 'var(--danger)' : 'var(--green-2)', fontWeight: 950, fontSize: 11 }}>{row.attendance.clockStatus}</span>
                         </td>
-                        <td className="mono" style={{ padding: 16, color: 'var(--text)', fontWeight: 950 }}>{formatSeconds(row.attendance.workedSeconds)}</td>
-                        <td style={{ padding: 16 }}>
+                        <td className="mono" style={{ padding: 12, ...commandTimerStyle }}>{formatSeconds(row.attendance.workedSeconds)}</td>
+                        <td style={{ padding: 12 }}>
                           <strong style={{ display: 'block', color: 'var(--text)' }}>{row.calls.callsMade}</strong>
                           <span style={{ color: 'var(--text-3)', fontSize: 11.9 }}>{row.calls.callsConnected} connected</span>
                         </td>
-                        <td style={{ padding: 16 }}>
+                        <td style={{ padding: 12 }}>
                           {row.quality.qaScore === null ? (
                             <span className="mono" style={{ color: 'var(--warning)', fontWeight: 950, fontSize: 11 }}>QA Pending</span>
                           ) : <ScorePill score={row.quality.qaScore} />}
                           <div style={{ color: 'var(--text-3)', fontSize: 11.4, marginTop: 5 }}>{row.quality.aiReviewedCalls} AI reviewed</div>
                         </td>
-                        <td style={{ padding: 16, display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                        <td style={{ padding: 12, display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                           <ScorePill score={row.scores.overall} />
                           <ScorePill score={row.scores.attendance} />
                           <ScorePill score={row.scores.sales} />
                         </td>
-                        <td style={{ padding: 16 }}>
+                        <td style={{ padding: 12 }}>
                           <span className="mono" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, justifyContent: 'center', minWidth: 82, height: 30, borderRadius: 999, border: `1px solid ${tone.color}`, color: tone.color, background: 'var(--bg-glass)', fontWeight: 950, fontSize: 11 }}>
                             <span style={{ width: 7, height: 7, borderRadius: 999, background: tone.color }} />
                             {tone.label}
                           </span>
                         </td>
-                        <td style={{ padding: 16 }}>
+                        <td style={{ padding: 12 }}>
                           <button
                             type="button"
                             className={String(selectedRow?.id) === String(row.id) ? 'ptdt-action-btn active' : 'ptdt-action-btn'}

@@ -282,11 +282,17 @@
   caret-color:var(--text)!important;
 }
 
+.ptdt-timeclock-cluster{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
 .ptdt-timeclock-widget{
   display:flex;
   align-items:center;
-  gap:16px;
-  min-height:70px;
+  gap:12px;
+  min-height:66px;
   padding:10px 14px 10px 16px;
   border-radius:20px;
   border:1px solid rgba(100,116,139,.42);
@@ -340,11 +346,12 @@
 .ptdt-timeclock-date{
   display:grid;
   gap:4px;
-  min-width:122px;
-  padding:0 4px;
-  border:0;
-  background:transparent;
-  box-shadow:none;
+  min-width:116px;
+  padding:10px 12px;
+  border-radius:18px;
+  border:1px solid rgba(100,116,139,.22);
+  background:rgba(255,255,255,.78);
+  box-shadow:0 10px 22px rgba(15,23,42,.05),inset 0 1px 0 rgba(255,255,255,.78);
   transform:none;
 }
 .ptdt-timeclock-date span{
@@ -397,9 +404,9 @@
   box-shadow:0 14px 32px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.07);
 }
 [data-theme="dark"] .ptdt-timeclock-date{
-  background:transparent;
-  border-color:transparent;
-  box-shadow:none;
+  background:rgba(15,23,42,.72);
+  border-color:rgba(203,213,225,.18);
+  box-shadow:0 12px 26px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.05);
 }
 
 .ptdt-agent-script-card,.ptdt-crm-template-card{
@@ -512,8 +519,9 @@
   .ptdt-crm-template-card > button{justify-self:stretch}
 }
 @media(max-width:900px){
+  .ptdt-timeclock-cluster{width:100%;align-items:stretch;gap:8px;flex-wrap:wrap}
   .ptdt-timeclock-widget{width:100%;justify-content:space-between;gap:10px;flex-wrap:wrap}
   .ptdt-timeclock-copy{min-width:130px}
-  .ptdt-timeclock-date{min-width:92px}
+  .ptdt-timeclock-date{min-width:92px;flex:1}
   .ptdt-timeclock-widget button{min-width:130px;font-size:17px}
 }

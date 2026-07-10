@@ -224,21 +224,22 @@ export default function TimeClockWidget() {
   }
 
   return (
-    <div className={`ptdt-timeclock-widget ${state.clockedIn ? 'is-clocked-in' : 'is-clocked-out'}`}>
-      <div className="ptdt-timeclock-icon"><Clock9 size={18} /></div>
-      <div className="ptdt-timeclock-copy">
-        <div className="mono ptdt-timeclock-label">{state.clockedIn ? 'CLOCKED IN' : 'CLOCKED OUT'}</div>
-        <strong>{formatElapsed(state.startedAt)}</strong>
+    <div className="ptdt-timeclock-cluster">
+      <div className={`ptdt-timeclock-widget ${state.clockedIn ? 'is-clocked-in' : 'is-clocked-out'}`}>
+        <div className="ptdt-timeclock-icon"><Clock9 size={18} /></div>
+        <div className="ptdt-timeclock-copy">
+          <div className="mono ptdt-timeclock-label">{state.clockedIn ? 'CLOCKED IN' : 'CLOCKED OUT'}</div>
+          <strong>{formatElapsed(state.startedAt)}</strong>
+        </div>
+        <button type="button" onClick={toggle} className={state.clockedIn ? 'is-out' : 'is-in'}>
+          {state.clockedIn ? <LogOut size={13} /> : <LogIn size={13} />}
+          {state.clockedIn ? 'Clock Out' : 'Clock In'}
+        </button>
       </div>
-      <div className="ptdt-timeclock-divider" />
       <div className="ptdt-timeclock-date">
         <span>{currentDateTime.date}</span>
         <b>{currentDateTime.time}</b>
       </div>
-      <button type="button" onClick={toggle} className={state.clockedIn ? 'is-out' : 'is-in'}>
-        {state.clockedIn ? <LogOut size={13} /> : <LogIn size={13} />}
-        {state.clockedIn ? 'Clock Out' : 'Clock In'}
-      </button>
     </div>
   )
 }
