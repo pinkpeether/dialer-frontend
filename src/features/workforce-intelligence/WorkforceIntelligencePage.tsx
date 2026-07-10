@@ -87,14 +87,6 @@ const scoreColor = (score: number | null) => {
   return 'var(--danger)'
 }
 
-const riskTone = (row: WorkforceUserRow) => {
-  const risk = row.scores.risk ?? (row.redFlags.length ? 55 : 5)
-  if (row.redFlags.some(flag => flag.severity === 'critical') || risk >= 75) return { label: 'Red', color: 'var(--danger)' }
-  if (risk >= 50) return { label: 'Orange', color: 'var(--warning)' }
-  if (row.redFlags.length || risk >= 25) return { label: 'Yellow', color: '#c78a00' }
-  return { label: 'Green', color: 'var(--green-2)' }
-}
-
 const avgScore = (values: Array<number | null | undefined>) => {
   const clean = values.filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
   if (!clean.length) return null
@@ -160,7 +152,12 @@ function MetricCard({ icon, label, value, sub, color = 'var(--pink)' }: { icon: 
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2 }}
-      style={{ ...panelStyle, padding: 18, minHeight: 126 }}
+      style={{
+        ...panelStyle,
+        padding: 18,
+        minHeight: 126,
+        background: `linear-gradient(135deg, color-mix(in srgb, ${color} 8%, var(--bg-glass-hi)), var(--bg-glass-hi) 72%)`,
+      }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
         <span style={{ width: 36, height: 36, borderRadius: 14, display: 'grid', placeItems: 'center', color, background: `color-mix(in srgb, ${color} 13%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 28%, transparent)` }}>{icon}</span>
@@ -476,7 +473,7 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
         </div>
       </div>
 
-      <div style={{ ...panelStyle, padding: 16, marginBottom: 18 }}>
+      <div style={{ ...panelStyle, padding: 16, marginBottom: 18, background: 'color-mix(in srgb, var(--text-3) 7%, var(--bg-glass-hi))' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, alignItems: 'end' }}>
           <FilterField label="Range">
             <select style={inputStyle} value={filters.range} onChange={event => setRange(event.target.value as typeof filters.range)}>
@@ -727,20 +724,18 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
               <SectionHeader icon={<Filter size={13} />} title="Workforce Command Table" subtitle="Drill down into productivity, attendance, dialer readiness, QA, and disciplinary risk." />
             </div>
             <div style={{ width: '100%', maxWidth: '100%', overflowX: 'auto', overscrollBehaviorX: 'contain' }}>
-              <table style={{ width: '100%', minWidth: 1380, tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+              <table style={{ width: '100%', minWidth: 1120, tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['Rank', 'User', 'Role', 'Current Campaign', 'Current Queue', 'Break Status', "Today's Login", 'Last Activity', 'Login / Dialer', 'Clock', 'Work', 'Calls', 'Quality', 'Scores', 'AI Risk', 'Action'].map(header => (
+                    {['User', 'Role', 'Current Campaign', 'Current Queue', 'Break Status', "Today's Login", 'Login / Dialer', 'Clock', 'Work', 'Calls', 'Action'].map(header => (
                       <th key={header} className="mono" style={{ padding: '14px 12px', textAlign: 'left', color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950, letterSpacing: 1.2, textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{header}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map(row => {
-                    const tone = riskTone(row)
                     return (
                       <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td className="mono" style={{ padding: 12, fontWeight: 950, color: 'var(--text)' }}>#{row.rank}</td>
                         <td style={{ padding: 12 }}>
                           <div className="mono" style={{ ...commandCellStyle, color: 'var(--text)' }}>{row.name}</div>
                           <div className="mono" style={{ color: 'var(--text-3)', fontSize: 10.9, marginTop: 4, fontWeight: 900 }}>{row.email}</div>
@@ -750,7 +745,6 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
                         <td className="mono" style={{ padding: 12, ...commandCellStyle }}>{row.productivity.bestPerformingCampaign || 'No queue'}</td>
                         <td className="mono" style={{ padding: 12, color: row.attendance.breakSeconds ? 'var(--warning)' : 'var(--text-3)', fontWeight: 950, fontSize: 13.6 }}>{row.attendance.breakSeconds ? formatSeconds(row.attendance.breakSeconds) : 'No break'}</td>
                         <td className="mono" style={{ padding: 12, ...(row.attendance.workedSeconds ? { ...commandTimerStyle, color: 'var(--green-2)' } : { ...commandCellStyle, color: 'var(--text-3)' }) }}>{row.attendance.workedSeconds ? formatSeconds(row.attendance.workedSeconds) : 'No session'}</td>
-                        <td className="mono" style={{ padding: 12, ...commandCellStyle }}>{row.attendance.clockStatus.replace(/_/g, ' ')}</td>
                         <td style={{ padding: 12 }}>
                           <div className="mono" style={{ color: row.status === 'ONLINE' ? 'var(--green-2)' : 'var(--text-3)', fontWeight: 950 }}>{row.status}</div>
                           <div style={{ marginTop: 5, color: row.attendance.sipRegistered ? 'var(--green-2)' : 'var(--text-3)', fontWeight: 900, fontSize: 12 }}>{row.attendance.sipRegistered ? 'SIP Registered' : 'SIP Disabled'}</div>
@@ -762,23 +756,6 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
                         <td style={{ padding: 12 }}>
                           <strong style={{ display: 'block', color: 'var(--text)' }}>{row.calls.callsMade}</strong>
                           <span style={{ color: 'var(--text-3)', fontSize: 11.9 }}>{row.calls.callsConnected} connected</span>
-                        </td>
-                        <td style={{ padding: 12 }}>
-                          {row.quality.qaScore === null ? (
-                            <span className="mono" style={{ color: 'var(--warning)', fontWeight: 950, fontSize: 11 }}>QA Pending</span>
-                          ) : <ScorePill score={row.quality.qaScore} />}
-                          <div style={{ color: 'var(--text-3)', fontSize: 11.4, marginTop: 5 }}>{row.quality.aiReviewedCalls} AI reviewed</div>
-                        </td>
-                        <td style={{ padding: 12, display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-                          <ScorePill score={row.scores.overall} />
-                          <ScorePill score={row.scores.attendance} />
-                          <ScorePill score={row.scores.sales} />
-                        </td>
-                        <td style={{ padding: 12 }}>
-                          <span className="mono" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, justifyContent: 'center', minWidth: 82, height: 30, borderRadius: 999, border: `1px solid ${tone.color}`, color: tone.color, background: 'var(--bg-glass)', fontWeight: 950, fontSize: 11 }}>
-                            <span style={{ width: 7, height: 7, borderRadius: 999, background: tone.color }} />
-                            {tone.label}
-                          </span>
                         </td>
                         <td style={{ padding: 12 }}>
                           <button
