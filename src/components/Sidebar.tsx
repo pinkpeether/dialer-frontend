@@ -122,7 +122,7 @@ const NAV: NavItem[] = [
 ]
 
 const AGENT_NAV: NavItem[] = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', color: COLORS.purple },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Main Dashboard', color: COLORS.purple },
   { to: '/agent/workspace', icon: BriefcaseBusiness, label: 'Agent Workspace', color: COLORS.purple },
   { to: '/dialer', icon: Phone, label: 'Calling Console', color: COLORS.green },
   { to: '/live-ai', icon: Radio, label: 'Live AI', color: COLORS.pink },
