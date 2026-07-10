@@ -167,6 +167,8 @@ const premiumGreenButtonStyle: CSSProperties = {
 const commandHeaders = [
   { key: 'user', lines: ['User'] },
   { key: 'role', lines: ['Role'] },
+  { key: 'status', lines: ['Status'] },
+  { key: 'last-activity', lines: ['Last', 'Activity'] },
   { key: 'current-campaign', lines: ['Current', 'Campaign'] },
   { key: 'current-queue', lines: ['Current', 'Queue'] },
   { key: 'break-status', lines: ['Break', 'Status'] },
@@ -186,6 +188,46 @@ const flagCategory = (flag: { key: string; label: string }) => {
   if (text.includes('device') || text.includes('browser') || text.includes('ip')) return 'Security'
   if (text.includes('productivity') || text.includes('answer')) return 'Performance'
   return 'Behaviour'
+}
+
+const operatingStatusFor = (row: WorkforceUserRow) => {
+  const status = row.status.toUpperCase()
+  const clock = row.attendance.clockStatus.toUpperCase()
+  if (['BUSY', 'IN CALL', 'CALLING'].includes(status)) return { label: 'Talking', color: 'var(--pink)' }
+  if (status === 'WRAP UP') return { label: 'Wrap Up', color: 'var(--warning)' }
+  if (clock.includes('BREAK')) return { label: 'Paused', color: 'var(--warning)' }
+  if (clock.includes('LUNCH')) return { label: 'Lunch', color: 'var(--warning)' }
+  if (clock.includes('MEETING')) return { label: 'Meeting', color: 'var(--purple)' }
+  if (clock.includes('TRAINING')) return { label: 'Training', color: 'var(--purple)' }
+  if (['ONLINE', 'READY'].includes(status) && row.attendance.sipRegistered) return { label: 'Available', color: 'var(--green-2)' }
+  if (['ONLINE', 'READY'].includes(status)) return { label: 'Online', color: 'var(--green-2)' }
+  return { label: 'Offline', color: 'var(--text-3)' }
+}
+
+const lastActivityFor = (row: WorkforceUserRow) => {
+  if (['BUSY', 'IN CALL', 'CALLING'].includes(row.status)) return 'Live now'
+  if (row.status === 'ONLINE' && row.attendance.sipRegistered) return 'Active now'
+  if (row.attendance.clockStatus.includes('DISCONNECT') || row.attendance.clockStatus.includes('MISSED')) return 'Needs review'
+  if (row.attendance.workedSeconds > 0) return 'Session active'
+  if (row.redFlags.length > 0) return 'Flagged'
+  return 'No recent activity'
+}
+
+const alertCount = (rows: WorkforceUserRow[], predicate: (row: WorkforceUserRow) => boolean) => rows.filter(predicate).length
+
+const uniqueActiveCampaigns = (rows: WorkforceUserRow[]) => {
+  const counts = new Map<string, number>()
+  rows.forEach(row => {
+    if (!row.productivity.currentCampaign) return
+    counts.set(row.productivity.currentCampaign, (counts.get(row.productivity.currentCampaign) || 0) + 1)
+  })
+  return Array.from(counts.entries()).map(([name, count]) => ({ name, count }))
+}
+
+const confidenceForRows = (rows: WorkforceUserRow[]) => {
+  if (!rows.length) return 0
+  const signalCount = rows.reduce((sum, row) => sum + row.quality.aiReviewedCalls + row.calls.callsMade + (row.attendance.workedSeconds ? 1 : 0) + row.redFlags.length, 0)
+  return Math.max(68, Math.min(96, 74 + Math.round(signalCount / Math.max(1, rows.length))))
 }
 
 function SectionHeader({ icon, title, subtitle, action, subtitleSize = 13.5 }: { icon: ReactNode; title: string; subtitle?: string; action?: ReactNode; subtitleSize?: number }) {
@@ -273,9 +315,9 @@ function ScoreMatrixTooltip({ active, payload, label }: { active?: boolean; payl
   const items = [
     ['Attendance', row.attendance],
     ['Quality', row.quality],
+    ['Sales', row.sales],
     ['Calls', row.calls],
-    ['AHT', row.aht],
-    ['QA', row.qa],
+    ['Compliance', row.compliance],
   ]
   return (
     <div style={tooltipStyle}>
@@ -328,6 +370,8 @@ function AgentDeepDive({ row }: { row: WorkforceUserRow | null }) {
   ]
   const rewardReady = (row.scores.overall ?? 0) >= 80 && row.redFlags.length === 0
   const confidence = Math.max(62, Math.min(96, 72 + row.quality.aiReviewedCalls * 4 + (row.attendance.workedSeconds > 0 ? 8 : 0) - row.redFlags.length * 7))
+  const signalCount = row.quality.aiReviewedCalls + row.calls.callsMade + row.redFlags.length + (row.attendance.workedSeconds ? 1 : 0)
+  const dataQuality = signalCount >= 8 ? 'High' : signalCount >= 3 ? 'Medium' : 'Building'
   const detected = [
     row.attendance.workedSeconds > 0 ? 'Attendance session captured' : 'Attendance session missing',
     row.attendance.sipRegistered ? 'SIP compliance active' : 'SIP registration not active',
@@ -370,6 +414,11 @@ function AgentDeepDive({ row }: { row: WorkforceUserRow | null }) {
             <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
               <DecisionPill label={`Confidence ${confidence}%`} color="var(--purple)" />
               <ScorePill score={row.scores.overall} />
+            </div>
+            <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+              <MiniStat label="AI Confidence" value={`${confidence}%`} color="var(--purple)" />
+              <MiniStat label="Data Quality" value={dataQuality} color={dataQuality === 'High' ? 'var(--green-2)' : 'var(--warning)'} />
+              <MiniStat label="Signals Analysed" value={signalCount} color="var(--pink)" />
             </div>
           </div>
           {row.insights.slice(0, 2).map((insight, index) => {
@@ -420,36 +469,70 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
   const activeAgents = rows.filter(row => row.role === 'AGENT' && ['ONLINE', 'READY', 'BUSY', 'WRAP UP'].includes(row.status)).length
   const aiCallCount = rows.reduce((sum, row) => sum + row.quality.aiReviewedCalls, 0)
   const complianceSignals = complianceSignalCount(rows)
+  const activeCampaigns = uniqueActiveCampaigns(rows)
+  const primaryCampaign = activeCampaigns[0]
+  const liveCampaignSub = primaryCampaign ? `${primaryCampaign.name} · ${primaryCampaign.count} user${primaryCampaign.count === 1 ? '' : 's'}` : 'No Active Campaign'
+  const attendanceAlertItems = [
+    { label: 'Late Login', value: alertCount(rows, row => Boolean(row.attendance.lateLogin)), color: 'var(--warning)' },
+    { label: 'Missed Clock Out', value: alertCount(rows, row => row.attendance.missedClockOut), color: 'var(--danger)' },
+    { label: 'Early Logout', value: alertCount(rows, row => Boolean(row.attendance.earlyLogout)), color: 'var(--warning)' },
+    { label: 'Extended Break', value: alertCount(rows, row => (row.attendance.breakSeconds || 0) > 3600), color: 'var(--pink)' },
+    { label: 'Unexpected Disconnect', value: alertCount(rows, row => row.attendance.unexpectedDisconnects > 0), color: 'var(--danger)' },
+  ]
+  const activeAttendanceAlerts = attendanceAlertItems.filter(item => item.value > 0)
+  const globalConfidence = confidenceForRows(rows)
+  const totalSignals = rows.reduce((sum, row) => sum + row.quality.aiReviewedCalls + row.calls.callsMade + row.redFlags.length + (row.attendance.workedSeconds ? 1 : 0), 0)
   const scoreBars = rows.slice(0, 8).map(row => ({
     name: row.name.split(' ')[0] || row.name,
     score: row.scores.overall || 0,
     risk: row.scores.risk || 0,
     attendance: row.scores.attendance || 0,
     quality: row.scores.aiQuality || row.quality.qaScore || 0,
+    sales: row.scores.sales || 0,
+    compliance: row.scores.compliance || 0,
     calls: row.calls.callsMade,
     aht: row.calls.averageHandleTimeSeconds ? Math.min(100, Math.max(0, Math.round(100 - row.calls.averageHandleTimeSeconds / 12))) : 0,
     qa: row.quality.qaScore || 0,
   }))
   const operationalTimeline = selectedRow ? [
-    { label: 'Login', detail: selectedRow.status, color: selectedRow.status === 'ONLINE' ? 'var(--green-2)' : 'var(--text-3)' },
-    { label: 'Dialer', detail: selectedRow.attendance.sipRegistered ? 'SIP registered' : 'SIP disabled', color: selectedRow.attendance.sipRegistered ? 'var(--green-2)' : 'var(--warning)' },
-    { label: 'Campaign', detail: selectedRow.productivity.currentCampaign || 'No current campaign', color: 'var(--purple)' },
-    { label: 'Calls', detail: `${selectedRow.calls.callsMade} made · ${selectedRow.calls.callsConnected} connected`, color: 'var(--pink)' },
-    { label: 'Quality', detail: selectedRow.quality.qaScore === null ? 'QA Pending' : `${selectedRow.quality.qaScore}% QA score`, color: 'var(--green-2)' },
-    { label: 'Risk', detail: selectedRow.redFlags[0]?.label || 'No active red flag', color: selectedRow.redFlags.length ? 'var(--danger)' : 'var(--green-2)' },
+    { time: 'Live', title: `${selectedRow.name} ${selectedRow.attendance.workedSeconds ? 'Clocked In' : 'Login Status'}`, detail: selectedRow.status, color: selectedRow.status === 'ONLINE' ? 'var(--green-2)' : 'var(--text-3)' },
+    { time: 'Live', title: selectedRow.attendance.sipRegistered ? 'SIP Registered' : 'SIP Registration Pending', detail: selectedRow.attendance.sipRegistered ? 'Dialer ready' : 'Dialer not ready', color: selectedRow.attendance.sipRegistered ? 'var(--green-2)' : 'var(--warning)' },
+    { time: 'Range', title: selectedRow.productivity.currentCampaign ? 'Campaign Assigned' : 'No Active Campaign', detail: selectedRow.productivity.currentCampaign || 'Supervisor action may be required', color: selectedRow.productivity.currentCampaign ? 'var(--purple)' : 'var(--warning)' },
+    { time: 'Range', title: selectedRow.calls.callsMade ? 'Call Output Recorded' : 'No Calls Recorded', detail: `${selectedRow.calls.callsMade} made · ${selectedRow.calls.callsConnected} connected`, color: selectedRow.calls.callsMade ? 'var(--pink)' : 'var(--text-3)' },
+    { time: 'QA', title: selectedRow.quality.qaScore === null ? 'QA Review Pending' : 'QA Score Updated', detail: selectedRow.quality.qaScore === null ? 'Awaiting review signal' : `${selectedRow.quality.qaScore}% QA score`, color: selectedRow.quality.qaScore === null ? 'var(--warning)' : 'var(--green-2)' },
+    { time: selectedRow.redFlags.length ? 'Alert' : 'Clear', title: selectedRow.redFlags[0]?.label || 'No Active Red Flag', detail: selectedRow.redFlags[0]?.detail || 'No immediate supervisor action required', color: selectedRow.redFlags.length ? 'var(--danger)' : 'var(--green-2)' },
   ] : []
   const heatmap = data?.timeline.slice(-7).map(point => ({
     label: point.label.slice(5),
     tone: point.answerRate >= 50 ? 'var(--green-2)' : point.calls > 0 ? 'var(--warning)' : 'var(--danger)',
     value: point.answerRate,
   })) || []
+  const heatmapSlots = heatmap.length ? heatmap : ['M', 'T', 'W', 'T', 'F'].map((label, index) => ({
+    label,
+    tone: index === 3 ? 'var(--danger)' : index === 1 ? 'var(--warning)' : 'var(--green-2)',
+    value: 0,
+  }))
   const aiRecommendations = [
-    ...topPerformers.slice(0, 1).map(row => `Reward ${row.name}`),
-    ...coachingRows.slice(0, 2).map(row => `Coach ${row.name}`),
-    ...(complianceSignals ? ['Review attendance and SIP compliance signals'] : []),
-    ...(riskRows.length ? ['Schedule supervisor review for flagged users'] : []),
-    ...(rows.some(row => !row.productivity.currentCampaign) ? ['Assign campaign coverage for idle operators'] : []),
+    ...topPerformers.slice(0, 1).map(row => ({ text: `Reward ${row.name}`, action: 'Reward', targetId: row.id })),
+    ...coachingRows.slice(0, 2).map(row => ({ text: `Coach ${row.name}`, action: 'Assign Coach', targetId: row.id })),
+    ...(complianceSignals ? [{ text: 'Review attendance and SIP compliance signals', action: 'Open Profile', targetId: riskRows[0]?.id || selectedRow?.id }] : []),
+    ...(riskRows.length ? [{ text: 'Schedule supervisor review for flagged users', action: 'Open Profile', targetId: riskRows[0]?.id }] : []),
+    ...(rows.some(row => !row.productivity.currentCampaign) ? [{ text: 'Assign campaign coverage for idle operators', action: 'Review', targetId: rows.find(row => !row.productivity.currentCampaign)?.id }] : []),
   ].slice(0, 5)
+  const executiveSummary = [
+    `${rows.length} users monitored`,
+    `${topPerformers.length} reward candidate${topPerformers.length === 1 ? '' : 's'}`,
+    `${coachingRows.length} coaching required`,
+    `${riskRows.filter(row => row.redFlags.some(flag => flag.severity === 'critical')).length} critical risk`,
+    `Attendance ${data?.summary.flaggedUsers ? 'needs review' : 'healthy'}`,
+  ]
+  const copilotBullets = [
+    topPerformers[0] ? `${topPerformers[0].name} is reward-ready based on current score.` : 'No reward-ready user detected yet.',
+    riskRows[0] ? `${riskRows[0].name} needs supervisor review for ${riskRows[0].redFlags[0]?.label || 'risk signal'}.` : 'No critical workforce risk detected.',
+    activeCampaigns.length ? `${activeCampaigns.length} campaign${activeCampaigns.length === 1 ? '' : 's'} currently represented in workforce data.` : 'No active campaign coverage detected.',
+    `Attendance integrity is ${percentLabel(attendanceIntegrityAverage)}.`,
+    coachingRows[0] ? `Recommendation: schedule coaching for ${coachingRows[0].name}.` : 'Recommendation: keep monitoring live operations.',
+  ]
   const redFlagCategories = ['Attendance', 'Compliance', 'SIP', 'Security', 'Performance', 'Behaviour'].map(category => ({
     category,
     flags: riskRows.flatMap(row => row.redFlags.map(flag => ({ row, flag }))).filter(item => flagCategory(item.flag) === category),
@@ -463,10 +546,10 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
     { icon: <Users size={17} />, label: 'Users Online', value: data ? data.summary.onlineUsers : 0, sub: `${data ? data.summary.totalUsers : 0} total users`, color: 'var(--purple)' },
     { icon: <Clock3 size={17} />, label: 'Clocked In', value: data ? data.summary.clockedInUsers : 0, sub: 'Attendance live', color: 'var(--green-2)' },
     { icon: <PhoneMetricIcon />, label: 'Active Calls', value: activeCalls, sub: `${data ? data.summary.callsConnected : 0} connected`, color: 'var(--pink)' },
-    { icon: <MegaphoneMetricIcon />, label: 'Live Campaigns', value: rows.filter(row => row.productivity.currentCampaign).length, sub: selectedRow?.productivity.currentCampaign || 'No current campaign', color: 'var(--purple)' },
+    { icon: <MegaphoneMetricIcon />, label: 'Live Campaigns', value: activeCampaigns.length ? activeCampaigns.length : 'No Active Campaign', sub: liveCampaignSub, color: 'var(--purple)' },
     { icon: <Filter size={17} />, label: 'Queues Active', value: rows.filter(row => row.productivity.bestPerformingCampaign).length, sub: selectedRow?.productivity.bestPerformingCampaign || 'No queue assigned', color: 'var(--green-2)' },
     { icon: <Clock3 size={17} />, label: 'Live Talk Time', value: data ? formatSeconds(data.summary.talkTimeSeconds) : '00:00:00', sub: 'Selected range', color: 'var(--warning)' },
-    { icon: <ShieldAlert size={17} />, label: 'Attendance Alerts', value: data ? data.summary.flaggedUsers : 0, sub: `${complianceSignals} signal(s)`, color: complianceSignals ? 'var(--danger)' : 'var(--green-2)' },
+    { icon: <ShieldAlert size={17} />, label: 'Attendance Alerts', value: activeAttendanceAlerts.length || 'Clear', sub: activeAttendanceAlerts.map(item => item.label).slice(0, 2).join(' · ') || 'No active attendance alerts', color: activeAttendanceAlerts.length ? 'var(--danger)' : 'var(--green-2)' },
     { icon: <AlertTriangle size={17} />, label: 'Red Flags', value: riskRows.length, sub: 'Supervisor review', color: riskRows.length ? 'var(--danger)' : 'var(--green-2)' },
   ]
   const intelligenceCards = [
@@ -593,17 +676,56 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
             ))}
           </div>
 
+          {!isOperations && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(min(100%, 420px), .9fr) minmax(min(100%, 520px), 1.1fr)', gap: 18, marginBottom: 18 }}>
+              <div style={{ ...panelStyle, padding: 22, background: 'linear-gradient(135deg, color-mix(in srgb, var(--green-2) 8%, var(--bg-glass-hi)), var(--bg-glass-hi))' }}>
+                <SectionHeader icon={<Gauge size={13} />} title="Executive Summary" subtitle="One-glance management brief from selected workforce records." />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+                  {executiveSummary.map(item => (
+                    <div key={item} style={{ padding: 12, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text-2)', fontWeight: 900, fontSize: 13.5 }}>
+                      {item}
+                    </div>
+                  ))}
+                  <div style={{ gridColumn: '1 / -1', padding: 14, borderRadius: 18, background: 'color-mix(in srgb, var(--pink) 8%, var(--bg-glass))', border: '1px solid color-mix(in srgb, var(--pink) 24%, transparent)' }}>
+                    <span className="mono" style={{ display: 'block', color: 'var(--text-3)', fontSize: 10.8, fontWeight: 950, letterSpacing: 1.1, textTransform: 'uppercase' }}>Overall Workforce Score</span>
+                    <strong style={{ display: 'block', marginTop: 4, color: scoreColor(data.summary.averageOverallScore), fontSize: 34, lineHeight: 1 }}>{formatScore(data.summary.averageOverallScore)}</strong>
+                  </div>
+                </div>
+              </div>
+              <div style={{ ...panelStyle, padding: 22, background: 'linear-gradient(135deg, color-mix(in srgb, var(--pink) 7%, var(--bg-glass-hi)), var(--bg-glass-hi))' }}>
+                <SectionHeader icon={<Sparkles size={13} />} title="CommOS Copilot" subtitle="Today’s action brief for supervisors and customer admins." />
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {copilotBullets.map(item => (
+                    <div key={item} style={{ display: 'grid', gridTemplateColumns: '24px minmax(0, 1fr)', gap: 10, alignItems: 'start', color: 'var(--text-2)', fontSize: 14.2, fontWeight: 850, lineHeight: 1.4 }}>
+                      <Sparkles size={16} color="var(--pink)" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+                  <MiniStat label="AI Confidence" value={`${globalConfidence}%`} color="var(--purple)" />
+                  <MiniStat label="Data Quality" value={totalSignals >= rows.length * 4 ? 'High' : totalSignals ? 'Medium' : 'Building'} color={totalSignals ? 'var(--green-2)' : 'var(--warning)'} />
+                  <MiniStat label="Signals" value={totalSignals} color="var(--pink)" />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 18, marginBottom: 18 }}>
             {isOperations && (
             <div style={{ ...panelStyle, padding: 22 }}>
-              <SectionHeader icon={<BarChart3 size={13} />} title="Operational Activity Timeline" subtitle="Selected-user sequence built from login, SIP, campaign, call, QA, and risk records." />
-              <div style={{ display: 'grid', gap: 10 }}>
+              <SectionHeader icon={<BarChart3 size={13} />} title="Operational Activity Timeline" subtitle="Live event stream built from login, SIP, campaign, call, QA, and risk records." />
+              <div style={{ display: 'grid', gap: 10, position: 'relative' }}>
                 {operationalTimeline.map((event, index) => (
-                  <div key={`${event.label}-${event.detail}`} style={{ display: 'grid', gridTemplateColumns: '54px minmax(0, 1fr)', gap: 12, alignItems: 'center' }}>
-                    <span className="mono" style={{ color: 'var(--text-3)', fontSize: 11, fontWeight: 950 }}>{String(index + 1).padStart(2, '0')}</span>
-                    <div style={{ padding: 12, borderRadius: 17, border: '1px solid var(--border)', background: 'var(--bg-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                      <DecisionPill label={event.label} color={event.color} fontSize={15.2} />
-                      <strong style={{ color: 'var(--text-2)', fontSize: 13.5, textAlign: 'right' }}>{event.detail}</strong>
+                  <div key={`${event.title}-${event.detail}`} style={{ display: 'grid', gridTemplateColumns: '64px minmax(0, 1fr)', gap: 12, alignItems: 'stretch' }}>
+                    <span className="mono" style={{ color: event.color, fontSize: 12.8, fontWeight: 950, paddingTop: 13 }}>{event.time}</span>
+                    <div style={{ padding: 13, borderRadius: 17, border: '1px solid var(--border)', background: 'var(--bg-glass)', display: 'grid', gridTemplateColumns: '14px minmax(0, 1fr) auto', gap: 11, alignItems: 'center' }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 999, background: event.color, boxShadow: `0 0 0 5px color-mix(in srgb, ${event.color} 13%, transparent)` }} />
+                      <span>
+                        <strong style={{ display: 'block', color: 'var(--text)', fontSize: 14.5, lineHeight: 1.15 }}>{event.title}</strong>
+                        <span style={{ display: 'block', marginTop: 4, color: 'var(--text-3)', fontSize: 12.8, fontWeight: 800 }}>{event.detail}</span>
+                      </span>
+                      <span className="mono" style={{ color: 'var(--text-3)', fontSize: 11, fontWeight: 950 }}>{String(index + 1).padStart(2, '0')}</span>
                     </div>
                   </div>
                 ))}
@@ -624,6 +746,20 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : null}
+              </div>
+            </div>
+            )}
+
+            {isOperations && (
+            <div style={{ ...panelStyle, padding: 22 }}>
+              <SectionHeader icon={<ShieldAlert size={13} />} title="Attendance Alerts" subtitle="Named attendance signals that need floor-supervisor attention." />
+              <div style={{ display: 'grid', gap: 10 }}>
+                {attendanceAlertItems.map(item => (
+                  <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 12, borderRadius: 17, border: `1px solid color-mix(in srgb, ${item.color} ${item.value ? 28 : 12}%, var(--border))`, background: item.value ? `color-mix(in srgb, ${item.color} 8%, var(--bg-glass))` : 'var(--bg-glass)' }}>
+                    <DecisionPill label={item.label} color={item.value ? item.color : 'var(--text-3)'} fontSize={12.2} />
+                    <strong className="mono" style={{ color: item.value ? item.color : 'var(--text-3)', fontSize: 15 }}>{item.value}</strong>
+                  </div>
+                ))}
               </div>
             </div>
             )}
@@ -650,7 +786,7 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
                       <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
                       <XAxis dataKey="name" tick={{ fill: 'var(--text-3)', fontSize: 13.75, fontWeight: 900 }} />
                       <YAxis domain={[0, 100]} tick={{ fill: 'var(--text-3)', fontSize: 11 }} />
-                      <Tooltip contentStyle={tooltipStyle} />
+                      <Tooltip content={<ScoreMatrixTooltip />} />
                       <Bar dataKey="score" fill="#00a747" radius={[10, 10, 0, 0]} name="Overall" />
                       <Bar dataKey="risk" fill="#fb0b8c" radius={[10, 10, 0, 0]} name="Risk" />
                     </BarChart>
@@ -691,17 +827,15 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 18, marginBottom: 18 }}>
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<Calendar size={13} />} title="Weekly Attendance Heatmap" subtitle="Recent backend activity pattern for the selected range." />
-              {heatmap.length ? (
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${heatmap.length}, minmax(34px, 1fr))`, gap: 9 }}>
-                  {heatmap.map(day => (
-                    <div key={day.label} style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${heatmapSlots.length}, minmax(34px, 1fr))`, gap: 9 }}>
+                  {heatmapSlots.map((day, index) => (
+                    <div key={`${day.label}-${index}`} style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
                       <span className="mono" style={{ color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950 }}>{day.label}</span>
-                      <span style={{ width: '100%', height: 38, borderRadius: 13, background: `color-mix(in srgb, ${day.tone} 72%, white 8%)`, border: `1px solid color-mix(in srgb, ${day.tone} 55%, transparent)`, boxShadow: `0 10px 24px color-mix(in srgb, ${day.tone} 16%, transparent)` }} />
-                      <strong className="mono" style={{ color: day.tone, fontSize: 11 }}>{day.value}%</strong>
+                      <span style={{ width: '100%', height: 38, borderRadius: 13, opacity: heatmap.length ? 1 : .46, background: `color-mix(in srgb, ${day.tone} 72%, white 8%)`, border: `1px solid color-mix(in srgb, ${day.tone} 55%, transparent)`, boxShadow: `0 10px 24px color-mix(in srgb, ${day.tone} 16%, transparent)` }} />
+                      <strong className="mono" style={{ color: day.tone, fontSize: 11 }}>{heatmap.length ? `${day.value}%` : '—'}</strong>
                     </div>
                   ))}
                 </div>
-              ) : <EmptyState>No backend trend available for the heatmap.</EmptyState>}
             </div>
 
             <div style={{ ...panelStyle, padding: 22 }}>
@@ -716,10 +850,17 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
                   </ResponsiveContainer>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-                  <MiniStat label="Integrity" value={percentLabel(attendanceIntegrityAverage)} color={scoreColor(attendanceIntegrityAverage)} />
-                  <MiniStat label="Late Login" value={rows.filter(row => row.attendance.lateLogin).length} />
-                  <MiniStat label="Missed Clock Out" value={rows.filter(row => row.attendance.missedClockOut).length} color="var(--danger)" />
-                  <MiniStat label="Suspicious Activity" value={complianceSignals} color={complianceSignals ? 'var(--warning)' : 'var(--green-2)'} />
+                  {[
+                    { icon: <CheckCircle2 size={14} />, label: 'Integrity', value: percentLabel(attendanceIntegrityAverage), color: scoreColor(attendanceIntegrityAverage) },
+                    { icon: <Clock3 size={14} />, label: 'Late Login', value: rows.filter(row => row.attendance.lateLogin).length, color: 'var(--warning)' },
+                    { icon: <AlertTriangle size={14} />, label: 'Missed Clock Out', value: rows.filter(row => row.attendance.missedClockOut).length, color: 'var(--danger)' },
+                    { icon: <ShieldAlert size={14} />, label: 'Suspicious Activity', value: complianceSignals, color: complianceSignals ? 'var(--pink)' : 'var(--green-2)' },
+                  ].map(item => (
+                    <div key={item.label} style={{ display: 'grid', gap: 5, padding: '10px 12px', borderRadius: 16, border: `1px solid color-mix(in srgb, ${item.color} 24%, var(--border))`, background: 'var(--bg-glass)' }}>
+                      <span className="mono" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950, letterSpacing: 1, textTransform: 'uppercase' }}><span style={{ color: item.color }}>{item.icon}</span>{item.label}</span>
+                      <strong style={{ color: item.color, fontSize: 18, lineHeight: 1.1 }}>{item.value}</strong>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -742,18 +883,32 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 18, marginBottom: 18 }}>
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<Users size={13} />} title="Team Comparison" subtitle="Supervisor, agent team, company average, and top-performer score comparison." />
-              <div style={{ display: 'grid', gap: 10 }}>
-                <MiniStat label="Supervisor" value={formatScore(supervisorAverage)} color={scoreColor(supervisorAverage)} />
-                <MiniStat label="Agent Team" value={formatScore(agentAverage)} color={scoreColor(agentAverage)} />
-                <MiniStat label="Company Average" value={formatScore(data.summary.averageOverallScore)} color={scoreColor(data.summary.averageOverallScore)} />
-                <MiniStat label="Top Performer" value={formatScore(topScore)} color={scoreColor(topScore)} />
+              <div style={{ display: 'grid', gap: 12 }}>
+                {[
+                  ['Supervisor', supervisorAverage],
+                  ['Agent Team', agentAverage],
+                  ['Company Average', data.summary.averageOverallScore],
+                  ['Top Performer', topScore],
+                ].map(([label, value]) => {
+                  const score = typeof value === 'number' ? value : 0
+                  const color = scoreColor(typeof value === 'number' ? value : null)
+                  return (
+                    <div key={String(label)} style={{ display: 'grid', gridTemplateColumns: '122px minmax(0, 1fr) 46px', gap: 10, alignItems: 'center' }}>
+                      <span style={{ color: 'var(--text-2)', fontSize: 13.2, fontWeight: 900 }}>{String(label)}</span>
+                      <span style={{ height: 12, borderRadius: 999, background: 'var(--bg-2)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                        <span style={{ display: 'block', width: `${Math.max(4, Math.min(100, score))}%`, height: '100%', borderRadius: 999, background: color, boxShadow: `0 10px 22px color-mix(in srgb, ${color} 22%, transparent)` }} />
+                      </span>
+                      <strong className="mono" style={{ color, fontSize: 13 }}>{formatScore(typeof value === 'number' ? value : null)}</strong>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<Brain size={13} />} title="AI Coaching Timeline" subtitle="Coaching path created from currently available QA, compliance, and call signals." />
               {selectedRow ? (
-                <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'grid', gap: 8 }}>
                   {[
                     selectedRow.quality.qaScore === null ? 'QA Pending' : `${selectedRow.quality.qaScore}% QA reviewed`,
                     selectedRow.quality.scriptAdherence === null ? 'Script adherence pending' : `${selectedRow.quality.scriptAdherence}% script adherence`,
@@ -761,9 +916,12 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
                     selectedRow.quality.coachingRecommendations[0] || (selectedRow.redFlags[0]?.detail ?? 'No coaching assignment required'),
                     selectedRow.quality.coachingRecommendations.length ? 'Assign training' : 'Monitor next session',
                   ].map((step, index) => (
-                    <div key={`${step}-${index}`} style={{ display: 'grid', gridTemplateColumns: '34px minmax(0, 1fr)', gap: 10, alignItems: 'center' }}>
-                      <span className="mono" style={{ width: 28, height: 28, borderRadius: 999, display: 'grid', placeItems: 'center', color: '#fff', background: index < 3 ? 'var(--pink)' : 'var(--purple)', fontSize: 11, fontWeight: 950 }}>{index + 1}</span>
-                      <strong style={{ color: 'var(--text-2)', fontSize: 13.5 }}>{step}</strong>
+                    <div key={`${step}-${index}`} style={{ display: 'grid', gridTemplateColumns: '34px minmax(0, 1fr)', gap: 10, alignItems: 'start' }}>
+                      <span style={{ display: 'grid', justifyItems: 'center', gap: 6 }}>
+                        <span className="mono" style={{ width: 28, height: 28, borderRadius: 999, display: 'grid', placeItems: 'center', color: '#fff', background: index < 3 ? 'var(--pink)' : 'var(--purple)', fontSize: 11, fontWeight: 950 }}>{index + 1}</span>
+                        {index < 4 && <span style={{ width: 2, height: 16, borderRadius: 999, background: 'color-mix(in srgb, var(--pink) 28%, var(--border))' }} />}
+                      </span>
+                      <strong style={{ color: 'var(--text-2)', fontSize: 14.1, lineHeight: 1.35, paddingTop: 5 }}>{step}</strong>
                     </div>
                   ))}
                 </div>
@@ -778,7 +936,7 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
               <SectionHeader icon={<Filter size={13} />} title="Workforce Command Table" subtitle="Drill down into productivity, attendance, dialer readiness, QA, and disciplinary risk." />
             </div>
             <div style={{ width: '100%', maxWidth: '100%', overflowX: 'auto', overscrollBehaviorX: 'contain' }}>
-              <table style={{ width: '100%', minWidth: 1120, tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+              <table style={{ width: '100%', minWidth: 1320, tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
                     {commandHeaders.map(header => (
@@ -792,12 +950,17 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
                 </thead>
                 <tbody>
                   {rows.map(row => {
+                    const operatingStatus = operatingStatusFor(row)
                     return (
                       <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: 12 }}>
                           <div className="mono" style={{ ...commandCellStyle, color: 'var(--text)' }}>{row.name}</div>
                         </td>
                         <td className="mono" style={{ padding: 12, color: row.role === 'SUPERVISOR' ? 'var(--pink)' : 'var(--green-2)', fontWeight: 950, fontSize: 13.6 }}>{row.role.replace(/_/g, ' ')}</td>
+                        <td style={{ padding: 12 }}>
+                          <DecisionPill label={operatingStatus.label} color={operatingStatus.color} fontSize={11.5} />
+                        </td>
+                        <td className="mono" style={{ padding: 12, ...commandCellStyle, color: operatingStatus.color }}>{lastActivityFor(row)}</td>
                         <td className="mono" style={{ padding: 12, ...commandCellStyle }}>{row.productivity.currentCampaign || 'Not assigned'}</td>
                         <td className="mono" style={{ padding: 12, ...commandCellStyle }}>{row.productivity.bestPerformingCampaign || 'No queue'}</td>
                         <td className="mono" style={{ padding: 12, color: row.attendance.breakSeconds ? 'var(--warning)' : 'var(--text-3)', fontWeight: 950, fontSize: 13.6 }}>{row.attendance.breakSeconds ? formatSeconds(row.attendance.breakSeconds) : 'No break'}</td>
@@ -860,10 +1023,10 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<Target size={13} />} title="Executive Decisions" subtitle="Immediate action groups for coaching, reward, and operational control." subtitleSize={15.8} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-                <DecisionBox icon={<ShieldAlert size={17} />} label="Immediate Escalation" value={rows.filter(row => row.redFlags.some(flag => flag.severity === 'critical')).length} color="var(--danger)" names={rows.filter(row => row.redFlags.some(flag => flag.severity === 'critical')).slice(0, 3).map(row => row.name)} />
-                <DecisionBox icon={<TrendingDown size={17} />} label="Needs Retraining" value={coachingRows.length} color="var(--warning)" names={coachingRows.slice(0, 3).map(row => row.name)} />
-                <DecisionBox icon={<TrendingUp size={17} />} label="Possible Promotion" value={topPerformers.length} color="var(--green-2)" names={topPerformers.map(row => row.name)} />
-                <DecisionBox icon={<CheckCircle2 size={17} />} label="Needs Supervisor Review" value={riskRows.length} color={riskRows.length ? 'var(--pink)' : 'var(--green-2)'} names={riskRows.slice(0, 3).map(row => row.name)} />
+                <DecisionBox icon={<ShieldAlert size={17} />} label="Immediate" value={rows.filter(row => row.redFlags.some(flag => flag.severity === 'critical')).length} color="var(--danger)" names={rows.filter(row => row.redFlags.some(flag => flag.severity === 'critical')).slice(0, 3).map(row => row.name)} />
+                <DecisionBox icon={<TrendingDown size={17} />} label="High" value={coachingRows.length} color="var(--warning)" names={coachingRows.slice(0, 3).map(row => `Coach ${row.name}`)} />
+                <DecisionBox icon={<Target size={17} />} label="Medium" value={riskRows.length} color="var(--pink)" names={riskRows.slice(0, 3).map(row => `Review ${row.name}`)} />
+                <DecisionBox icon={<CheckCircle2 size={17} />} label="Good" value={topPerformers.length} color="var(--green-2)" names={topPerformers.map(row => `Reward ${row.name}`)} />
               </div>
             </div>
             )}
@@ -873,9 +1036,12 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
               <SectionHeader icon={<Sparkles size={13} />} title="Today's AI Recommendations" subtitle="Decision-ready actions derived from workforce, attendance, QA, and campaign records." subtitleSize={15.8} />
               <div style={{ display: 'grid', gap: 11 }}>
                 {aiRecommendations.length ? aiRecommendations.map((recommendation, index) => (
-                  <div key={`${recommendation}-${index}`} style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr)', gap: 10, alignItems: 'center', padding: 12, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
+                  <div key={`${recommendation.text}-${index}`} style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr) auto', gap: 10, alignItems: 'center', padding: 12, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
                     <CheckCircle2 size={18} color="var(--green-2)" />
-                    <strong style={{ color: 'var(--text-2)', fontSize: 14 }}>{recommendation}</strong>
+                    <strong style={{ color: 'var(--text-2)', fontSize: 14 }}>{recommendation.text}</strong>
+                    <button type="button" className="ptdt-action-btn" onClick={() => recommendation.targetId !== undefined && inspectRow(recommendation.targetId)} style={{ minHeight: 31, padding: '0 12px', borderRadius: 999, fontSize: 11.5 }}>
+                      {recommendation.action}
+                    </button>
                   </div>
                 )) : <EmptyState>No AI recommendation generated from the current backend records.</EmptyState>}
               </div>
