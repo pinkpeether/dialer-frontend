@@ -5,6 +5,7 @@ import {
   Award,
   BarChart3,
   Brain,
+  Calendar,
   CheckCircle2,
   Clock3,
   Download,
@@ -84,9 +85,44 @@ const scoreColor = (score: number | null) => {
 }
 
 const riskTone = (row: WorkforceUserRow) => {
-  if (row.redFlags.some(flag => flag.severity === 'critical')) return { label: 'Critical', color: 'var(--danger)' }
-  if (row.redFlags.length) return { label: 'Watch', color: 'var(--warning)' }
-  return { label: 'Clean', color: 'var(--green-2)' }
+  const risk = row.scores.risk ?? (row.redFlags.length ? 55 : 5)
+  if (row.redFlags.some(flag => flag.severity === 'critical') || risk >= 75) return { label: 'Red', color: 'var(--danger)' }
+  if (risk >= 50) return { label: 'Orange', color: 'var(--warning)' }
+  if (row.redFlags.length || risk >= 25) return { label: 'Yellow', color: '#c78a00' }
+  return { label: 'Green', color: 'var(--green-2)' }
+}
+
+const avgScore = (values: Array<number | null | undefined>) => {
+  const clean = values.filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+  if (!clean.length) return null
+  return Math.round(clean.reduce((sum, value) => sum + value, 0) / clean.length)
+}
+
+const percentLabel = (value: number | null) => value === null ? 'Pending' : `${value}%`
+
+const riskLabelFor = (score: number | null, criticalFlags = 0) => {
+  if (criticalFlags > 0 || (score ?? 0) >= 70) return 'High'
+  if ((score ?? 0) >= 35) return 'Medium'
+  return 'Low'
+}
+
+const complianceSignalCount = (rows: WorkforceUserRow[]) => rows.reduce((sum, row) => (
+  sum
+  + (row.attendance.missedClockOut ? 1 : 0)
+  + (row.attendance.forcedLogout ? 1 : 0)
+  + row.attendance.unexpectedDisconnects
+  + row.quality.complianceViolations
+  + (row.attendance.sipRegistered ? 0 : 1)
+), 0)
+
+const flagCategory = (flag: { key: string; label: string }) => {
+  const text = `${flag.key} ${flag.label}`.toLowerCase()
+  if (text.includes('sip') || text.includes('dialer')) return 'SIP'
+  if (text.includes('disconnect') || text.includes('session') || text.includes('clock') || text.includes('attendance')) return 'Attendance'
+  if (text.includes('compliance')) return 'Compliance'
+  if (text.includes('device') || text.includes('browser') || text.includes('ip')) return 'Security'
+  if (text.includes('productivity') || text.includes('answer')) return 'Performance'
+  return 'Behaviour'
 }
 
 function SectionHeader({ icon, title, subtitle, action, subtitleSize = 13.5 }: { icon: ReactNode; title: string; subtitle?: string; action?: ReactNode; subtitleSize?: number }) {
@@ -119,6 +155,33 @@ function MetricCard({ icon, label, value, sub, color = 'var(--pink)' }: { icon: 
   )
 }
 
+function MiniStat({ label, value, color = 'var(--text)' }: { label: string; value: ReactNode; color?: string }) {
+  return (
+    <div style={{ display: 'grid', gap: 4, padding: '10px 12px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
+      <span className="mono" style={{ color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950, letterSpacing: 1, textTransform: 'uppercase' }}>{label}</span>
+      <strong style={{ color, fontSize: 18, lineHeight: 1.1 }}>{value}</strong>
+    </div>
+  )
+}
+
+function DecisionPill({ label, color }: { label: string; color: string }) {
+  return (
+    <span className="mono" style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 7,
+      color,
+      fontSize: 11,
+      fontWeight: 950,
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+    }}>
+      <span style={{ width: 8, height: 8, borderRadius: 999, background: color, boxShadow: `0 0 0 4px color-mix(in srgb, ${color} 14%, transparent)` }} />
+      {label}
+    </span>
+  )
+}
+
 function FilterField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label style={{ display: 'grid', gap: 7 }}>
@@ -132,6 +195,31 @@ function EmptyState({ children }: { children: ReactNode }) {
   return (
     <div style={{ padding: 34, color: 'var(--text-3)', textAlign: 'center', fontWeight: 850, fontSize: 13.5 }}>
       {children}
+    </div>
+  )
+}
+
+function ScoreMatrixTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ payload?: Record<string, unknown> }>; label?: string | number }) {
+  if (!active || !payload?.length) return null
+  const row = payload[0]?.payload || {}
+  const items = [
+    ['Attendance', row.attendance],
+    ['Quality', row.quality],
+    ['Calls', row.calls],
+    ['AHT', row.aht],
+    ['QA', row.qa],
+  ]
+  return (
+    <div style={tooltipStyle}>
+      <div style={{ fontWeight: 950, marginBottom: 8 }}>{label}</div>
+      <div style={{ display: 'grid', gap: 5 }}>
+        {items.map(([name, value]) => (
+          <div key={String(name)} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 12.5, color: 'var(--text-2)' }}>
+            <span>{String(name)}</span>
+            <strong>{String(value ?? 'Pending')}</strong>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -164,11 +252,21 @@ function AgentDeepDive({ row }: { row: WorkforceUserRow | null }) {
     </div>
   )
 
-  const radarData = [
-    { name: 'Productivity', value: row.scores.aiProductivity ?? 0, fill: '#fb0b8c' },
-    { name: 'Quality', value: row.scores.aiQuality ?? 0, fill: '#8057d7' },
+  const ringData = [
+    { name: 'Overall Score', value: row.scores.overall ?? 0, fill: '#fb0b8c' },
     { name: 'Attendance', value: row.scores.attendance ?? 0, fill: '#00a747' },
-    { name: 'Sales', value: row.scores.sales ?? 0, fill: '#f0b90b' },
+    { name: 'Quality', value: row.scores.aiQuality ?? row.quality.qaScore ?? 0, fill: '#8057d7' },
+    { name: 'Compliance', value: row.scores.compliance ?? 0, fill: '#f0b90b' },
+  ]
+  const rewardReady = (row.scores.overall ?? 0) >= 80 && row.redFlags.length === 0
+  const confidence = Math.max(62, Math.min(96, 72 + row.quality.aiReviewedCalls * 4 + (row.attendance.workedSeconds > 0 ? 8 : 0) - row.redFlags.length * 7))
+  const detected = [
+    row.attendance.workedSeconds > 0 ? 'Attendance session captured' : 'Attendance session missing',
+    row.attendance.sipRegistered ? 'SIP compliance active' : 'SIP registration not active',
+    row.quality.sentiment ? `${row.quality.sentiment} customer sentiment` : 'Sentiment not captured yet',
+    row.quality.complianceViolations ? `${row.quality.complianceViolations} compliance issue(s)` : 'No compliance issues detected',
+    row.calls.callsConnected ? `${row.calls.callsConnected} connected call(s)` : 'No connected calls in selected range',
+    `Reward recommendation: ${rewardReady ? 'YES' : 'NO'}`,
   ]
 
   return (
@@ -181,17 +279,32 @@ function AgentDeepDive({ row }: { row: WorkforceUserRow | null }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, .9fr) minmax(260px, 1.1fr)', gap: 18, alignItems: 'center' }}>
         <div style={{ height: 210 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <RadialBarChart innerRadius="30%" outerRadius="95%" data={radarData} startAngle={90} endAngle={-270}>
+            <RadialBarChart innerRadius="24%" outerRadius="98%" data={ringData} startAngle={90} endAngle={-270}>
               <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
               <RadialBar dataKey="value" cornerRadius={12} background={{ fill: 'var(--bg-2)' }}>
-                {radarData.map(item => <Cell key={item.name} fill={item.fill} />)}
+                {ringData.map(item => <Cell key={item.name} fill={item.fill} />)}
               </RadialBar>
               <Tooltip contentStyle={tooltipStyle} />
             </RadialBarChart>
           </ResponsiveContainer>
         </div>
         <div style={{ display: 'grid', gap: 12 }}>
-          {row.insights.map((insight, index) => {
+          <div style={{ padding: 14, borderRadius: 18, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
+            <div className="mono" style={{ color: 'var(--pink)', fontSize: 11, fontWeight: 950, letterSpacing: 1.1, textTransform: 'uppercase', marginBottom: 10 }}>AI detected</div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {detected.map(signal => (
+                <div key={signal} style={{ display: 'flex', gap: 8, color: 'var(--text-2)', fontSize: 13.5, fontWeight: 820, lineHeight: 1.35 }}>
+                  <CheckCircle2 size={15} color="var(--green-2)" />
+                  <span>{signal}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+              <DecisionPill label={`Confidence ${confidence}%`} color="var(--purple)" />
+              <ScorePill score={row.scores.overall} />
+            </div>
+          </div>
+          {row.insights.slice(0, 2).map((insight, index) => {
             const color = insight.tone === 'positive' ? 'var(--green-2)' : insight.tone === 'risk' ? 'var(--danger)' : insight.tone === 'coaching' ? 'var(--warning)' : 'var(--text-3)'
             return (
               <div key={`${insight.text}-${index}`} style={{ padding: 13, borderRadius: 16, border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`, background: 'var(--bg-glass)', color: 'var(--text-2)', fontSize: 13.5, lineHeight: 1.45, fontWeight: 780 }}>
@@ -199,6 +312,9 @@ function AgentDeepDive({ row }: { row: WorkforceUserRow | null }) {
               </div>
             )
           })}
+          <div style={{ color: 'var(--text-3)', fontSize: 12.4, lineHeight: 1.5, fontWeight: 800 }}>
+            Productivity formula: 30% attendance, 20% QA, 15% talk time, 15% sales, 10% compliance, 10% AI behaviour.
+          </div>
         </div>
       </div>
     </div>
@@ -222,7 +338,52 @@ export default function WorkforceIntelligencePage() {
   const topPerformers = rows.filter(row => (row.scores.overall ?? 0) >= 80).slice(0, 4)
   const rewardReady = rows.filter(row => row.productivity.achievements.length > 0).slice(0, 6)
   const riskRows = rows.filter(row => row.redFlags.length > 0).slice(0, 8)
-  const scoreBars = rows.slice(0, 8).map(row => ({ name: row.name.split(' ')[0] || row.name, score: row.scores.overall || 0, risk: row.scores.risk || 0 }))
+  const coachingRows = rows.filter(row => row.quality.coachingRecommendations.length > 0 || row.redFlags.length > 0 || (row.scores.aiQuality !== null && row.scores.aiQuality < 70))
+  const complianceAverage = avgScore(rows.map(row => row.scores.compliance))
+  const productivityAverage = avgScore(rows.map(row => row.scores.aiProductivity))
+  const attendanceIntegrityAverage = avgScore(rows.map(row => avgScore([row.scores.attendance, row.scores.reliability, row.attendance.sipRegistered ? 100 : 55])))
+  const supervisorAverage = avgScore(rows.filter(row => row.role === 'SUPERVISOR').map(row => row.scores.overall))
+  const agentAverage = avgScore(rows.filter(row => row.role === 'AGENT').map(row => row.scores.overall))
+  const topScore = avgScore(topPerformers.map(row => row.scores.overall))
+  const activeCalls = rows.filter(row => ['BUSY', 'IN CALL', 'CALLING'].includes(row.status)).length
+  const activeSupervisors = rows.filter(row => row.role === 'SUPERVISOR' && ['ONLINE', 'READY', 'BUSY', 'WRAP UP'].includes(row.status)).length
+  const activeAgents = rows.filter(row => row.role === 'AGENT' && ['ONLINE', 'READY', 'BUSY', 'WRAP UP'].includes(row.status)).length
+  const aiCallCount = rows.reduce((sum, row) => sum + row.quality.aiReviewedCalls, 0)
+  const complianceSignals = complianceSignalCount(rows)
+  const scoreBars = rows.slice(0, 8).map(row => ({
+    name: row.name.split(' ')[0] || row.name,
+    score: row.scores.overall || 0,
+    risk: row.scores.risk || 0,
+    attendance: row.scores.attendance || 0,
+    quality: row.scores.aiQuality || row.quality.qaScore || 0,
+    calls: row.calls.callsMade,
+    aht: row.calls.averageHandleTimeSeconds ? Math.min(100, Math.max(0, Math.round(100 - row.calls.averageHandleTimeSeconds / 12))) : 0,
+    qa: row.quality.qaScore || 0,
+  }))
+  const operationalTimeline = selectedRow ? [
+    { label: 'Login', detail: selectedRow.status, color: selectedRow.status === 'ONLINE' ? 'var(--green-2)' : 'var(--text-3)' },
+    { label: 'Dialer', detail: selectedRow.attendance.sipRegistered ? 'SIP registered' : 'SIP disabled', color: selectedRow.attendance.sipRegistered ? 'var(--green-2)' : 'var(--warning)' },
+    { label: 'Campaign', detail: selectedRow.productivity.currentCampaign || 'No current campaign', color: 'var(--purple)' },
+    { label: 'Calls', detail: `${selectedRow.calls.callsMade} made · ${selectedRow.calls.callsConnected} connected`, color: 'var(--pink)' },
+    { label: 'Quality', detail: selectedRow.quality.qaScore === null ? 'QA Pending' : `${selectedRow.quality.qaScore}% QA score`, color: 'var(--green-2)' },
+    { label: 'Risk', detail: selectedRow.redFlags[0]?.label || 'No active red flag', color: selectedRow.redFlags.length ? 'var(--danger)' : 'var(--green-2)' },
+  ] : []
+  const heatmap = data?.timeline.slice(-7).map(point => ({
+    label: point.label.slice(5),
+    tone: point.answerRate >= 50 ? 'var(--green-2)' : point.calls > 0 ? 'var(--warning)' : 'var(--danger)',
+    value: point.answerRate,
+  })) || []
+  const aiRecommendations = [
+    ...topPerformers.slice(0, 1).map(row => `Reward ${row.name}`),
+    ...coachingRows.slice(0, 2).map(row => `Coach ${row.name}`),
+    ...(complianceSignals ? ['Review attendance and SIP compliance signals'] : []),
+    ...(riskRows.length ? ['Schedule supervisor review for flagged users'] : []),
+    ...(rows.some(row => !row.productivity.currentCampaign) ? ['Assign campaign coverage for idle operators'] : []),
+  ].slice(0, 5)
+  const redFlagCategories = ['Attendance', 'Compliance', 'SIP', 'Security', 'Performance', 'Behaviour'].map(category => ({
+    category,
+    flags: riskRows.flatMap(row => row.redFlags.map(flag => ({ row, flag }))).filter(item => flagCategory(item.flag) === category),
+  }))
   const inspectRow = (id: string | number) => {
     setSelectedId(id)
     window.requestAnimationFrame(() => {
@@ -234,13 +395,20 @@ export default function WorkforceIntelligencePage() {
     <div className="ptdt-page ptdt-workforce-intelligence-page" style={pageStyle}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 18, marginBottom: 24, flexWrap: 'wrap' }}>
         <div>
-          <div className="eyebrow pink" style={{ marginBottom: 13 }}><Sparkles size={12} /> Workforce Intelligence</div>
-          <h1 className="ptdt-page-title">Workforce <span className="gradient-brand-text">Intelligence</span></h1>
+          <div className="eyebrow pink" style={{ marginBottom: 13 }}><Sparkles size={12} /> Workforce Command Center</div>
+          <h1 className="ptdt-page-title">Workforce <span className="gradient-brand-text">Command Center</span></h1>
           <p className="ptdt-page-desc" style={{ maxWidth: 'none', fontSize: 16.7, lineHeight: 1.45, whiteSpace: 'nowrap' }}>
-            One operating view for productivity, attendance integrity, coaching risk, call output, AI review, and reward readiness.
+            Decision support for productivity, attendance integrity, coaching risk, call output, AI review, and reward readiness.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <div style={{ ...panelStyle, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, minHeight: 42 }}>
+            <DecisionPill label="Live" color="var(--green-2)" />
+            <span className="mono" style={{ color: 'var(--text-2)', fontSize: 11.5, fontWeight: 950 }}>{activeCalls} Active Calls</span>
+            <span className="mono" style={{ color: 'var(--text-2)', fontSize: 11.5, fontWeight: 950 }}>{activeAgents} Agents</span>
+            <span className="mono" style={{ color: 'var(--text-2)', fontSize: 11.5, fontWeight: 950 }}>{activeSupervisors} Supervisors</span>
+            <span className="mono" style={{ color: 'var(--text-2)', fontSize: 11.5, fontWeight: 950 }}>{aiCallCount} AI Reviews</span>
+          </div>
           <button type="button" className="ptdt-action-btn" onClick={() => void reload()} disabled={loading || refreshing}>
             <RefreshCw size={14} /> {loading || refreshing ? 'Refreshing' : 'Refresh'}
           </button>
@@ -316,37 +484,47 @@ export default function WorkforceIntelligencePage() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 13, marginBottom: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 13, marginBottom: 18 }}>
             <MetricCard icon={<Users size={17} />} label="Users" value={data.summary.totalUsers} sub={`${data.summary.onlineUsers} online`} color="var(--purple)" />
             <MetricCard icon={<Clock3 size={17} />} label="Clocked In" value={data.summary.clockedInUsers} sub="Attendance live" color="var(--green-2)" />
-            <MetricCard icon={<ShieldAlert size={17} />} label="Flagged" value={data.summary.flaggedUsers} sub={`${data.redFlags.length} active flag(s)`} color={data.summary.flaggedUsers ? 'var(--danger)' : 'var(--green-2)'} />
-            <MetricCard icon={<Gauge size={17} />} label="Avg Workforce" value={formatScore(data.summary.averageOverallScore)} sub="Composite score" color={scoreColor(data.summary.averageOverallScore)} />
+            <MetricCard icon={<ShieldAlert size={17} />} label="Attendance Integrity" value={percentLabel(attendanceIntegrityAverage)} sub={`${data.summary.flaggedUsers} flagged user(s)`} color={data.summary.flaggedUsers ? 'var(--danger)' : 'var(--green-2)'} />
+            <MetricCard icon={<Gauge size={17} />} label="Average Performance" value={formatScore(data.summary.averageOverallScore)} sub="Composite score" color={scoreColor(data.summary.averageOverallScore)} />
             <MetricCard icon={<PhoneMetricIcon />} label="Calls" value={data.summary.callsMade} sub={`${data.summary.callsConnected} connected`} color="var(--pink)" />
-            <MetricCard icon={<Clock3 size={17} />} label="Talk Time" value={formatSeconds(data.summary.talkTimeSeconds)} sub="Selected range" color="var(--warning)" />
+            <MetricCard icon={<TrendingUp size={17} />} label="Productivity Score" value={percentLabel(productivityAverage)} sub={formatSeconds(data.summary.talkTimeSeconds)} color="var(--warning)" />
+            <MetricCard icon={<Brain size={17} />} label="AI Coaching Queue" value={coachingRows.length} sub="Users need coaching" color="var(--purple)" />
+            <MetricCard icon={<CheckCircle2 size={17} />} label="Compliance" value={percentLabel(complianceAverage)} sub={`${complianceSignals} signal(s)`} color={complianceSignals ? 'var(--warning)' : 'var(--green-2)'} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 18, marginBottom: 18 }}>
             <div style={{ ...panelStyle, padding: 22 }}>
-              <SectionHeader icon={<BarChart3 size={13} />} title="Workforce Activity Timeline" subtitle="Calls, connected calls, and answer rate from backend reporting records." />
-              <div style={{ height: 280 }}>
+              <SectionHeader icon={<BarChart3 size={13} />} title="Operational Activity Timeline" subtitle="Selected-user sequence built from login, SIP, campaign, call, QA, and risk records." />
+              <div style={{ display: 'grid', gap: 10 }}>
+                {operationalTimeline.map((event, index) => (
+                  <div key={`${event.label}-${event.detail}`} style={{ display: 'grid', gridTemplateColumns: '54px minmax(0, 1fr)', gap: 12, alignItems: 'center' }}>
+                    <span className="mono" style={{ color: 'var(--text-3)', fontSize: 11, fontWeight: 950 }}>{String(index + 1).padStart(2, '0')}</span>
+                    <div style={{ padding: 12, borderRadius: 17, border: '1px solid var(--border)', background: 'var(--bg-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                      <DecisionPill label={event.label} color={event.color} />
+                      <strong style={{ color: 'var(--text-2)', fontSize: 13.5, textAlign: 'right' }}>{event.detail}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 14, height: 82 }}>
                 {data.timeline.length ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data.timeline} margin={{ top: 8, right: 14, left: -18, bottom: 0 }}>
+                    <AreaChart data={data.timeline} margin={{ top: 6, right: 6, left: -26, bottom: 0 }}>
                       <defs>
                         <linearGradient id="wiCalls" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#fb0b8c" stopOpacity={0.28} />
+                          <stop offset="0%" stopColor="#fb0b8c" stopOpacity={0.24} />
                           <stop offset="100%" stopColor="#fb0b8c" stopOpacity={0.02} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                      <XAxis dataKey="label" tick={{ fill: 'var(--text-3)', fontSize: 11 }} />
-                      <YAxis tick={{ fill: 'var(--text-3)', fontSize: 11 }} />
-                      <Tooltip contentStyle={tooltipStyle} />
-                      <Area type="monotone" dataKey="calls" stroke="#fb0b8c" fill="url(#wiCalls)" strokeWidth={2.4} name="Calls" />
-                      <Line type="monotone" dataKey="answered" stroke="#00a747" strokeWidth={2.4} dot={false} name="Connected" />
+                      <Tooltip content={<ScoreMatrixTooltip />} />
+                      <Area type="monotone" dataKey="calls" stroke="#fb0b8c" fill="url(#wiCalls)" strokeWidth={2} name="Calls" />
+                      <Line type="monotone" dataKey="answered" stroke="#00a747" strokeWidth={2} dot={false} name="Connected" />
                     </AreaChart>
                   </ResponsiveContainer>
-                ) : <EmptyState>No call trend records for this range.</EmptyState>}
+                ) : null}
               </div>
             </div>
 
@@ -381,19 +559,108 @@ export default function WorkforceIntelligencePage() {
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<Medal size={13} />} title="Gamification & Rewards" subtitle="Badges and achievements generated only from available backend performance records." />
               <div style={{ display: 'grid', gap: 10 }}>
-                {rewardReady.length ? rewardReady.map(row => (
+                {rewardReady.length ? rewardReady.map(row => {
+                  const badge = row.scores.overall !== null && row.scores.overall >= 85
+                    ? 'Elite Performer'
+                    : row.attendance.workedSeconds > 0 && row.redFlags.length === 0
+                      ? 'Attendance Hero'
+                      : row.calls.callsConnected > 0
+                        ? 'Customer Champion'
+                        : 'Reward Candidate'
+                  return (
                   <button key={row.id} type="button" onClick={() => setSelectedId(row.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 13, borderRadius: 17, border: '1px solid var(--border)', background: 'var(--bg-glass)', color: 'var(--text)', textAlign: 'left', cursor: 'pointer' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ width: 34, height: 34, borderRadius: 13, display: 'grid', placeItems: 'center', background: 'rgba(240,185,11,.12)', color: 'var(--warning)' }}><Flame size={16} /></span>
                       <span>
                         <strong style={{ display: 'block', fontSize: 13.5 }}>{row.name}</strong>
-                        <span style={{ color: 'var(--text-3)', fontSize: 11.9 }}>{row.productivity.achievements.join(' · ')}</span>
+                        <span style={{ color: 'var(--text-3)', fontSize: 11.9 }}>{badge} · {row.productivity.achievements.join(' · ')}</span>
                       </span>
                     </span>
                     <ScorePill score={row.scores.overall} />
                   </button>
-                )) : <EmptyState>No achievements generated from the selected range.</EmptyState>}
+                )}) : <EmptyState>No achievements generated from the selected range.</EmptyState>}
               </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 18, marginBottom: 18 }}>
+            <div style={{ ...panelStyle, padding: 22 }}>
+              <SectionHeader icon={<Calendar size={13} />} title="Weekly Attendance Heatmap" subtitle="Recent backend activity pattern for the selected range." />
+              {heatmap.length ? (
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${heatmap.length}, minmax(34px, 1fr))`, gap: 9 }}>
+                  {heatmap.map(day => (
+                    <div key={day.label} style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
+                      <span className="mono" style={{ color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950 }}>{day.label}</span>
+                      <span style={{ width: '100%', height: 38, borderRadius: 13, background: `color-mix(in srgb, ${day.tone} 72%, white 8%)`, border: `1px solid color-mix(in srgb, ${day.tone} 55%, transparent)`, boxShadow: `0 10px 24px color-mix(in srgb, ${day.tone} 16%, transparent)` }} />
+                      <strong className="mono" style={{ color: day.tone, fontSize: 11 }}>{day.value}%</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : <EmptyState>No backend trend available for the heatmap.</EmptyState>}
+            </div>
+
+            <div style={{ ...panelStyle, padding: 22 }}>
+              <SectionHeader icon={<ShieldAlert size={13} />} title="Attendance Integrity Meter" subtitle="Cheating and attendance-control signals derived from live attendance records." />
+              <div style={{ display: 'grid', gridTemplateColumns: '120px minmax(0, 1fr)', gap: 16, alignItems: 'center' }}>
+                <div style={{ height: 120 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadialBarChart innerRadius="66%" outerRadius="100%" data={[{ name: 'Integrity', value: attendanceIntegrityAverage ?? 0, fill: scoreColor(attendanceIntegrityAverage) }]} startAngle={90} endAngle={-270}>
+                      <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+                      <RadialBar dataKey="value" cornerRadius={12} background={{ fill: 'var(--bg-2)' }} />
+                    </RadialBarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                  <MiniStat label="Integrity" value={percentLabel(attendanceIntegrityAverage)} color={scoreColor(attendanceIntegrityAverage)} />
+                  <MiniStat label="Late Login" value={rows.filter(row => row.attendance.lateLogin).length} />
+                  <MiniStat label="Missed Clock Out" value={rows.filter(row => row.attendance.missedClockOut).length} color="var(--danger)" />
+                  <MiniStat label="Suspicious Activity" value={complianceSignals} color={complianceSignals ? 'var(--warning)' : 'var(--green-2)'} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ ...panelStyle, padding: 22 }}>
+              <SectionHeader icon={<TrendingUp size={13} />} title="Next Week Prediction" subtitle="Forward-looking risk and promotion signals from the selected user." />
+              {selectedRow ? (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <MiniStat label={selectedRow.name} value={percentLabel(selectedRow.scores.aiProductivity)} color={scoreColor(selectedRow.scores.aiProductivity)} />
+                  <MiniStat label="Burnout Risk" value={riskLabelFor(selectedRow.attendance.idleSeconds ? Math.round(selectedRow.attendance.idleSeconds / 60) : selectedRow.scores.risk, selectedRow.redFlags.filter(flag => flag.severity === 'critical').length)} color={selectedRow.redFlags.length ? 'var(--warning)' : 'var(--green-2)'} />
+                  <MiniStat label="Attrition Risk" value={riskLabelFor(selectedRow.scores.risk, selectedRow.redFlags.filter(flag => flag.severity === 'critical').length)} color={selectedRow.redFlags.length ? 'var(--warning)' : 'var(--green-2)'} />
+                  <MiniStat label="Likely Promotion" value={(selectedRow.scores.overall ?? 0) >= 85 && selectedRow.redFlags.length === 0 ? 'High' : 'Review'} color={(selectedRow.scores.overall ?? 0) >= 85 ? 'var(--green-2)' : 'var(--text-3)'} />
+                </div>
+              ) : <EmptyState>Select a user to generate predictions.</EmptyState>}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 18, marginBottom: 18 }}>
+            <div style={{ ...panelStyle, padding: 22 }}>
+              <SectionHeader icon={<Users size={13} />} title="Team Comparison" subtitle="Supervisor, agent team, company average, and top-performer score comparison." />
+              <div style={{ display: 'grid', gap: 10 }}>
+                <MiniStat label="Supervisor" value={formatScore(supervisorAverage)} color={scoreColor(supervisorAverage)} />
+                <MiniStat label="Agent Team" value={formatScore(agentAverage)} color={scoreColor(agentAverage)} />
+                <MiniStat label="Company Average" value={formatScore(data.summary.averageOverallScore)} color={scoreColor(data.summary.averageOverallScore)} />
+                <MiniStat label="Top Performer" value={formatScore(topScore)} color={scoreColor(topScore)} />
+              </div>
+            </div>
+
+            <div style={{ ...panelStyle, padding: 22 }}>
+              <SectionHeader icon={<Brain size={13} />} title="AI Coaching Timeline" subtitle="Coaching path created from currently available QA, compliance, and call signals." />
+              {selectedRow ? (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {[
+                    selectedRow.quality.qaScore === null ? 'QA Pending' : `${selectedRow.quality.qaScore}% QA reviewed`,
+                    selectedRow.quality.scriptAdherence === null ? 'Script adherence pending' : `${selectedRow.quality.scriptAdherence}% script adherence`,
+                    selectedRow.quality.sentiment ? `${selectedRow.quality.sentiment} sentiment` : 'Sentiment pending',
+                    selectedRow.quality.coachingRecommendations[0] || (selectedRow.redFlags[0]?.detail ?? 'No coaching assignment required'),
+                    selectedRow.quality.coachingRecommendations.length ? 'Assign training' : 'Monitor next session',
+                  ].map((step, index) => (
+                    <div key={`${step}-${index}`} style={{ display: 'grid', gridTemplateColumns: '34px minmax(0, 1fr)', gap: 10, alignItems: 'center' }}>
+                      <span className="mono" style={{ width: 28, height: 28, borderRadius: 999, display: 'grid', placeItems: 'center', color: '#fff', background: index < 3 ? 'var(--pink)' : 'var(--purple)', fontSize: 11, fontWeight: 950 }}>{index + 1}</span>
+                      <strong style={{ color: 'var(--text-2)', fontSize: 13.5 }}>{step}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : <EmptyState>Select a user to inspect coaching timeline.</EmptyState>}
             </div>
           </div>
 
@@ -402,10 +669,10 @@ export default function WorkforceIntelligencePage() {
               <SectionHeader icon={<Filter size={13} />} title="Workforce Command Table" subtitle="Drill down into productivity, attendance, dialer readiness, QA, and disciplinary risk." />
             </div>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', minWidth: 1280, borderCollapse: 'collapse' }}>
+              <table style={{ width: '100%', minWidth: 1680, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['Rank', 'User', 'Role', 'Login / Dialer', 'Clock', 'Work', 'Calls', 'Quality', 'Scores', 'Risk', 'Action'].map(header => (
+                    {['Rank', 'User', 'Role', 'Current Campaign', 'Current Queue', 'Break Status', "Today's Login", 'Last Activity', 'Login / Dialer', 'Clock', 'Work', 'Calls', 'Quality', 'Scores', 'AI Risk', 'Action'].map(header => (
                       <th key={header} className="mono" style={{ padding: '14px 16px', textAlign: 'left', color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950, letterSpacing: 1.2, textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{header}</th>
                     ))}
                   </tr>
@@ -421,6 +688,11 @@ export default function WorkforceIntelligencePage() {
                           <div className="mono" style={{ color: 'var(--text-3)', fontSize: 10.9, marginTop: 4 }}>{row.email}</div>
                         </td>
                         <td style={{ padding: 16, color: row.role === 'SUPERVISOR' ? 'var(--pink)' : 'var(--green-2)', fontWeight: 950, fontSize: 13.6 }}>{row.role.replace(/_/g, ' ')}</td>
+                        <td style={{ padding: 16, color: 'var(--text-2)', fontWeight: 850 }}>{row.productivity.currentCampaign || 'Not assigned'}</td>
+                        <td style={{ padding: 16, color: 'var(--text-2)', fontWeight: 850 }}>{row.productivity.bestPerformingCampaign || 'No queue'}</td>
+                        <td style={{ padding: 16, color: row.attendance.breakSeconds ? 'var(--warning)' : 'var(--text-3)', fontWeight: 900 }}>{row.attendance.breakSeconds ? formatSeconds(row.attendance.breakSeconds) : 'No break'}</td>
+                        <td style={{ padding: 16, color: row.attendance.workedSeconds ? 'var(--green-2)' : 'var(--text-3)', fontWeight: 900 }}>{row.attendance.workedSeconds ? formatSeconds(row.attendance.workedSeconds) : 'No session'}</td>
+                        <td style={{ padding: 16, color: 'var(--text-2)', fontWeight: 850 }}>{row.attendance.clockStatus.replace(/_/g, ' ')}</td>
                         <td style={{ padding: 16 }}>
                           <div className="mono" style={{ color: row.status === 'ONLINE' ? 'var(--green-2)' : 'var(--text-3)', fontWeight: 950 }}>{row.status}</div>
                           <div style={{ marginTop: 5, color: row.attendance.sipRegistered ? 'var(--green-2)' : 'var(--text-3)', fontWeight: 900, fontSize: 12 }}>{row.attendance.sipRegistered ? 'SIP Registered' : 'SIP Disabled'}</div>
@@ -434,7 +706,9 @@ export default function WorkforceIntelligencePage() {
                           <span style={{ color: 'var(--text-3)', fontSize: 11.9 }}>{row.calls.callsConnected} connected</span>
                         </td>
                         <td style={{ padding: 16 }}>
-                          <ScorePill score={row.quality.qaScore} />
+                          {row.quality.qaScore === null ? (
+                            <span className="mono" style={{ color: 'var(--warning)', fontWeight: 950, fontSize: 11 }}>QA Pending</span>
+                          ) : <ScorePill score={row.quality.qaScore} />}
                           <div style={{ color: 'var(--text-3)', fontSize: 11.4, marginTop: 5 }}>{row.quality.aiReviewedCalls} AI reviewed</div>
                         </td>
                         <td style={{ padding: 16, display: 'flex', gap: 7, flexWrap: 'wrap' }}>
@@ -443,7 +717,10 @@ export default function WorkforceIntelligencePage() {
                           <ScorePill score={row.scores.sales} />
                         </td>
                         <td style={{ padding: 16 }}>
-                          <span className="mono" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 82, height: 30, borderRadius: 999, border: `1px solid ${tone.color}`, color: tone.color, background: 'var(--bg-glass)', fontWeight: 950, fontSize: 11 }}>{tone.label}</span>
+                          <span className="mono" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, justifyContent: 'center', minWidth: 82, height: 30, borderRadius: 999, border: `1px solid ${tone.color}`, color: tone.color, background: 'var(--bg-glass)', fontWeight: 950, fontSize: 11 }}>
+                            <span style={{ width: 7, height: 7, borderRadius: 999, background: tone.color }} />
+                            {tone.label}
+                          </span>
                         </td>
                         <td style={{ padding: 16 }}>
                           <button
@@ -467,23 +744,42 @@ export default function WorkforceIntelligencePage() {
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<AlertTriangle size={13} />} title="Red Flag Operations" subtitle="Disciplinary, coaching, and attendance risk surfaced from backend records." subtitleSize={15.8} />
               <div style={{ display: 'grid', gap: 10 }}>
-                {riskRows.length ? riskRows.map(row => row.redFlags.map(flag => (
-                  <div key={`${row.id}-${flag.key}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, .5fr) minmax(0, 1fr) auto', gap: 12, alignItems: 'center', padding: 13, borderRadius: 17, border: `1px solid ${flag.severity === 'critical' ? 'rgba(239,68,68,.28)' : 'rgba(240,185,11,.28)'}`, background: 'var(--bg-glass)' }}>
-                    <strong style={{ color: 'var(--text)' }}>{row.name}</strong>
-                    <span style={{ color: 'var(--text-2)', fontSize: 17, lineHeight: 1.45 }}>{flag.detail}</span>
-                    <span className="mono" style={{ color: flag.severity === 'critical' ? 'var(--danger)' : 'var(--warning)', fontWeight: 950, fontSize: 11 }}>{flag.label}</span>
+                {riskRows.length ? redFlagCategories.map(group => (
+                  <div key={group.category} style={{ padding: 13, borderRadius: 17, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+                      <DecisionPill label={group.category} color={group.flags.length ? 'var(--danger)' : 'var(--green-2)'} />
+                      <strong className="mono" style={{ color: group.flags.length ? 'var(--danger)' : 'var(--green-2)', fontSize: 12 }}>{group.flags.length}</strong>
+                    </div>
+                    {group.flags.slice(0, 2).map(({ row, flag }) => (
+                      <div key={`${row.id}-${flag.key}`} style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'minmax(110px, .4fr) minmax(0, 1fr)', gap: 10, color: 'var(--text-2)' }}>
+                        <strong style={{ color: 'var(--text)' }}>{row.name}</strong>
+                        <span style={{ fontSize: 13.5, lineHeight: 1.4 }}>{flag.detail}</span>
+                      </div>
+                    ))}
                   </div>
-                ))) : <EmptyState>No red flags in the selected range.</EmptyState>}
+                )) : <EmptyState>No red flags in the selected range.</EmptyState>}
               </div>
             </div>
 
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<Target size={13} />} title="Executive Decisions" subtitle="Immediate action groups for coaching, reward, and operational control." subtitleSize={15.8} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-                <DecisionBox icon={<TrendingUp size={17} />} label="Reward Ready" value={topPerformers.length} color="var(--green-2)" names={topPerformers.map(row => row.name)} />
-                <DecisionBox icon={<TrendingDown size={17} />} label="Coaching Queue" value={rows.filter(row => row.quality.coachingRecommendations.length > 0).length} color="var(--warning)" names={rows.filter(row => row.quality.coachingRecommendations.length > 0).slice(0, 3).map(row => row.name)} />
-                <DecisionBox icon={<ShieldAlert size={17} />} label="Disciplinary Review" value={rows.filter(row => row.redFlags.some(flag => flag.severity === 'critical')).length} color="var(--danger)" names={rows.filter(row => row.redFlags.some(flag => flag.severity === 'critical')).slice(0, 3).map(row => row.name)} />
-                <DecisionBox icon={<CheckCircle2 size={17} />} label="Clean Operators" value={rows.filter(row => !row.redFlags.length).length} color="var(--green-2)" names={rows.filter(row => !row.redFlags.length).slice(0, 3).map(row => row.name)} />
+                <DecisionBox icon={<ShieldAlert size={17} />} label="Immediate Escalation" value={rows.filter(row => row.redFlags.some(flag => flag.severity === 'critical')).length} color="var(--danger)" names={rows.filter(row => row.redFlags.some(flag => flag.severity === 'critical')).slice(0, 3).map(row => row.name)} />
+                <DecisionBox icon={<TrendingDown size={17} />} label="Needs Retraining" value={coachingRows.length} color="var(--warning)" names={coachingRows.slice(0, 3).map(row => row.name)} />
+                <DecisionBox icon={<TrendingUp size={17} />} label="Possible Promotion" value={topPerformers.length} color="var(--green-2)" names={topPerformers.map(row => row.name)} />
+                <DecisionBox icon={<CheckCircle2 size={17} />} label="Needs Supervisor Review" value={riskRows.length} color={riskRows.length ? 'var(--pink)' : 'var(--green-2)'} names={riskRows.slice(0, 3).map(row => row.name)} />
+              </div>
+            </div>
+
+            <div style={{ ...panelStyle, padding: 22 }}>
+              <SectionHeader icon={<Sparkles size={13} />} title="Today's AI Recommendations" subtitle="Decision-ready actions derived from workforce, attendance, QA, and campaign records." subtitleSize={15.8} />
+              <div style={{ display: 'grid', gap: 11 }}>
+                {aiRecommendations.length ? aiRecommendations.map((recommendation, index) => (
+                  <div key={`${recommendation}-${index}`} style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr)', gap: 10, alignItems: 'center', padding: 12, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
+                    <CheckCircle2 size={18} color="var(--green-2)" />
+                    <strong style={{ color: 'var(--text-2)', fontSize: 14 }}>{recommendation}</strong>
+                  </div>
+                )) : <EmptyState>No AI recommendation generated from the current backend records.</EmptyState>}
               </div>
             </div>
           </div>
