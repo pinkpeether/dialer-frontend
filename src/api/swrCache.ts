@@ -90,6 +90,14 @@ export const clearSwrByPrefix = (scope: string) => {
   })
 }
 
+export const clearAllSwr = () => {
+  memory.clear()
+  if (typeof window === 'undefined') return
+  Object.keys(window.localStorage).forEach(key => {
+    if (key.startsWith(prefix)) window.localStorage.removeItem(key)
+  })
+}
+
 export const swr = async <T>(
   key: string,
   request: (options: { silent: boolean }) => Promise<T>,

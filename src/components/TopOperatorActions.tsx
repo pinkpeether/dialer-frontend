@@ -10,6 +10,7 @@ import { markPresenceOfflineBeforeLogout } from '../hooks/useAgentPresence'
 import { useSocket } from '../hooks/useSocket'
 import TimeClockWidget from './TimeClockWidget'
 import { attendanceIntegrityApi } from '../api/attendanceIntegrity.api'
+import { clearPtdtSessionCache } from '../services/sessionCleanup'
 
 type LocalTimeClockState = {
   clockedIn?: boolean
@@ -113,10 +114,11 @@ export default function TopOperatorActions() {
       }).catch(() => undefined)
     }
     markPresenceOfflineBeforeLogout()
-    logout()
-    navigate('/login', { replace: true })
-    void authAPI.logout(sessionToken).catch(() => undefined)
     void unregisterSip().catch(() => undefined)
+    logout()
+    await clearPtdtSessionCache()
+    navigate(`/login?logout=${Date.now()}`, { replace: true })
+    void authAPI.logout(sessionToken).catch(() => undefined)
   }, [logout, navigate, unregisterSip, user?.id])
 
   const requestSignOut = () => {
