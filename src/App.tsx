@@ -49,7 +49,7 @@ import CustomerOnboarding    from './pages/CustomerOnboarding'
 import PlatformAdministration from './pages/PlatformAdministration'
 import CustomerBillingPortal  from './pages/CustomerBillingPortal'
 import AttendanceIntegrity    from './pages/AttendanceIntegrity'
-import WorkforceIntelligence  from './features/workforce-intelligence/WorkforceIntelligencePage'
+import WorkforceIntelligence, { WorkforceOperationsPage } from './features/workforce-intelligence/WorkforceIntelligencePage'
 import Unauthorized           from './pages/Unauthorized'
 import NotFound               from './pages/NotFound'
 import IncomingCallModal       from './components/IncomingCallModal'
@@ -133,6 +133,7 @@ export default function App() {
             <Route path="/customer-onboarding" element={<RoleRoute roles={platformAdminRoles}><CustomerOnboarding /></RoleRoute>} />
             <Route path="/platform/administration" element={<RoleRoute roles={platformAdminRoles}><PlatformAdministration /></RoleRoute>} />
             <Route path="/attendance-integrity" element={<RoleRoute roles={adminSupervisorRoles}><AttendanceIntegrity /></RoleRoute>} />
+            <Route path="/workforce-operations" element={<RoleRoute roles={adminSupervisorRoles}><WorkforceOperationsPage /></RoleRoute>} />
             <Route path="/workforce-intelligence" element={<RoleRoute roles={adminSupervisorRoles}><WorkforceIntelligence /></RoleRoute>} />
             <Route path="/billing" element={<RoleRoute roles={billingRoles}><CustomerBillingPortal /></RoleRoute>} />
             <Route path="/unauthorized"       element={<Unauthorized />} />

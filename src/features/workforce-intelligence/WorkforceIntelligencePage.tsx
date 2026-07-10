@@ -321,7 +321,9 @@ function AgentDeepDive({ row }: { row: WorkforceUserRow | null }) {
   )
 }
 
-export default function WorkforceIntelligencePage() {
+type WorkforcePageMode = 'operations' | 'intelligence'
+
+export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { mode?: WorkforcePageMode }) {
   const filters = useWorkforceIntelligenceStore(state => state.filters)
   const setRange = useWorkforceIntelligenceStore(state => state.setRange)
   const setDateRange = useWorkforceIntelligenceStore(state => state.setDateRange)
@@ -384,6 +386,32 @@ export default function WorkforceIntelligencePage() {
     category,
     flags: riskRows.flatMap(row => row.redFlags.map(flag => ({ row, flag }))).filter(item => flagCategory(item.flag) === category),
   }))
+  const isOperations = mode === 'operations'
+  const pageEyebrow = isOperations ? 'Live Operations Center' : 'AI Analytics & Insights'
+  const pageDescription = isOperations
+    ? 'Live operating view for agents, calls, campaigns, queues, attendance alerts, and supervisor actions.'
+    : 'AI analytics for productivity, attendance integrity, quality, coaching, predictions, and reward decisions.'
+  const operationsCards = [
+    { icon: <Users size={17} />, label: 'Users Online', value: data ? data.summary.onlineUsers : 0, sub: `${data ? data.summary.totalUsers : 0} total users`, color: 'var(--purple)' },
+    { icon: <Clock3 size={17} />, label: 'Clocked In', value: data ? data.summary.clockedInUsers : 0, sub: 'Attendance live', color: 'var(--green-2)' },
+    { icon: <PhoneMetricIcon />, label: 'Active Calls', value: activeCalls, sub: `${data ? data.summary.callsConnected : 0} connected`, color: 'var(--pink)' },
+    { icon: <MegaphoneMetricIcon />, label: 'Current Campaign', value: rows.filter(row => row.productivity.currentCampaign).length, sub: selectedRow?.productivity.currentCampaign || 'No current campaign', color: 'var(--purple)' },
+    { icon: <Filter size={17} />, label: 'Current Queue', value: rows.filter(row => row.productivity.bestPerformingCampaign).length, sub: selectedRow?.productivity.bestPerformingCampaign || 'No queue assigned', color: 'var(--green-2)' },
+    { icon: <Clock3 size={17} />, label: 'Live Talk Time', value: data ? formatSeconds(data.summary.talkTimeSeconds) : '00:00:00', sub: 'Selected range', color: 'var(--warning)' },
+    { icon: <ShieldAlert size={17} />, label: 'Attendance Alerts', value: data ? data.summary.flaggedUsers : 0, sub: `${complianceSignals} signal(s)`, color: complianceSignals ? 'var(--danger)' : 'var(--green-2)' },
+    { icon: <AlertTriangle size={17} />, label: 'Red Flags', value: riskRows.length, sub: 'Supervisor review', color: riskRows.length ? 'var(--danger)' : 'var(--green-2)' },
+  ]
+  const intelligenceCards = [
+    { icon: <Gauge size={17} />, label: 'AI Workforce Score', value: formatScore(data?.summary.averageOverallScore ?? null), sub: 'Composite score', color: scoreColor(data?.summary.averageOverallScore ?? null) },
+    { icon: <TrendingUp size={17} />, label: 'Productivity', value: percentLabel(productivityAverage), sub: formatSeconds(data?.summary.talkTimeSeconds ?? 0), color: 'var(--warning)' },
+    { icon: <CheckCircle2 size={17} />, label: 'Compliance', value: percentLabel(complianceAverage), sub: `${complianceSignals} signal(s)`, color: complianceSignals ? 'var(--warning)' : 'var(--green-2)' },
+    { icon: <ShieldAlert size={17} />, label: 'Attendance Integrity', value: percentLabel(attendanceIntegrityAverage), sub: `${data ? data.summary.flaggedUsers : 0} flagged user(s)`, color: data?.summary.flaggedUsers ? 'var(--danger)' : 'var(--green-2)' },
+    { icon: <Award size={17} />, label: 'Quality Trend', value: percentLabel(avgScore(rows.map(row => row.scores.aiQuality ?? row.quality.qaScore))), sub: 'QA and AI review', color: 'var(--purple)' },
+    { icon: <Calendar size={17} />, label: 'Weekly Trend', value: heatmap.length, sub: 'Heatmap day(s)', color: 'var(--green-2)' },
+    { icon: <Brain size={17} />, label: 'Coaching Queue', value: coachingRows.length, sub: 'Users need coaching', color: 'var(--purple)' },
+    { icon: <Medal size={17} />, label: 'Reward Ready', value: topPerformers.length, sub: 'Promotion candidates', color: 'var(--green-2)' },
+  ]
+  const kpiCards = isOperations ? operationsCards : intelligenceCards
   const inspectRow = (id: string | number) => {
     setSelectedId(id)
     window.requestAnimationFrame(() => {
@@ -393,12 +421,19 @@ export default function WorkforceIntelligencePage() {
 
   return (
     <div className="ptdt-page ptdt-workforce-intelligence-page" style={pageStyle}>
+      <style>
+        {`
+          .workforce-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}
+          @media(max-width:1300px){.workforce-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+          @media(max-width:760px){.workforce-kpi-grid{grid-template-columns:1fr}}
+        `}
+      </style>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 18, marginBottom: 24, flexWrap: 'wrap' }}>
         <div>
-          <div className="eyebrow pink" style={{ marginBottom: 13 }}><Sparkles size={12} /> Workforce Command Center</div>
-          <h1 className="ptdt-page-title">Workforce <span className="gradient-brand-text">Command Center</span></h1>
+          <div className="eyebrow pink" style={{ marginBottom: 13 }}><Sparkles size={12} /> {pageEyebrow}</div>
+          <h1 className="ptdt-page-title">Workforce <span className="gradient-brand-text">{isOperations ? 'Operations' : 'Intelligence'}</span></h1>
           <p className="ptdt-page-desc" style={{ maxWidth: 'none', fontSize: 16.7, lineHeight: 1.45, whiteSpace: 'nowrap' }}>
-            Decision support for productivity, attendance integrity, coaching risk, call output, AI review, and reward readiness.
+            {pageDescription}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -484,18 +519,14 @@ export default function WorkforceIntelligencePage() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 13, marginBottom: 18 }}>
-            <MetricCard icon={<Users size={17} />} label="Users" value={data.summary.totalUsers} sub={`${data.summary.onlineUsers} online`} color="var(--purple)" />
-            <MetricCard icon={<Clock3 size={17} />} label="Clocked In" value={data.summary.clockedInUsers} sub="Attendance live" color="var(--green-2)" />
-            <MetricCard icon={<ShieldAlert size={17} />} label="Attendance Integrity" value={percentLabel(attendanceIntegrityAverage)} sub={`${data.summary.flaggedUsers} flagged user(s)`} color={data.summary.flaggedUsers ? 'var(--danger)' : 'var(--green-2)'} />
-            <MetricCard icon={<Gauge size={17} />} label="Average Performance" value={formatScore(data.summary.averageOverallScore)} sub="Composite score" color={scoreColor(data.summary.averageOverallScore)} />
-            <MetricCard icon={<PhoneMetricIcon />} label="Calls" value={data.summary.callsMade} sub={`${data.summary.callsConnected} connected`} color="var(--pink)" />
-            <MetricCard icon={<TrendingUp size={17} />} label="Productivity Score" value={percentLabel(productivityAverage)} sub={formatSeconds(data.summary.talkTimeSeconds)} color="var(--warning)" />
-            <MetricCard icon={<Brain size={17} />} label="AI Coaching Queue" value={coachingRows.length} sub="Users need coaching" color="var(--purple)" />
-            <MetricCard icon={<CheckCircle2 size={17} />} label="Compliance" value={percentLabel(complianceAverage)} sub={`${complianceSignals} signal(s)`} color={complianceSignals ? 'var(--warning)' : 'var(--green-2)'} />
+          <div className="workforce-kpi-grid">
+            {kpiCards.map(card => (
+              <MetricCard key={card.label} icon={card.icon} label={card.label} value={card.value} sub={card.sub} color={card.color} />
+            ))}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 18, marginBottom: 18 }}>
+            {isOperations && (
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<BarChart3 size={13} />} title="Operational Activity Timeline" subtitle="Selected-user sequence built from login, SIP, campaign, call, QA, and risk records." />
               <div style={{ display: 'grid', gap: 10 }}>
@@ -527,12 +558,16 @@ export default function WorkforceIntelligencePage() {
                 ) : null}
               </div>
             </div>
+            )}
 
+            {!isOperations && (
             <div ref={insightRef}>
               <AgentDeepDive row={selectedRow} />
             </div>
+            )}
           </div>
 
+          {!isOperations && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 18, marginBottom: 18 }}>
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader
@@ -582,7 +617,9 @@ export default function WorkforceIntelligencePage() {
               </div>
             </div>
           </div>
+          )}
 
+          {!isOperations && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 18, marginBottom: 18 }}>
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<Calendar size={13} />} title="Weekly Attendance Heatmap" subtitle="Recent backend activity pattern for the selected range." />
@@ -631,7 +668,9 @@ export default function WorkforceIntelligencePage() {
               ) : <EmptyState>Select a user to generate predictions.</EmptyState>}
             </div>
           </div>
+          )}
 
+          {!isOperations && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 18, marginBottom: 18 }}>
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<Users size={13} />} title="Team Comparison" subtitle="Supervisor, agent team, company average, and top-performer score comparison." />
@@ -663,7 +702,9 @@ export default function WorkforceIntelligencePage() {
               ) : <EmptyState>Select a user to inspect coaching timeline.</EmptyState>}
             </div>
           </div>
+          )}
 
+          {isOperations && (
           <div style={{ ...panelStyle, padding: 0, overflow: 'hidden', marginBottom: 18 }}>
             <div style={{ padding: 22, borderBottom: '1px solid var(--border)' }}>
               <SectionHeader icon={<Filter size={13} />} title="Workforce Command Table" subtitle="Drill down into productivity, attendance, dialer readiness, QA, and disciplinary risk." />
@@ -739,8 +780,10 @@ export default function WorkforceIntelligencePage() {
               </table>
             </div>
           </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 18 }}>
+            {isOperations && (
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<AlertTriangle size={13} />} title="Red Flag Operations" subtitle="Disciplinary, coaching, and attendance risk surfaced from backend records." subtitleSize={15.8} />
               <div style={{ display: 'grid', gap: 10 }}>
@@ -760,7 +803,9 @@ export default function WorkforceIntelligencePage() {
                 )) : <EmptyState>No red flags in the selected range.</EmptyState>}
               </div>
             </div>
+            )}
 
+            {isOperations && (
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<Target size={13} />} title="Executive Decisions" subtitle="Immediate action groups for coaching, reward, and operational control." subtitleSize={15.8} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
@@ -770,7 +815,9 @@ export default function WorkforceIntelligencePage() {
                 <DecisionBox icon={<CheckCircle2 size={17} />} label="Needs Supervisor Review" value={riskRows.length} color={riskRows.length ? 'var(--pink)' : 'var(--green-2)'} names={riskRows.slice(0, 3).map(row => row.name)} />
               </div>
             </div>
+            )}
 
+            {!isOperations && (
             <div style={{ ...panelStyle, padding: 22 }}>
               <SectionHeader icon={<Sparkles size={13} />} title="Today's AI Recommendations" subtitle="Decision-ready actions derived from workforce, attendance, QA, and campaign records." subtitleSize={15.8} />
               <div style={{ display: 'grid', gap: 11 }}>
@@ -782,6 +829,7 @@ export default function WorkforceIntelligencePage() {
                 )) : <EmptyState>No AI recommendation generated from the current backend records.</EmptyState>}
               </div>
             </div>
+            )}
           </div>
         </>
       )}
@@ -791,6 +839,14 @@ export default function WorkforceIntelligencePage() {
 
 function PhoneMetricIcon() {
   return <BarChart3 size={17} />
+}
+
+function MegaphoneMetricIcon() {
+  return <BarChart3 size={17} />
+}
+
+export function WorkforceOperationsPage() {
+  return <WorkforceIntelligencePage mode="operations" />
 }
 
 function DecisionBox({ icon, label, value, color, names }: { icon: ReactNode; label: string; value: number; color: string; names: string[] }) {
