@@ -389,13 +389,13 @@ export default function AdvancedDialingAnalytics() {
       <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
-            <Sparkles size={12} /> Campaign Dialing
+            <Sparkles size={12} /> Predictive / Progressive Engine
           </div>
           <h1 className="ptdt-page-title">
-            Dialing <span className="gradient-brand-text">Settings</span>
+            Advanced <span className="gradient-brand-text">Dialing Analytics</span>
           </h1>
           <p className="ptdt-page-desc">
-            Configure predictive pacing, progressive dialing, retry rules, DNC guardrails, and live campaign dialing controls.
+            Predictive pacing, progressive dialing, retry visibility, DNC guardrails, and live campaign engine control for Admin/Supervisor review.
           </p>
         </div>
         <div className="ptdt-toolbar">
@@ -416,7 +416,7 @@ export default function AdvancedDialingAnalytics() {
       )}
 
       {loading ? (
-        <div className="ptdt-card" style={{ padding: 22, color: 'var(--text-3)' }}>Loading dialing settings...</div>
+        <div className="ptdt-card" style={{ padding: 22, color: 'var(--text-3)' }}>Loading advanced dialing metrics...</div>
       ) : (
         <>
           <div className="ptdt-pro-kpis" style={{ marginBottom: 18 }}>

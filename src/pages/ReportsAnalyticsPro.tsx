@@ -207,10 +207,10 @@ export default function ReportsAnalyticsPro() {
       <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
-            <Sparkles size={12} /> Campaign Reports
+            <Sparkles size={12} /> Reports & Analytics Pro
           </div>
           <h1 className="ptdt-page-title">
-            Campaign <span className="gradient-brand-text">Reports</span>
+            Reports <span className="gradient-brand-text">Analytics Pro</span>
           </h1>
           <p className="ptdt-page-desc">
             End-of-campaign PDF export, per-agent performance, hourly answer patterns, conversion analysis, missed repeat reports, and guarded daily email reporting.

@@ -382,7 +382,7 @@ export default function AttendanceIntegrity() {
     setError('')
     try {
       await attendanceIntegrityApi.review(sessionId, {
-        notes: notes || 'Reviewed from Attendance monitor.',
+        notes: notes || 'Reviewed from Attendance Integrity monitor.',
         removeFlag,
         ...(removeFlag ? {} : { status: 'PENDING_SUPERVISOR_REVIEW' }),
       })
@@ -399,8 +399,8 @@ export default function AttendanceIntegrity() {
     <div className="ptdt-page ptdt-attendance-integrity-page" style={pageStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap', marginBottom: 26 }}>
         <div>
-          <div className="eyebrow pink" style={{ marginBottom: 14 }}><ShieldCheck size={12} /> Attendance</div>
-          <h1 className="ptdt-page-title">Team <span className="gradient-brand-text">Attendance</span></h1>
+          <div className="eyebrow pink" style={{ marginBottom: 14 }}><ShieldCheck size={12} /> Attendance Integrity</div>
+          <h1 className="ptdt-page-title">Attendance <span className="gradient-brand-text">Integrity</span></h1>
           <p className="ptdt-page-desc">
             Monitor supervisor and agent Clock In/Out activity, active work duration, dialer presence, device trace, and review flags.
           </p>
@@ -427,7 +427,7 @@ export default function AttendanceIntegrity() {
         <div>
           <div className="mono" style={{ color: 'var(--pink)', fontWeight: 950, fontSize: 10.5, letterSpacing: 1.3 }}>LIVE SOURCE</div>
           <p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.55, fontSize: 13 }}>
-            Team presence and attendance sessions come from the backend Attendance API. Local TimeClock records are only used as emergency fallback.
+            Team presence and attendance sessions come from the backend Attendance Integrity API. Local TimeClock records are only used as emergency fallback.
           </p>
         </div>
         <div>
@@ -462,7 +462,7 @@ export default function AttendanceIntegrity() {
             </thead>
             <tbody>
               {loading && visibleRows.length === 0 ? (
-                <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-3)' }}>Loading attendance data...</td></tr>
+                <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-3)' }}>Loading attendance integrity data...</td></tr>
               ) : visibleRows.length === 0 ? (
                 <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-3)' }}>No supervisor or agent records found.</td></tr>
               ) : visibleRows.map(row => {
@@ -573,7 +573,7 @@ export default function AttendanceIntegrity() {
           Current viewer
         </div>
         <div style={{ color: 'var(--text-2)', fontSize: 13.5, lineHeight: 1.6 }}>
-          {currentUser?.name || currentUser?.email || 'PTDT User'} can use this page as the dedicated Attendance monitor. Clock records, heartbeat events, disconnect flags, and supervisor review state are now backend-backed.
+          {currentUser?.name || currentUser?.email || 'PTDT User'} can use this page as the dedicated Attendance Integrity monitor. Clock records, heartbeat events, disconnect flags, and supervisor review state are now backend-backed.
         </div>
       </div>
     </div>

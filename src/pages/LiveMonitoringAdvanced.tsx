@@ -106,7 +106,7 @@ export default function LiveMonitoringAdvanced() {
   return (
     <div className="ptdt-page ptdt-pro-page">
       <div className="ptdt-page-header ptdt-pro-hero">
-        <div><div className="eyebrow pink" style={{ marginBottom: 12 }}><Activity size={12} /> Live Calls</div><h1 className="ptdt-page-title">Live <span className="gradient-brand-text">Call Wall</span></h1><p className="ptdt-page-desc">Live call wall, call-map buckets, hourly heatmap, simultaneous-call counter, answer-rate tracker and advisory dial-ratio recommendation.</p></div>
+        <div><div className="eyebrow pink" style={{ marginBottom: 12 }}><Activity size={12} /> PTDT Live Monitoring</div><h1 className="ptdt-page-title">Live <span className="gradient-brand-text">Monitoring+</span></h1><p className="ptdt-page-desc">Live call wall, call-map buckets, hourly heatmap, simultaneous-call counter, answer-rate tracker and advisory dial-ratio recommendation.</p></div>
         <div className="ptdt-toolbar"><input value={campaignId} onChange={event => setCampaignId(event.target.value)} placeholder="Campaign ID (optional)" style={{ minHeight: 42, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass-hi)', color: 'var(--text)', padding: '0 14px', fontWeight: 800, minWidth: 180 }} /><button className="ptdt-action-btn" type="button" onClick={() => void fetchOverview()} disabled={loading}><RefreshCw size={14} /> {loading ? 'Refreshing…' : 'Refresh'}</button><button className="ptdt-action-btn" type="button" onClick={() => setAutoRefresh(value => !value)}><ShieldAlert size={14} /> Auto {autoRefresh ? 'ON' : 'OFF'}</button></div>
       </div>
 

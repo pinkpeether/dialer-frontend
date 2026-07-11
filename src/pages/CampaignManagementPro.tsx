@@ -210,10 +210,10 @@ export default function CampaignManagementPro() {
       <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
-            <Layers3 size={12} /> Campaign Setup
+            <Layers3 size={12} /> Campaign Operations
           </div>
           <h1 className="ptdt-page-title">
-            Manage <span className="gradient-brand-text">Campaigns</span>
+            Campaign <span className="gradient-brand-text">Management Pro</span>
           </h1>
           <p className="ptdt-page-desc">
             Manage campaign scripts, agent popup previews, cloning, bulk contact import, dial settings, and end-of-campaign reporting.
