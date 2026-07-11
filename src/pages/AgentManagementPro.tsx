@@ -189,13 +189,13 @@ export default function AgentManagementPro() {
       <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
-            <Users size={12} /> Agent Operations
+            <Users size={12} /> Team Setup
           </div>
           <h1 className="ptdt-page-title">
-            Agent <span className="gradient-brand-text">Management Pro</span>
+            Manage <span className="gradient-brand-text">Agents</span>
           </h1>
           <p className="ptdt-page-desc">
-            Shift board, break reminders, leaderboard, performance summary, and single-device session guardrails for Admin and Supervisor review.
+            Manage team users, shifts, break reminders, leaderboard, performance summary, and device session guardrails.
           </p>
         </div>
         <div className="ptdt-toolbar">

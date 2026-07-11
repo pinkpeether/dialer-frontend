@@ -78,9 +78,9 @@ export const useWorkforceIntelligence = (filters: WorkforceFilters) => {
 
     if (!silent && !hasCachedData) {
       overlayId = beginGlobalRequestOverlay({
-        message: 'Loading Workforce Intelligence...',
-        followupMessage: 'Building productivity and risk intelligence...',
-        successMessage: 'Workforce Intelligence ready',
+        message: 'Loading workforce data...',
+        followupMessage: 'Building productivity, attendance, and call reports...',
+        successMessage: 'Workforce data ready',
         detail: 'PTDT is combining attendance, calls, AI review, and campaign records.',
         delayMs: 220,
       })
@@ -130,7 +130,7 @@ export const useWorkforceIntelligence = (filters: WorkforceFilters) => {
         data: cachedData ?? current.data,
         loading: false,
         refreshing: false,
-        error: error instanceof Error ? error.message : 'Workforce Intelligence data could not be loaded.',
+        error: error instanceof Error ? error.message : 'Workforce data could not be loaded.',
       }))
       endGlobalRequestOverlay(overlayId, false)
     }

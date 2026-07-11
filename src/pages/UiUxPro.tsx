@@ -249,7 +249,7 @@ export default function UiUxPro() {
         type: 'CONVERSION',
         title: 'PTDT Conversion Captured!',
         message: 'Confetti and leaderboard celebration are ready for agent wins.',
-        triggeredBy: 'UI/UX Pro',
+        triggeredBy: 'Interface Settings',
       });
       setActiveCelebration(event);
       setOverview((current) => ({ ...current, celebrations: [event, ...current.celebrations] }));
@@ -302,7 +302,7 @@ export default function UiUxPro() {
         >
           <div>
             <div className="eyebrow pink" style={{ marginBottom: 14 }}>
-              <Sparkles size={11} /> UI/UX Pro Controls
+              <Sparkles size={11} /> Interface Settings
             </div>
             <h1 style={{
               fontFamily: 'var(--font-display)',
@@ -430,7 +430,7 @@ export default function UiUxPro() {
           >
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
               <span className="pulse-dot pink" style={{ width: 12, height: 12 }} />
-              <span style={{ fontSize: 13 }}>Loading UI/UX Pro controls…</span>
+              <span style={{ fontSize: 13 }}>Loading interface settings…</span>
             </div>
           </div>
         ) : (

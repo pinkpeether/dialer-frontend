@@ -171,8 +171,8 @@ export default function CallIntelligence() {
     <div className="ptdt-page">
       <div className="ptdt-page-header">
         <div>
-          <div className="eyebrow purple" style={{ marginBottom: 12 }}><Brain size={12} /> AI Call Intelligence</div>
-          <h1 className="ptdt-page-title">Call <span className="gradient-brand-text">Intelligence</span></h1>
+          <div className="eyebrow purple" style={{ marginBottom: 12 }}><Brain size={12} /> AI Call Review</div>
+          <h1 className="ptdt-page-title">Call <span className="gradient-brand-text">Review</span></h1>
           <p className="ptdt-page-desc">Search a call, check recording readiness, and generate transcript output when recording storage and AI transcription are enabled.</p>
         </div>
         <div className="ptdt-toolbar">

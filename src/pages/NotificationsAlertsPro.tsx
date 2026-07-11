@@ -152,10 +152,10 @@ export default function NotificationsAlertsPro() {
       <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
-            <Sparkles size={12} /> Notifications & Alerts
+            <Sparkles size={12} /> Notifications
           </div>
           <h1 className="ptdt-page-title">
-            Notifications <span className="gradient-brand-text">Alerts Pro</span>
+            Team <span className="gradient-brand-text">Notifications</span>
           </h1>
           <p className="ptdt-page-desc">
             Desktop toasts, generated sound alerts, angry-customer escalations, shift reminders, campaign completion signals, and low-contact warning automation.

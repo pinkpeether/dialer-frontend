@@ -538,10 +538,10 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
     flags: riskRows.flatMap(row => row.redFlags.map(flag => ({ row, flag }))).filter(item => flagCategory(item.flag) === category),
   }))
   const isOperations = mode === 'operations'
-  const pageEyebrow = isOperations ? 'Live Operations Center' : 'AI Analytics & Insights'
+  const pageEyebrow = isOperations ? 'Live Floor View' : 'Performance Reports'
   const pageDescription = isOperations
     ? 'Live operating view for agents, calls, campaigns, queues, attendance alerts, and supervisor actions.'
-    : 'AI analytics for productivity, attendance integrity, quality, coaching, predictions, and reward decisions.'
+    : 'Performance reporting for productivity, attendance, quality, coaching, predictions, and reward decisions.'
   const operationsCards = [
     { icon: <Users size={17} />, label: 'Users Online', value: data ? data.summary.onlineUsers : 0, sub: `${data ? data.summary.totalUsers : 0} total users`, color: 'var(--purple)' },
     { icon: <Clock3 size={17} />, label: 'Clocked In', value: data ? data.summary.clockedInUsers : 0, sub: 'Attendance live', color: 'var(--green-2)' },
@@ -582,7 +582,7 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 18, marginBottom: 24, flexWrap: 'wrap' }}>
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 13 }}><Sparkles size={12} /> {pageEyebrow}</div>
-          <h1 className="ptdt-page-title">Workforce <span className="gradient-brand-text">{isOperations ? 'Operations' : 'Intelligence'}</span></h1>
+          <h1 className="ptdt-page-title">{isOperations ? 'Live' : 'Team'} <span className="gradient-brand-text">{isOperations ? 'Operations' : 'Performance'}</span></h1>
           <p className="ptdt-page-desc" style={{ maxWidth: 1180, fontSize: 16.7, lineHeight: 1.45 }}>
             {pageDescription}
           </p>
@@ -659,9 +659,9 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
       )}
 
       {loading && !data ? (
-        <div style={panelStyle}><EmptyState>Loading Workforce Intelligence from backend records...</EmptyState></div>
+        <div style={panelStyle}><EmptyState>{isOperations ? 'Loading live operations from backend records...' : 'Loading performance reports from backend records...'}</EmptyState></div>
       ) : !data || rows.length === 0 ? (
-        <div style={panelStyle}><EmptyState>No workforce intelligence records found for the selected filters.</EmptyState></div>
+        <div style={panelStyle}><EmptyState>No workforce records found for the selected filters.</EmptyState></div>
       ) : (
         <>
           {refreshing && (
@@ -839,7 +839,7 @@ export default function WorkforceIntelligencePage({ mode = 'intelligence' }: { m
             </div>
 
             <div style={{ ...panelStyle, padding: 22 }}>
-              <SectionHeader icon={<ShieldAlert size={13} />} title="Attendance Integrity Meter" subtitle="Cheating and attendance-control signals derived from live attendance records." />
+              <SectionHeader icon={<ShieldAlert size={13} />} title="Attendance Score" subtitle="Attendance and clock-control signals derived from live attendance records." />
               <div style={{ display: 'grid', gridTemplateColumns: '120px minmax(0, 1fr)', gap: 16, alignItems: 'center' }}>
                 <div style={{ height: 120 }}>
                   <ResponsiveContainer width="100%" height="100%">

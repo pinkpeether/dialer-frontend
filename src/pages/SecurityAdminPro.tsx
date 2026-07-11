@@ -33,7 +33,7 @@ export default function SecurityAdminPro() {
       setPolicy(policyData)
       setBilling(billingData)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to load Security Admin Pro')
+      setError(err instanceof Error ? err.message : 'Unable to load security controls')
     } finally {
       setLoading(false)
     }
@@ -48,13 +48,13 @@ export default function SecurityAdminPro() {
       <div className="ptdt-page-header ptdt-pro-hero">
         <div>
           <div className="eyebrow pink" style={{ marginBottom: 12 }}>
-            <LockKeyhole size={12} /> Security Hardening
+            <LockKeyhole size={12} /> Security Settings
           </div>
           <h1 className="ptdt-page-title">
-            Security & <span className="gradient-brand-text">Admin Pro</span>
+            Security <span className="gradient-brand-text">Controls</span>
           </h1>
           <p className="ptdt-page-desc">
-            Rate limits, Helmet/CORS readiness, admin IP whitelist, single-session guardrails, billing placeholders, and backup/restore preview.
+            Manage rate limits, CORS readiness, admin IP whitelist, single-session guardrails, billing visibility, and backup checks.
           </p>
         </div>
         <button type="button" className="ptdt-action-btn" onClick={() => void load()} disabled={loading}>
@@ -70,7 +70,7 @@ export default function SecurityAdminPro() {
 
       {loading && !overview ? (
         <div className="ptdt-card" style={{ padding: 22, color: 'var(--text-3)' }}>
-          Loading Security Admin Pro...
+          Loading security controls...
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 16 }}>
