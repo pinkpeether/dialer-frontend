@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Activity, AlertTriangle, BarChart3, CheckCircle2, Gauge, PauseCircle, Phone, Play, RefreshCw, ShieldAlert, Sparkles, Square, Zap } from 'lucide-react'
 import { advancedDialingAPI } from '../api/advancedDialing.api'
+import { campaignsAPI } from '../api/campaigns.api'
 import { cleanDisplayText } from '../utils/displayText'
 
 type DialingMetrics = {
@@ -22,6 +23,13 @@ type RecentDialingCall = {
   duration?: number | null
   startedAt?: string | null
   endedAt?: string | null
+}
+
+type CampaignOption = {
+  id: number
+  name?: string | null
+  status?: string | null
+  mode?: string | null
 }
 
 type PacingPreview = {
@@ -174,10 +182,10 @@ const writeCachedMetrics = (metrics: DialingMetrics) => {
 
 const readEngineCampaignId = () => {
   try {
-    const value = Number(window.localStorage.getItem(ENGINE_CAMPAIGN_KEY) || 1)
-    return Number.isFinite(value) && value > 0 ? value : 1
+    const value = Number(window.localStorage.getItem(ENGINE_CAMPAIGN_KEY) || 0)
+    return Number.isFinite(value) && value > 0 ? value : 0
   } catch {
-    return 1
+    return 0
   }
 }
 
@@ -202,6 +210,15 @@ export default function AdvancedDialingAnalytics() {
       return nextMetrics
     },
     initialData: readCachedMetrics,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
+
+  const campaignsQuery = useQuery<{ campaigns?: CampaignOption[] }>({
+    queryKey: ['advanced-dialing', 'campaign-options'],
+    queryFn: () => campaignsAPI.getAll({ limit: 500 }, { silent: true }),
     staleTime: 2 * 60 * 1000,
     gcTime: 20 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -247,6 +264,21 @@ export default function AdvancedDialingAnalytics() {
   const rates = metrics?.rates || {}
   const recentCallCount = metrics?.recentCalls?.length || 0
   const engineStatus = engineQuery.data || null
+  const campaignOptions = useMemo(
+    () => (campaignsQuery.data?.campaigns || []).filter(campaign => Number.isFinite(Number(campaign.id))),
+    [campaignsQuery.data?.campaigns]
+  )
+  const selectedCampaign = useMemo(
+    () => campaignOptions.find(campaign => Number(campaign.id) === Number(engineCampaignId)) || null,
+    [campaignOptions, engineCampaignId]
+  )
+
+  useEffect(() => {
+    if (engineCampaignId > 0 || campaignOptions.length === 0) return
+    const firstCampaignId = Number(campaignOptions[0].id)
+    setEngineCampaignId(firstCampaignId)
+    try { window.localStorage.setItem(ENGINE_CAMPAIGN_KEY, String(firstCampaignId)) } catch { /* ignore */ }
+  }, [campaignOptions, engineCampaignId])
 
   const cards = useMemo(
     () => [
@@ -259,6 +291,10 @@ export default function AdvancedDialingAnalytics() {
   )
 
   const preview = async () => {
+    if (!engineCampaignId) {
+      setPreviewError('Select a campaign before running predictive preview.')
+      return
+    }
     setPreviewing(true)
     setPreviewError('')
     try {
@@ -300,6 +336,10 @@ export default function AdvancedDialingAnalytics() {
   }
 
   const saveSettings = async () => {
+    if (!engineCampaignId) {
+      setPreviewError('Select a campaign before saving predictive settings.')
+      return
+    }
     setSettingsBusy(true)
     setPreviewError('')
     try {
@@ -321,6 +361,10 @@ export default function AdvancedDialingAnalytics() {
   }
 
   const engineAction = async (action: 'start' | 'stop' | 'tick') => {
+    if (!engineCampaignId) {
+      setPreviewError('Select a campaign before using the predictive engine.')
+      return
+    }
     setEngineBusy(true)
     setPreviewError('')
     try {
@@ -359,7 +403,7 @@ export default function AdvancedDialingAnalytics() {
           <button className="ptdt-action-btn" type="button" onClick={() => void refreshMetrics()} disabled={metricsQuery.isFetching || engineQuery.isFetching}>
             <RefreshCw size={14} /> {metricsQuery.isFetching || engineQuery.isFetching ? 'Refreshing...' : 'Refresh'}
           </button>
-          <button className="btn-brand" type="button" onClick={() => void preview()} disabled={previewing}>
+          <button className="btn-brand" type="button" onClick={() => void preview()} disabled={!engineCampaignId || previewing}>
             <Zap size={14} /> {previewing ? 'Running...' : 'Run Preview'}
           </button>
         </div>
@@ -381,19 +425,29 @@ export default function AdvancedDialingAnalytics() {
 
           <section className="ptdt-card" style={{ padding: 18, marginBottom: 18 }}>
             <SectionTitle icon={<Zap size={16} />} title="Live Campaign Engine" subtitle="Start/stop guarded predictive or progressive dialing for one campaign." />
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 260px) minmax(0, 1fr)', gap: 14, alignItems: 'end' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 420px) minmax(0, 1fr)', gap: 14, alignItems: 'end' }}>
               <label style={{ display: 'grid', gap: 6 }}>
-                <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Campaign ID</span>
-                <input className="ptdt-input" type="number" min={1} value={engineCampaignId} onChange={event => setCampaignId(event.target.value)} />
+                <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Campaign</span>
+                <select className="ptdt-input" value={engineCampaignId || ''} onChange={event => setCampaignId(event.target.value)} disabled={campaignsQuery.isLoading && campaignOptions.length === 0}>
+                  <option value="">{campaignsQuery.isLoading ? 'Loading campaigns...' : 'Select campaign'}</option>
+                  {campaignOptions.map(campaign => (
+                    <option key={campaign.id} value={campaign.id}>
+                      #{campaign.id} - {campaign.name || 'Untitled Campaign'} ({cleanDisplayText(campaign.status || 'DRAFT')} / {cleanDisplayText(campaign.mode || 'PROGRESSIVE')})
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>
+                  {selectedCampaign ? `Selected ID: ${selectedCampaign.id}` : 'Select a campaign to load predictive engine details.'}
+                </span>
               </label>
               <div className="ptdt-toolbar" style={{ justifyContent: 'flex-start' }}>
-                <button className="btn-brand" type="button" onClick={() => void engineAction('start')} disabled={engineBusy || predictivePaused}>
+                <button className="btn-brand" type="button" onClick={() => void engineAction('start')} disabled={!engineCampaignId || engineBusy || predictivePaused}>
                   <Play size={14} /> Start Engine
                 </button>
-                <button className="ptdt-action-btn danger" type="button" onClick={() => void engineAction('stop')} disabled={engineBusy}>
+                <button className="ptdt-action-btn danger" type="button" onClick={() => void engineAction('stop')} disabled={!engineCampaignId || engineBusy}>
                   <Square size={14} /> Stop
                 </button>
-                <button className="ptdt-action-btn" type="button" onClick={() => void engineAction('tick')} disabled={engineBusy || predictivePaused}>
+                <button className="ptdt-action-btn" type="button" onClick={() => void engineAction('tick')} disabled={!engineCampaignId || engineBusy || predictivePaused}>
                   <RefreshCw size={14} /> Run Tick
                 </button>
                 <button className={predictivePaused ? 'ptdt-action-btn danger' : 'ptdt-action-btn'} type="button" onClick={togglePredictivePause}>
@@ -461,7 +515,7 @@ export default function AdvancedDialingAnalytics() {
               <TogglePill active={settings.adaptiveDialEnabled} label="Adaptive Dial Level" onClick={() => updateSetting('adaptiveDialEnabled', !settings.adaptiveDialEnabled)} />
               <TogglePill active={settings.localCallTime} label="Local Call Time" onClick={() => updateSetting('localCallTime', !settings.localCallTime)} />
               <TogglePill active={settings.emergencyStopped} danger label="Emergency Stop" onClick={() => updateSetting('emergencyStopped', !settings.emergencyStopped)} />
-              <button className="btn-brand" type="button" onClick={() => void saveSettings()} disabled={settingsBusy || settingsQuery.isFetching} style={{ marginLeft: 'auto' }}>
+              <button className="btn-brand" type="button" onClick={() => void saveSettings()} disabled={!engineCampaignId || settingsBusy || settingsQuery.isFetching} style={{ marginLeft: 'auto' }}>
                 <CheckCircle2 size={14} /> {settingsBusy ? 'Saving...' : 'Save Predictive Settings'}
               </button>
             </div>
