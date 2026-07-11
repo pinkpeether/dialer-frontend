@@ -1,7 +1,8 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Activity, AlertTriangle, BarChart3, CheckCircle2, Gauge, PauseCircle, Phone, Play, RefreshCw, ShieldAlert, Sparkles, Square, Zap } from 'lucide-react'
 import { advancedDialingAPI } from '../api/advancedDialing.api'
+import { campaignsAPI } from '../api/campaigns.api'
 import { cleanDisplayText } from '../utils/displayText'
 
 type DialingMetrics = {
@@ -24,12 +25,24 @@ type RecentDialingCall = {
   endedAt?: string | null
 }
 
+type CampaignOption = {
+  id: number
+  name?: string | null
+  status?: string | null
+  mode?: string | null
+}
+
 type PacingPreview = {
   recommendedDialCount?: number
+  availableDialSlots?: number
   cap?: number
   raw?: number
   readyAgents?: number
   answerRate?: number
+  abandonRate?: number
+  autoDialLevel?: number
+  effectiveDialLevel?: number
+  adjustmentReasons?: string[]
   maxCallsPerReadyAgent?: number
   safetyMultiplier?: number
   featureFlagRequired?: boolean
@@ -56,6 +69,22 @@ type EngineStatus = {
   activeCalls?: number
   pendingContacts?: number
   retryDueContacts?: number
+  hopper?: {
+    minimumHopper?: number
+    maximumHopper?: number
+    eligibleInHopper?: number
+    inspected?: number
+    dncBlocked?: number
+    needsRefill?: boolean
+    empty?: boolean
+  }
+  abandonRate?: number
+  averages?: {
+    ringSeconds?: number
+    talkSeconds?: number
+    wrapUpSeconds?: number
+  }
+  settings?: Partial<PredictiveSettings>
   answeredCalls?: number
   totalCalls?: number
   answerRate?: number
@@ -68,9 +97,60 @@ type EngineStatus = {
   pacing?: PacingPreview
 }
 
+type PredictiveSettings = {
+  mode: string
+  predictiveEnabled: boolean
+  adaptiveDialEnabled: boolean
+  autoDialLevel: number
+  minimumHopper: number
+  maximumHopper: number
+  hopperRefillInterval: number
+  retryDelay: number
+  maxRetries: number
+  wrapUpTime: number
+  maximumAbandonRate: number
+  maximumSimultaneousCalls: number
+  maximumCallsPerAgent: number
+  callTimeout: number
+  ringTimeout: number
+  agentReservationTime: number
+  maximumQueueWait: number
+  startTime: string
+  endTime: string
+  timezone: string
+  localCallTime: boolean
+  emergencyStopped: boolean
+}
+
 const METRICS_CACHE_KEY = 'ptdt-advanced-dialing-metrics'
 const ENGINE_CAMPAIGN_KEY = 'ptdt-advanced-dialing-engine-campaign-id'
 const PREDICTIVE_PAUSE_KEY = 'ptdt-advanced-dialing-predictive-paused'
+const DIAL_LEVELS = [0, 0.5, 1, 1.2, 1.5, 2, 2.5, 3]
+
+const defaultPredictiveSettings = (): PredictiveSettings => ({
+  mode: 'PREDICTIVE',
+  predictiveEnabled: true,
+  adaptiveDialEnabled: true,
+  autoDialLevel: 1,
+  minimumHopper: 25,
+  maximumHopper: 200,
+  hopperRefillInterval: 30,
+  retryDelay: 300,
+  maxRetries: 3,
+  wrapUpTime: 30,
+  maximumAbandonRate: 0.03,
+  maximumSimultaneousCalls: 50,
+  maximumCallsPerAgent: 1,
+  callTimeout: 60,
+  ringTimeout: 30,
+  agentReservationTime: 15,
+  maximumQueueWait: 45,
+  startTime: '',
+  endTime: '',
+  timezone: 'Asia/Karachi',
+  localCallTime: true,
+  emergencyStopped: false,
+})
 
 const fmtPercent = (value?: number) => {
   if (!Number.isFinite(value)) return '0%'
@@ -102,10 +182,10 @@ const writeCachedMetrics = (metrics: DialingMetrics) => {
 
 const readEngineCampaignId = () => {
   try {
-    const value = Number(window.localStorage.getItem(ENGINE_CAMPAIGN_KEY) || 1)
-    return Number.isFinite(value) && value > 0 ? value : 1
+    const value = Number(window.localStorage.getItem(ENGINE_CAMPAIGN_KEY) || 0)
+    return Number.isFinite(value) && value > 0 ? value : 0
   } catch {
-    return 1
+    return 0
   }
 }
 
@@ -116,6 +196,8 @@ export default function AdvancedDialingAnalytics() {
   const [previewError, setPreviewError] = useState('')
   const [engineCampaignId, setEngineCampaignId] = useState(readEngineCampaignId)
   const [engineBusy, setEngineBusy] = useState(false)
+  const [settingsBusy, setSettingsBusy] = useState(false)
+  const [settings, setSettings] = useState<PredictiveSettings>(defaultPredictiveSettings)
   const [predictivePaused, setPredictivePaused] = useState(() => {
     try { return window.localStorage.getItem(PREDICTIVE_PAUSE_KEY) === '1' } catch { return false }
   })
@@ -134,6 +216,15 @@ export default function AdvancedDialingAnalytics() {
     placeholderData: previousData => previousData,
   })
 
+  const campaignsQuery = useQuery<{ campaigns?: CampaignOption[] }>({
+    queryKey: ['advanced-dialing', 'campaign-options'],
+    queryFn: () => campaignsAPI.getAll({ limit: 500 }, { silent: true }),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
+
   const engineQuery = useQuery<EngineStatus>({
     queryKey: ['advanced-dialing', 'engine-status', engineCampaignId],
     queryFn: () => advancedDialingAPI.getEngineStatus(engineCampaignId),
@@ -143,6 +234,21 @@ export default function AdvancedDialingAnalytics() {
     refetchOnWindowFocus: false,
     placeholderData: previousData => previousData,
   })
+
+  const settingsQuery = useQuery<PredictiveSettings>({
+    queryKey: ['advanced-dialing', 'dial-settings', engineCampaignId],
+    queryFn: () => advancedDialingAPI.getCampaignDialSettings(engineCampaignId),
+    enabled: Number.isFinite(engineCampaignId) && engineCampaignId > 0,
+    staleTime: 90 * 1000,
+    gcTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previousData => previousData,
+  })
+
+  useEffect(() => {
+    if (!settingsQuery.data) return
+    setSettings({ ...defaultPredictiveSettings(), ...settingsQuery.data })
+  }, [settingsQuery.data])
 
   const metrics = metricsQuery.data ?? null
   const loading = metricsQuery.isLoading && !metrics
@@ -158,6 +264,21 @@ export default function AdvancedDialingAnalytics() {
   const rates = metrics?.rates || {}
   const recentCallCount = metrics?.recentCalls?.length || 0
   const engineStatus = engineQuery.data || null
+  const campaignOptions = useMemo(
+    () => (campaignsQuery.data?.campaigns || []).filter(campaign => Number.isFinite(Number(campaign.id))),
+    [campaignsQuery.data?.campaigns]
+  )
+  const selectedCampaign = useMemo(
+    () => campaignOptions.find(campaign => Number(campaign.id) === Number(engineCampaignId)) || null,
+    [campaignOptions, engineCampaignId]
+  )
+
+  useEffect(() => {
+    if (engineCampaignId > 0 || campaignOptions.length === 0) return
+    const firstCampaignId = Number(campaignOptions[0].id)
+    setEngineCampaignId(firstCampaignId)
+    try { window.localStorage.setItem(ENGINE_CAMPAIGN_KEY, String(firstCampaignId)) } catch { /* ignore */ }
+  }, [campaignOptions, engineCampaignId])
 
   const cards = useMemo(
     () => [
@@ -170,6 +291,10 @@ export default function AdvancedDialingAnalytics() {
   )
 
   const preview = async () => {
+    if (!engineCampaignId) {
+      setPreviewError('Select a campaign before running predictive preview.')
+      return
+    }
     setPreviewing(true)
     setPreviewError('')
     try {
@@ -177,7 +302,13 @@ export default function AdvancedDialingAnalytics() {
         advancedDialingAPI.previewPacing({
           readyAgents: engineStatus?.readyAgents || 3,
           answerRate: engineStatus?.answerRate || rates.answerRate || 0.2,
-          maxCallsPerReadyAgent: 2,
+          activeCalls: engineStatus?.activeCalls || 0,
+          abandonRate: engineStatus?.abandonRate || 0,
+          autoDialLevel: settings.autoDialLevel,
+          adaptiveDialEnabled: settings.adaptiveDialEnabled,
+          maxAbandonRate: settings.maximumAbandonRate,
+          maxSimultaneousCalls: settings.maximumSimultaneousCalls,
+          maxCallsPerReadyAgent: settings.maximumCallsPerAgent,
         }),
         advancedDialingAPI.previewGuardrails({
           campaignId: engineCampaignId,
@@ -200,6 +331,27 @@ export default function AdvancedDialingAnalytics() {
     try { window.localStorage.setItem(ENGINE_CAMPAIGN_KEY, String(next)) } catch { /* ignore */ }
   }
 
+  const updateSetting = (key: keyof PredictiveSettings, value: string | number | boolean) => {
+    setSettings(current => ({ ...current, [key]: value }))
+  }
+
+  const saveSettings = async () => {
+    if (!engineCampaignId) {
+      setPreviewError('Select a campaign before saving predictive settings.')
+      return
+    }
+    setSettingsBusy(true)
+    setPreviewError('')
+    try {
+      await advancedDialingAPI.updateCampaignDialSettings(engineCampaignId, settings)
+      await Promise.all([settingsQuery.refetch(), engineQuery.refetch(), metricsQuery.refetch()])
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : 'Failed to save predictive settings')
+    } finally {
+      setSettingsBusy(false)
+    }
+  }
+
   const togglePredictivePause = () => {
     setPredictivePaused(current => {
       const next = !current
@@ -209,6 +361,10 @@ export default function AdvancedDialingAnalytics() {
   }
 
   const engineAction = async (action: 'start' | 'stop' | 'tick') => {
+    if (!engineCampaignId) {
+      setPreviewError('Select a campaign before using the predictive engine.')
+      return
+    }
     setEngineBusy(true)
     setPreviewError('')
     try {
@@ -225,7 +381,7 @@ export default function AdvancedDialingAnalytics() {
 
   const refreshMetrics = async () => {
     setPreviewError('')
-    await Promise.all([metricsQuery.refetch(), engineQuery.refetch()])
+    await Promise.all([metricsQuery.refetch(), engineQuery.refetch(), settingsQuery.refetch()])
   }
 
   return (
@@ -247,7 +403,7 @@ export default function AdvancedDialingAnalytics() {
           <button className="ptdt-action-btn" type="button" onClick={() => void refreshMetrics()} disabled={metricsQuery.isFetching || engineQuery.isFetching}>
             <RefreshCw size={14} /> {metricsQuery.isFetching || engineQuery.isFetching ? 'Refreshing...' : 'Refresh'}
           </button>
-          <button className="btn-brand" type="button" onClick={() => void preview()} disabled={previewing}>
+          <button className="btn-brand" type="button" onClick={() => void preview()} disabled={!engineCampaignId || previewing}>
             <Zap size={14} /> {previewing ? 'Running...' : 'Run Preview'}
           </button>
         </div>
@@ -269,19 +425,29 @@ export default function AdvancedDialingAnalytics() {
 
           <section className="ptdt-card" style={{ padding: 18, marginBottom: 18 }}>
             <SectionTitle icon={<Zap size={16} />} title="Live Campaign Engine" subtitle="Start/stop guarded predictive or progressive dialing for one campaign." />
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 260px) minmax(0, 1fr)', gap: 14, alignItems: 'end' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 420px) minmax(0, 1fr)', gap: 14, alignItems: 'end' }}>
               <label style={{ display: 'grid', gap: 6 }}>
-                <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Campaign ID</span>
-                <input className="ptdt-input" type="number" min={1} value={engineCampaignId} onChange={event => setCampaignId(event.target.value)} />
+                <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Campaign</span>
+                <select className="ptdt-input" value={engineCampaignId || ''} onChange={event => setCampaignId(event.target.value)} disabled={campaignsQuery.isLoading && campaignOptions.length === 0}>
+                  <option value="">{campaignsQuery.isLoading ? 'Loading campaigns...' : 'Select campaign'}</option>
+                  {campaignOptions.map(campaign => (
+                    <option key={campaign.id} value={campaign.id}>
+                      #{campaign.id} - {campaign.name || 'Untitled Campaign'} ({cleanDisplayText(campaign.status || 'DRAFT')} / {cleanDisplayText(campaign.mode || 'PROGRESSIVE')})
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>
+                  {selectedCampaign ? `Selected ID: ${selectedCampaign.id}` : 'Select a campaign to load predictive engine details.'}
+                </span>
               </label>
               <div className="ptdt-toolbar" style={{ justifyContent: 'flex-start' }}>
-                <button className="btn-brand" type="button" onClick={() => void engineAction('start')} disabled={engineBusy || predictivePaused}>
+                <button className="btn-brand" type="button" onClick={() => void engineAction('start')} disabled={!engineCampaignId || engineBusy || predictivePaused}>
                   <Play size={14} /> Start Engine
                 </button>
-                <button className="ptdt-action-btn danger" type="button" onClick={() => void engineAction('stop')} disabled={engineBusy}>
+                <button className="ptdt-action-btn danger" type="button" onClick={() => void engineAction('stop')} disabled={!engineCampaignId || engineBusy}>
                   <Square size={14} /> Stop
                 </button>
-                <button className="ptdt-action-btn" type="button" onClick={() => void engineAction('tick')} disabled={engineBusy || predictivePaused}>
+                <button className="ptdt-action-btn" type="button" onClick={() => void engineAction('tick')} disabled={!engineCampaignId || engineBusy || predictivePaused}>
                   <RefreshCw size={14} /> Run Tick
                 </button>
                 <button className={predictivePaused ? 'ptdt-action-btn danger' : 'ptdt-action-btn'} type="button" onClick={togglePredictivePause}>
@@ -311,6 +477,53 @@ export default function AdvancedDialingAnalytics() {
               ) : (
                 <div className="badge badge-pending"><AlertTriangle size={13} /> {(engineStatus?.guardrails?.reasons || ['Awaiting status']).join(' · ')}</div>
               )}
+            </div>
+          </section>
+
+          <section className="ptdt-card" style={{ padding: 18, marginBottom: 18 }}>
+            <SectionTitle icon={<Gauge size={16} />} title="Predictive Campaign Controls" subtitle="VICIdial-style pacing controls backed by PTDT scheduler guardrails." />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+              <Field label="Campaign Status">
+                <select className="ptdt-input" value={settings.mode} onChange={event => updateSetting('mode', event.target.value)}>
+                  <option value="PROGRESSIVE">Progressive</option>
+                  <option value="PREDICTIVE">Predictive</option>
+                  <option value="PREVIEW">Preview</option>
+                  <option value="MANUAL">Manual</option>
+                </select>
+              </Field>
+              <Field label="Auto Dial Level">
+                <select className="ptdt-input" value={settings.autoDialLevel} onChange={event => updateSetting('autoDialLevel', Number(event.target.value))}>
+                  {DIAL_LEVELS.map(level => <option key={level} value={level}>{level.toFixed(level % 1 === 0 ? 1 : 1)}</option>)}
+                </select>
+              </Field>
+              <Field label="Minimum Hopper"><input className="ptdt-input" type="number" min={1} value={settings.minimumHopper} onChange={event => updateSetting('minimumHopper', Number(event.target.value))} /></Field>
+              <Field label="Maximum Hopper"><input className="ptdt-input" type="number" min={1} value={settings.maximumHopper} onChange={event => updateSetting('maximumHopper', Number(event.target.value))} /></Field>
+              <Field label="Retry Delay"><input className="ptdt-input" type="number" min={30} value={settings.retryDelay} onChange={event => updateSetting('retryDelay', Number(event.target.value))} /></Field>
+              <Field label="Retry Attempts"><input className="ptdt-input" type="number" min={0} value={settings.maxRetries} onChange={event => updateSetting('maxRetries', Number(event.target.value))} /></Field>
+              <Field label="Wrap-up Time"><input className="ptdt-input" type="number" min={0} value={settings.wrapUpTime} onChange={event => updateSetting('wrapUpTime', Number(event.target.value))} /></Field>
+              <Field label="Max Abandon Rate"><input className="ptdt-input" type="number" min={0} max={0.2} step={0.01} value={settings.maximumAbandonRate} onChange={event => updateSetting('maximumAbandonRate', Number(event.target.value))} /></Field>
+              <Field label="Max Simultaneous Calls"><input className="ptdt-input" type="number" min={1} value={settings.maximumSimultaneousCalls} onChange={event => updateSetting('maximumSimultaneousCalls', Number(event.target.value))} /></Field>
+              <Field label="Max Calls Per Agent"><input className="ptdt-input" type="number" min={0.5} max={5} step={0.1} value={settings.maximumCallsPerAgent} onChange={event => updateSetting('maximumCallsPerAgent', Number(event.target.value))} /></Field>
+              <Field label="Ring Timeout"><input className="ptdt-input" type="number" min={5} value={settings.ringTimeout} onChange={event => updateSetting('ringTimeout', Number(event.target.value))} /></Field>
+              <Field label="Call Timeout"><input className="ptdt-input" type="number" min={5} value={settings.callTimeout} onChange={event => updateSetting('callTimeout', Number(event.target.value))} /></Field>
+              <Field label="Start Time"><input className="ptdt-input" type="time" value={settings.startTime || ''} onChange={event => updateSetting('startTime', event.target.value)} /></Field>
+              <Field label="Stop Time"><input className="ptdt-input" type="time" value={settings.endTime || ''} onChange={event => updateSetting('endTime', event.target.value)} /></Field>
+              <Field label="Timezone"><input className="ptdt-input" value={settings.timezone} onChange={event => updateSetting('timezone', event.target.value)} /></Field>
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
+              <TogglePill active={settings.predictiveEnabled} label="Predictive Enabled" onClick={() => updateSetting('predictiveEnabled', !settings.predictiveEnabled)} />
+              <TogglePill active={settings.adaptiveDialEnabled} label="Adaptive Dial Level" onClick={() => updateSetting('adaptiveDialEnabled', !settings.adaptiveDialEnabled)} />
+              <TogglePill active={settings.localCallTime} label="Local Call Time" onClick={() => updateSetting('localCallTime', !settings.localCallTime)} />
+              <TogglePill active={settings.emergencyStopped} danger label="Emergency Stop" onClick={() => updateSetting('emergencyStopped', !settings.emergencyStopped)} />
+              <button className="btn-brand" type="button" onClick={() => void saveSettings()} disabled={!engineCampaignId || settingsBusy || settingsQuery.isFetching} style={{ marginLeft: 'auto' }}>
+                <CheckCircle2 size={14} /> {settingsBusy ? 'Saving...' : 'Save Predictive Settings'}
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginTop: 14 }}>
+              <MiniStat label="Hopper Ready" value={engineStatus?.hopper?.eligibleInHopper ?? 0} />
+              <MiniStat label="Effective Level" value={engineStatus?.pacing?.effectiveDialLevel ?? settings.autoDialLevel} />
+              <MiniStat label="Abandon Rate" value={fmtPercent(engineStatus?.abandonRate)} />
+              <MiniStat label="Wrap-up" value={`${engineStatus?.averages?.wrapUpSeconds ?? settings.wrapUpTime}s`} />
             </div>
           </section>
 
@@ -392,6 +605,34 @@ function MiniStat({ label, value }: { label: string; value: ReactNode }) {
       <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
       <div className="display" style={{ fontSize: 22, marginTop: 4 }}>{value}</div>
     </div>
+  )
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label style={{ display: 'grid', gap: 6 }}>
+      <span className="mono" style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 850, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</span>
+      {children}
+    </label>
+  )
+}
+
+function TogglePill({ active, label, danger = false, onClick }: { active: boolean; label: string; danger?: boolean; onClick: () => void }) {
+  const color = danger ? '#ef4444' : '#00a747'
+  return (
+    <button
+      type="button"
+      className="ptdt-action-btn"
+      onClick={onClick}
+      style={{
+        borderColor: active ? `${color}55` : 'var(--border)',
+        background: active ? `${color}14` : 'var(--surface)',
+        color: active ? color : 'var(--text-3)',
+      }}
+    >
+      <span style={{ width: 9, height: 9, borderRadius: '50%', background: active ? color : 'var(--text-3)', display: 'inline-block' }} />
+      {label}
+    </button>
   )
 }
 
