@@ -9,6 +9,7 @@ import PtdtDialog from './PtdtDialog'
 import PtdtAnimatedSlogan from './PtdtAnimatedSlogan'
 import SipRegistrationGate from './SipRegistrationGate'
 import { markPresenceOfflineBeforeLogout, useAgentPresence } from '../hooks/useAgentPresence'
+import { clearPtdtSessionCache } from '../services/sessionCleanup'
 
 export default function Layout() {
   const sipConfig = useSipStore(s => s.config)
@@ -71,14 +72,15 @@ export default function Layout() {
     setConfirmSignOut(true)
   }, [])
 
-  const performSignOut = useCallback(() => {
+  const performSignOut = useCallback(async () => {
     const token = localStorage.getItem('jd_token')
     setConfirmSignOut(false)
     markPresenceOfflineBeforeLogout()
-    logout()
-    navigate('/login', { replace: true })
-    void authAPI.logout(token).catch(() => undefined)
     void unregisterSip().catch(() => undefined)
+    logout()
+    await clearPtdtSessionCache()
+    navigate(`/login?logout=${Date.now()}`, { replace: true })
+    void authAPI.logout(token).catch(() => undefined)
   }, [logout, navigate, unregisterSip])
 
   const sidebarWidth = sidebarCollapsed ? 96 : 324

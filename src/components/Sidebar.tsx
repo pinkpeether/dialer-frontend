@@ -75,7 +75,7 @@ const hexToRgba = (hex: string, alpha: number) => {
 }
 
 const NAV: NavItem[] = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', color: COLORS.purple },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Main Dashboard', color: COLORS.purple },
   { to: '/dialer', icon: Phone, label: 'Calling Console', color: COLORS.green },
   { to: '/sms', icon: MessageSquareText, label: 'Send SMS', color: COLORS.green },
   { to: '/agent/dashboard', icon: Headset, label: 'Agent Dashboard', color: COLORS.cyan },
@@ -85,10 +85,11 @@ const NAV: NavItem[] = [
   { to: '/agents', icon: Users, label: 'Agents / Team Users', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
   { to: '/agent-management-pro', icon: Users, label: 'Agent Management Pro', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.purple },
   { to: '/attendance-integrity', icon: Clock3, label: 'Attendance Integrity', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.green },
+  { to: '/workforce-operations', icon: Activity, label: 'Workforce Operations', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.green },
   { to: '/workforce-intelligence', icon: Brain, label: 'Workforce Intelligence', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.pink },
   { to: '/calls', icon: History, label: 'Call History', color: COLORS.gold },
   { to: '/callbacks', icon: Calendar, label: 'Callbacks', color: COLORS.orange },
-  { to: '/supervisor', icon: Eye, label: 'Supervisor', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.purple },
+  { to: '/supervisor', icon: Eye, label: 'Supervisor Dashboard', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.purple },
   { to: '/ops', icon: Activity, label: 'Ops Center', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.green },
   { to: '/monitoring', icon: Activity, label: 'Monitoring', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.cyan },
   { to: '/live-monitoring-advanced', icon: Globe, label: 'Live Monitoring Plus', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.teal },
@@ -121,7 +122,7 @@ const NAV: NavItem[] = [
 ]
 
 const AGENT_NAV: NavItem[] = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', color: COLORS.purple },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Main Dashboard', color: COLORS.purple },
   { to: '/agent/workspace', icon: BriefcaseBusiness, label: 'Agent Workspace', color: COLORS.purple },
   { to: '/dialer', icon: Phone, label: 'Calling Console', color: COLORS.green },
   { to: '/live-ai', icon: Radio, label: 'Live AI', color: COLORS.pink },
@@ -136,7 +137,7 @@ const CONSOLE_GROUPS: NavGroup[] = [
   { key: 'administration', label: 'ADMINISTRATION', icon: Crown, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/customer-onboarding', '/commercial-control', '/platform/administration'] },
   { key: 'ai-dialer', label: 'AI DIALER', icon: Radio, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/ai-dialer', '/ai-dialer/logs'] },
   { key: 'dialer', label: 'DIALER', icon: Phone, color: COLORS.green, items: ['/dialer', '/sip-settings', '/advanced-dialing'] },
-  { key: 'agents', label: 'AGENTS', icon: Users, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/agents', '/agent-management-pro', '/attendance-integrity', '/workforce-intelligence'] },
+  { key: 'agents', label: 'AGENTS', icon: Users, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/agents', '/agent-management-pro', '/attendance-integrity', '/workforce-operations', '/workforce-intelligence'] },
   { key: 'campaigns', label: 'CAMPAIGNS', icon: Megaphone, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/campaigns', '/campaign-management-pro'] },
   { key: 'spoofing', label: 'SPOOFING MANAGEMENT', icon: PhoneCall, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/admin/spoofing'] },
   { key: 'sms', label: 'SMS MANAGEMENT', icon: MessageSquareText, color: COLORS.green, items: ['/sms'] },
