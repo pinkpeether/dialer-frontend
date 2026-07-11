@@ -31,6 +31,20 @@ export const advancedDialingAPI = {
     },
     options,
   ),
+  getCampaignDialSettings: async (campaignId: number, options?: AdvancedDialingOptions) => swr(
+    swrKey('advanced-dialing', { type: 'dial-settings', campaignId }),
+    async ({ silent }) => {
+      const res = await api.get(`/campaign-management-pro/campaigns/${campaignId}/dial-settings`, advancedDialingGetConfig(silent))
+      return res.data.data
+    },
+    options,
+  ),
+  updateCampaignDialSettings: async (campaignId: number, payload: Record<string, unknown>) => {
+    const res = await api.put(`/campaign-management-pro/campaigns/${campaignId}/dial-settings`, payload)
+    clearSwrByPrefix('advanced-dialing')
+    clearSwrByPrefix('campaigns')
+    return res.data.data
+  },
   runEngineTick: async (campaignId: number) => {
     const res = await api.post(`/dialer/engine/${campaignId}/tick`)
     clearSwrByPrefix('advanced-dialing')
