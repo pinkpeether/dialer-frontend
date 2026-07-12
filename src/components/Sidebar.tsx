@@ -5,18 +5,16 @@ import {
   BarChart3,
   BellRing,
   BookUser,
-  Brain,
   BriefcaseBusiness,
   Building2,
   Calendar,
-  Clock3,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Clock3,
   CreditCard,
   Crown,
-  Eye,
   Globe,
   HardDriveDownload,
   Headset,
@@ -46,8 +44,9 @@ import { useAuthStore } from '../store/auth.store'
 import ThemeToggle from './ThemeToggle'
 import PtdtAnimatedSlogan from './PtdtAnimatedSlogan'
 
-type NavItem = { to: string; icon: ElementType; label: string; roles?: string[]; color?: string }
-type NavGroup = { key: string; label: string; icon: ElementType; roles?: string[]; color?: string; items: string[] }
+type SupportedRole = 'SUPER_ADMIN' | 'CUSTOMER_ADMIN' | 'SUPERVISOR' | 'AGENT'
+type NavItem = { to: string; icon: ElementType; label: string; color?: string }
+type NavGroup = { key: string; label: string; icon: ElementType; color?: string; items: NavItem[] }
 
 type SidebarProps = {
   collapsed?: boolean
@@ -58,13 +57,7 @@ const COLORS = {
   pink: '#fb0b8c',
   green: '#00a747',
   purple: '#8057d7',
-  gold: '#8057d7',
-  red: '#fb0b8c',
-  cyan: '#8057d7',
-  indigo: '#8057d7',
   slate: '#64748b',
-  orange: '#fb0b8c',
-  teal: '#00a747',
 }
 
 const hexToRgba = (hex: string, alpha: number) => {
@@ -74,105 +67,229 @@ const hexToRgba = (hex: string, alpha: number) => {
   return `rgba(${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}, ${alpha})`
 }
 
-const NAV: NavItem[] = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Main Dashboard', color: COLORS.purple },
-  { to: '/dialer', icon: Phone, label: 'Calling Console', color: COLORS.green },
-  { to: '/sms', icon: MessageSquareText, label: 'Send SMS', color: COLORS.green },
-  { to: '/agent/dashboard', icon: Headset, label: 'Agent Dashboard', color: COLORS.cyan },
-  { to: '/campaigns', icon: Megaphone, label: 'Manage Campaigns', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.pink },
-  { to: '/contacts', icon: BookUser, label: 'Contacts', color: COLORS.teal },
-  { to: '/contact-management-pro', icon: Users, label: 'Contact Management Pro', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.teal },
-  { to: '/agents', icon: Users, label: 'Agents / Team Users', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
-  { to: '/agent-management-pro', icon: Users, label: 'Agent Management Pro', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.purple },
-  { to: '/attendance-integrity', icon: Clock3, label: 'Attendance Integrity', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.green },
-  { to: '/workforce-operations', icon: Activity, label: 'Workforce Operations', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.green },
-  { to: '/workforce-intelligence', icon: Brain, label: 'Workforce Intelligence', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.pink },
-  { to: '/calls', icon: History, label: 'Call History', color: COLORS.gold },
-  { to: '/callbacks', icon: Calendar, label: 'Callbacks', color: COLORS.orange },
-  { to: '/supervisor', icon: Eye, label: 'Supervisor Dashboard', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.purple },
-  { to: '/ops', icon: Activity, label: 'Ops Center', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.green },
-  { to: '/monitoring', icon: Activity, label: 'Monitoring', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.cyan },
-  { to: '/live-monitoring-advanced', icon: Globe, label: 'Live Monitoring Plus', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.teal },
-  { to: '/advanced-dialing', icon: Zap, label: 'Advanced Dialing', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.orange },
-  { to: '/call-controls', icon: PhoneCall, label: 'Call Controls', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.red },
-  { to: '/live-ai', icon: Radio, label: 'Live AI', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR', 'AGENT'], color: COLORS.pink },
-  { to: '/campaign-management-pro', icon: Layers3, label: 'Campaign Management Pro', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.teal },
-  { to: '/reports-analytics-pro', icon: BarChart3, label: 'Reports Analytics Plus', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.purple },
-  { to: '/ui-ux-pro', icon: Palette, label: 'UI/UX Pro', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.teal },
-  { to: '/security-admin-pro', icon: LockKeyhole, label: 'Security Admin Pro', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.red },
-  { to: '/deployment-platform-pro', icon: ServerCog, label: 'Deployment Platform', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.teal },
-  { to: '/support/diagnostics', icon: LifeBuoy, label: 'Diagnostics', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.indigo },
-  { to: '/dnc', icon: ShieldOff, label: 'DNC Registry', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.red },
-  { to: '/reports', icon: BarChart3, label: 'Reports', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.pink },
-  { to: '/recordings', icon: Radio, label: 'Recordings', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.green },
-  { to: '/recording-storage-pro', icon: HardDriveDownload, label: 'Recording Storage', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN'], color: COLORS.cyan },
-  { to: '/call-intelligence', icon: Radio, label: 'Call Intelligence', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.purple },
-  { to: '/ai-dialer', icon: PhoneCall, label: 'Start AI Call', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.pink },
-  { to: '/ai-dialer/logs', icon: Radio, label: 'AI Call Logs', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.pink },
-  { to: '/notifications-alerts-pro', icon: BellRing, label: 'Notifications & Alerts', color: COLORS.orange },
-  { to: '/audit-logs', icon: ClipboardList, label: 'Audit Logs', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.gold },
-  { to: '/platform/administration', icon: Crown, label: 'Platform Administration', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.pink },
-  { to: '/customer-onboarding', icon: Building2, label: 'Customer Onboarding', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.purple },
-  { to: '/commercial-control', icon: CreditCard, label: 'Commercial Control', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.green },
-  { to: '/billing', icon: Building2, label: 'Billing & Plan', roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], color: COLORS.gold },
-  { to: '/admin/spoofing', icon: PhoneCall, label: 'Dynamic Caller ID', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.cyan },
-  { to: '/sip-settings', icon: Wrench, label: 'SIP Configuration', color: COLORS.pink },
-  { to: '/settings', icon: Settings2, label: 'Account Settings', color: COLORS.slate },
-  { to: '/settings/system', icon: SlidersHorizontal, label: 'System Settings', roles: ['SUPER_ADMIN', 'ADMIN'], color: COLORS.orange },
+const item = (to: string, label: string, icon: ElementType, color: string): NavItem => ({ to, label, icon, color })
+const group = (key: string, label: string, icon: ElementType, color: string, items: NavItem[]): NavGroup => ({ key, label, icon, color, items })
+
+const SUPER_ADMIN_GROUPS: NavGroup[] = [
+  group('dashboard', 'Dashboard', LayoutDashboard, COLORS.purple, [
+    item('/dashboard', 'Main Dashboard', LayoutDashboard, COLORS.purple),
+    item('/agent/dashboard', 'Agent Dashboard', Headset, COLORS.purple),
+  ]),
+  group('dialer', 'Dialer', Phone, COLORS.green, [
+    item('/dialer', 'Calling Console', Phone, COLORS.green),
+    item('/call-controls', 'Call Controls', PhoneCall, COLORS.green),
+    item('/sms', 'Send SMS', MessageSquareText, COLORS.green),
+  ]),
+  group('ai-calls', 'AI Calls', Radio, COLORS.pink, [
+    item('/ai-dialer', 'Start AI Call', PhoneCall, COLORS.pink),
+    item('/ai-dialer/logs', 'AI Call History', History, COLORS.pink),
+    item('/live-ai', 'Live AI Assistant', Radio, COLORS.pink),
+  ]),
+  group('campaigns', 'Campaigns', Megaphone, COLORS.pink, [
+    item('/campaigns', 'Campaign List', Megaphone, COLORS.pink),
+    item('/campaign-management-pro', 'Campaign Setup', Layers3, COLORS.pink),
+    item('/advanced-dialing', 'Dialing Settings', Zap, COLORS.pink),
+  ]),
+  group('contacts', 'Contacts', BookUser, COLORS.green, [
+    item('/contacts', 'Contact List', BookUser, COLORS.green),
+    item('/contact-management-pro', 'Contact Tools', Users, COLORS.green),
+    item('/dnc', 'DNC List', ShieldOff, COLORS.green),
+  ]),
+  group('agents', 'Agents', Users, COLORS.purple, [
+    item('/agents', 'Team Users', Users, COLORS.purple),
+    item('/attendance-integrity', 'Attendance', Clock3, COLORS.purple),
+    item('/workforce-intelligence', 'Performance', BarChart3, COLORS.purple),
+  ]),
+  group('live-operations', 'Live Operations', Activity, COLORS.green, [
+    item('/ops', "Today's Operations", Activity, COLORS.green),
+    item('/live-monitoring-advanced', 'Live Calls', Globe, COLORS.green),
+    item('/workforce-operations', 'Live Team', Users, COLORS.green),
+  ]),
+  group('calls-recordings', 'Calls & Recordings', History, COLORS.purple, [
+    item('/calls', 'Call History', History, COLORS.purple),
+    item('/callbacks', 'Callbacks', Calendar, COLORS.purple),
+    item('/recordings', 'Recordings', Radio, COLORS.purple),
+    item('/call-intelligence', 'Call Review', Headset, COLORS.purple),
+    item('/recording-storage-pro', 'Recording Storage', HardDriveDownload, COLORS.purple),
+  ]),
+  group('reports', 'Reports', BarChart3, COLORS.pink, [
+    item('/reports', 'Reports Overview', BarChart3, COLORS.pink),
+    item('/reports-analytics-pro', 'Detailed Reports', Activity, COLORS.pink),
+  ]),
+  group('customers', 'Customers', Building2, COLORS.purple, [
+    item('/commercial-control', 'Customer Accounts', Building2, COLORS.purple),
+    item('/customer-onboarding', 'Add Customer', Crown, COLORS.purple),
+    item('/platform/administration', 'Account Users & Access', Users, COLORS.purple),
+    item('/billing', 'Billing & Plans', CreditCard, COLORS.purple),
+  ]),
+  group('telephony', 'Telephony Setup', Wrench, COLORS.green, [
+    item('/sip-settings', 'SIP Configuration', Wrench, COLORS.green),
+    item('/admin/spoofing', 'Caller ID', PhoneCall, COLORS.green),
+  ]),
+  group('system', 'System Administration', ServerCog, COLORS.purple, [
+    item('/monitoring', 'System Health', Activity, COLORS.purple),
+    item('/security-admin-pro', 'Security', LockKeyhole, COLORS.purple),
+    item('/deployment-platform-pro', 'Deployment', ServerCog, COLORS.purple),
+    item('/support/diagnostics', 'Diagnostics', LifeBuoy, COLORS.purple),
+    item('/audit-logs', 'Audit Logs', ClipboardList, COLORS.purple),
+    item('/settings/system', 'System Settings', SlidersHorizontal, COLORS.purple),
+    item('/production/review', 'Production Review', Headset, COLORS.purple),
+  ]),
+  group('settings-support', 'Settings & Support', Settings2, COLORS.slate, [
+    item('/settings', 'My Account', Settings2, COLORS.slate),
+    item('/notifications-alerts-pro', 'Notifications', BellRing, COLORS.slate),
+    item('/ui-ux-pro', 'Appearance & Shortcuts', Palette, COLORS.slate),
+  ]),
 ]
 
-const AGENT_NAV: NavItem[] = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Main Dashboard', color: COLORS.purple },
-  { to: '/agent/workspace', icon: BriefcaseBusiness, label: 'Agent Workspace', color: COLORS.purple },
-  { to: '/dialer', icon: Phone, label: 'Calling Console', color: COLORS.green },
-  { to: '/live-ai', icon: Radio, label: 'Live AI', color: COLORS.pink },
-  { to: '/calls', icon: History, label: 'My Calls', color: COLORS.gold },
-  { to: '/callbacks', icon: Calendar, label: 'My Callbacks', color: COLORS.orange },
-  { to: '/notifications-alerts-pro', icon: BellRing, label: 'Notifications & Alerts', color: COLORS.orange },
-  { to: '/settings', icon: Settings2, label: 'Account Settings', color: COLORS.slate },
+const CUSTOMER_ADMIN_GROUPS: NavGroup[] = [
+  group('dashboard', 'Dashboard', LayoutDashboard, COLORS.purple, [
+    item('/dashboard', 'Account Dashboard', LayoutDashboard, COLORS.purple),
+    item('/agent/dashboard', 'Agent Dashboard', Headset, COLORS.purple),
+  ]),
+  group('dialer', 'Dialer', Phone, COLORS.green, [
+    item('/dialer', 'Calling Console', Phone, COLORS.green),
+    item('/call-controls', 'Call Controls', PhoneCall, COLORS.green),
+    item('/sms', 'Send SMS', MessageSquareText, COLORS.green),
+  ]),
+  group('ai-calls', 'AI Calls', Radio, COLORS.pink, [
+    item('/ai-dialer', 'Start AI Call', PhoneCall, COLORS.pink),
+    item('/ai-dialer/logs', 'AI Call History', History, COLORS.pink),
+    item('/live-ai', 'Live AI Assistant', Radio, COLORS.pink),
+  ]),
+  group('campaigns', 'Campaigns', Megaphone, COLORS.pink, [
+    item('/campaigns', 'Campaign List', Megaphone, COLORS.pink),
+    item('/campaign-management-pro', 'Campaign Setup', Layers3, COLORS.pink),
+    item('/advanced-dialing', 'Dialing Settings', Zap, COLORS.pink),
+  ]),
+  group('contacts', 'Contacts', BookUser, COLORS.green, [
+    item('/contacts', 'Contact List', BookUser, COLORS.green),
+    item('/contact-management-pro', 'Contact Tools', Users, COLORS.green),
+    item('/dnc', 'DNC List', ShieldOff, COLORS.green),
+  ]),
+  group('agents', 'Agents', Users, COLORS.purple, [
+    item('/agents', 'Team Users', Users, COLORS.purple),
+    item('/attendance-integrity', 'Attendance', Clock3, COLORS.purple),
+    item('/workforce-intelligence', 'Performance', BarChart3, COLORS.purple),
+  ]),
+  group('live-operations', 'Live Operations', Activity, COLORS.green, [
+    item('/ops', "Today's Operations", Activity, COLORS.green),
+    item('/live-monitoring-advanced', 'Live Calls', Globe, COLORS.green),
+    item('/workforce-operations', 'Live Team', Users, COLORS.green),
+  ]),
+  group('calls-recordings', 'Calls & Recordings', History, COLORS.purple, [
+    item('/calls', 'Call History', History, COLORS.purple),
+    item('/callbacks', 'Callbacks', Calendar, COLORS.purple),
+    item('/recordings', 'Recordings', Radio, COLORS.purple),
+    item('/call-intelligence', 'Call Review', Headset, COLORS.purple),
+    item('/recording-storage-pro', 'Recording Storage', HardDriveDownload, COLORS.purple),
+  ]),
+  group('reports', 'Reports', BarChart3, COLORS.pink, [
+    item('/reports', 'Reports Overview', BarChart3, COLORS.pink),
+    item('/reports-analytics-pro', 'Detailed Reports', Activity, COLORS.pink),
+  ]),
+  group('telephony', 'Telephony Setup', Wrench, COLORS.green, [
+    item('/sip-settings', 'SIP Configuration', Wrench, COLORS.green),
+    item('/admin/spoofing', 'Caller ID', PhoneCall, COLORS.green),
+  ]),
+  group('account-support', 'Account & Support', Settings2, COLORS.slate, [
+    item('/billing', 'Billing & Plan', CreditCard, COLORS.slate),
+    item('/settings', 'My Account', Settings2, COLORS.slate),
+    item('/notifications-alerts-pro', 'Notifications', BellRing, COLORS.slate),
+    item('/ui-ux-pro', 'Appearance & Shortcuts', Palette, COLORS.slate),
+    item('/support/diagnostics', 'Support Diagnostics', LifeBuoy, COLORS.slate),
+  ]),
 ]
 
-const CONSOLE_GROUPS: NavGroup[] = [
-  { key: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, color: COLORS.green, items: ['/dashboard', '/supervisor', '/agent/dashboard'] },
-  { key: 'administration', label: 'ADMINISTRATION', icon: Crown, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/customer-onboarding', '/commercial-control', '/platform/administration'] },
-  { key: 'ai-dialer', label: 'AI DIALER', icon: Radio, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/ai-dialer', '/ai-dialer/logs'] },
-  { key: 'dialer', label: 'DIALER', icon: Phone, color: COLORS.green, items: ['/dialer', '/sip-settings', '/advanced-dialing'] },
-  { key: 'agents', label: 'AGENTS', icon: Users, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/agents', '/agent-management-pro', '/attendance-integrity', '/workforce-operations', '/workforce-intelligence'] },
-  { key: 'campaigns', label: 'CAMPAIGNS', icon: Megaphone, color: COLORS.pink, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/campaigns', '/campaign-management-pro'] },
-  { key: 'spoofing', label: 'SPOOFING MANAGEMENT', icon: PhoneCall, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN'], items: ['/admin/spoofing'] },
-  { key: 'sms', label: 'SMS MANAGEMENT', icon: MessageSquareText, color: COLORS.green, items: ['/sms'] },
-  { key: 'calls', label: 'CALLS', icon: History, color: COLORS.green, items: ['/calls', '/callbacks', '/call-controls', '/call-intelligence'] },
-  { key: 'contacts', label: 'CONTACTS', icon: BookUser, color: COLORS.green, items: ['/contacts', '/contact-management-pro'] },
-  { key: 'monitoring', label: 'MONITORING', icon: Activity, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/monitoring', '/live-monitoring-advanced', '/ops'] },
-  { key: 'reports', label: 'REPORTS', icon: BarChart3, color: COLORS.purple, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/reports', '/reports-analytics-pro'] },
-  { key: 'recordings', label: 'RECORDINGS', icon: Radio, color: COLORS.green, roles: ['SUPER_ADMIN', 'ADMIN', 'CUSTOMER_ADMIN', 'SUPERVISOR'], items: ['/recordings', '/recording-storage-pro'] },
-  { key: 'settings', label: 'SETTINGS', icon: Settings2, color: COLORS.slate, items: ['/settings', '/audit-logs', '/security-admin-pro', '/settings/system', '/notifications-alerts-pro'] },
+const SUPERVISOR_GROUPS: NavGroup[] = [
+  group('dashboard', 'Dashboard', LayoutDashboard, COLORS.purple, [
+    item('/dashboard', 'Operations Dashboard', LayoutDashboard, COLORS.purple),
+    item('/agent/dashboard', 'Team Dashboard', Headset, COLORS.purple),
+  ]),
+  group('dialer', 'Dialer', Phone, COLORS.green, [
+    item('/dialer', 'Calling Console', Phone, COLORS.green),
+    item('/call-controls', 'Call Controls', PhoneCall, COLORS.green),
+    item('/sms', 'Send SMS', MessageSquareText, COLORS.green),
+  ]),
+  group('ai-calls', 'AI Calls', Radio, COLORS.pink, [
+    item('/ai-dialer', 'Start AI Call', PhoneCall, COLORS.pink),
+    item('/ai-dialer/logs', 'AI Call History', History, COLORS.pink),
+    item('/live-ai', 'Live AI Assistant', Radio, COLORS.pink),
+  ]),
+  group('campaigns', 'Campaigns', Megaphone, COLORS.pink, [
+    item('/campaigns', 'Campaign List', Megaphone, COLORS.pink),
+  ]),
+  group('contacts', 'Contacts', BookUser, COLORS.green, [
+    item('/contacts', 'Contact List', BookUser, COLORS.green),
+    item('/dnc', 'DNC List', ShieldOff, COLORS.green),
+  ]),
+  group('agents', 'Agents', Users, COLORS.purple, [
+    item('/agents', 'Agents', Users, COLORS.purple),
+    item('/attendance-integrity', 'Attendance', Clock3, COLORS.purple),
+    item('/workforce-intelligence', 'Performance', BarChart3, COLORS.purple),
+  ]),
+  group('live-operations', 'Live Operations', Activity, COLORS.green, [
+    item('/ops', "Today's Operations", Activity, COLORS.green),
+    item('/live-monitoring-advanced', 'Live Calls', Globe, COLORS.green),
+    item('/workforce-operations', 'Live Team', Users, COLORS.green),
+  ]),
+  group('calls-recordings', 'Calls & Recordings', History, COLORS.purple, [
+    item('/calls', 'Call History', History, COLORS.purple),
+    item('/callbacks', 'Callbacks', Calendar, COLORS.purple),
+    item('/recordings', 'Recordings', Radio, COLORS.purple),
+    item('/call-intelligence', 'Call Review', Headset, COLORS.purple),
+  ]),
+  group('reports', 'Reports', BarChart3, COLORS.pink, [
+    item('/reports', 'Reports Overview', BarChart3, COLORS.pink),
+  ]),
+  group('settings-support', 'Settings & Support', Settings2, COLORS.slate, [
+    item('/settings', 'My Account', Settings2, COLORS.slate),
+    item('/notifications-alerts-pro', 'Notifications', BellRing, COLORS.slate),
+    item('/support/diagnostics', 'Support Diagnostics', LifeBuoy, COLORS.slate),
+  ]),
 ]
-
-const CONSOLE_STANDALONE = ['/billing', '/deployment-platform-pro', '/dnc', '/support/diagnostics', '/live-ai', '/ui-ux-pro']
-
-const CONSOLE_SECTION_LABELS: Record<string, string> = {
-  dashboard: 'MAIN ADMIN',
-  administration: 'PLATFORM SETUP',
-  'ai-dialer': 'MAIN DIALING',
-  calls: 'CALLING INFO',
-  monitoring: 'ANALYTICS',
-  recordings: 'RECORDINGS',
-  settings: 'APPEARANCE / THEME',
-}
-
-const getConsoleSectionLabel = (groupKey: string, normalizedRole?: string) => {
-  if (normalizedRole === 'AGENT') return ''
-  return CONSOLE_SECTION_LABELS[groupKey] || ''
-}
 
 const AGENT_GROUPS: NavGroup[] = [
-  { key: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, color: COLORS.purple, items: ['/dashboard'] },
-  { key: 'workspace', label: 'WORKSPACE', icon: BriefcaseBusiness, color: COLORS.purple, items: ['/agent/workspace'] },
-  { key: 'dialer', label: 'DIALER', icon: Phone, color: COLORS.green, items: ['/dialer', '/sip-settings', '/live-ai'] },
-  { key: 'calls', label: 'CALLS', icon: History, color: COLORS.gold, items: ['/calls', '/callbacks'] },
-  { key: 'settings', label: 'APPEARANCE / THEME', icon: Settings2, color: COLORS.slate, items: ['/notifications-alerts-pro', '/settings'] },
+  group('workspace', 'My Workspace', BriefcaseBusiness, COLORS.purple, [
+    item('/agent/workspace', 'Agent Workspace', BriefcaseBusiness, COLORS.purple),
+    item('/dialer', 'Calling Console', Phone, COLORS.green),
+  ]),
+  group('contacts', 'Contacts', BookUser, COLORS.green, [
+    item('/contacts', 'Contact List', BookUser, COLORS.green),
+  ]),
+  group('calls', 'My Calls', History, COLORS.purple, [
+    item('/calls', 'Call History', History, COLORS.purple),
+    item('/callbacks', 'Callbacks', Calendar, COLORS.purple),
+  ]),
+  group('ai-assistant', 'AI Assistant', Radio, COLORS.pink, [
+    item('/live-ai', 'Live AI Assistant', Radio, COLORS.pink),
+  ]),
+  group('settings', 'Settings', Settings2, COLORS.slate, [
+    item('/notifications-alerts-pro', 'Notifications', BellRing, COLORS.slate),
+    item('/settings', 'My Account', Settings2, COLORS.slate),
+  ]),
 ]
+
+const ROLE_GROUPS: Record<SupportedRole, NavGroup[]> = {
+  SUPER_ADMIN: SUPER_ADMIN_GROUPS,
+  CUSTOMER_ADMIN: CUSTOMER_ADMIN_GROUPS,
+  SUPERVISOR: SUPERVISOR_GROUPS,
+  AGENT: AGENT_GROUPS,
+}
+
+const ROLE_CONSOLE_LABELS: Record<SupportedRole, string> = {
+  SUPER_ADMIN: 'PLATFORM CONSOLE',
+  CUSTOMER_ADMIN: 'CUSTOMER ADMIN',
+  SUPERVISOR: 'SUPERVISOR',
+  AGENT: 'AGENT WORKSPACE',
+}
+
+const isSupportedRole = (role?: string): role is SupportedRole => (
+  role === 'SUPER_ADMIN' ||
+  role === 'CUSTOMER_ADMIN' ||
+  role === 'SUPERVISOR' ||
+  role === 'AGENT'
+)
 
 const SIDEBAR_FEATURED_CSS = `
 .ptdt-sidebar-group-btn{position:relative;overflow:hidden}.ptdt-sidebar-group-btn>*{position:relative;z-index:2}.ptdt-sidebar-group-btn-featured::after{content:"";position:absolute;top:-45%;bottom:-45%;left:-80%;width:46%;z-index:1;pointer-events:none;background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,0.18) 36%,rgba(255,255,255,0.82) 50%,rgba(42,233,123,0.22) 62%,transparent 100%);transform:skewX(-18deg);mix-blend-mode:screen;animation:ptdt-sidebar-rider-sweep 3.25s ease-in-out infinite}@keyframes ptdt-sidebar-rider-sweep{0%{left:-82%;opacity:0}25%{opacity:.92}55%{left:124%;opacity:.92}100%{left:124%;opacity:0}}@media(prefers-reduced-motion:reduce){.ptdt-sidebar-group-btn-featured::after{animation:none!important;opacity:0}}
@@ -189,38 +306,26 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
 
   const userRole = (user as Record<string, unknown> | null)?.role as string | undefined
   const normalizedRole = userRole?.toUpperCase()
-  const isVisibleForRole = useCallback((roles?: string[]) => !roles || !normalizedRole || roles.includes(normalizedRole), [normalizedRole])
-  const itemMap = useMemo(() => Object.fromEntries([...NAV, ...AGENT_NAV].map(item => [item.to, item])) as Record<string, NavItem>, [])
+  const role = isSupportedRole(normalizedRole) ? normalizedRole : null
+  const groups = role ? ROLE_GROUPS[role] : []
+  const consoleLabel = role ? ROLE_CONSOLE_LABELS[role] : 'USER'
+  const homeRoute = role === 'AGENT' ? '/agent/workspace' : '/dashboard'
   const isPathActive = useCallback((to: string) => location.pathname === to || (to !== '/' && location.pathname.startsWith(`${to}/`)), [location.pathname])
 
-  const groups = useMemo(() => {
-    const sourceGroups = normalizedRole === 'AGENT' ? AGENT_GROUPS : CONSOLE_GROUPS
-    return sourceGroups
-      .filter(group => isVisibleForRole(group.roles))
-      .map(group => ({ ...group, navItems: group.items.map(to => itemMap[to]).filter(Boolean).filter(item => isVisibleForRole(item.roles)) }))
-      .filter(group => group.navItems.length > 0)
-  }, [isVisibleForRole, itemMap, normalizedRole])
-
   const activeGroupKey = useMemo(() => {
-    const activeGroup = groups.find(group => group.navItems.some(item => isPathActive(item.to)))
-    if (!activeGroup || activeGroup.key === 'dashboard') return ''
-    return activeGroup.key
+    const activeGroup = groups.find(navGroup => navGroup.items.some(navItem => isPathActive(navItem.to)))
+    return activeGroup?.key || ''
   }, [groups, isPathActive])
 
-  const standaloneItems = useMemo(() => {
-    if (normalizedRole === 'AGENT') return []
-    return CONSOLE_STANDALONE.map(to => itemMap[to]).filter(Boolean).filter(item => isVisibleForRole(item.roles))
-  }, [isVisibleForRole, itemMap, normalizedRole])
-
   const closeMobileNav = () => { if (isMobileViewport()) setMobileOpen(false) }
-  const toggleGroup = (group: NavGroup & { navItems: NavItem[] }) => {
+  const toggleGroup = (navGroup: NavGroup) => {
     if (collapsed) {
-      const first = group.navItems[0]
+      const first = navGroup.items[0]
       if (first) navigate(first.to)
       closeMobileNav()
       return
     }
-    setExpandedGroups(prev => ({ [group.key]: !prev[group.key] }))
+    setExpandedGroups(previous => ({ [navGroup.key]: !previous[navGroup.key] }))
   }
 
   useEffect(() => {
@@ -257,10 +362,10 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
           <button type="button" className="ptdt-mobile-sidebar-close" onClick={() => setMobileOpen(false)} aria-label="Close navigation menu" style={{ position: 'absolute', top: 0, right: 0 }}><X size={18} /></button>
           <motion.button
             type="button"
-            aria-label="Go to main dashboard"
-            title="Go to main dashboard"
+            aria-label="Go to home"
+            title="Go to home"
             onClick={() => {
-              navigate('/dashboard')
+              navigate(homeRoute)
               closeMobileNav()
             }}
             whileHover={{ scale: 1.04 }}
@@ -279,7 +384,7 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
           >
             <img src="ptdt-main-logo.png" alt="PTDT" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 0, background: 'transparent', mixBlendMode: 'multiply' }} />
           </motion.button>
-          {!collapsed && <><div style={{ fontFamily: 'var(--font-display)', fontSize: 31, fontWeight: 950, color: 'var(--text)', lineHeight: 1, letterSpacing: '-0.055em', justifySelf: 'start' }}>Dialer</div><div className="mono" style={{ gridColumn: '1 / -1', fontSize: 13, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 7.2, marginTop: -2, fontWeight: 800 }}>ADMIN CONSOLE</div></>}
+          {!collapsed && <><div style={{ fontFamily: 'var(--font-display)', fontSize: 31, fontWeight: 950, color: 'var(--text)', lineHeight: 1, letterSpacing: '-0.055em', justifySelf: 'start' }}>Dialer</div><div className="mono" style={{ gridColumn: '1 / -1', fontSize: 12, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 4.8, marginTop: -2, fontWeight: 800 }}>{consoleLabel}</div></>}
         </div>
 
         {!collapsed && <div style={{ padding: '8px 10px', marginBottom: 10, borderRadius: 14, background: 'linear-gradient(135deg, rgba(251,11,140,0.08), rgba(128,87,215,0.08))', border: '1px solid var(--border)', fontSize: 10.5, fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.45 }}>
@@ -288,39 +393,28 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
 
         <nav style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: collapsed ? 8 : 5, overflowY: 'auto', overflowX: 'hidden', paddingRight: collapsed ? 0 : 2, paddingBottom: collapsed ? 8 : 30 }}>
           {!collapsed && <div className="mono" style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1.5, padding: '0 12px 8px', fontWeight: 800 }}>Navigation</div>}
-          {groups.map(group => {
-            const Icon = group.icon
-            const groupColor = group.color || COLORS.pink
-            const isGroupActive = group.navItems.some(item => isPathActive(item.to))
-            const isOpen = Boolean(expandedGroups[group.key]) && !collapsed
-            const sectionLabel = getConsoleSectionLabel(group.key, normalizedRole)
-            const isFeaturedDialerGroup = group.key === 'ai-dialer' || group.key === 'dialer'
+          {groups.map(navGroup => {
+            const Icon = navGroup.icon
+            const groupColor = navGroup.color || COLORS.pink
+            const isGroupActive = navGroup.items.some(navItem => isPathActive(navItem.to))
+            const isOpen = Boolean(expandedGroups[navGroup.key]) && !collapsed
+            const isFeaturedDialerGroup = navGroup.key === 'ai-calls' || navGroup.key === 'dialer'
 
             return (
-              <div key={group.key} style={{ display: 'grid', gap: sectionLabel && !collapsed ? 10 : 5, marginTop: sectionLabel && !collapsed ? (group.key === 'dashboard' ? 0 : 22) : 0 }}>
-                {sectionLabel && !collapsed && <div className="mono" style={{ fontSize: 14.5, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1.7, padding: '3px 12px 2px', fontWeight: 950 }}>{sectionLabel}</div>}
-                <button type="button" title={collapsed ? group.label : undefined} data-sidebar-tooltip={collapsed ? group.label : undefined} className={`ptdt-sidebar-group-btn ${isFeaturedDialerGroup ? 'ptdt-sidebar-group-btn-featured' : ''}`} onClick={() => toggleGroup(group)} style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', gap: 11, width: '100%', minHeight: collapsed ? 52 : 42, padding: collapsed ? '0' : '9px 12px', borderRadius: collapsed ? 18 : 14, border: `1px solid ${hexToRgba(groupColor, isOpen ? 0.52 : isGroupActive ? 0.35 : 0.18)}`, background: isOpen ? `linear-gradient(135deg, ${hexToRgba(groupColor, 0.32)}, ${hexToRgba(groupColor, 0.16)})` : isGroupActive ? `linear-gradient(135deg, ${hexToRgba(groupColor, 0.18)}, ${hexToRgba(groupColor, 0.08)})` : `linear-gradient(135deg, ${hexToRgba(groupColor, 0.09)}, ${hexToRgba(groupColor, 0.04)})`, color: groupColor, cursor: 'pointer', textAlign: 'left', boxShadow: isOpen ? `0 6px 18px ${hexToRgba(groupColor, 0.28)}` : `0 1px 4px ${hexToRgba(groupColor, 0.08)}`, transition: 'all .25s ease' }}>
+              <div key={navGroup.key} style={{ display: 'grid', gap: 5 }}>
+                <button type="button" title={collapsed ? navGroup.label : undefined} data-sidebar-tooltip={collapsed ? navGroup.label : undefined} className={`ptdt-sidebar-group-btn ${isFeaturedDialerGroup ? 'ptdt-sidebar-group-btn-featured' : ''}`} onClick={() => toggleGroup(navGroup)} style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', gap: 11, width: '100%', minHeight: collapsed ? 52 : 42, padding: collapsed ? '0' : '9px 12px', borderRadius: collapsed ? 18 : 14, border: `1px solid ${hexToRgba(groupColor, isOpen ? 0.52 : isGroupActive ? 0.35 : 0.18)}`, background: isOpen ? `linear-gradient(135deg, ${hexToRgba(groupColor, 0.32)}, ${hexToRgba(groupColor, 0.16)})` : isGroupActive ? `linear-gradient(135deg, ${hexToRgba(groupColor, 0.18)}, ${hexToRgba(groupColor, 0.08)})` : `linear-gradient(135deg, ${hexToRgba(groupColor, 0.09)}, ${hexToRgba(groupColor, 0.04)})`, color: groupColor, cursor: 'pointer', textAlign: 'left', boxShadow: isOpen ? `0 6px 18px ${hexToRgba(groupColor, 0.28)}` : `0 1px 4px ${hexToRgba(groupColor, 0.08)}`, transition: 'all .25s ease' }}>
                   <span className="sidebar-icon-shell" style={{ color: groupColor, background: hexToRgba(groupColor, isOpen || isGroupActive ? 0.2 : 0.1) }}><Icon size={collapsed ? 20 : 16.5} /></span>
-                  {!collapsed && <><span style={{ flex: 1, fontSize: 12.5, fontWeight: 900, lineHeight: 1.25, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{group.label}</span>{isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</>}
+                  {!collapsed && <><span style={{ flex: 1, fontSize: 12.5, fontWeight: 900, lineHeight: 1.25, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{navGroup.label}</span>{isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</>}
                 </button>
                 {isOpen && <div style={{ display: 'grid', gap: 4, paddingLeft: 10, marginLeft: 13, borderLeft: `2px solid ${hexToRgba(groupColor, 0.32)}` }}>
-                  {group.navItems.map(item => {
-                    const ItemIcon = item.icon
-                    return <NavLink key={item.to} to={item.to} end={item.to === '/settings' || item.to === '/ai-dialer'} style={{ textDecoration: 'none' }} onClick={closeMobileNav}>{({ isActive }) => <motion.div whileHover={{ x: isActive ? 0 : 3 }} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '7px 10px', borderRadius: 12, fontSize: 12.5, fontWeight: 700, background: isActive ? `linear-gradient(135deg, ${hexToRgba(groupColor, 0.22)}, ${hexToRgba(groupColor, 0.10)})` : 'transparent', color: isActive ? groupColor : hexToRgba(groupColor, 0.65), border: isActive ? `1px solid ${hexToRgba(groupColor, 0.35)}` : '1px solid transparent' }}><span className="sidebar-icon-shell"><ItemIcon size={15.5} /></span><span style={{ lineHeight: 1.25, flex: 1 }}>{item.label}</span></motion.div>}</NavLink>
+                  {navGroup.items.map(navItem => {
+                    const ItemIcon = navItem.icon
+                    return <NavLink key={navItem.to} to={navItem.to} end={navItem.to === '/settings' || navItem.to === '/ai-dialer'} style={{ textDecoration: 'none' }} onClick={closeMobileNav}>{({ isActive }) => <motion.div whileHover={{ x: isActive ? 0 : 3 }} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '7px 10px', borderRadius: 12, fontSize: 12.5, fontWeight: 700, background: isActive ? `linear-gradient(135deg, ${hexToRgba(groupColor, 0.22)}, ${hexToRgba(groupColor, 0.10)})` : 'transparent', color: isActive ? groupColor : hexToRgba(groupColor, 0.65), border: isActive ? `1px solid ${hexToRgba(groupColor, 0.35)}` : '1px solid transparent' }}><span className="sidebar-icon-shell"><ItemIcon size={15.5} /></span><span style={{ lineHeight: 1.25, flex: 1 }}>{navItem.label}</span></motion.div>}</NavLink>
                   })}
                 </div>}
               </div>
             )
           })}
-
-          {!collapsed && standaloneItems.length > 0 && <>
-            <div className="mono" style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1.5, padding: '18px 12px 8px', fontWeight: 800 }}>Tools</div>
-            {standaloneItems.map(item => {
-              const Icon = item.icon
-              const iconColor = item.color || COLORS.pink
-              return <NavLink key={item.to} to={item.to} end={item.to === '/settings' || item.to === '/ai-dialer'} style={{ textDecoration: 'none' }} onClick={closeMobileNav}>{({ isActive }) => <motion.div whileHover={{ x: isActive ? 0 : 3 }} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 10px', borderRadius: 18, fontSize: 13.3, fontWeight: 800, background: isActive ? `linear-gradient(135deg, ${hexToRgba(iconColor, 0.26)}, ${hexToRgba(iconColor, 0.12)})` : 'transparent', color: isActive ? iconColor : hexToRgba(iconColor, 0.8), border: isActive ? `1px solid ${hexToRgba(iconColor, 0.3)}` : '1px solid transparent' }}><span className="sidebar-icon-shell"><Icon size={16.5} /></span><span style={{ lineHeight: 1.25, flex: 1 }}>{item.label}</span></motion.div>}</NavLink>
-            })}
-          </>}
         </nav>
 
         {!collapsed && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 6px 0', borderTop: '1px solid var(--border)', marginTop: 8 }}>
