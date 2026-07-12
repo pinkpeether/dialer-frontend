@@ -310,7 +310,10 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
   const groups = role ? ROLE_GROUPS[role] : []
   const consoleLabel = role ? ROLE_CONSOLE_LABELS[role] : 'USER'
   const homeRoute = role === 'AGENT' ? '/agent/workspace' : '/dashboard'
-  const isPathActive = useCallback((to: string) => location.pathname === to || (to !== '/' && location.pathname.startsWith(`${to}/`)), [location.pathname])
+  const isPathActive = useCallback((to: string) => {
+    if (to === '/settings' || to === '/ai-dialer') return location.pathname === to
+    return location.pathname === to || (to !== '/' && location.pathname.startsWith(`${to}/`))
+  }, [location.pathname])
 
   const activeGroupKey = useMemo(() => {
     const activeGroup = groups.find(navGroup => navGroup.items.some(navItem => isPathActive(navItem.to)))
