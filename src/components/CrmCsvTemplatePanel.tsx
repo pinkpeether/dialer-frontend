@@ -43,16 +43,21 @@ function downloadCrmCsvTemplate() {
 
 export default function CrmCsvTemplatePanel() {
   return (
-    <section className="ptdt-crm-template-card">
-      <div className="ptdt-crm-template-copy">
+    <section className="ptdt-crm-template-card" style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
+      <div className="ptdt-crm-template-copy" style={{ minWidth: 0 }}>
         <div className="eyebrow green"><TableProperties size={12} /> CRM Data Template</div>
         <h3>CSV field map for clean imports</h3>
         <p>Use this template when preparing CRM leads for PTDT campaigns, outbound calling, callbacks, and reporting.</p>
       </div>
-      <div className="ptdt-crm-template-fields">
+      <div className="ptdt-crm-template-fields" style={{ minWidth: 0, maxWidth: '100%' }}>
         {CRM_TEMPLATE_HEADERS.map(header => <span key={header}>{header.replace(/_/g, ' ')}</span>)}
       </div>
-      <button type="button" className="ptdt-action-btn active" onClick={downloadCrmCsvTemplate}>
+      <button
+        type="button"
+        className="ptdt-action-btn active"
+        onClick={downloadCrmCsvTemplate}
+        style={{ width: '100%', maxWidth: '100%', justifyContent: 'center', whiteSpace: 'normal', textAlign: 'center', boxSizing: 'border-box' }}
+      >
         <Download size={14} /> Download Template
       </button>
     </section>

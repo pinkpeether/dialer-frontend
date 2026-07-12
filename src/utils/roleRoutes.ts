@@ -1,24 +1,21 @@
 import type { UserRole } from '../store/auth.store'
 
 const AGENT_ROUTES = [
-  '/dashboard',
   '/agent/workspace',
   '/dialer',
+  '/contacts',
   '/live-ai',
   '/calls',
   '/callbacks',
   '/notifications-alerts-pro',
   '/settings',
-  '/sip-settings',
 ]
 
 export function normalizeRole(role?: string | null): UserRole | null {
   const next = role?.toUpperCase()
   if (
     next === 'SUPER_ADMIN' ||
-    next === 'ADMIN' ||
     next === 'CUSTOMER_ADMIN' ||
-    next === 'MANAGER' ||
     next === 'SUPERVISOR' ||
     next === 'AGENT'
   ) {

@@ -8,6 +8,7 @@ import { authAPI } from '../api/auth.api'
 import PtdtDialog from './PtdtDialog'
 import PtdtAnimatedSlogan from './PtdtAnimatedSlogan'
 import SipRegistrationGate from './SipRegistrationGate'
+import CommOsPageLanguage from './CommOsPageLanguage'
 import { markPresenceOfflineBeforeLogout, useAgentPresence } from '../hooks/useAgentPresence'
 import { clearPtdtSessionCache } from '../services/sessionCleanup'
 
@@ -33,35 +34,20 @@ export default function Layout() {
   }, [sidebarCollapsed])
 
   useEffect(() => {
-    const ready = Boolean(
-      sipConfig.enabled &&
-      sipConfig.username &&
-      sipConfig.password &&
-      sipConfig.domain &&
-      sipConfig.webSocketServer,
-    )
-    const key = ready
-      ? `${sipConfig.username}|${sipConfig.domain}|${sipConfig.webSocketServer}`
-      : ''
-
+    const ready = Boolean(sipConfig.enabled && sipConfig.username && sipConfig.password && sipConfig.domain && sipConfig.webSocketServer)
+    const key = ready ? `${sipConfig.username}|${sipConfig.domain}|${sipConfig.webSocketServer}` : ''
     if (!ready) {
       autoRegisterKeyRef.current = ''
       return
     }
-
     if (!['idle', 'configured'].includes(sipStatus)) return
-    if (autoRegisterKeyRef.current === key) return
-    if (autoRegisterInFlightRef.current) return
+    if (autoRegisterKeyRef.current === key || autoRegisterInFlightRef.current) return
 
     autoRegisterKeyRef.current = key
     autoRegisterInFlightRef.current = true
     void registerSip()
-      .catch(() => {
-        autoRegisterKeyRef.current = ''
-      })
-      .finally(() => {
-        autoRegisterInFlightRef.current = false
-      })
+      .catch(() => { autoRegisterKeyRef.current = '' })
+      .finally(() => { autoRegisterInFlightRef.current = false })
   }, [registerSip, sipConfig, sipStatus])
 
   const requestSignOut = useCallback((event: MouseEvent<HTMLDivElement>) => {
@@ -110,9 +96,7 @@ export default function Layout() {
         onClose={() => setConfirmSignOut(false)}
       />
 
-      <div className="aurora-bg">
-        <div className="aurora-orb-3" />
-      </div>
+      <div className="aurora-bg"><div className="aurora-orb-3" /></div>
       <div className="grid-overlay" />
 
       <SipRegistrationGate open={sipGateLocked} onSignOut={() => setConfirmSignOut(true)} />
@@ -127,10 +111,9 @@ export default function Layout() {
         flexDirection: 'column',
         transition: 'margin-left .22s ease',
       }}>
+        <CommOsPageLanguage />
         <TopOperatorActions />
-        <div style={{ flex: 1 }}>
-          <Outlet />
-        </div>
+        <div style={{ flex: 1 }}><Outlet /></div>
 
         <footer style={{
           padding: '20px 32px',
@@ -150,12 +133,7 @@ export default function Layout() {
           textAlign: 'center',
           lineHeight: 1.7,
         }}>
-          <span>
-            Copyrights © <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>PTDT-Dialer</span>
-            {' · '}Pink Taxi Group Ltd · United Kingdom. All rights reserved.
-            {' · '}
-            <PtdtAnimatedSlogan style={{ fontSize: 'inherit', lineHeight: 'inherit' }} />
-          </span>
+          <span>Copyrights © <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>PTDT-Dialer</span>{' · '}Pink Taxi Group Ltd · United Kingdom. All rights reserved.{' · '}<PtdtAnimatedSlogan style={{ fontSize: 'inherit', lineHeight: 'inherit' }} /></span>
         </footer>
       </main>
     </div>
