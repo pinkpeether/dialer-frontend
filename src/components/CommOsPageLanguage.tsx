@@ -39,6 +39,12 @@ const COPY_REPLACEMENTS: Array<[string, string]> = [
   ['Live Monitoring+', 'Live Calls'],
 ]
 
+const SIDEBAR_SPACING_CSS = `
+  .ptdt-sidebar nav {
+    gap: 10px !important;
+  }
+`
+
 const setEyebrow = (element: Element, label: string) => {
   const icon = element.querySelector('svg')
   element.replaceChildren()
@@ -58,12 +64,22 @@ const replaceVisibleCopy = (root: Element) => {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
   const nodes: Text[] = []
   while (walker.nextNode()) nodes.push(walker.currentNode as Text)
+
   nodes.forEach(node => {
     const parent = node.parentElement
     if (!parent || ['SCRIPT', 'STYLE', 'TEXTAREA', 'OPTION'].includes(parent.tagName)) return
     let next = node.nodeValue || ''
     COPY_REPLACEMENTS.forEach(([from, to]) => { next = next.split(from).join(to) })
     if (next !== node.nodeValue) node.nodeValue = next
+  })
+}
+
+const applySidebarSpacing = () => {
+  document.querySelectorAll<HTMLButtonElement>('.ptdt-sidebar-group-btn').forEach(button => {
+    const wrapper = button.parentElement
+    if (!wrapper) return
+    const label = `${button.textContent || ''} ${button.title || ''}`.toUpperCase()
+    wrapper.style.marginTop = label.includes('ACCOUNT & SUPPORT') ? '10px' : '0'
   })
 }
 
@@ -74,13 +90,18 @@ export default function CommOsPageLanguage() {
     const root = document.querySelector('.ptdt-layout-main')
     if (!root) return undefined
     const identity = PAGE_IDENTITIES[location.pathname]
+    let frame = 0
 
     const apply = () => {
+      frame = 0
       replaceVisibleCopy(root)
+      applySidebarSpacing()
+
       if (!identity) return
       const heading = root.querySelector('h1') as HTMLHeadingElement | null
       const eyebrow = root.querySelector('.eyebrow')
       const description = root.querySelector('.ptdt-page-desc') as HTMLElement | null
+
       if (heading && heading.dataset.commosIdentity !== location.pathname) {
         setHeading(heading, identity)
         heading.dataset.commosIdentity = location.pathname
@@ -93,11 +114,20 @@ export default function CommOsPageLanguage() {
       document.title = `${identity.prefix} ${identity.accent} · PTDT CommOS`
     }
 
+    const scheduleApply = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(apply)
+    }
+
     apply()
-    const observer = new MutationObserver(apply)
+    const observer = new MutationObserver(scheduleApply)
     observer.observe(root, { childList: true, subtree: true })
-    return () => observer.disconnect()
+
+    return () => {
+      observer.disconnect()
+      if (frame) window.cancelAnimationFrame(frame)
+    }
   }, [location.pathname])
 
-  return null
+  return <style>{SIDEBAR_SPACING_CSS}</style>
 }
