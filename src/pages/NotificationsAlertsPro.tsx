@@ -18,12 +18,7 @@ const emptyPreferences: AlertPreferences = {
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
-  sounds: {
-    info: 'soft-ping',
-    success: 'success-chime',
-    warning: 'attention',
-    critical: 'urgent',
-  },
+  sounds: { info: 'soft-ping', success: 'success-chime', warning: 'attention', critical: 'urgent' },
 }
 
 type NotificationsCache = {
@@ -33,16 +28,14 @@ type NotificationsCache = {
   preferences: AlertPreferences
 }
 
-const CACHE_KEY = 'ptdt-notifications-alerts-pro:last-good'
+const CACHE_KEY = 'ptdt-notifications-alerts:last-good'
 
 const readCache = (): NotificationsCache | null => {
   if (typeof window === 'undefined') return null
   try {
-    const raw = window.localStorage.getItem(CACHE_KEY)
+    const raw = window.localStorage.getItem(CACHE_KEY) || window.localStorage.getItem('ptdt-notifications-alerts-pro:last-good')
     return raw ? JSON.parse(raw) as NotificationsCache : null
-  } catch {
-    return null
-  }
+  } catch { return null }
 }
 
 const writeCache = (cache: Omit<NotificationsCache, 'savedAt'>) => {
@@ -73,16 +66,13 @@ export default function NotificationsAlertsPro() {
         notificationsAlertsProApi.getSummary(requestOptions),
         notificationsAlertsProApi.listAlerts({ limit: 100 }, requestOptions),
       ])
+      const nextPreferences = nextSummary.preferences || emptyPreferences
       setSummary(nextSummary)
       setAlerts(nextAlerts)
-      const nextPreferences = nextSummary.preferences || emptyPreferences
       setPreferences(nextPreferences)
       writeCache({ summary: nextSummary, alerts: nextAlerts, preferences: nextPreferences })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load notifications & alerts')
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Failed to load notifications and alerts') }
+    finally { setLoading(false) }
   }
 
   useEffect(() => {
@@ -94,24 +84,16 @@ export default function NotificationsAlertsPro() {
 
   useEffect(() => {
     if (!preferences.desktopToasts || typeof Notification === 'undefined') return
-    if (Notification.permission === 'default') {
-      void Notification.requestPermission().catch(() => undefined)
-    }
+    if (Notification.permission === 'default') void Notification.requestPermission().catch(() => undefined)
   }, [preferences.desktopToasts])
 
   useEffect(() => {
     const latest = alerts[0]
-    if (!latest) return
-    if (lastToastIdRef.current === latest.id) return
+    if (!latest || lastToastIdRef.current === latest.id) return
     lastToastIdRef.current = latest.id
-
     const playSound = (window as Window & { ptdtPlayAlertSound?: (soundKey?: string, severity?: NotificationAlert['severity']) => void }).ptdtPlayAlertSound
-    if (preferences.soundAlerts && typeof playSound === 'function') {
-      playSound(latest.soundKey || undefined, latest.severity)
-    }
-    if (preferences.desktopToasts && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      new Notification(latest.title, { body: latest.message })
-    }
+    if (preferences.soundAlerts && typeof playSound === 'function') playSound(latest.soundKey || undefined, latest.severity)
+    if (preferences.desktopToasts && typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification(latest.title, { body: latest.message })
   }, [alerts, preferences.desktopToasts, preferences.soundAlerts])
 
   async function savePreferences() {
@@ -121,11 +103,8 @@ export default function NotificationsAlertsPro() {
       const next = await notificationsAlertsProApi.updatePreferences(preferences)
       setPreferences(next)
       setSuccess('Preferences saved')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save alert preferences')
-    } finally {
-      setSaving(false)
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Failed to save alert preferences') }
+    finally { setSaving(false) }
   }
 
   async function refreshAfter(action: () => Promise<unknown>, message: string) {
@@ -135,9 +114,7 @@ export default function NotificationsAlertsPro() {
       await action()
       setSuccess(message)
       await load({ silent: true })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Alert operation failed')
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Alert operation failed') }
   }
 
   const kpis = [
@@ -151,71 +128,32 @@ export default function NotificationsAlertsPro() {
     <div className="ptdt-page ptdt-pro-page">
       <div className="ptdt-page-header ptdt-pro-hero">
         <div>
-          <div className="eyebrow pink" style={{ marginBottom: 12 }}>
-            <Sparkles size={12} /> Notifications & Alerts
-          </div>
-          <h1 className="ptdt-page-title">
-            Notifications <span className="gradient-brand-text">Alerts Pro</span>
-          </h1>
-          <p className="ptdt-page-desc">
-            Desktop toasts, generated sound alerts, angry-customer escalations, shift reminders, campaign completion signals, and low-contact warning automation.
-          </p>
+          <div className="eyebrow pink" style={{ marginBottom: 12 }}><Sparkles size={12} /> Notification Center</div>
+          <h1 className="ptdt-page-title">Notifications <span className="gradient-brand-text">&amp; Alerts</span></h1>
+          <p className="ptdt-page-desc">Desktop notifications, sound alerts, customer escalations, shift reminders, campaign completion signals, and low-contact warnings.</p>
         </div>
         <div className="ptdt-toolbar">
           <span className="ptdt-chip"><CalendarClock size={12} /> Background refresh</span>
-          <button className="ptdt-action-btn" type="button" onClick={() => void load()} disabled={loading}>
-            <RefreshCw size={14} /> {loading ? 'Refreshing...' : 'Refresh'}
-          </button>
+          <button className="ptdt-action-btn" type="button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} /> {loading ? 'Refreshing...' : 'Refresh'}</button>
         </div>
       </div>
 
-      {(error || success) && (
-        <div className="ptdt-card" style={{ padding: 14, marginBottom: 16, color: error ? 'var(--danger)' : 'var(--green-2)', borderColor: error ? 'rgba(239,68,68,0.28)' : 'rgba(0,167,71,0.28)' }}>
-          {error || success}
-        </div>
-      )}
+      {(error || success) && <div className="ptdt-card" style={{ padding: 14, marginBottom: 16, color: error ? 'var(--danger)' : 'var(--green-2)', borderColor: error ? 'rgba(239,68,68,0.28)' : 'rgba(0,167,71,0.28)' }}>{error || success}</div>}
 
       <div className="ptdt-pro-kpis" style={{ marginBottom: 18 }}>
-        {kpis.map(kpi => (
-          <div key={kpi.label} className="ptdt-pro-kpi">
-            <div style={{ position: 'absolute', inset: 'auto -34px -48px auto', width: 120, height: 120, borderRadius: '50%', background: `${kpi.accent}18`, filter: 'blur(18px)' }} />
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', position: 'relative' }}>
-              <div style={{ width: 40, height: 40, borderRadius: 14, display: 'grid', placeItems: 'center', border: `1px solid ${kpi.accent}44`, background: `${kpi.accent}12`, color: kpi.accent }}>
-                {kpi.icon}
-              </div>
-              <div>
-                <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 900, letterSpacing: 1 }}>{kpi.label}</div>
-                <div style={{ marginTop: 4, fontSize: 28, color: 'var(--text)', fontWeight: 950 }}>{kpi.value}</div>
-              </div>
-            </div>
-          </div>
-        ))}
+        {kpis.map(kpi => <div key={kpi.label} className="ptdt-pro-kpi"><div style={{ position: 'absolute', inset: 'auto -34px -48px auto', width: 120, height: 120, borderRadius: '50%', background: `${kpi.accent}18`, filter: 'blur(18px)' }} /><div style={{ display: 'flex', gap: 12, alignItems: 'center', position: 'relative' }}><div style={{ width: 40, height: 40, borderRadius: 14, display: 'grid', placeItems: 'center', border: `1px solid ${kpi.accent}44`, background: `${kpi.accent}12`, color: kpi.accent }}>{kpi.icon}</div><div><div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 900, letterSpacing: 1 }}>{kpi.label}</div><div style={{ marginTop: 4, fontSize: 28, color: 'var(--text)', fontWeight: 950 }}>{kpi.value}</div></div></div></div>)}
       </div>
 
       <div className="ptdt-pro-grid sidebar" style={{ alignItems: 'start' }}>
-        <AlertCenterPanel
-          alerts={alerts}
-          loading={loading}
-          onAcknowledge={(alertId) => void refreshAfter(() => notificationsAlertsProApi.acknowledgeAlert(alertId), 'Alert acknowledged')}
-          onAcknowledgeAll={() => void refreshAfter(() => notificationsAlertsProApi.acknowledgeAll(), 'All alerts acknowledged')}
-        />
+        <AlertCenterPanel alerts={alerts} loading={loading} onAcknowledge={(alertId) => void refreshAfter(() => notificationsAlertsProApi.acknowledgeAlert(alertId), 'Alert acknowledged')} onAcknowledgeAll={() => void refreshAfter(() => notificationsAlertsProApi.acknowledgeAll(), 'All alerts acknowledged')} />
         <div style={{ display: 'grid', gap: 16 }}>
           <AlertSoundManager enabled={preferences.soundAlerts} />
-          <NotificationRuleTester
-            onRunSweep={() => refreshAfter(() => notificationsAlertsProApi.runSweep(), 'Alert sweep completed')}
-            onAngryCustomer={(payload) => refreshAfter(() => notificationsAlertsProApi.createAngryCustomerAlert(payload), 'Angry customer alert created')}
-            onShiftReminder={(payload) => refreshAfter(() => notificationsAlertsProApi.createShiftReminder(payload), 'Shift/break reminder created')}
-          />
+          <NotificationRuleTester onRunSweep={() => refreshAfter(() => notificationsAlertsProApi.runSweep(), 'Alert sweep completed')} onAngryCustomer={(payload) => refreshAfter(() => notificationsAlertsProApi.createAngryCustomerAlert(payload), 'Angry customer alert created')} onShiftReminder={(payload) => refreshAfter(() => notificationsAlertsProApi.createShiftReminder(payload), 'Shift/break reminder created')} />
         </div>
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <AlertPreferencesPanel
-          preferences={preferences}
-          saving={saving}
-          onChange={(patch) => setPreferences(current => ({ ...current, ...patch, sounds: { ...current.sounds, ...(patch.sounds || {}) } }))}
-          onSave={() => void savePreferences()}
-        />
+        <AlertPreferencesPanel preferences={preferences} saving={saving} onChange={(patch) => setPreferences(current => ({ ...current, ...patch, sounds: { ...current.sounds, ...(patch.sounds || {}) } }))} onSave={() => void savePreferences()} />
       </div>
     </div>
   )
