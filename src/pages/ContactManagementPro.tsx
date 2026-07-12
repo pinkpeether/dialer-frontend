@@ -11,14 +11,6 @@ const sampleRows: ContactImportRow[] = [
 ]
 
 type PreviewResult = Record<string, unknown> | null
-type TabKey = 'duplicates' | 'timeline' | 'tags' | 'import-export'
-
-const tabs: { key: TabKey; label: string }[] = [
-  { key: 'duplicates', label: 'Duplicates' },
-  { key: 'timeline', label: 'Timeline' },
-  { key: 'tags', label: 'Tags & Notes' },
-  { key: 'import-export', label: 'Import / Export' },
-]
 
 const textareaStyle: CSSProperties = {
   width: '100%',
@@ -36,7 +28,6 @@ const textareaStyle: CSSProperties = {
 }
 
 export default function ContactManagementPro() {
-  const [activeTab, setActiveTab] = useState<TabKey>('duplicates')
   const [previewText, setPreviewText] = useState(JSON.stringify(sampleRows, null, 2))
   const [previewResult, setPreviewResult] = useState<PreviewResult>(null)
   const [error, setError] = useState('')
@@ -81,79 +72,77 @@ export default function ContactManagementPro() {
             <Users2 size={12} /> Contact Operations
           </div>
           <h1 className="ptdt-page-title">
-            Contact <span className="gradient-brand-text">Management Pro</span>
+            Contact Tools <span className="gradient-brand-text">Advanced</span>
           </h1>
           <p className="ptdt-page-desc">
-            Duplicate detection, contact timeline, pilot-safe tags, notes, import preview, DNC checks, and filtered CSV export.
+            Review duplicate contacts, timelines, tags and notes, import previews, DNC checks, and filtered CSV exports in one continuous workspace.
           </p>
         </div>
       </div>
 
-      <div className="ptdt-toolbar" style={{ marginBottom: 18, flexWrap: 'wrap' }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            type="button"
-            className={`ptdt-action-btn ${activeTab === tab.key ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <div style={{ display: 'grid', gap: 18 }}>
+        <DuplicateContactsPanel />
+        <ContactTimelinePanel />
+        <ContactTagsPanel />
 
-      {activeTab === 'duplicates' && <DuplicateContactsPanel />}
-      {activeTab === 'timeline' && <ContactTimelinePanel />}
-      {activeTab === 'tags' && <ContactTagsPanel />}
-
-      {activeTab === 'import-export' && (
-        <div className="ptdt-pro-grid two-col">
-          <section className="ptdt-card" style={{ padding: 18 }}>
-            <div className="eyebrow pink" style={{ marginBottom: 10 }}>
-              <UploadCloud size={12} /> Import Preview
+        <section aria-labelledby="contact-import-export-heading" style={{ display: 'grid', gap: 14 }}>
+          <div>
+            <div className="eyebrow pink" style={{ marginBottom: 8 }}>
+              <UploadCloud size={12} /> Import / Export
             </div>
-            <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>Preview Contacts Import</h2>
-            <p style={{ color: 'var(--text-3)', marginTop: 8, marginBottom: 14 }}>
-              Paste a JSON array of contacts to preview duplicates, DNC blocks, and invalid numbers before import.
-            </p>
+            <h2 id="contact-import-export-heading" style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>
+              Contact Data Tools
+            </h2>
+          </div>
 
-            <textarea
-              value={previewText}
-              onChange={event => setPreviewText(event.target.value)}
-              rows={14}
-              style={textareaStyle}
-            />
-
-            {error && (
-              <div className="ptdt-card" style={{ padding: 12, marginTop: 14, color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.28)' }}>
-                {error}
+          <div className="ptdt-pro-grid two-col">
+            <section className="ptdt-card" style={{ padding: 18 }}>
+              <div className="eyebrow pink" style={{ marginBottom: 10 }}>
+                <UploadCloud size={12} /> Import Preview
               </div>
-            )}
+              <h3 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 22 }}>Preview Contacts Import</h3>
+              <p style={{ color: 'var(--text-3)', marginTop: 8, marginBottom: 14 }}>
+                Paste a JSON array of contacts to preview duplicates, DNC blocks, and invalid numbers before import.
+              </p>
 
-            <button type="button" className="btn-brand" onClick={() => void runPreview()} disabled={loading} style={{ marginTop: 14 }}>
-              <UploadCloud size={14} /> {loading ? 'Previewing...' : 'Preview Import'}
-            </button>
-          </section>
+              <textarea
+                value={previewText}
+                onChange={event => setPreviewText(event.target.value)}
+                rows={14}
+                style={textareaStyle}
+              />
 
-          <section className="ptdt-card" style={{ padding: 18 }}>
-            <div className="eyebrow pink" style={{ marginBottom: 10 }}>
-              <Download size={12} /> Export and Output
-            </div>
-            <h2 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 24 }}>CSV Export</h2>
-            <p style={{ color: 'var(--text-3)', marginTop: 8, marginBottom: 14 }}>
-              Download a contact export, or inspect the latest preview result payload.
-            </p>
+              {error && (
+                <div className="ptdt-card" style={{ padding: 12, marginTop: 14, color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.28)' }}>
+                  {error}
+                </div>
+              )}
 
-            <button type="button" className="ptdt-action-btn" onClick={() => void downloadCsv()}>
-              <Download size={14} /> Download CSV
-            </button>
+              <button type="button" className="btn-brand" onClick={() => void runPreview()} disabled={loading} style={{ marginTop: 14 }}>
+                <UploadCloud size={14} /> {loading ? 'Previewing...' : 'Preview Import'}
+              </button>
+            </section>
 
-            <pre className="ptdt-pro-json" style={{ marginTop: 14, maxHeight: 420 }}>
-              {previewResult ? JSON.stringify(previewResult, null, 2) : 'Preview output will appear here.'}
-            </pre>
-          </section>
-        </div>
-      )}
+            <section className="ptdt-card" style={{ padding: 18 }}>
+              <div className="eyebrow pink" style={{ marginBottom: 10 }}>
+                <Download size={12} /> Export and Output
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-display)', margin: 0, fontSize: 22 }}>CSV Export</h3>
+              <p style={{ color: 'var(--text-3)', marginTop: 8, marginBottom: 14 }}>
+                Download a contact export, or inspect the latest preview result payload.
+              </p>
+
+              <button type="button" className="ptdt-action-btn" onClick={() => void downloadCsv()}>
+                <Download size={14} /> Download CSV
+              </button>
+
+              <pre className="ptdt-pro-json" style={{ marginTop: 14, maxHeight: 420 }}>
+                {previewResult ? JSON.stringify(previewResult, null, 2) : 'Preview output will appear here.'}
+              </pre>
+            </section>
+          </div>
+        </section>
+      </div>
     </div>
   )
 }
