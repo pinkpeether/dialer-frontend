@@ -1,420 +1,139 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Activity, AlertTriangle, CheckCircle2, Clock3, Fingerprint, RefreshCw, ShieldCheck, UserCheck } from 'lucide-react'
-import { agentsAPI } from '../api/agents.api'
 import { attendanceIntegrityApi, type AttendanceOverviewRow } from '../api/attendanceIntegrity.api'
+import { agentsAPI } from '../api/agents.api'
 import { useAuthStore } from '../store/auth.store'
 
-type TeamUser = {
-  id: number | string
-  name?: string | null
-  email?: string | null
-  role?: string | null
-  status?: string | null
-  isActive?: boolean
-  sipPresence?: {
-    enabled: boolean
-    registered: boolean
-    status: string
-    username?: string | null
-    transport?: string | null
-    domain?: string | null
-    lastRegisteredAt?: string | null
-    lastUnregisteredAt?: string | null
-    lastSeenAt?: string | null
-  } | null
-}
-
-type TimeClockState = {
-  clockedIn?: boolean
-  startedAt?: number | null
-  lastClockOutAt?: number | null
-  sessionId?: string | null
-}
-
-type AttendancePageCache = {
-  savedAt: string
-  users: TeamUser[]
-  backendRows: AttendanceOverviewRow[]
-}
-
-type AttendanceSession = {
-  id: string
-  userId: number | string
-  name: string
-  email: string
+type TeamUser = { id: number; name?: string | null; email?: string | null; role?: string | null; status?: string | null; isActive?: boolean; sipPresence?: { enabled?: boolean; registered?: boolean } | null }
+type DisplayRow = {
+  user: TeamUser
   role: string
-  clockInAt: number
-  clockOutAt?: number | null
-  workedSeconds?: number
-  status: 'Clocked-In' | 'Clocked-Out'
-  browser: string
-  os: string
-  timezone: string
+  sessionId: number | null
+  clockStatus: string
+  dialerStatus: string
+  workedSeconds: number
+  needsReview: boolean
+  sipEnabled: boolean
+  clockInAt?: string | null
+  clockOutAt?: string | null
+  browser?: string | null
+  operatingSystem?: string | null
+  timezone?: string | null
 }
 
-const attendanceSessionsKey = 'ptdt-attendance:sessions'
-const attendancePageCacheKey = 'ptdt-attendance-integrity:page-cache:v1'
+const pageStyle: CSSProperties = { padding: '30px 34px 42px', maxWidth: 1720, width: '100%', boxSizing: 'border-box', overflowX: 'hidden', margin: '0 auto' }
+const cardStyle: CSSProperties = { border: '1px solid var(--border)', background: 'var(--bg-glass-hi)', borderRadius: 24, boxShadow: 'var(--shadow-card)', padding: 18 }
+const headStyle: CSSProperties = { padding: '14px 12px', textAlign: 'left', color: 'var(--text-3)', fontSize: 11, fontWeight: 950, letterSpacing: 1.1, textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }
+const cellStyle: CSSProperties = { padding: '14px 12px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', color: 'var(--text-2)' }
 
-const pageStyle: CSSProperties = {
-  padding: '32px 36px',
-  maxWidth: 1600,
-  margin: '0 auto',
-}
-
-const cardStyle: CSSProperties = {
-  padding: 18,
-  borderRadius: 22,
-  border: '1px solid var(--border)',
-  background: 'var(--bg-glass-hi)',
-  boxShadow: 'var(--shadow-card)',
-}
-
-const headStyle: CSSProperties = {
-  padding: '14px 16px',
-  textAlign: 'left',
-  fontSize: 11,
-  fontWeight: 950,
-  color: 'var(--text-3)',
-  textTransform: 'uppercase',
-  letterSpacing: 1.1,
-  borderBottom: '1px solid var(--border)',
-  whiteSpace: 'nowrap',
-}
-
-const cellStyle: CSSProperties = {
-  padding: '16px',
-  borderBottom: '1px solid var(--border)',
-  verticalAlign: 'middle',
-}
-
-const compactDateCellStyle: CSSProperties = {
-  ...cellStyle,
-  fontFamily: '"Roboto Condensed", "Helvetica Neue", Arial, sans-serif',
-  fontSize: 12.9,
-  fontWeight: 800,
-  letterSpacing: 0,
-  lineHeight: 1.25,
-  whiteSpace: 'nowrap',
-  color: 'var(--text-2)',
-}
-
-const cleanPillStyle: CSSProperties = {
-  justifyContent: 'center',
-  width: 74,
-  minWidth: 74,
-  maxWidth: 74,
-  fontFamily: 'var(--font-body)',
-  fontSize: 12.1,
-  letterSpacing: .35,
-  fontWeight: 950,
-}
-
-const pad = (value: number) => String(value).padStart(2, '0')
-
-const formatDuration = (seconds: number) => {
+const formatDuration = (seconds = 0) => {
   const safe = Math.max(0, Math.floor(seconds))
   const hours = Math.floor(safe / 3600)
   const minutes = Math.floor((safe % 3600) / 60)
-  const secs = safe % 60
-  return `${pad(hours)}:${pad(minutes)}:${pad(secs)}`
+  const remaining = safe % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remaining).padStart(2, '0')}`
+}
+const formatDate = (value?: string | null) => value ? new Date(value).toLocaleString() : '—'
+const cleanStatus = (value?: string | null) => String(value || 'UNKNOWN').replace(/_/g, ' ')
+const isRunning = (status: string) => ['CLOCKED IN', 'ON BREAK', 'IDLE'].includes(status.toUpperCase())
+
+function Pill({ children, tone = 'muted' }: { children: ReactNode; tone?: 'pink' | 'green' | 'gold' | 'muted' | 'danger' }) {
+  const color = tone === 'pink' ? 'var(--pink)' : tone === 'green' ? 'var(--green-2)' : tone === 'gold' ? 'var(--warning)' : tone === 'danger' ? 'var(--danger)' : 'var(--text-3)'
+  return <span style={{ display: 'inline-flex', alignItems: 'center', minHeight: 27, padding: '0 10px', borderRadius: 999, border: `1px solid ${color}`, background: 'var(--bg-glass)', color, fontSize: 10.5, fontWeight: 950, letterSpacing: .5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{children}</span>
 }
 
-const formatDate = (value?: number | string | null) => {
-  if (!value) return '—'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString()
+function MetricCard({ icon, label, value, tone }: { icon: ReactNode; label: string; value: number; tone: 'pink' | 'green' | 'gold' }) {
+  const color = tone === 'pink' ? 'var(--pink)' : tone === 'green' ? 'var(--green-2)' : 'var(--warning)'
+  return <div style={{ ...cardStyle, minHeight: 108 }}><div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}><span style={{ width: 36, height: 36, borderRadius: 14, display: 'grid', placeItems: 'center', color, background: `color-mix(in srgb, ${color} 12%, transparent)` }}>{icon}</span><span className="mono" style={{ color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950, letterSpacing: 1 }}>{label}</span></div><div style={{ marginTop: 12, fontSize: 28, fontWeight: 950, color: 'var(--text)' }}>{value}</div></div>
 }
 
-const cleanRole = (role?: string | null) => String(role || 'USER').replace(/_/g, ' ')
-
-const cleanStatus = (status?: string | null) => String(status || 'OFFLINE').replace(/_/g, ' ')
-
-const statusColor = (status: string) => {
-  const next = status.replace(/_/g, ' ').toUpperCase()
-  if (next.includes('CLOCKED IN') || next.includes('READY') || next.includes('ONLINE')) return 'var(--green-2)'
-  if (next.includes('NO SESSION') || next.includes('FLAG') || next.includes('MISSED') || next.includes('DISCONNECT')) return 'var(--danger)'
-  if (next.includes('REVIEW') || next.includes('PENDING') || next.includes('IDLE') || next.includes('BUSY')) return 'var(--warning)'
-  return 'var(--text-3)'
-}
-
-const pillToneForStatus = (status: string): 'green' | 'pink' | 'gold' | 'red' | 'muted' => {
-  const color = statusColor(status)
-  if (color === 'var(--danger)') return 'red'
-  if (color === 'var(--green-2)') return 'green'
-  if (color === 'var(--warning)') return 'gold'
-  return status === 'Clocked-Out' || status === 'CLOCKED OUT' ? 'muted' : 'gold'
-}
-
-const readJson = <T,>(key: string, fallback: T): T => {
-  try {
-    const raw = window.localStorage.getItem(key)
-    return raw ? JSON.parse(raw) as T : fallback
-  } catch {
-    return fallback
+const fromBackendRow = (row: AttendanceOverviewRow, nowMs: number): DisplayRow => {
+  const status = cleanStatus(row.status)
+  const startedAt = row.session?.clockInAt ? new Date(row.session.clockInAt).getTime() : 0
+  const activeSeconds = isRunning(status) && startedAt ? Math.max(row.activeSeconds || 0, Math.floor((nowMs - startedAt) / 1000)) : row.activeSeconds || row.session?.totalWorkedSeconds || 0
+  return {
+    user: row.user,
+    role: String(row.user.role || '').toUpperCase(),
+    sessionId: row.session?.id || null,
+    clockStatus: status,
+    dialerStatus: cleanStatus(row.user.status),
+    workedSeconds: activeSeconds,
+    needsReview: row.needsReview,
+    sipEnabled: Boolean(row.user.sipPresence?.enabled && row.user.sipPresence?.registered),
+    clockInAt: row.session?.clockInAt,
+    clockOutAt: row.session?.clockOutAt,
+    browser: row.session?.browser,
+    operatingSystem: row.session?.operatingSystem,
+    timezone: row.session?.timezone,
   }
-}
-
-const readSessions = () => readJson<AttendanceSession[]>(attendanceSessionsKey, []).filter(Boolean)
-
-const readPageCache = () => readJson<AttendancePageCache | null>(attendancePageCacheKey, null)
-
-const writePageCache = (cache: Omit<AttendancePageCache, 'savedAt'>) => {
-  try {
-    window.localStorage.setItem(attendancePageCacheKey, JSON.stringify({ ...cache, savedAt: new Date().toISOString() }))
-  } catch {
-    // Attendance cache is best-effort; backend remains the source of truth.
-  }
-}
-
-const latestSessionFor = (sessions: AttendanceSession[], user: TeamUser) => {
-  const uid = String(user.id)
-  return sessions.find(item => String(item.userId) === uid || (user.email && item.email === user.email)) || null
-}
-
-const localClockStateFor = (user: TeamUser) => readJson<TimeClockState>(`ptdt-timeclock:${user.id}`, { clockedIn: false, startedAt: null })
-
-const readSessionText = (session: unknown, key: string) => {
-  if (!session || typeof session !== 'object') return ''
-  const value = (session as Record<string, unknown>)[key]
-  return typeof value === 'string' ? value : ''
-}
-
-const readSessionNumber = (session: unknown, key: string) => {
-  if (!session || typeof session !== 'object') return null
-  const value = (session as Record<string, unknown>)[key]
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-const isRunningClockStatus = (status?: string | null) => {
-  const next = String(status || '').replace(/_/g, ' ').toUpperCase()
-  return ['CLOCKED IN', 'IDLE', 'ON BREAK', 'PENDING SUPERVISOR REVIEW'].includes(next)
-}
-
-const isNoSessionStatus = (status?: string | null) => String(status || '').replace(/_/g, ' ').toUpperCase() === 'NO SESSION'
-
-const isSipRegistered = (user: TeamUser) => {
-  const presence = user.sipPresence
-  if (!presence) return false
-  const lastSeenAt = presence.lastSeenAt ? new Date(presence.lastSeenAt).getTime() : 0
-  if (!Number.isFinite(lastSeenAt) || Date.now() - lastSeenAt > 90_000) return false
-  const status = String(presence.status || '').toLowerCase()
-  return Boolean(presence.registered || ['registered', 'in_call', 'calling', 'incoming'].includes(status))
-}
-
-const secondsSince = (value: unknown, nowMs: number) => {
-  if (!value) return 0
-  const startedAt = new Date(value as string | number).getTime()
-  return Number.isFinite(startedAt) ? Math.max(0, Math.floor((nowMs - startedAt) / 1000)) : 0
-}
-
-function Pill({ children, tone = 'muted' }: { children: ReactNode; tone?: 'green' | 'pink' | 'gold' | 'red' | 'muted' }) {
-  const color =
-    tone === 'green' ? 'var(--green-2)' :
-    tone === 'pink' ? 'var(--pink)' :
-    tone === 'gold' ? 'var(--warning)' :
-    tone === 'red' ? 'var(--danger)' :
-    'var(--text-3)'
-  return (
-    <span className="mono" style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      minHeight: 28,
-      padding: '0 11px',
-      borderRadius: 999,
-      border: `1px solid ${color}`,
-      color,
-      background: tone === 'muted' ? 'var(--bg-2)' : 'var(--bg-glass)',
-      fontSize: 10.5,
-      fontWeight: 950,
-      letterSpacing: .8,
-      textTransform: 'uppercase',
-      whiteSpace: 'nowrap',
-    }}>
-      {children}
-    </span>
-  )
-}
-
-function MetricCard({ icon, label, value, tone = 'green' }: { icon: ReactNode; label: string; value: ReactNode; tone?: 'green' | 'pink' | 'gold' | 'red' }) {
-  const color = tone === 'green' ? 'var(--green-2)' : tone === 'pink' ? 'var(--pink)' : tone === 'gold' ? 'var(--warning)' : 'var(--danger)'
-  return (
-    <div style={cardStyle}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, color }}>
-        {icon}
-        <span className="mono" style={{ fontSize: 10, fontWeight: 950, letterSpacing: 1.3, textTransform: 'uppercase' }}>{label}</span>
-      </div>
-      <div style={{ marginTop: 10, fontSize: 30, fontWeight: 950, color: 'var(--text)', lineHeight: 1 }}>{value}</div>
-    </div>
-  )
 }
 
 export default function AttendanceIntegrity() {
   const currentUser = useAuthStore(state => state.user)
-  const [cachedPage] = useState(() => readPageCache())
-  const [hasInitialCache] = useState(() => Boolean(cachedPage?.backendRows?.length || cachedPage?.users?.length))
-  const [users, setUsers] = useState<TeamUser[]>(() => cachedPage?.users ?? [])
-  const [sessions, setSessions] = useState<AttendanceSession[]>(() => readSessions())
-  const [backendRows, setBackendRows] = useState<AttendanceOverviewRow[]>(() => cachedPage?.backendRows ?? [])
-  const [loading, setLoading] = useState(!hasInitialCache)
-  const [refreshing, setRefreshing] = useState(hasInitialCache)
+  const [backendRows, setBackendRows] = useState<AttendanceOverviewRow[]>([])
+  const [fallbackUsers, setFallbackUsers] = useState<TeamUser[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [reviewingSessionId, setReviewingSessionId] = useState<number | null>(null)
   const [reviewNotes, setReviewNotes] = useState<Record<number, string>>({})
 
   const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true)
     if (silent) setRefreshing(true)
+    else setLoading(true)
     setError('')
-    setSessions(readSessions())
     try {
       const overview = await attendanceIntegrityApi.overview({ limit: 250 }, { silent, fresh: true })
       setBackendRows(overview.rows || [])
-      const nextUsers = (overview.rows || []).map(row => row.user)
-      setUsers(nextUsers)
-      writePageCache({ backendRows: overview.rows || [], users: nextUsers })
+      setFallbackUsers([])
     } catch (backendError) {
       try {
-      const data = await agentsAPI.getAll({ limit: 250 }, { silent: true })
-      const rows = Array.isArray(data?.agents) ? data.agents : Array.isArray(data) ? data : []
-      const teamRows = rows
-        .filter((row: TeamUser) => ['AGENT', 'SUPERVISOR'].includes(String(row.role || '').toUpperCase()))
-        .map((row: TeamUser) => row)
-      setUsers(teamRows)
-      setBackendRows([])
-      writePageCache({ backendRows: [], users: teamRows })
-      setError(`Backend attendance feed unavailable. Showing local fallback data. ${backendError instanceof Error ? backendError.message : ''}`.trim())
-      } catch (err) {
+        const data = await agentsAPI.getAll({ limit: 250 }, { silent: true })
+        const users = (Array.isArray(data) ? data : Array.isArray(data?.agents) ? data.agents : []) as TeamUser[]
+        setFallbackUsers(users.filter(user => ['AGENT', 'SUPERVISOR'].includes(String(user.role || '').toUpperCase())))
         setBackendRows([])
-        setError(err instanceof Error ? err.message : 'Could not load team users.')
-      }
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
+        setError(`Live attendance service is temporarily unavailable. Showing team account status. ${backendError instanceof Error ? backendError.message : ''}`.trim())
+      } catch (err) { setError(err instanceof Error ? err.message : 'Could not load attendance data') }
+    } finally { setLoading(false); setRefreshing(false) }
   }, [])
 
   useEffect(() => {
-    void load(hasInitialCache)
-    const refresh = window.setInterval(() => {
-      setSessions(readSessions())
-      setNowMs(Date.now())
-    }, 1000)
-    return () => window.clearInterval(refresh)
-  }, [hasInitialCache, load])
+    void load()
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [load])
+  useEffect(() => { const timer = window.setInterval(() => { void load(true) }, 60000); return () => window.clearInterval(timer) }, [load])
 
-  const rows = useMemo(() => {
-    if (backendRows.length > 0) {
-      return backendRows.map(row => ({
-        user: row.user,
-        role: String(row.user.role || '').toUpperCase(),
-        session: row.session,
-        clockStatus: cleanStatus(row.status),
-        dialerStatus: cleanStatus(row.user.status),
-        workedSeconds: isRunningClockStatus(row.status) && row.session?.clockInAt
-          ? secondsSince(row.session.clockInAt, nowMs)
-          : row.activeSeconds || row.session?.totalWorkedSeconds || 0,
-        needsReview: row.needsReview,
-        hasNoSession: row.status === 'NO_SESSION',
-        sipEnabled: isSipRegistered(row.user),
-        clockInAt: row.session?.clockInAt || null,
-        clockOutAt: row.session?.clockOutAt || null,
-      }))
-    }
-
-    return users.map(user => {
-    const localState = localClockStateFor(user)
-    const session = latestSessionFor(sessions, user)
-    const activeStartedAt = localState.clockedIn ? localState.startedAt || session?.clockInAt || null : null
-    const workedSeconds = activeStartedAt
-      ? Math.floor((nowMs - Number(activeStartedAt)) / 1000)
-      : session?.workedSeconds || 0
-    const role = String(user.role || '').toUpperCase()
-    const dialerStatus = cleanStatus(user.status)
-    const clockStatus = localState.clockedIn ? 'Clocked-In' : session?.status || 'Awaiting Backend Feed'
-    const needsReview = workedSeconds > 43_200 || clockStatus === 'Awaiting Backend Feed'
-    const sipEnabled = isSipRegistered(user)
-    return {
-      user,
-      role,
-      session,
-      clockStatus,
-      dialerStatus,
-      workedSeconds,
-      needsReview,
-      hasNoSession: false,
-      sipEnabled,
-      clockInAt: activeStartedAt || session?.clockInAt || null,
-      clockOutAt: session?.clockOutAt || localState.lastClockOutAt || null,
-    }
-    })
-  }, [backendRows, nowMs, sessions, users])
-
+  const rows = useMemo<DisplayRow[]>(() => backendRows.length ? backendRows.map(row => fromBackendRow(row, nowMs)) : fallbackUsers.map(user => ({ user, role: String(user.role || '').toUpperCase(), sessionId: null, clockStatus: 'Awaiting Live Session', dialerStatus: cleanStatus(user.status), workedSeconds: 0, needsReview: false, sipEnabled: Boolean(user.sipPresence?.enabled && user.sipPresence?.registered) })), [backendRows, fallbackUsers, nowMs])
   const viewerRole = String(currentUser?.role || '').toUpperCase()
-  const viewerId = currentUser?.id
-  const visibleRows = useMemo(() => (
-    viewerRole === 'SUPERVISOR'
-      ? rows.filter(row => Number(row.user.id) !== Number(viewerId))
-      : rows
-  ), [rows, viewerId, viewerRole])
-
-  useEffect(() => {
-    if (!visibleRows.length) return undefined
-    const refresh = window.setInterval(() => {
-      void load(true)
-    }, 60_000)
-    return () => window.clearInterval(refresh)
-  }, [load, visibleRows.length])
-
-  const clockedInCount = visibleRows.filter(row => isRunningClockStatus(row.clockStatus)).length
+  const visibleRows = useMemo(() => viewerRole === 'SUPERVISOR' ? rows.filter(row => Number(row.user.id) !== Number(currentUser?.id)) : rows, [currentUser?.id, rows, viewerRole])
+  const clockedInCount = visibleRows.filter(row => isRunning(row.clockStatus)).length
   const reviewCount = visibleRows.filter(row => row.needsReview).length
   const supervisorCount = visibleRows.filter(row => row.role === 'SUPERVISOR').length
   const agentCount = visibleRows.filter(row => row.role === 'AGENT').length
 
   const saveReview = async (sessionId: number, removeFlag: boolean) => {
     const notes = (reviewNotes[sessionId] || '').trim()
-    if (removeFlag && !notes) {
-      setError('Supervisor review reason is required before clearing an attendance flag.')
-      return
-    }
+    if (removeFlag && !notes) return setError('Supervisor review reason is required before clearing a flag.')
     setReviewingSessionId(sessionId)
     setError('')
     try {
-      await attendanceIntegrityApi.review(sessionId, {
-        notes: notes || 'Reviewed from Attendance Integrity monitor.',
-        removeFlag,
-        ...(removeFlag ? {} : { status: 'PENDING_SUPERVISOR_REVIEW' }),
-      })
+      await attendanceIntegrityApi.review(sessionId, { notes: notes || 'Reviewed from Attendance Monitoring.', removeFlag, ...(removeFlag ? {} : { status: 'PENDING_SUPERVISOR_REVIEW' }) })
       setReviewNotes(current => ({ ...current, [sessionId]: '' }))
       await load(true)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Attendance review could not be saved.')
-    } finally {
-      setReviewingSessionId(null)
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Attendance review could not be saved.') }
+    finally { setReviewingSessionId(null) }
   }
 
   return (
     <div className="ptdt-page ptdt-attendance-integrity-page" style={pageStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap', marginBottom: 26 }}>
-        <div>
-          <div className="eyebrow pink" style={{ marginBottom: 14 }}><ShieldCheck size={12} /> Attendance Integrity</div>
-          <h1 className="ptdt-page-title">Attendance <span className="gradient-brand-text">Integrity</span></h1>
-          <p className="ptdt-page-desc">
-            Monitor supervisor and agent Clock In/Out activity, active work duration, dialer presence, device trace, and review flags.
-          </p>
-        </div>
-        <button type="button" className="ptdt-action-btn" onClick={() => void load()} disabled={loading}>
-          <RefreshCw size={14} /> {loading || refreshing ? 'Refreshing' : 'Refresh'}
-        </button>
+        <div><div className="eyebrow pink" style={{ marginBottom: 14 }}><ShieldCheck size={12} /> Attendance Monitoring</div><h1 className="ptdt-page-title">Attendance <span className="gradient-brand-text">Monitoring</span></h1><p className="ptdt-page-desc">Monitor clock-in and clock-out activity, work duration, dialer presence, device details, and supervisor review flags.</p></div>
+        <button type="button" className="ptdt-action-btn" onClick={() => void load()} disabled={loading}><RefreshCw size={14} /> {loading || refreshing ? 'Refreshing' : 'Refresh'}</button>
       </div>
 
-      {!error && refreshing && visibleRows.length > 0 && (
-        <div style={{ margin: '-8px 0 16px', padding: '10px 13px', borderRadius: 15, border: '1px solid rgba(16,185,129,.2)', color: 'var(--green-2)', background: 'rgba(16,185,129,.08)', fontWeight: 850, fontSize: 12.5 }}>
-          Showing cached attendance data while refreshing in the background.
-        </div>
-      )}
+      {!error && refreshing && visibleRows.length > 0 && <div style={{ margin: '-8px 0 16px', padding: '10px 13px', borderRadius: 15, border: '1px solid rgba(16,185,129,.2)', color: 'var(--green-2)', background: 'rgba(16,185,129,.08)', fontWeight: 850, fontSize: 12.5 }}>Showing current attendance data while refreshing.</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 18 }}>
         <MetricCard icon={<UserCheck size={17} />} label="Supervisors" value={supervisorCount} tone="pink" />
@@ -423,159 +142,31 @@ export default function AttendanceIntegrity() {
         <MetricCard icon={<AlertTriangle size={17} />} label="Needs Review" value={reviewCount} tone={reviewCount ? 'gold' : 'green'} />
       </div>
 
-      <div style={{ ...cardStyle, marginBottom: 18, display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(260px, 1fr) minmax(260px, 1fr)', gap: 14 }}>
-        <div>
-          <div className="mono" style={{ color: 'var(--pink)', fontWeight: 950, fontSize: 10.5, letterSpacing: 1.3 }}>LIVE SOURCE</div>
-          <p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.55, fontSize: 13 }}>
-            Team presence and attendance sessions come from the backend Attendance Integrity API. Local TimeClock records are only used as emergency fallback.
-          </p>
-        </div>
-        <div>
-          <div className="mono" style={{ color: 'var(--green-2)', fontWeight: 950, fontSize: 10.5, letterSpacing: 1.3 }}>AUDIT SCOPE</div>
-          <p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.55, fontSize: 13 }}>
-            Clock In/Out stores user, role, browser, OS, timezone, session ID, start time, end time, and worked duration.
-          </p>
-        </div>
-        <div>
-          <div className="mono" style={{ color: 'var(--warning)', fontWeight: 950, fontSize: 10.5, letterSpacing: 1.3 }}>BACKEND INTEGRITY LAYER</div>
-          <p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.55, fontSize: 13 }}>
-            Heartbeat, public IP, immutable audit events, stale heartbeat detection, disconnect flags, and supervisor review actions are active and persisted.
-          </p>
-        </div>
+      <div style={{ ...cardStyle, marginBottom: 18, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+        <div><div className="mono" style={{ color: 'var(--pink)', fontWeight: 950, fontSize: 10.5, letterSpacing: 1.3 }}>LIVE SOURCE</div><p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.55, fontSize: 13 }}>Team presence and attendance sessions come from the live attendance service. Local account status is used only as a temporary fallback.</p></div>
+        <div><div className="mono" style={{ color: 'var(--green-2)', fontWeight: 950, fontSize: 10.5, letterSpacing: 1.3 }}>AUDIT SCOPE</div><p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.55, fontSize: 13 }}>Clock events store user, role, browser, operating system, timezone, session, start, end, and worked duration.</p></div>
+        <div><div className="mono" style={{ color: 'var(--warning)', fontWeight: 950, fontSize: 10.5, letterSpacing: 1.3 }}>ATTENDANCE SAFEGUARDS</div><p style={{ margin: '8px 0 0', color: 'var(--text-2)', lineHeight: 1.55, fontSize: 13 }}>Heartbeat checks, disconnect flags, stale-session detection, and supervisor review actions are recorded and retained.</p></div>
       </div>
 
-      {error && (
-        <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 16, border: '1px solid rgba(239,68,68,.26)', color: 'var(--danger)', background: 'rgba(239,68,68,.08)', fontWeight: 800 }}>
-          {error}
-        </div>
-      )}
+      {error && <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 16, border: '1px solid rgba(239,68,68,.26)', color: 'var(--danger)', background: 'rgba(239,68,68,.08)', fontWeight: 800 }}>{error}</div>}
 
-      <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', minWidth: 1180, borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['User', 'Role', 'Login / Dialer', 'Clock Status', 'Worked Time', 'Clock In', 'Clock Out', 'Device Trace', 'Integrity'].map(header => (
-                  <th key={header} style={headStyle}>{header}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading && visibleRows.length === 0 ? (
-                <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-3)' }}>Loading attendance integrity data...</td></tr>
-              ) : visibleRows.length === 0 ? (
-                <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-3)' }}>No supervisor or agent records found.</td></tr>
-              ) : visibleRows.map(row => {
-                const tone = pillToneForStatus(row.clockStatus)
-                return (
-                  <tr key={row.user.id}>
-                    <td style={cellStyle}>
-                      <div style={{ fontWeight: 950, color: 'var(--text)', fontSize: 15 }}>{row.user.name || row.user.email || `User ${row.user.id}`}</div>
-                      <div className="mono" style={{ marginTop: 5, color: 'var(--text-3)', fontSize: 11.5 }}>{row.user.email || 'No email'}</div>
-                    </td>
-                    <td style={cellStyle}><Pill tone={row.role === 'SUPERVISOR' ? 'pink' : 'green'}>{cleanRole(row.role)}</Pill></td>
-                    <td style={cellStyle}>
-                      <div style={{ display: 'grid', gap: 7 }}>
-                        <Pill tone={statusColor(row.dialerStatus) === 'var(--green-2)' ? 'green' : 'muted'}>{row.dialerStatus}</Pill>
-                        <span style={{ color: row.user.isActive === false ? 'var(--danger)' : row.sipEnabled ? 'var(--green-2)' : 'var(--text-3)', fontSize: 12, fontWeight: 900 }}>
-                          {row.user.isActive === false ? 'Account inactive' : row.sipEnabled ? 'SIP Enabled' : 'SIP Disabled'}
-                        </span>
-                      </div>
-                    </td>
-                    <td style={cellStyle}><Pill tone={tone}>{row.clockStatus}</Pill></td>
-                    <td className="mono" style={{ ...cellStyle, color: isRunningClockStatus(row.clockStatus) ? 'var(--green-2)' : 'var(--text)', fontSize: 16, fontWeight: 950 }}>{formatDuration(row.workedSeconds)}</td>
-                    <td style={compactDateCellStyle}>{formatDate(row.clockInAt)}</td>
-                    <td style={compactDateCellStyle}>{formatDate(row.clockOutAt)}</td>
-                    <td style={cellStyle}>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-2)' }}>
-                        <Fingerprint size={14} color="var(--pink)" />
-                        <div>
-                          <div style={{ fontWeight: 900, fontSize: 12.8, lineHeight: 1.15 }}>{readSessionText(row.session, 'browser') || 'No session yet'}</div>
-                          <div style={{ color: 'var(--text-3)', fontSize: 12 }}>{readSessionText(row.session, 'operatingSystem') || readSessionText(row.session, 'os') || 'Device pending'} · {readSessionText(row.session, 'timezone') || '—'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={cellStyle}>
-                      {(() => {
-                        const sessionId = readSessionNumber(row.session, 'id')
-                        const noSession = Boolean(row.hasNoSession) || isNoSessionStatus(row.clockStatus)
-                        const integrityLabel = noSession ? 'No Session' : row.needsReview ? 'Flagged' : 'Clean'
-                        const integrityColor = row.needsReview || noSession ? 'var(--danger)' : 'var(--green-2)'
-                        return (
-                          <div style={{ display: 'grid', gap: 8, minWidth: row.needsReview && sessionId ? 220 : noSession ? 112 : row.needsReview ? 108 : 82, maxWidth: row.needsReview && sessionId ? 260 : noSession ? 122 : row.needsReview ? 128 : 90 }}>
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              minHeight: 28,
-                              padding: '0 10px',
-                              borderRadius: 999,
-                              border: `1px solid ${integrityColor}`,
-                              color: integrityColor,
-                              background: 'var(--bg-glass)',
-                              textTransform: 'uppercase',
-                              whiteSpace: 'nowrap',
-                              ...(row.needsReview || noSession ? { justifyContent: 'center', width: noSession ? 112 : 104, minWidth: noSession ? 112 : 104, maxWidth: noSession ? 112 : 104, fontSize: 11, fontWeight: 950, letterSpacing: .5 } : cleanPillStyle),
-                            }}>{integrityLabel}</span>
-                            {row.needsReview && sessionId && (
-                              <>
-                                <input
-                                  value={reviewNotes[sessionId] || ''}
-                                  onChange={event => setReviewNotes(current => ({ ...current, [sessionId]: event.target.value }))}
-                                  placeholder="Supervisor review reason..."
-                                  style={{
-                                    width: '100%',
-                                    minHeight: 34,
-                                    borderRadius: 12,
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--bg-glass-hi)',
-                                    color: 'var(--text)',
-                                    padding: '0 10px',
-                                    fontSize: 11.5,
-                                    outline: 'none',
-                                  }}
-                                />
-                                <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-                                  <button
-                                    type="button"
-                                    className="ptdt-action-btn"
-                                    disabled={reviewingSessionId === sessionId}
-                                    onClick={() => void saveReview(sessionId, false)}
-                                    style={{ minHeight: 30, padding: '0 10px', fontSize: 10.5 }}
-                                  >
-                                    Review
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="ptdt-action-btn active"
-                                    disabled={reviewingSessionId === sessionId}
-                                    onClick={() => void saveReview(sessionId, true)}
-                                    style={{ minHeight: 30, padding: '0 10px', fontSize: 10.5 }}
-                                  >
-                                    <CheckCircle2 size={12} /> Clear Flag
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )
-                      })()}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div style={{ ...cardStyle, marginTop: 18 }}>
-        <div className="mono" style={{ color: 'var(--text-3)', fontSize: 10.5, fontWeight: 950, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 }}>
-          Current viewer
-        </div>
-        <div style={{ color: 'var(--text-2)', fontSize: 13.5, lineHeight: 1.6 }}>
-          {currentUser?.name || currentUser?.email || 'PTDT User'} can use this page as the dedicated Attendance Integrity monitor. Clock records, heartbeat events, disconnect flags, and supervisor review state are now backend-backed.
-        </div>
-      </div>
+      <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}><div style={{ overflowX: 'auto' }}><table style={{ width: '100%', minWidth: 1120, borderCollapse: 'collapse' }}>
+        <thead><tr>{['User', 'Role', 'Login / Dialer', 'Clock Status', 'Worked Time', 'Clock In', 'Clock Out', 'Device Details', 'Review'].map(header => <th key={header} style={headStyle}>{header}</th>)}</tr></thead>
+        <tbody>
+          {loading && visibleRows.length === 0 ? <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-3)' }}>Loading attendance data...</td></tr> : visibleRows.length === 0 ? <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-3)' }}>No supervisor or agent records found.</td></tr> : visibleRows.map(row => (
+            <tr key={row.user.id}>
+              <td style={cellStyle}><div style={{ fontWeight: 950, color: 'var(--text)', fontSize: 15 }}>{row.user.name || row.user.email || `User ${row.user.id}`}</div><div className="mono" style={{ marginTop: 5, color: 'var(--text-3)', fontSize: 11.5 }}>{row.user.email || 'No email'}</div></td>
+              <td style={cellStyle}><Pill tone={row.role === 'SUPERVISOR' ? 'pink' : 'green'}>{row.role}</Pill></td>
+              <td style={cellStyle}><div style={{ display: 'grid', gap: 7 }}><Pill tone={['ONLINE', 'READY'].includes(row.dialerStatus.toUpperCase()) ? 'green' : 'muted'}>{row.dialerStatus}</Pill><span style={{ color: row.user.isActive === false ? 'var(--danger)' : row.sipEnabled ? 'var(--green-2)' : 'var(--text-3)', fontSize: 12, fontWeight: 900 }}>{row.user.isActive === false ? 'Account inactive' : row.sipEnabled ? 'SIP Enabled' : 'SIP Disabled'}</span></div></td>
+              <td style={cellStyle}><Pill tone={row.needsReview ? 'danger' : isRunning(row.clockStatus) ? 'green' : 'muted'}>{row.clockStatus}</Pill></td>
+              <td className="mono" style={{ ...cellStyle, color: isRunning(row.clockStatus) ? 'var(--green-2)' : 'var(--text)', fontSize: 16, fontWeight: 950 }}>{formatDuration(row.workedSeconds)}</td>
+              <td style={cellStyle}>{formatDate(row.clockInAt)}</td><td style={cellStyle}>{formatDate(row.clockOutAt)}</td>
+              <td style={cellStyle}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Fingerprint size={14} color="var(--pink)" /><div><div style={{ fontWeight: 900, fontSize: 12.8 }}>{row.browser || 'No session yet'}</div><div style={{ color: 'var(--text-3)', fontSize: 12 }}>{row.operatingSystem || 'Device pending'} · {row.timezone || '—'}</div></div></div></td>
+              <td style={cellStyle}>{row.needsReview && row.sessionId ? <div style={{ display: 'grid', gap: 8, minWidth: 220 }}><Pill tone="danger">Flagged</Pill><input value={reviewNotes[row.sessionId] || ''} onChange={event => setReviewNotes(current => ({ ...current, [row.sessionId!]: event.target.value }))} placeholder="Supervisor review reason..." style={{ width: '100%', minHeight: 34, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-glass-hi)', color: 'var(--text)', padding: '0 10px', fontSize: 11.5, outline: 'none' }} /><div style={{ display: 'flex', gap: 7 }}><button type="button" className="ptdt-action-btn" disabled={reviewingSessionId === row.sessionId} onClick={() => void saveReview(row.sessionId!, false)} style={{ minHeight: 30, padding: '0 10px', fontSize: 10.5 }}>Review</button><button type="button" className="ptdt-action-btn active" disabled={reviewingSessionId === row.sessionId} onClick={() => void saveReview(row.sessionId!, true)} style={{ minHeight: 30, padding: '0 10px', fontSize: 10.5 }}><CheckCircle2 size={12} /> Clear Flag</button></div></div> : <Pill tone={row.clockStatus === 'Awaiting Live Session' ? 'gold' : 'green'}>{row.clockStatus === 'Awaiting Live Session' ? 'Pending' : 'Clear'}</Pill>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div></div>
     </div>
   )
 }
