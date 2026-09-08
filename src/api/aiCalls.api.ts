@@ -83,7 +83,7 @@ export const aiCallsAPI = {
   getLog: async (id: number | string): Promise<AiCallLog> => {
     return swr(swrKey('ai-calls:log', { id }), async ({ silent }) => {
       const res = await api.get(`/ai-calls/logs/${id}`, silent ? silentOverlayConfig() : undefined)
-      return res.data.data ?? res.data
+      return res.data.data ?? res.data.item ?? res.data
     })
   },
 
@@ -93,7 +93,8 @@ export const aiCallsAPI = {
   },
 
   hangupOutboundCall: async (id: number | string, providerCallId?: string | null): Promise<StartAiCallResponse> => {
-    const encodedProviderCallId = providerCallId ? encodeURIComponent(providerCallId) : ''
+    const cleanProviderCallId = String(providerCallId || '').trim()
+    const encodedProviderCallId = cleanProviderCallId.startsWith('call_') ? encodeURIComponent(cleanProviderCallId) : ''
     const path = encodedProviderCallId
       ? `/ai-calls/provider-calls/${encodedProviderCallId}/hangup`
       : `/ai-calls/logs/${id}/hangup`
