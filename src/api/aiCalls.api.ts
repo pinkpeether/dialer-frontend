@@ -92,8 +92,12 @@ export const aiCallsAPI = {
     return res.data.data ?? res.data
   },
 
-  hangupOutboundCall: async (id: number | string): Promise<StartAiCallResponse> => {
-    const res = await api.post(`/ai-calls/logs/${id}/hangup`)
+  hangupOutboundCall: async (id: number | string, providerCallId?: string | null): Promise<StartAiCallResponse> => {
+    const encodedProviderCallId = providerCallId ? encodeURIComponent(providerCallId) : ''
+    const path = encodedProviderCallId
+      ? `/ai-calls/provider-calls/${encodedProviderCallId}/hangup`
+      : `/ai-calls/logs/${id}/hangup`
+    const res = await api.post(path)
     return res.data.data ?? res.data
   },
 }

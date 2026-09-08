@@ -790,11 +790,12 @@ export default function AiDialer() {
     setControlLoading(action)
 
     try {
+      const providerCallId = result?.providerCallId || liveLog?.providerCallId || undefined
       const response = action === 'hangup'
-        ? await aiCallsAPI.hangupOutboundCall(activeCallId) as { message?: unknown; status?: unknown }
+        ? await aiCallsAPI.hangupOutboundCall(activeCallId, providerCallId) as { message?: unknown; status?: unknown }
         : await callControlAPI.runAction(action, {
           callId: activeCallId,
-          providerCallId: result?.providerCallId || liveLog?.providerCallId || undefined,
+          providerCallId,
           targetNumber: cleanText(transferTo) || undefined,
           transferTo: cleanText(transferTo) || undefined,
         }) as { message?: unknown; status?: unknown }
