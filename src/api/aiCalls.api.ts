@@ -1,5 +1,5 @@
 import api from './axios'
-import { silentOverlayConfig, swr, swrKey } from './swrCache'
+import { clearSwrByPrefix, silentOverlayConfig, swr, swrKey } from './swrCache'
 
 export type AiCallLog = {
   id: number | string
@@ -99,6 +99,7 @@ export const aiCallsAPI = {
       ? `/ai-calls/provider-calls/${encodedProviderCallId}/hangup`
       : `/ai-calls/logs/${id}/hangup`
     const res = await api.post(path)
+    clearSwrByPrefix('ai-calls')
     return res.data.data ?? res.data
   },
 }

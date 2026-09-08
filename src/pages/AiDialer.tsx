@@ -652,8 +652,19 @@ export default function AiDialer() {
   const [controlLoading, setControlLoading] = useState<CallControlAction | null>(null)
   const [controlMessage, setControlMessage] = useState('')
   const [controlError, setControlError] = useState('')
+  const [hangupState, setHangupState] = useState<{ requested: boolean; durationMs: number } | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
+
+  const rawStatus = hangupState?.requested ? 'ended' : (liveLog?.callStatus || result?.status)
+  const isTerminal = isTerminalStatus(rawStatus)
+  const hasStarted = Boolean(result || submitting || startedAt || hangupState?.requested)
+  const activeCallId = result?.callId || liveLog?.id || ''
+  const providerDurationMs = liveLog?.durationMs && liveLog.durationMs > 0 ? liveLog.durationMs : 0
+  const displayDurationMs = hangupState?.requested
+    ? Math.max(hangupState.durationMs, providerDurationMs, elapsedMs)
+    : providerDurationMs || elapsedMs
+  const isLive = hasStarted && !isTerminal && !hangupState?.requested
 
   const validation = useMemo(() => {
     return [
@@ -663,17 +674,15 @@ export default function AiDialer() {
     ].filter(Boolean)
   }, [customerNumber, callerId, transferTo])
 
-  const canSubmit = validation.length === 0 && Boolean(customerNumber.trim()) && !submitting
-  const hasStarted = Boolean(result || submitting || startedAt)
-  const activeCallId = result?.callId || liveLog?.id || ''
-  const displayStatus = hasStarted ? getDisplayStatus(liveLog?.callStatus || result?.status) : 'Ready'
-  const displayDurationMs = liveLog?.durationMs && liveLog.durationMs > 0 ? liveLog.durationMs : elapsedMs
-  const isLive = hasStarted && !isTerminalStatus(liveLog?.callStatus || result?.status)
+  const canSubmit = validation.length === 0 && Boolean(customerNumber.trim()) && !submitting && !isLive
+  const displayStatus = hasStarted ? getDisplayStatus(rawStatus) : 'Ready'
   const displayResult = !hasStarted
     ? 'Ready'
     : submitting
       ? 'Starting'
-      : liveLog?.callSuccessful === true
+      : hangupState?.requested
+        ? 'Stopped by user'
+        : liveLog?.callSuccessful === true
         ? 'Successful'
         : liveLog?.callSuccessful === false
           ? 'Review needed'
@@ -699,7 +708,19 @@ export default function AiDialer() {
     const loadLog = async () => {
       try {
         const data = await aiCallsAPI.getLog(result.callId as string | number)
-        if (!cancelled) setLiveLog(data)
+        if (!cancelled) {
+          setLiveLog(previous => {
+            if (hangupState?.requested && !isTerminalStatus(data.callStatus)) {
+              return {
+                ...data,
+                callStatus: 'ended',
+                durationMs: Math.max(data.durationMs || 0, previous?.durationMs || 0, hangupState.durationMs),
+              }
+            }
+
+            return data
+          })
+        }
       } catch {
         // The call log can arrive a few moments after the launch response.
       }
@@ -716,7 +737,7 @@ export default function AiDialer() {
       cancelled = true
       window.clearInterval(interval)
     }
-  }, [liveLog?.callStatus, result?.callId])
+  }, [hangupState, liveLog?.callStatus, result?.callId])
 
   useEffect(() => {
     if (!confirmOpen) return undefined
@@ -736,6 +757,7 @@ export default function AiDialer() {
     setLiveLog(null)
     setControlMessage('')
     setControlError('')
+    setHangupState(null)
     setElapsedMs(0)
 
     if (validation.length > 0) {
@@ -782,6 +804,11 @@ export default function AiDialer() {
     setControlError('')
     setControlMessage('')
 
+    if (hangupState?.requested || isTerminalStatus(rawStatus)) {
+      setControlMessage('AI call is already ended.')
+      return
+    }
+
     if (!activeCallId) {
       setControlError('Call ID is required before call controls can be used.')
       return
@@ -791,6 +818,10 @@ export default function AiDialer() {
 
     try {
       const providerCallId = result?.providerCallId || liveLog?.providerCallId || undefined
+      const stoppedAtMs = Math.max(
+        displayDurationMs,
+        startedAt ? Date.now() - startedAt : 0,
+      )
       const response = action === 'hangup'
         ? await aiCallsAPI.hangupOutboundCall(activeCallId, providerCallId) as { message?: unknown; status?: unknown }
         : await callControlAPI.runAction(action, {
@@ -802,7 +833,16 @@ export default function AiDialer() {
 
       setControlMessage(getControlMessage(response?.message))
       if (action === 'hangup') {
-        setLiveLog(previous => previous ? { ...previous, callStatus: String(response?.status || 'ended') } : previous)
+        setHangupState({ requested: true, durationMs: stoppedAtMs })
+        setResult(previous => previous ? { ...previous, status: 'ended' } : previous)
+        setLiveLog(previous => previous
+          ? { ...previous, callStatus: String(response?.status || 'ended'), durationMs: Math.max(previous.durationMs || 0, stoppedAtMs) }
+          : {
+            id: activeCallId,
+            providerCallId,
+            callStatus: String(response?.status || 'ended'),
+            durationMs: stoppedAtMs,
+          })
         setStartedAt(null)
       }
     } catch (err) {
@@ -812,7 +852,7 @@ export default function AiDialer() {
     } finally {
       setControlLoading(null)
     }
-  }, [activeCallId, liveLog?.providerCallId, result?.providerCallId, transferTo])
+  }, [activeCallId, displayDurationMs, hangupState?.requested, liveLog?.providerCallId, rawStatus, result?.providerCallId, startedAt, transferTo])
 
   const runControl = useCallback((action: CallControlAction, requiresConfirm?: boolean) => {
     if (requiresConfirm) {
@@ -959,7 +999,7 @@ export default function AiDialer() {
               {consoleActions.map(item => {
                 const Icon = item.icon
                 const active = controlLoading === item.action
-                const disabled = !activeCallId || Boolean(controlLoading)
+                const disabled = !activeCallId || Boolean(controlLoading) || !isLive
 
                 return (
                   <button
@@ -968,7 +1008,7 @@ export default function AiDialer() {
                     className={`ptdt-action-btn ptdt-ai-control-btn ${item.tone || ''}`}
                     onClick={() => runControl(item.action, item.requiresConfirm)}
                     disabled={disabled}
-                    title={activeCallId ? `${item.label} active AI call` : 'Start an AI call first'}
+                    title={!activeCallId ? 'Start an AI call first' : isLive ? `${item.label} active AI call` : 'AI call is already ended'}
                     style={{ opacity: disabled && !active ? 0.5 : 1 }}
                   >
                     <Icon size={18} />
