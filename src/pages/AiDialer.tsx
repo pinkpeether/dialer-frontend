@@ -790,13 +790,20 @@ export default function AiDialer() {
     setControlLoading(action)
 
     try {
-      const response = await callControlAPI.runAction(action, {
-        callId: activeCallId,
-        targetNumber: cleanText(transferTo) || undefined,
-        transferTo: cleanText(transferTo) || undefined,
-      }) as { message?: unknown }
+      const response = action === 'hangup'
+        ? await aiCallsAPI.hangupOutboundCall(activeCallId) as { message?: unknown; status?: unknown }
+        : await callControlAPI.runAction(action, {
+          callId: activeCallId,
+          providerCallId: result?.providerCallId || liveLog?.providerCallId || undefined,
+          targetNumber: cleanText(transferTo) || undefined,
+          transferTo: cleanText(transferTo) || undefined,
+        }) as { message?: unknown; status?: unknown }
 
       setControlMessage(getControlMessage(response?.message))
+      if (action === 'hangup') {
+        setLiveLog(previous => previous ? { ...previous, callStatus: String(response?.status || 'ended') } : previous)
+        setStartedAt(null)
+      }
     } catch (err) {
       const message = (err as { response?: { data?: { message?: unknown } }; message?: unknown })?.response?.data?.message
         || (err as { message?: unknown })?.message
@@ -804,7 +811,7 @@ export default function AiDialer() {
     } finally {
       setControlLoading(null)
     }
-  }, [activeCallId, transferTo])
+  }, [activeCallId, liveLog?.providerCallId, result?.providerCallId, transferTo])
 
   const runControl = useCallback((action: CallControlAction, requiresConfirm?: boolean) => {
     if (requiresConfirm) {

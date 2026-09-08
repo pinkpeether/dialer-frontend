@@ -65,6 +65,7 @@ export type StartAiCallResponse = {
   callId?: number | string | null
   displayCallId?: string | null
   status?: string | null
+  providerCallId?: string | null
   toNumber?: string | null
   fromNumber?: string | null
   transferDestination?: string | null
@@ -88,6 +89,11 @@ export const aiCallsAPI = {
 
   startOutboundCall: async (payload: StartAiCallInput): Promise<StartAiCallResponse> => {
     const res = await api.post('/ai-calls/outbound', payload)
+    return res.data.data ?? res.data
+  },
+
+  hangupOutboundCall: async (id: number | string): Promise<StartAiCallResponse> => {
+    const res = await api.post(`/ai-calls/logs/${id}/hangup`)
     return res.data.data ?? res.data
   },
 }
