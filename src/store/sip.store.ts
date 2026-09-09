@@ -4,6 +4,7 @@ import { softphoneAudio } from '../services/audio/SoftphoneAudio'
 import api from '../api/axios'
 import { callsAPI } from '../api/calls.api'
 import { dynamicCallerIdApi } from '../api/dynamicCallerId.api'
+import { commercialControlApi } from '../api/commercialControl.api'
 import type { SipAccountConfig, SipCallState, SipIncomingCall, SipRuntimeStatus } from '../types/sip'
 
 const STORAGE_KEY = 'ptdt_sip_account_v1'
@@ -125,6 +126,24 @@ async function logSipCallToBackend(callState: SipCallState): Promise<number | nu
 
 async function endSipCallInBackend(callId: number, endedAt: Date): Promise<void> {
   await callsAPI.end(callId, { endedAt: endedAt.toISOString() })
+}
+
+async function prepareSipCall(destination: string): Promise<number> {
+  const res = await api.post('/calls', {
+    direction: 'outgoing',
+    remoteNumber: destination.trim(),
+    source: 'sip',
+    startedAt: new Date().toISOString(),
+  })
+  const callId = res.data?.data?.id ?? res.data?.id
+  if (typeof callId !== 'number') throw new Error('Unable to create SIP call record for wallet authorization.')
+  try {
+    await commercialControlApi.authorizeCallingCall(callId)
+    return callId
+  } catch (err) {
+    await callsAPI.end(callId).catch(() => undefined)
+    throw err
+  }
 }
 
 export type SipDispositionContext = {
@@ -278,6 +297,12 @@ export const useSipStore = create<SipStore>((set, get) => ({
             return
           }
 
+          const preparedSipCallId = get().sipCallId
+          if (preparedSipCallId) {
+            set({ sipCallLogPromise: Promise.resolve(preparedSipCallId) })
+            return
+          }
+
           // 12A — log call to backend async, store the returned callId
           const sipCallLogPromise = logSipCallToBackend(activeCall)
           set({ sipCallLogPromise })
@@ -367,6 +392,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   },
 
   call: async (destination) => {
+    let preparedSipCallId: number | null = null
     try {
       set({ error: null })
       const config = get().config
@@ -380,6 +406,9 @@ export const useSipStore = create<SipStore>((set, get) => ({
         })
         return
       }
+
+      preparedSipCallId = await prepareSipCall(destination)
+      set({ sipCallId: preparedSipCallId, sipCallLogPromise: Promise.resolve(preparedSipCallId) })
 
       const resolvedInputDeviceId = await sipClient.setAudioInputDevice(get().audioInputDeviceId)
       if (resolvedInputDeviceId !== get().audioInputDeviceId) {
@@ -395,6 +424,11 @@ export const useSipStore = create<SipStore>((set, get) => ({
       }
       set({ error: null })
     } catch (err) {
+      if (preparedSipCallId) {
+        await commercialControlApi.releaseCallingCall(preparedSipCallId).catch(() => undefined)
+        await callsAPI.end(preparedSipCallId).catch(() => undefined)
+        set({ sipCallId: null, sipCallLogPromise: null })
+      }
       const error = err instanceof Error ? err.message : 'SIP call failed'
       const lower = error.toLowerCase()
       const shouldResetInput = lower.includes('microphone') ||

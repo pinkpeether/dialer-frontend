@@ -4,6 +4,7 @@ import { commercialControlApi, type CommercialAccount, type CommercialAddonCode,
 import api from '../api/axios'
 import { beginGlobalRequestOverlay, endGlobalRequestOverlay } from '../services/globalRequestOverlay'
 import { cleanDisplayText, commercialAccountLabel } from '../utils/displayText'
+import CommercialCallingBillingPanel from '../components/CommercialCallingBillingPanel'
 
 const money = (value: string | number | null | undefined, currency = 'USD') => `${currency} ${Number(value || 0).toFixed(2)}`
 const cardStyle = { padding: 18, borderRadius: 18 } as const
@@ -580,6 +581,8 @@ export default function CommercialControl() {
             <div className="glass" style={cardStyle}><div className="eyebrow purple"><BellRing size={12} /> Low Balance Rules</div><div style={{ fontSize: 16, fontWeight: 850, color: 'var(--text)', marginTop: 8 }}>Low: {money(summary.account.lowBalanceThreshold, currentCurrency)}</div><div style={{ fontSize: 16, fontWeight: 850, color: 'var(--text)', marginTop: 6 }}>Critical: {money(summary.account.criticalBalanceThreshold, currentCurrency)}</div></div>
             <div className="glass" style={cardStyle}><div className="eyebrow green"><ShieldCheck size={12} /> Dynamic Caller ID</div><div style={{ fontSize: 26, fontWeight: 950, color: summary.callerIdControl.dynamicCallerIdEnabled ? 'var(--green-2)' : 'var(--text-3)', marginTop: 8 }}>{summary.callerIdControl.dynamicCallerIdEnabled ? 'ACTIVE' : 'INACTIVE'}</div><div className="mono" style={{ color: 'var(--text-3)', marginTop: 6 }}>{summary.callerIdControl.activeVerifiedCallerIds} active verified IDs</div></div>
           </div>
+
+          <CommercialCallingBillingPanel accountId={currentAccountId} accountCurrency={currentCurrency} disabled={pageBusy} onAllowanceApplied={() => { void loadData(currentAccountId, { silent: true }) }} />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 24, marginBottom: 24 }}>
             <form onSubmit={handlePlanActivation} className="glass" style={cardStyle}>

@@ -7,7 +7,7 @@ export type CommercialStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'EXPIRED' |
 export type PaymentRequestStatus = 'PENDING_PAYMENT' | 'PAYMENT_SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
 
 export type CommercialAccount = { id: number; name: string; code: string; status: string; email?: string | null; phone?: string | null; currency: string; lowBalanceThreshold: string | number; criticalBalanceThreshold: string | number; hardStopEnabled: boolean; createdAt: string; updatedAt: string }
-export type CommercialWallet = { id: number; accountId: number; currency: string; availableBalance: string | number; heldBalance: string | number; creditLimit: string | number }
+export type CommercialWallet = { id: number; accountId: number; currency: string; availableBalance: string | number; heldBalance: string | number; includedSeconds?: number; heldIncludedSeconds?: number; creditLimit: string | number }
 export type CommercialPlan = { id: number; code: CommercialPlanCode; name: string; monthlyFee: string | number; includedSeats: number; description?: string | null; features?: Record<string, unknown> | null; isActive: boolean }
 export type CommercialAddon = { id: number; code: CommercialAddonCode; name: string; monthlyFee: string | number; description?: string | null; isActive: boolean }
 export type CommercialAddonStatus = { id?: number; addon: CommercialAddon; status: CommercialStatus; startsAt?: string | null; endsAt?: string | null; priceOverride?: string | number | null; notes?: string | null }
@@ -17,6 +17,9 @@ export type WalletTransaction = { id: number; type: string; direction: string; a
 export type PaymentRequest = { id: number; accountId: number; amount: string | number; currency: string; requestedAddons?: CommercialAddonCode[] | null; paymentMethod?: string | null; paymentReference?: string | null; proofUrl?: string | null; notes?: string | null; status: PaymentRequestStatus; reviewedAt?: string | null; createdAt: string; account?: Pick<CommercialAccount, 'id' | 'name' | 'code' | 'currency'>; requestedPlan?: CommercialPlan | null }
 export type CommercialSummary = { account: CommercialAccount; wallet: CommercialWallet | null; balanceState: 'HEALTHY' | 'LOW_BALANCE' | 'CRITICAL_BALANCE' | 'HARD_STOP'; subscription: CommercialSubscription | null; addons: CommercialAddonStatus[]; alerts: BillingAlert[]; latestTransactions: WalletTransaction[]; callerIdControl: { dynamicCallerIdEnabled: boolean; verifiedCallerIds: number; activeVerifiedCallerIds: number; availableNumbers: Array<{ id: number; displayNumber: string; displayName?: string | null; scope: string; provider?: string | null }> } }
 export type CommercialCatalog = { plans: CommercialPlan[]; addons: CommercialAddon[] }
+export type CommercialProviderWallet = { provider: string; currency: string; availableBalance: string | number; reserveBalance: string | number; enforcementEnabled: boolean }
+export type CommercialCallingRate = { id: number; destinationCode: string; destinationName: string; dialPrefix: string; carrierRatePerMinute: string | number; customerRatePerMinute: string | number; minimumSeconds: number; incrementSeconds: number; isActive: boolean }
+export type CommercialCallingBillingSetup = { provider: CommercialProviderWallet; outstandingCustomerCredit: string | number; allocatableCustomerCredit: string | number; rates: CommercialCallingRate[] }
 
 const commercialRequestConfig = { timeout: 45000 }
 const commercialGetConfig = (silent: boolean, config = {}) => {
@@ -150,5 +153,30 @@ export const commercialControlApi = {
     const res = await api.patch(`/commercial-control/admin/accounts/${accountId}/thresholds`, payload, commercialRequestConfig)
     clearCommercialControlCache(accountId)
     return res.data.data as CommercialAccount
+  },
+  getCallingBillingSetup: async () => {
+    const res = await api.get('/commercial-control/admin/calling-billing', commercialRequestConfig)
+    return res.data.data as CommercialCallingBillingSetup
+  },
+  updateCallingProvider: async (payload: { availableBalance?: string; reserveBalance?: string; enforcementEnabled?: boolean }) => {
+    const res = await api.patch('/commercial-control/admin/calling-billing/provider', payload, commercialRequestConfig)
+    return res.data.data as CommercialProviderWallet
+  },
+  saveCallingRate: async (payload: Omit<CommercialCallingRate, 'id'>) => {
+    const res = await api.put('/commercial-control/admin/calling-billing/rates', payload, commercialRequestConfig)
+    return res.data.data as CommercialCallingRate
+  },
+  grantCallingAllowance: async (accountId: number, payload: { credit?: string; includedMinutes?: string; reference?: string; description?: string }) => {
+    const res = await api.post(`/commercial-control/admin/accounts/${accountId}/calling-allowance`, payload, commercialRequestConfig)
+    clearCommercialControlCache(accountId)
+    return res.data.data as { wallet: CommercialWallet; transaction: WalletTransaction }
+  },
+  authorizeCallingCall: async (callId: number) => {
+    const res = await api.post(`/commercial-control/call-authorizations/${callId}`, undefined, commercialRequestConfig)
+    return res.data.data
+  },
+  releaseCallingCall: async (callId: number) => {
+    const res = await api.delete(`/commercial-control/call-authorizations/${callId}`, commercialRequestConfig)
+    return res.data.data
   },
 }
