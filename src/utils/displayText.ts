@@ -17,6 +17,8 @@ const normalizeComparable = (value: unknown) => cleanDisplayText(value, '')
   .toLowerCase()
   .replace(/[^a-z0-9]+/g, '')
 
+const generatedCustomerCodePattern = /^customer\d+$/
+
 export function commercialAccountLabel(account?: CommercialAccountDisplay | null, fallback = 'Commercial account') {
   if (!account) return fallback
 
@@ -24,7 +26,10 @@ export function commercialAccountLabel(account?: CommercialAccountDisplay | null
   const code = cleanDisplayText(account.code, '').trim()
   const primary = name || code || (account.id ? `#${account.id}` : fallback)
 
-  if (!code || code === '—' || normalizeComparable(name) === normalizeComparable(code)) {
+  const normalizedName = normalizeComparable(name)
+  const normalizedCode = normalizeComparable(code)
+
+  if (!code || code === '—' || normalizedName === normalizedCode || generatedCustomerCodePattern.test(normalizedCode)) {
     return primary
   }
 
