@@ -3,6 +3,7 @@ import { PhoneCall, RefreshCw, Trash2 } from 'lucide-react'
 import { dynamicCallerIdApi, type DynamicCallerIdRecord, type DynamicCallerIdStatus } from '../api/dynamicCallerId.api'
 import { commercialControlApi, type CommercialAccount } from '../api/commercialControl.api'
 import { useAuthStore } from '../store/auth.store'
+import { commercialAccountLabel } from '../utils/displayText'
 
 const emptyForm = { displayNumber: '' }
 const CACHE_KEY = 'ptdt-dynamic-caller-id:last-good'
@@ -22,7 +23,7 @@ const statusLabel = (status: string) => {
 
 const accountLabel = (account?: CommercialAccount) => {
   if (!account) return 'Commercial account scope'
-  return `${account.name} (${account.code || account.id})`
+  return commercialAccountLabel(account, 'Commercial account scope')
 }
 
 const isArchivedAccount = (account?: CommercialAccount | null) => String(account?.status || '').toUpperCase() === 'ARCHIVED'
@@ -385,7 +386,7 @@ export default function SpoofingManagement() {
             {addonActive ? 'ACTIVE' : 'INACTIVE'}
           </h2>
           <p style={{ margin: 0, color: 'var(--pink)', fontWeight: 650 }}>
-            {summary?.account ? `${summary.account.name} (${summary.account.code})` : accountLabel(selectedAccount)}
+            {summary?.account ? commercialAccountLabel(summary.account) : accountLabel(selectedAccount)}
           </p>
         </div>
 

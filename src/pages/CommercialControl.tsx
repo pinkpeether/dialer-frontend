@@ -3,7 +3,7 @@ import { Archive, BadgeDollarSign, BellRing, CreditCard, RefreshCw, ShieldCheck,
 import { commercialControlApi, type CommercialAccount, type CommercialAddonCode, type CommercialCatalog, type CommercialPlanCode, type CommercialStatus, type CommercialSummary, type PaymentRequest } from '../api/commercialControl.api'
 import api from '../api/axios'
 import { beginGlobalRequestOverlay, endGlobalRequestOverlay } from '../services/globalRequestOverlay'
-import { cleanDisplayText } from '../utils/displayText'
+import { cleanDisplayText, commercialAccountLabel } from '../utils/displayText'
 
 const money = (value: string | number | null | undefined, currency = 'USD') => `${currency} ${Number(value || 0).toFixed(2)}`
 const cardStyle = { padding: 18, borderRadius: 18 } as const
@@ -513,7 +513,7 @@ export default function CommercialControl() {
             disabled={pageBusy}
           >
             <option value="">{accountsLoading ? 'Loading commercial accounts...' : 'Select commercial account'}</option>
-            {accounts.map(account => <option key={account.id} value={account.id}>{account.name} ({account.code})</option>)}
+            {accounts.map(account => <option key={account.id} value={account.id}>{commercialAccountLabel(account)}</option>)}
           </select>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {summary ? <span className="ptdt-chip" style={{ color: stateColor(currentLifecycleStatus) }}>{statusLabel(currentLifecycleStatus)}</span> : <span className="ptdt-chip">No account loaded</span>}
