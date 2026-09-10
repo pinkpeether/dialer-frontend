@@ -5,8 +5,6 @@ import { dynamicCallerIdApi, type DynamicCallerIdRecord } from '../api/dynamicCa
 import { useSipStore } from '../store/sip.store'
 import { useSocket } from '../hooks/useSocket'
 
-export const DYNAMIC_CALLER_ID_SELECTION_KEY = 'ptdt-dialer:selected-dynamic-caller-id'
-
 const selectableCallerIds = (items: DynamicCallerIdRecord[]) =>
   items.filter(item => item.isUsable || item.isVerified || ['ACTIVE', 'VERIFIED'].includes(String(item.approvalStatus)))
 
@@ -26,17 +24,14 @@ export default function DynamicCallerIdDialerSelector() {
   const location = useLocation()
   const sipConfig = useSipStore(state => state.config)
   const sipStatus = useSipStore(state => state.status)
+  const selectedId = useSipStore(state => state.selectedDynamicCallerIdId)
+  const setSelectedId = useSipStore(state => state.setSelectedDynamicCallerIdId)
   const socket = useSocket()
   const [connected, setConnected] = useState(Boolean(socket.isConnected))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [addonActive, setAddonActive] = useState(false)
   const [numbers, setNumbers] = useState<DynamicCallerIdRecord[]>([])
-  const [selectedId, setSelectedId] = useState(() => {
-    if (typeof window === 'undefined') return ''
-    return window.localStorage.getItem(DYNAMIC_CALLER_ID_SELECTION_KEY) || ''
-  })
-
   const onDialerPage = location.pathname === '/dialer'
   const selectedNumber = useMemo(() => numbers.find(item => String(item.id) === selectedId), [numbers, selectedId])
 
@@ -53,11 +48,10 @@ export default function DynamicCallerIdDialerSelector() {
   }, [socket])
 
   const reconcileSavedSelection = (available: DynamicCallerIdRecord[]) => {
-    const saved = typeof window === 'undefined' ? '' : window.localStorage.getItem(DYNAMIC_CALLER_ID_SELECTION_KEY) || ''
+    const saved = selectedId
     const stillValid = available.some(item => String(item.id) === saved)
     if (!stillValid) {
       setSelectedId('')
-      if (typeof window !== 'undefined') window.localStorage.removeItem(DYNAMIC_CALLER_ID_SELECTION_KEY)
     }
   }
 
@@ -94,8 +88,6 @@ export default function DynamicCallerIdDialerSelector() {
   const handleSelect = (value: string) => {
     setSelectedId(value)
     if (typeof window === 'undefined') return
-    if (value) window.localStorage.setItem(DYNAMIC_CALLER_ID_SELECTION_KEY, value)
-    else window.localStorage.removeItem(DYNAMIC_CALLER_ID_SELECTION_KEY)
     window.dispatchEvent(new CustomEvent('ptdt-dynamic-caller-id-changed', { detail: { callerIdId: value || null } }))
   }
 

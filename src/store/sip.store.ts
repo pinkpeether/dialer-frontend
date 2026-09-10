@@ -10,7 +10,8 @@ import type { SipAccountConfig, SipCallState, SipIncomingCall, SipRuntimeStatus 
 const STORAGE_KEY = 'ptdt_sip_account_v1'
 const AUDIO_OUTPUT_STORAGE_KEY = 'ptdt_sip_audio_output_v1'
 const AUDIO_INPUT_STORAGE_KEY = 'ptdt_sip_audio_input_v1'
-const DYNAMIC_CALLER_ID_SELECTION_KEY = 'ptdt-dialer:selected-dynamic-caller-id'
+export const DYNAMIC_CALLER_ID_SELECTION_KEY = 'ptdt-dialer:selected-dynamic-caller-id'
+const BACKEND_ORIGINATE_CORRELATION_MS = 45_000
 
 const defaultConfig: SipAccountConfig = {
   enabled: false,
@@ -47,7 +48,7 @@ function loadAudioInputDeviceId() {
   try { return localStorage.getItem(AUDIO_INPUT_STORAGE_KEY) || 'default' } catch { return 'default' }
 }
 
-function selectedDynamicCallerId() {
+function loadSelectedDynamicCallerId() {
   try { return localStorage.getItem(DYNAMIC_CALLER_ID_SELECTION_KEY) || '' } catch { return '' }
 }
 
@@ -55,8 +56,7 @@ async function validateDynamicCallerIdBeforeSipCall(callerIdId: string) {
   await dynamicCallerIdApi.validateCall(callerIdId)
 }
 
-async function initiateBackendDynamicCallerIdCall(destination: string, config: SipAccountConfig): Promise<BackendOriginatedCallRef | null> {
-  const callerIdId = selectedDynamicCallerId()
+async function initiateBackendDynamicCallerIdCall(destination: string, config: SipAccountConfig, callerIdId: string): Promise<BackendOriginatedCallRef | null> {
   if (!callerIdId) return null
 
   const agentExtension = (config.username || '').trim()
@@ -82,6 +82,15 @@ async function initiateBackendDynamicCallerIdCall(destination: string, config: S
 }
 
 let backendHangupInFlight: Promise<void> | null = null
+let pendingBackendOriginateStartedAt = 0
+
+function hasFreshBackendOriginate() {
+  return pendingBackendOriginateStartedAt > 0 && Date.now() - pendingBackendOriginateStartedAt <= BACKEND_ORIGINATE_CORRELATION_MS
+}
+
+function clearPendingBackendOriginate() {
+  pendingBackendOriginateStartedAt = 0
+}
 
 async function hangupBackendDynamicCallerIdCall(ref: BackendOriginatedCallRef): Promise<void> {
   if (backendHangupInFlight) return backendHangupInFlight
@@ -179,6 +188,7 @@ interface SipStore {
   showSipDisposition: boolean
   pendingSipDisposition: SipDispositionContext | null
   backendOriginatedCall: BackendOriginatedCallRef | null
+  selectedDynamicCallerIdId: string
 
   saveConfig: (config: SipAccountConfig) => void
   clearConfig: () => void
@@ -199,6 +209,7 @@ interface SipStore {
   clearError: () => void
   dismissSipDisposition: () => void
   resetCallState: () => void
+  setSelectedDynamicCallerIdId: (callerIdId: string) => void
 }
 
 const initialConfig = loadConfig()
@@ -223,6 +234,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   showSipDisposition: false,
   pendingSipDisposition: null,
   backendOriginatedCall: null,
+  selectedDynamicCallerIdId: loadSelectedDynamicCallerId(),
 
   saveConfig: (config) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
@@ -275,10 +287,26 @@ export const useSipStore = create<SipStore>((set, get) => ({
       await sipClient.register(config, {
         onStatusChange: (status) => set({ status }),
         onError: (error) => set({ error }),
-        onIncomingCall: (incomingCall) => set({ incomingCall, status: 'incoming' }),
+        onIncomingCall: (incomingCall) => {
+          set({ incomingCall, status: 'incoming' })
+
+          // A fresh Dynamic Caller ID click creates an internal agent leg. Only
+          // auto-answer during that short, explicit user-initiated window.
+          if (hasFreshBackendOriginate()) {
+            window.setTimeout(() => {
+              if (get().incomingCall?.id !== incomingCall.id || !hasFreshBackendOriginate()) return
+              void get().answer().catch(err => {
+                clearPendingBackendOriginate()
+                set({ error: err instanceof Error ? err.message : 'Could not answer the Dynamic Caller ID agent leg.' })
+              })
+            }, 0)
+          }
+        },
 
         onCallStarted: (activeCall) => {
           const backendOriginatedCall = get().backendOriginatedCall
+          const backendOriginatePending = hasFreshBackendOriginate()
+          clearPendingBackendOriginate()
           set({ activeCall, incomingCall: null, status: 'in_call', onHold: false })
 
           /*
@@ -286,7 +314,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
             through /dialer/call/backend-adhoc. The SIP invite received by the browser
             is only the internal agent leg, so it must not be logged as a second IN call.
           */
-          if (backendOriginatedCall) {
+          if (backendOriginatedCall || backendOriginatePending) {
             lastBackendOriginatedCallForDisposition = backendOriginatedCall
             set({
               sipCallId: null,
@@ -378,6 +406,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   },
 
   unregister: async () => {
+    clearPendingBackendOriginate()
     await sipClient.unregister()
     set({
       status: get().isConfigured ? 'configured' : 'idle',
@@ -396,11 +425,17 @@ export const useSipStore = create<SipStore>((set, get) => ({
     try {
       set({ error: null })
       const config = get().config
-      const backendOriginated = await initiateBackendDynamicCallerIdCall(destination, config)
+      const callerIdId = get().selectedDynamicCallerIdId
+      if (callerIdId && !sipClient.isRegistered()) {
+        throw new Error('SIP must be registered before starting a Dynamic Caller ID call.')
+      }
+
+      if (callerIdId) pendingBackendOriginateStartedAt = Date.now()
+      const backendOriginated = await initiateBackendDynamicCallerIdCall(destination, config, callerIdId)
       if (backendOriginated) {
         lastBackendOriginatedCallForDisposition = backendOriginated
         set({
-          status: sipClient.isRegistered() ? 'registered' : get().status,
+          status: ['incoming', 'in_call'].includes(get().status) ? get().status : 'registered',
           error: null,
           backendOriginatedCall: backendOriginated,
         })
@@ -424,6 +459,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       }
       set({ error: null })
     } catch (err) {
+      clearPendingBackendOriginate()
       if (preparedSipCallId) {
         await commercialControlApi.releaseCallingCall(preparedSipCallId).catch(() => undefined)
         await callsAPI.end(preparedSipCallId).catch(() => undefined)
@@ -477,6 +513,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   },
 
   reject: async () => {
+    clearPendingBackendOriginate()
     const backendRef = get().backendOriginatedCall
 
     /*
@@ -493,6 +530,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
   },
 
   hangup: async () => {
+    clearPendingBackendOriginate()
     const backendRef = get().backendOriginatedCall
 
     /*
@@ -562,5 +600,15 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   dismissSipDisposition: () => set({ showSipDisposition: false, pendingSipDisposition: null }),
 
-  resetCallState: () => set({ activeCall: null, incomingCall: null, muted: false, onHold: false, sipCallId: null, sipCallLogPromise: null, showSipDisposition: false, pendingSipDisposition: null, backendOriginatedCall: null }),
+  resetCallState: () => {
+    clearPendingBackendOriginate()
+    set({ activeCall: null, incomingCall: null, muted: false, onHold: false, sipCallId: null, sipCallLogPromise: null, showSipDisposition: false, pendingSipDisposition: null, backendOriginatedCall: null })
+  },
+
+  setSelectedDynamicCallerIdId: (callerIdId) => {
+    const normalized = callerIdId.trim()
+    if (normalized) localStorage.setItem(DYNAMIC_CALLER_ID_SELECTION_KEY, normalized)
+    else localStorage.removeItem(DYNAMIC_CALLER_ID_SELECTION_KEY)
+    set({ selectedDynamicCallerIdId: normalized })
+  },
 }))
