@@ -101,7 +101,7 @@ export default function App() {
             <Route path="/callbacks"          element={<RoleRoute roles={supportedRoles}><Callbacks /></RoleRoute>} />
             <Route path="/supervisor"         element={<RoleRoute roles={customerSupervisorRoles}><Supervisor /></RoleRoute>} />
             <Route path="/reports"            element={<RoleRoute roles={customerSupervisorRoles}><Reports /></RoleRoute>} />
-            <Route path="/sip-settings"       element={<RoleRoute roles={customerAdminRoles}><SipSettings /></RoleRoute>} />
+            <Route path="/sip-settings"       element={<RoleRoute roles={customerSupervisorRoles}><SipSettings /></RoleRoute>} />
             <Route path="/dnc"                element={<RoleRoute roles={customerSupervisorRoles}><DncManager /></RoleRoute>} />
             <Route path="/settings"           element={<RoleRoute roles={supportedRoles}><Settings /></RoleRoute>} />
             <Route path="/audit-logs"         element={<RoleRoute roles={superAdminRoles}><AuditLogs /></RoleRoute>} />
