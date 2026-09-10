@@ -70,7 +70,7 @@ async function initiateBackendDynamicCallerIdCall(destination: string, config: S
     callerIdId,
     agentExtension,
     note: 'Dynamic Caller ID backend originated call',
-  })
+  }, { timeout: 30000 })
 
   const data = res.data?.data ?? res.data ?? {}
   return {
