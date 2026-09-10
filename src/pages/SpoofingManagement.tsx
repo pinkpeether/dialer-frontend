@@ -21,6 +21,13 @@ const statusLabel = (status: string) => {
   return status
 }
 
+const customerActivationLabel = (record: DynamicCallerIdRecord) => {
+  if (record.approvalStatus === 'ACTIVE' && record.isUsable) return 'ALLOWED'
+  if (record.approvalStatus === 'INACTIVE') return 'INACTIVE'
+  if (record.approvalStatus === 'SUSPENDED') return 'SUSPENDED'
+  return 'PTDT activation required'
+}
+
 const accountLabel = (account?: CommercialAccount) => {
   if (!account) return 'Commercial account scope'
   return commercialAccountLabel(account, 'Commercial account scope')
@@ -558,7 +565,12 @@ export default function SpoofingManagement() {
                         () => void updateStatus(record, record.approvalStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'),
                       )
                     ) : (
-                      'PTDT activation required'
+                      <span
+                        className={`badge ${record.isUsable ? 'badge-answered' : 'badge-pending'}`}
+                        style={{ fontWeight: 900 }}
+                      >
+                        {customerActivationLabel(record)}
+                      </span>
                     )}
                   </td>
 
