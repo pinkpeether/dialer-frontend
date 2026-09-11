@@ -7,6 +7,7 @@ const card = { padding: 18, borderRadius: 18 } as const
 const CACHE_KEY = 'ptdt-customer-billing:last-good'
 
 const money = (value: string | number | undefined | null, currency = 'USD') => `${currency} ${Number(value || 0).toFixed(2)}`
+const minutes = (seconds?: number | null) => `${Math.floor(Number(seconds || 0) / 60).toLocaleString()} min`
 
 const balanceState = (balance: number, low: number, critical: number, hardStop: boolean) => {
   if (hardStop && balance <= 0) return 'HARD_STOP'
@@ -165,6 +166,15 @@ function SelectedAccountDetails({ account, selectedMembership }: { account: Admi
   const info = balanceInfo(account)
   const activeAddons = account.addons?.filter(item => item.status === 'ACTIVE') || []
   const isSupervisorMembership = selectedMembership?.accountRole === 'SUPERVISOR'
+  const transactions = account.wallet?.transactions || []
+  const callAuthorizations = account.wallet?.callAuthorizations || []
+  const funded = transactions
+    .filter(item => item.direction === 'CREDIT')
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0)
+  const used = transactions
+    .filter(item => item.direction === 'DEBIT')
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0)
+  const held = Number(account.wallet?.heldBalance || 0)
 
   return (
     <>
@@ -183,6 +193,29 @@ function SelectedAccountDetails({ account, selectedMembership }: { account: Admi
           <div className="eyebrow pink"><BadgeDollarSign size={12} /> Thresholds</div>
           <p style={{ margin: '10px 0 4px', color: 'var(--text-2)' }}>Low: <strong>{money(account.lowBalanceThreshold, account.currency)}</strong></p>
           <p style={{ margin: 0, color: 'var(--text-2)' }}>Critical: <strong>{money(account.criticalBalanceThreshold, account.currency)}</strong></p>
+        </div>
+        <div className="glass" style={card}>
+          <div className="eyebrow green"><BadgeDollarSign size={12} /> Usage</div>
+          <p style={{ margin: '10px 0 4px', color: 'var(--text-2)' }}>Funded: <strong>{money(funded, account.currency)}</strong></p>
+          <p style={{ margin: 0, color: 'var(--text-2)' }}>Used: <strong>{money(used, account.currency)}</strong></p>
+        </div>
+      </div>
+
+      <div className="glass" style={{ ...card, marginBottom: 18 }}>
+        <div className="eyebrow green"><WalletCards size={12} /> Wallet Transparency</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginTop: 14 }}>
+          {[
+            ['Available', money(account.wallet?.availableBalance, account.currency), 'var(--green-2)'],
+            ['Held For Calls', money(held, account.currency), held > 0 ? 'var(--orange)' : 'var(--text-2)'],
+            ['Credit Limit', money(account.wallet?.creditLimit, account.currency), 'var(--text-2)'],
+            ['Included Minutes Left', minutes(account.wallet?.includedSeconds), 'var(--text-2)'],
+            ['Included Minutes Held', minutes(account.wallet?.heldIncludedSeconds), Number(account.wallet?.heldIncludedSeconds || 0) > 0 ? 'var(--orange)' : 'var(--text-2)'],
+          ].map(([label, value, color]) => (
+            <div key={label} style={{ padding: 14, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
+              <div style={{ color: 'var(--text-3)', fontSize: 12, fontWeight: 850 }}>{label}</div>
+              <div style={{ color, marginTop: 7, fontWeight: 950, fontSize: 18 }}>{value}</div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -220,6 +253,54 @@ function SelectedAccountDetails({ account, selectedMembership }: { account: Admi
           ) : activeAddons.map(item => (
             <span key={item.id} className="ptdt-chip" style={{ color: 'var(--green-2)' }}>{cleanDisplayText(item.addon?.name || item.addon?.code)}</span>
           ))}
+        </div>
+      </div>
+
+      <div className="glass" style={{ padding: 0, overflow: 'hidden', marginTop: 18 }}>
+        <div style={{ padding: 18, borderBottom: '1px solid var(--border)' }}>
+          <div className="eyebrow green"><CreditCard size={12} /> Wallet Ledger</div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse' }}>
+            <thead><tr>{['Date', 'Type', 'Direction', 'Amount', 'Balance After', 'Description'].map(header => <th key={header} className="mono" style={{ padding: '13px 16px', textAlign: 'left', fontSize: 10.5, color: 'var(--text-3)', borderBottom: '1px solid var(--border)' }}>{header}</th>)}</tr></thead>
+            <tbody>{transactions.length === 0 ? (
+              <tr><td colSpan={6} style={{ padding: 24, color: 'var(--text-3)' }}>No wallet ledger activity yet.</td></tr>
+            ) : transactions.map(item => (
+              <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '13px 16px' }}>{new Date(item.createdAt).toLocaleString()}</td>
+                <td style={{ padding: '13px 16px' }}>{cleanDisplayText(item.type)}</td>
+                <td style={{ padding: '13px 16px', color: item.direction === 'CREDIT' ? 'var(--green-2)' : item.direction === 'DEBIT' ? 'var(--danger)' : 'var(--orange)', fontWeight: 900 }}>{cleanDisplayText(item.direction)}</td>
+                <td style={{ padding: '13px 16px', fontWeight: 900 }}>{money(item.amount, account.currency)}</td>
+                <td style={{ padding: '13px 16px' }}>{money(item.balanceAfter, account.currency)}</td>
+                <td style={{ padding: '13px 16px', color: 'var(--text-2)' }}>{cleanDisplayText(item.description || '—')}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="glass" style={{ padding: 0, overflow: 'hidden', marginTop: 18 }}>
+        <div style={{ padding: 18, borderBottom: '1px solid var(--border)' }}>
+          <div className="eyebrow pink"><CreditCard size={12} /> Recent Outbound Billing</div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: 940, borderCollapse: 'collapse' }}>
+            <thead><tr>{['Date', 'Destination', 'Agent', 'Call Status', 'Duration', 'Billing Status', 'Held Amount', 'Rate'].map(header => <th key={header} className="mono" style={{ padding: '13px 16px', textAlign: 'left', fontSize: 10.5, color: 'var(--text-3)', borderBottom: '1px solid var(--border)' }}>{header}</th>)}</tr></thead>
+            <tbody>{callAuthorizations.length === 0 ? (
+              <tr><td colSpan={8} style={{ padding: 24, color: 'var(--text-3)' }}>No billed outbound calls yet.</td></tr>
+            ) : callAuthorizations.map(item => (
+              <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '13px 16px' }}>{new Date(item.createdAt).toLocaleString()}</td>
+                <td className="mono" style={{ padding: '13px 16px' }}>{item.destination || item.call?.remoteNumber || '—'}</td>
+                <td style={{ padding: '13px 16px' }}>{item.call?.agent?.name || item.call?.agent?.email || '—'}</td>
+                <td style={{ padding: '13px 16px' }}>{cleanDisplayText(item.call?.status || '—')}</td>
+                <td style={{ padding: '13px 16px' }}>{item.call?.duration ? `${item.call.duration}s` : '—'}</td>
+                <td style={{ padding: '13px 16px', fontWeight: 900, color: item.status === 'SETTLED' ? 'var(--green-2)' : item.status === 'RELEASED' ? 'var(--text-3)' : 'var(--orange)' }}>{cleanDisplayText(item.status)}</td>
+                <td style={{ padding: '13px 16px' }}>{money(item.heldAmount, account.currency)}</td>
+                <td style={{ padding: '13px 16px' }}>{item.rate ? `${item.rate.destinationName} / ${money(item.rate.customerRatePerMinute, account.currency)} per min` : '—'}</td>
+              </tr>
+            ))}</tbody>
+          </table>
         </div>
       </div>
     </>

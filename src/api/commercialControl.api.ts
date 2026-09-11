@@ -17,9 +17,31 @@ export type WalletTransaction = { id: number; type: string; direction: string; a
 export type PaymentRequest = { id: number; accountId: number; amount: string | number; currency: string; requestedAddons?: CommercialAddonCode[] | null; paymentMethod?: string | null; paymentReference?: string | null; proofUrl?: string | null; notes?: string | null; status: PaymentRequestStatus; reviewedAt?: string | null; createdAt: string; account?: Pick<CommercialAccount, 'id' | 'name' | 'code' | 'currency'>; requestedPlan?: CommercialPlan | null }
 export type CommercialSummary = { account: CommercialAccount; wallet: CommercialWallet | null; balanceState: 'HEALTHY' | 'LOW_BALANCE' | 'CRITICAL_BALANCE' | 'HARD_STOP'; subscription: CommercialSubscription | null; addons: CommercialAddonStatus[]; alerts: BillingAlert[]; latestTransactions: WalletTransaction[]; callerIdControl: { dynamicCallerIdEnabled: boolean; verifiedCallerIds: number; activeVerifiedCallerIds: number; availableNumbers: Array<{ id: number; displayNumber: string; displayName?: string | null; scope: string; provider?: string | null }> } }
 export type CommercialCatalog = { plans: CommercialPlan[]; addons: CommercialAddon[] }
-export type CommercialProviderWallet = { provider: string; currency: string; availableBalance: string | number; reserveBalance: string | number; enforcementEnabled: boolean }
+export type CommercialProviderWallet = {
+  provider: string
+  displayName?: string | null
+  providerType?: string | null
+  status?: string | null
+  balanceMode?: string | null
+  trunkName?: string | null
+  apiBaseUrl?: string | null
+  apiUsername?: string | null
+  apiName?: string | null
+  apiKeyLabel?: string | null
+  apiSecretLabel?: string | null
+  passwordLabel?: string | null
+  docsUrl?: string | null
+  notes?: string | null
+  lastBalanceSyncAt?: string | null
+  lastBalanceSyncStatus?: string | null
+  lastBalanceSyncError?: string | null
+  currency: string
+  availableBalance: string | number
+  reserveBalance: string | number
+  enforcementEnabled: boolean
+}
 export type CommercialCallingRate = { id: number; destinationCode: string; destinationName: string; dialPrefix: string; carrierRatePerMinute: string | number; customerRatePerMinute: string | number; minimumSeconds: number; incrementSeconds: number; isActive: boolean }
-export type CommercialCallingBillingSetup = { provider: CommercialProviderWallet; outstandingCustomerCredit: string | number; allocatableCustomerCredit: string | number; rates: CommercialCallingRate[] }
+export type CommercialCallingBillingSetup = { provider: CommercialProviderWallet; providers?: CommercialProviderWallet[]; outstandingCustomerCredit: string | number; allocatableCustomerCredit: string | number; rates: CommercialCallingRate[] }
 
 const commercialRequestConfig = { timeout: 45000 }
 const commercialGetConfig = (silent: boolean, config = {}) => {
@@ -158,7 +180,7 @@ export const commercialControlApi = {
     const res = await api.get('/commercial-control/admin/calling-billing', commercialRequestConfig)
     return res.data.data as CommercialCallingBillingSetup
   },
-  updateCallingProvider: async (payload: { availableBalance?: string; reserveBalance?: string; enforcementEnabled?: boolean }) => {
+  updateCallingProvider: async (payload: Partial<CommercialProviderWallet>) => {
     const res = await api.patch('/commercial-control/admin/calling-billing/provider', payload, commercialRequestConfig)
     return res.data.data as CommercialProviderWallet
   },

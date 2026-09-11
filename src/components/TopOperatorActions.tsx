@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { LogOut, ShieldCheck } from 'lucide-react'
+import { LogOut, ShieldCheck, WalletCards } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth.store'
 import { useSipStore } from '../store/sip.store'
 import { authAPI } from '../api/auth.api'
+import api from '../api/axios'
+import type { AdministrationMe } from '../api/administration.api'
 import NotificationBell from './NotificationBell'
 import PtdtDialog, { type PtdtDialogState } from './PtdtDialog'
 import { markPresenceOfflineBeforeLogout } from '../hooks/useAgentPresence'
@@ -11,11 +13,20 @@ import { useSocket } from '../hooks/useSocket'
 import TimeClockWidget, { TimeClockDateBadge } from './TimeClockWidget'
 import { attendanceIntegrityApi } from '../api/attendanceIntegrity.api'
 import { clearPtdtSessionCache } from '../services/sessionCleanup'
+import { silentOverlayConfig } from '../api/swrCache'
 
 type LocalTimeClockState = {
   clockedIn?: boolean
   startedAt?: number | null
   backendSessionId?: number | null
+}
+
+type VoipBalanceState = {
+  accountName: string
+  amount: number
+  held: number
+  currency: string
+  status: string
 }
 
 const roleLabel = (role?: string) => {
@@ -39,6 +50,17 @@ const readActiveClockState = (userId?: number | string | null): LocalTimeClockSt
   }
 }
 
+const money = (amount: number, currency: string) => `${currency} ${amount.toFixed(2)}`
+const canShowVoipBalance = (role?: string) => role === 'CUSTOMER_ADMIN' || role === 'SUPERVISOR'
+
+const balanceTone = (balance?: VoipBalanceState | null) => {
+  if (!balance) return 'neutral'
+  if (balance.amount <= 0) return 'critical'
+  if (balance.amount <= 3) return 'critical'
+  if (balance.amount <= 10) return 'warning'
+  return 'healthy'
+}
+
 export default function TopOperatorActions() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -50,8 +72,11 @@ export default function TopOperatorActions() {
   const socket = useSocket()
   const [connected, setConnected] = useState(Boolean(socket.isConnected))
   const [dialog, setDialog] = useState<PtdtDialogState | null>(null)
+  const [voipBalance, setVoipBalance] = useState<VoipBalanceState | null>(null)
   const isDialerPage = location.pathname === '/dialer'
   const showTimeClock = user?.role === 'AGENT' || user?.role === 'SUPERVISOR'
+  const showVoipBalance = canShowVoipBalance(user?.role)
+  const voipTone = balanceTone(voipBalance)
   const roleCardClass = user?.role === 'SUPERVISOR'
     ? ' is-supervisor'
     : user?.role === 'AGENT'
@@ -81,6 +106,43 @@ export default function TopOperatorActions() {
       window.clearInterval(timer)
     }
   }, [socket])
+
+  useEffect(() => {
+    if (!showVoipBalance) {
+      setVoipBalance(null)
+      return undefined
+    }
+
+    let cancelled = false
+    const loadBalance = async () => {
+      try {
+        const res = await api.get('/administration/me', silentOverlayConfig({ timeout: 45000 }))
+        const data = res.data.data as AdministrationMe
+        const membership = data.memberships.find(item => item.status === 'ACTIVE' && item.account?.wallet) || data.memberships.find(item => item.account?.wallet)
+        const wallet = membership?.account?.wallet
+        if (cancelled || !membership?.account || !wallet) return
+        setVoipBalance({
+          accountName: membership.account.name,
+          amount: Number(wallet.availableBalance || 0),
+          held: Number(wallet.heldBalance || 0),
+          currency: wallet.currency || membership.account.currency || 'EUR',
+          status: membership.account.status || 'ACTIVE',
+        })
+      } catch {
+        if (!cancelled) setVoipBalance(current => current)
+      }
+    }
+
+    void loadBalance()
+    const timer = window.setInterval(loadBalance, 45_000)
+    const onFocus = () => { void loadBalance() }
+    window.addEventListener('focus', onFocus)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [showVoipBalance])
 
   useEffect(() => {
     if (!showTimeClock) return undefined
@@ -145,8 +207,22 @@ export default function TopOperatorActions() {
   return (
     <>
       <div className={`ptdt-top-operator-actions${isDialerPage ? ' is-dialer-page' : ''}`}>
-        <div className="ptdt-top-operator-row" style={{ width: '100%', justifyContent: showTimeClock ? 'space-between' : 'flex-end' }}>
-          {showTimeClock && <TimeClockWidget />}
+        <div className="ptdt-top-operator-row" style={{ width: '100%', justifyContent: showTimeClock || showVoipBalance ? 'space-between' : 'flex-end' }}>
+          {(showTimeClock || showVoipBalance) && (
+            <div className="ptdt-top-operator-left">
+              {showTimeClock && <TimeClockWidget />}
+              {showVoipBalance && (
+                <div className={`ptdt-voip-balance-card is-${voipTone}`} title={voipBalance ? `${voipBalance.accountName} VoIP balance` : 'VoIP balance loading'}>
+                  <span className="ptdt-voip-balance-icon"><WalletCards size={17} /></span>
+                  <span className="ptdt-voip-balance-copy">
+                    <span className="ptdt-voip-balance-label">VoIP Balance</span>
+                    <strong>{voipBalance ? money(voipBalance.amount, voipBalance.currency) : 'Loading...'}</strong>
+                  </span>
+                  {voipBalance && voipBalance.held > 0 && <span className="ptdt-voip-balance-held">Held {money(voipBalance.held, voipBalance.currency)}</span>}
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             {isDialerPage && (
               <div className="ptdt-top-operator-dialer-pills">
