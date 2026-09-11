@@ -117,12 +117,12 @@
 .ptdt-voip-workspace-nav-copy span { color: rgba(255,255,255,.48); font-size: 9px; font-weight: 800; text-transform: uppercase; }
 .ptdt-voip-workspace-nav-copy strong { margin-top: 2px; font-size: 13px; font-weight: 850; }
 .ptdt-voip-workspace-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.ptdt-voip-workspace-tabs button { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; padding: 12px 16px; color: rgba(255,255,255,.5); border-right: 1px solid rgba(255,255,255,.07); transition: color .18s ease, background .18s ease; }
+.ptdt-voip-workspace-tabs button { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; padding: 12px 16px; color: rgba(255,255,255,.72); border-right: 1px solid rgba(255,255,255,.07); transition: color .18s ease, background .18s ease; }
 .ptdt-voip-workspace-tabs button:hover, .ptdt-voip-workspace-tabs button.is-active { color: #fff; background: rgba(255,255,255,.1); }
 .ptdt-voip-workspace-tabs button > span { min-width: 0; display: grid; text-align: left; }
 .ptdt-voip-workspace-tabs strong { font-size: 13px; font-weight: 850; }
-.ptdt-voip-workspace-tabs small { color: rgba(255,255,255,.44); font-size: 11px; }
-.ptdt-voip-workspace-tabs button.is-active small { color: rgba(255,255,255,.58); }
+.ptdt-voip-workspace-tabs small { color: rgba(255,255,255,.58); font-size: 11px; }
+.ptdt-voip-workspace-tabs button.is-active small { color: rgba(255,255,255,.78); }
 .ptdt-voip-workspace-tabs button > i { position: absolute; left: 18px; right: 18px; bottom: 0; height: 3px; background: var(--pink); border-radius: 3px 3px 0 0; box-shadow: 0 0 15px rgba(251,11,140,.55); }
 .ptdt-voip-enforcement { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 0 16px; }
 .ptdt-voip-enforcement > span { width: 8px; height: 8px; border-radius: 50%; }
