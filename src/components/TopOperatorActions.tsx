@@ -145,7 +145,7 @@ export default function TopOperatorActions() {
   }, [showVoipBalance])
 
   useEffect(() => {
-    if (!showTimeClock) return undefined
+    if (!user?.id) return undefined
 
     const syncSipPresence = () => {
       void attendanceIntegrityApi.sipPresence({
@@ -161,7 +161,7 @@ export default function TopOperatorActions() {
     syncSipPresence()
     const timer = window.setInterval(syncSipPresence, 30_000)
     return () => window.clearInterval(timer)
-  }, [showTimeClock, sipConfig.domain, sipConfig.enabled, sipConfig.transport, sipConfig.username, sipConfig.webSocketServer, sipStatus])
+  }, [sipConfig.domain, sipConfig.enabled, sipConfig.transport, sipConfig.username, sipConfig.webSocketServer, sipStatus, user?.id])
 
   const performSignOut = useCallback(async (options?: { flagAttendance?: boolean }) => {
     const sessionToken = localStorage.getItem('jd_token')
