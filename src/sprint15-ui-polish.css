@@ -154,6 +154,97 @@
   gap:10px;
   flex-wrap:wrap;
 }
+.ptdt-top-operator-left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+  flex-wrap:wrap;
+}
+.ptdt-voip-balance-card{
+  min-height:54px;
+  min-width:250px;
+  max-width:min(360px,100%);
+  display:inline-flex;
+  align-items:center;
+  gap:11px;
+  padding:8px 15px 8px 10px;
+  border-radius:18px;
+  border:1px solid rgba(0,167,71,.24);
+  background:linear-gradient(135deg,rgba(236,253,245,.96),rgba(255,255,255,.94) 50%,rgba(255,241,248,.90));
+  box-shadow:0 14px 32px rgba(15,23,42,.12),inset 0 1px 0 rgba(255,255,255,.82);
+  color:#064e3b;
+  overflow:hidden;
+}
+.ptdt-voip-balance-icon{
+  width:36px;
+  height:36px;
+  border-radius:13px;
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+  color:#047857;
+  background:linear-gradient(135deg,rgba(0,167,71,.16),rgba(251,11,140,.10));
+  box-shadow:inset 0 0 0 1px rgba(0,167,71,.18);
+}
+.ptdt-voip-balance-copy{
+  display:grid;
+  gap:2px;
+  min-width:0;
+  line-height:1.05;
+}
+.ptdt-voip-balance-label{
+  font-family:var(--font-mono);
+  font-size:9px;
+  font-weight:950;
+  text-transform:uppercase;
+  color:rgba(6,78,59,.72);
+}
+.ptdt-voip-balance-copy strong{
+  font-size:17px;
+  font-weight:950;
+  color:#063f2f;
+  white-space:nowrap;
+}
+.ptdt-voip-balance-held{
+  margin-left:auto;
+  flex:0 1 auto;
+  min-width:0;
+  max-width:128px;
+  padding:5px 8px;
+  border-radius:999px;
+  background:rgba(240,185,11,.14);
+  color:#8a5a00;
+  font-size:10px;
+  font-weight:950;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.ptdt-voip-balance-card.is-warning{
+  border-color:rgba(240,185,11,.36);
+  background:linear-gradient(135deg,rgba(255,251,235,.96),rgba(255,255,255,.94) 55%,rgba(255,241,248,.88));
+  color:#8a5a00;
+}
+.ptdt-voip-balance-card.is-warning .ptdt-voip-balance-icon{color:#b77900;background:rgba(240,185,11,.14);box-shadow:inset 0 0 0 1px rgba(240,185,11,.22)}
+.ptdt-voip-balance-card.is-warning .ptdt-voip-balance-copy strong{color:#8a5a00}
+.ptdt-voip-balance-card.is-critical{
+  border-color:rgba(239,68,68,.34);
+  background:linear-gradient(135deg,rgba(254,242,242,.97),rgba(255,255,255,.94) 54%,rgba(255,241,248,.92));
+  color:#991b1b;
+}
+.ptdt-voip-balance-card.is-critical .ptdt-voip-balance-icon{color:#b91c1c;background:rgba(239,68,68,.12);box-shadow:inset 0 0 0 1px rgba(239,68,68,.20)}
+.ptdt-voip-balance-card.is-critical .ptdt-voip-balance-copy strong{color:#991b1b}
+[data-theme="dark"] .ptdt-voip-balance-card{
+  border-color:rgba(0,229,160,.24);
+  background:linear-gradient(135deg,rgba(6,78,59,.82),rgba(19,24,34,.94) 54%,rgba(83,18,55,.52));
+  color:#d1fae5;
+  box-shadow:0 16px 34px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.08);
+}
+[data-theme="dark"] .ptdt-voip-balance-label{color:rgba(209,250,229,.72)}
+[data-theme="dark"] .ptdt-voip-balance-copy strong{color:#ecfdf5}
+[data-theme="dark"] .ptdt-voip-balance-icon{color:#86efac;background:rgba(0,229,160,.12)}
+[data-theme="dark"] .ptdt-voip-balance-held{background:rgba(240,185,11,.18);color:#fde68a}
 .ptdt-dialer-status-pill.compact{
   min-height:42px;
   padding:8px 14px;
@@ -206,6 +297,12 @@
   .ptdt-top-operator-dialer-pills{
     width:100%;
     order:2;
+  }
+  .ptdt-top-operator-left{
+    width:100%;
+  }
+  .ptdt-voip-balance-card{
+    min-width:min(250px,100%);
   }
   .ptdt-top-operator-actions.is-dialer-page .ptdt-top-operator-row{
     justify-content:flex-start;
