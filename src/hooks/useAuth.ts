@@ -1,6 +1,7 @@
 import { useAuthStore } from '../store/auth.store'
 import { authAPI } from '../api/auth.api'
 import { useNavigate } from 'react-router-dom'
+import { clearPtdtSessionCache } from '../services/sessionCleanup'
 
 export const useAuth = () => {
   const { user, token, isAuth, setAuth, logout } = useAuthStore()
@@ -20,6 +21,7 @@ export const useAuth = () => {
       // Local logout must still complete if the backend session is unreachable.
     }
     logout()
+    await clearPtdtSessionCache()
     navigate('/login')
   }
 

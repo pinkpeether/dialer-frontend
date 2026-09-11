@@ -179,8 +179,11 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      localStorage.removeItem('jd_token')
-      localStorage.removeItem('jd_user')
+      void import('../services/sessionCleanup').then(({ clearPtdtSessionCache }) => clearPtdtSessionCache()).catch(() => {
+        localStorage.removeItem('jd_token')
+        localStorage.removeItem('jd_user')
+      })
+      void import('../store/auth.store').then(({ useAuthStore }) => useAuthStore.getState().logout()).catch(() => undefined)
 
       // HashRouter + Electron safe redirect.
       if (window.location.hash !== '#/login') {

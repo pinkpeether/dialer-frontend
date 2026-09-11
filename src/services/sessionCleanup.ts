@@ -1,5 +1,7 @@
 import { clearAllSwr } from '../api/swrCache'
+import { disconnectSocket } from '../hooks/useSocket'
 import { queryClient } from '../lib/queryClient'
+import { useSipStore } from '../store/sip.store'
 
 const exactStorageKeys = new Set([
   'jd_token',
@@ -47,6 +49,8 @@ const clearCacheStorage = async () => {
 }
 
 export const clearPtdtSessionCache = async () => {
+  disconnectSocket()
+  useSipStore.getState().clearConfig()
   queryClient.clear()
   clearAllSwr()
 

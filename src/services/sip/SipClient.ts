@@ -446,6 +446,7 @@ class SipClient {
       } catch (err) {
         console.warn('[SIP] Hold music replaceTrack failed:', err)
         if (sender.track?.kind === 'audio') sender.track.enabled = false
+        throw new Error('Unable to place the call on hold safely. Microphone audio has been muted.', { cause: err })
       }
     }))
 

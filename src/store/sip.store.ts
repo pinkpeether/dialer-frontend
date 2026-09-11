@@ -267,6 +267,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
       showSipDisposition: false,
       pendingSipDisposition: null,
       backendOriginatedCall: null,
+      selectedDynamicCallerIdId: '',
     })
   },
 
@@ -602,7 +603,7 @@ export const useSipStore = create<SipStore>((set, get) => ({
 
   resetCallState: () => {
     clearPendingBackendOriginate()
-    set({ activeCall: null, incomingCall: null, muted: false, onHold: false, sipCallId: null, sipCallLogPromise: null, showSipDisposition: false, pendingSipDisposition: null, backendOriginatedCall: null })
+    set({ activeCall: null, incomingCall: null, muted: false, onHold: false, sipCallId: null, sipCallLogPromise: null, showSipDisposition: false, pendingSipDisposition: null, backendOriginatedCall: null, selectedDynamicCallerIdId: '' })
   },
 
   setSelectedDynamicCallerIdId: (callerIdId) => {
