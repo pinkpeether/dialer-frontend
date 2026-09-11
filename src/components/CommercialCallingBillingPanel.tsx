@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { RadioTower, Save, WalletCards } from 'lucide-react'
-import { commercialControlApi, type CommercialCallingBillingSetup, type CommercialCallingRate } from '../api/commercialControl.api'
+import { commercialControlApi, type CommercialCallingBillingSetup, type CommercialCallingRate, type CommercialProviderWallet } from '../api/commercialControl.api'
 
 type Props = {
   accountId?: number
@@ -13,9 +13,30 @@ const money = (value: string | number | undefined) => `EUR ${Number(value || 0).
 
 const inputStyle = { width: '100%', minWidth: 0 } as const
 
+const providerToForm = (provider?: CommercialProviderWallet | null) => ({
+  provider: provider?.provider || 'ILLYVOIP',
+  displayName: provider?.displayName || 'illyVoIP',
+  providerType: provider?.providerType || 'SIP_TRUNK',
+  status: provider?.status || 'ACTIVE',
+  balanceMode: provider?.balanceMode || 'MANUAL',
+  trunkName: provider?.trunkName || 'illyvoip-out',
+  apiBaseUrl: provider?.apiBaseUrl || '',
+  apiUsername: provider?.apiUsername || '',
+  apiName: provider?.apiName || 'SMS API only',
+  apiKeyLabel: provider?.apiKeyLabel || '',
+  apiSecretLabel: provider?.apiSecretLabel || '',
+  passwordLabel: provider?.passwordLabel || '',
+  docsUrl: provider?.docsUrl || '',
+  notes: provider?.notes || '',
+  currency: provider?.currency || 'EUR',
+  availableBalance: String(provider?.availableBalance ?? 0),
+  reserveBalance: String(provider?.reserveBalance ?? 5),
+  enforcementEnabled: Boolean(provider?.enforcementEnabled),
+})
+
 export default function CommercialCallingBillingPanel({ accountId, accountCurrency, disabled, onAllowanceApplied }: Props) {
   const [setup, setSetup] = useState<CommercialCallingBillingSetup | null>(null)
-  const [providerForm, setProviderForm] = useState({ availableBalance: '', reserveBalance: '5', enforcementEnabled: false })
+  const [providerForm, setProviderForm] = useState(providerToForm(null))
   const [allowanceForm, setAllowanceForm] = useState({ credit: '', includedMinutes: '', reference: '', description: '' })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -26,11 +47,7 @@ export default function CommercialCallingBillingPanel({ accountId, accountCurren
   const load = async () => {
     const next = await commercialControlApi.getCallingBillingSetup()
     setSetup(next)
-    setProviderForm({
-      availableBalance: String(next.provider.availableBalance ?? 0),
-      reserveBalance: String(next.provider.reserveBalance ?? 5),
-      enforcementEnabled: Boolean(next.provider.enforcementEnabled),
-    })
+    setProviderForm(providerToForm(next.provider))
   }
 
   useEffect(() => { void load().catch(err => setError(err instanceof Error ? err.message : 'Unable to load calling billing')) }, [])
@@ -76,7 +93,7 @@ export default function CommercialCallingBillingPanel({ accountId, accountCurren
   return (
     <section className="glass" style={{ padding: 18, marginBottom: 18 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
-        <div><div className="eyebrow green"><RadioTower size={12} /> IllyVoIP Calling Billing</div><h3 style={{ margin: '7px 0 0' }}>Provider Capacity & Rate Cards</h3></div>
+        <div><div className="eyebrow green"><RadioTower size={12} /> VoIP Provider Billing</div><h3 style={{ margin: '7px 0 0' }}>Provider Profiles, Capacity & Rate Cards</h3></div>
         <div className="mono" style={{ color: setup?.provider.enforcementEnabled ? 'var(--green-2)' : 'var(--orange)', fontWeight: 900 }}>{setup?.provider.enforcementEnabled ? 'ENFORCEMENT ON' : 'ENFORCEMENT OFF'}</div>
       </div>
 
@@ -85,9 +102,45 @@ export default function CommercialCallingBillingPanel({ accountId, accountCurren
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 14, marginBottom: 16 }}>
         <form onSubmit={saveProvider} style={{ display: 'grid', gap: 10, padding: 14, border: '1px solid var(--border)', borderRadius: 8 }}>
-          <strong>Provider Wallet</strong>
-          <label>IllyVoIP available EUR<input className="ptdt-input" style={inputStyle} inputMode="decimal" value={providerForm.availableBalance} onChange={event => setProviderForm({ ...providerForm, availableBalance: event.target.value })} /></label>
-          <label>Reserve EUR<input className="ptdt-input" style={inputStyle} inputMode="decimal" value={providerForm.reserveBalance} onChange={event => setProviderForm({ ...providerForm, reserveBalance: event.target.value })} /></label>
+          <strong>Provider Profile</strong>
+          {Boolean(setup?.providers?.length) && (
+            <label>Saved Profiles<select
+              className="ptdt-select"
+              style={inputStyle}
+              value={providerForm.provider}
+              onChange={event => {
+                const nextProvider = setup?.providers?.find(provider => provider.provider === event.target.value)
+                setProviderForm(providerToForm(nextProvider || null))
+              }}
+            >
+              {setup?.providers?.map(provider => <option key={provider.provider} value={provider.provider}>{provider.displayName || provider.provider} ({provider.provider})</option>)}
+            </select></label>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+            <label>Code<input className="ptdt-input" style={inputStyle} value={providerForm.provider} onChange={event => setProviderForm({ ...providerForm, provider: event.target.value })} /></label>
+            <label>Name<input className="ptdt-input" style={inputStyle} value={providerForm.displayName} onChange={event => setProviderForm({ ...providerForm, displayName: event.target.value })} /></label>
+            <label>Type<select className="ptdt-select" style={inputStyle} value={providerForm.providerType} onChange={event => setProviderForm({ ...providerForm, providerType: event.target.value })}><option value="SIP_TRUNK">SIP Trunk</option><option value="REST_API">REST API</option><option value="HYBRID">Hybrid</option><option value="CUSTOM">Custom</option></select></label>
+            <label>Status<select className="ptdt-select" style={inputStyle} value={providerForm.status} onChange={event => setProviderForm({ ...providerForm, status: event.target.value })}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option><option value="TESTING">Testing</option></select></label>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+            <label>Balance Mode<select className="ptdt-select" style={inputStyle} value={providerForm.balanceMode} onChange={event => setProviderForm({ ...providerForm, balanceMode: event.target.value })}><option value="MANUAL">Manual</option><option value="LIVE_API">Live API</option><option value="WEBHOOK">Webhook</option></select></label>
+            <label>FreePBX Trunk<input className="ptdt-input" style={inputStyle} value={providerForm.trunkName} onChange={event => setProviderForm({ ...providerForm, trunkName: event.target.value })} /></label>
+            <label>Currency<input className="ptdt-input" style={inputStyle} value={providerForm.currency} onChange={event => setProviderForm({ ...providerForm, currency: event.target.value })} /></label>
+          </div>
+          <label>API Base URL<input className="ptdt-input" style={inputStyle} value={providerForm.apiBaseUrl} onChange={event => setProviderForm({ ...providerForm, apiBaseUrl: event.target.value })} /></label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+            <label>API Username<input className="ptdt-input" style={inputStyle} value={providerForm.apiUsername} onChange={event => setProviderForm({ ...providerForm, apiUsername: event.target.value })} /></label>
+            <label>API Name<input className="ptdt-input" style={inputStyle} value={providerForm.apiName} onChange={event => setProviderForm({ ...providerForm, apiName: event.target.value })} /></label>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+            <label>Password Ref<input className="ptdt-input" style={inputStyle} value={providerForm.passwordLabel} onChange={event => setProviderForm({ ...providerForm, passwordLabel: event.target.value })} placeholder="masked/reference only" /></label>
+            <label>API Key Ref<input className="ptdt-input" style={inputStyle} value={providerForm.apiKeyLabel} onChange={event => setProviderForm({ ...providerForm, apiKeyLabel: event.target.value })} placeholder="masked/reference only" /></label>
+            <label>API Secret Ref<input className="ptdt-input" style={inputStyle} value={providerForm.apiSecretLabel} onChange={event => setProviderForm({ ...providerForm, apiSecretLabel: event.target.value })} placeholder="masked/reference only" /></label>
+          </div>
+          <label>Docs URL<input className="ptdt-input" style={inputStyle} value={providerForm.docsUrl} onChange={event => setProviderForm({ ...providerForm, docsUrl: event.target.value })} /></label>
+          <label>Provider Notes<input className="ptdt-input" style={inputStyle} value={providerForm.notes} onChange={event => setProviderForm({ ...providerForm, notes: event.target.value })} /></label>
+          <label>Available Balance<input className="ptdt-input" style={inputStyle} inputMode="decimal" value={providerForm.availableBalance} onChange={event => setProviderForm({ ...providerForm, availableBalance: event.target.value })} /></label>
+          <label>Reserve Balance<input className="ptdt-input" style={inputStyle} inputMode="decimal" value={providerForm.reserveBalance} onChange={event => setProviderForm({ ...providerForm, reserveBalance: event.target.value })} /></label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={providerForm.enforcementEnabled} onChange={event => setProviderForm({ ...providerForm, enforcementEnabled: event.target.checked })} /> Enforce customer wallet before AMI calls</label>
           <button className="btn-brand" disabled={disabled || saving}><Save size={14} /> Save Provider</button>
         </form>

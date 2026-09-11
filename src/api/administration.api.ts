@@ -38,8 +38,46 @@ export type AdminCommercialAccount = {
     id: number
     availableBalance: string | number
     heldBalance?: string | number
+    includedSeconds?: number
+    heldIncludedSeconds?: number
     creditLimit?: string | number
     currency: string
+    transactions?: Array<{
+      id: number
+      type: string
+      direction: string
+      amount: string | number
+      balanceAfter: string | number
+      referenceType?: string | null
+      referenceId?: string | null
+      description?: string | null
+      createdAt: string
+    }>
+    callAuthorizations?: Array<{
+      id: string
+      destination: string
+      heldAmount: string | number
+      heldIncludedSeconds: number
+      status: string
+      createdAt: string
+      settledAt?: string | null
+      releasedAt?: string | null
+      rate?: {
+        destinationName: string
+        customerRatePerMinute: string | number
+        minimumSeconds: number
+        incrementSeconds: number
+      } | null
+      call?: {
+        id: number
+        remoteNumber?: string | null
+        status: string
+        duration?: number | null
+        startedAt: string
+        endedAt?: string | null
+        agent?: { id: number; name: string; email: string; extension?: string | null } | null
+      } | null
+    }>
   } | null
   subscriptions?: Array<{
     id: number
