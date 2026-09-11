@@ -118,6 +118,7 @@ const SUPER_ADMIN_GROUPS: NavGroup[] = [
   ]),
   group('customers', 'Customers', Building2, COLORS.purple, [
     item('/commercial-control', 'Customer Accounts', Building2, COLORS.purple),
+    item('/voip-billing', 'VoIP Billing', Radio, COLORS.green),
     item('/customer-onboarding', 'Add Customer', Crown, COLORS.purple),
     item('/platform/administration', 'Account Users & Access', Users, COLORS.purple),
     item('/billing', 'Billing & Plans', CreditCard, COLORS.purple),
