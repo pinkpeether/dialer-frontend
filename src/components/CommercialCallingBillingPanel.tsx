@@ -57,6 +57,11 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
   const enteredCredit = Number(allowanceForm.credit || 0)
   const enteredMinutes = Number(allowanceForm.includedMinutes || 0)
   const allocatableCredit = Number(setup?.allocatableCustomerCredit || 0)
+  const committedCredit = Number(setup?.outstandingCustomerCredit || 0)
+  const carrierBalance = Number(providerForm.availableBalance || 0)
+  const reserveBalance = Number(providerForm.reserveBalance || 0)
+  const requiredCarrierBalance = reserveBalance + committedCredit
+  const providerCapacityShortfall = Math.max(0, requiredCarrierBalance - carrierBalance)
   const projectedCustomerBalance = Number(accountBalance || 0) + enteredCredit
   const allocationValid = enteredCredit > 0 || enteredMinutes > 0
   const providerCurrency = setup?.provider.currency || 'EUR'
@@ -171,7 +176,7 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
                 <div className="ptdt-voip-capacity-figure">
                   <span>Provider credit available to allocate</span><strong>{money(setup?.allocatableCustomerCredit)}</strong>
                   <div><i style={{ width: `${Math.min(100, Math.max(4, allocatableCredit ? ((allocatableCredit - enteredCredit) / allocatableCredit) * 100 : 4))}%` }} /></div>
-                  <small>{money(setup?.outstandingCustomerCredit)} already committed across customers</small>
+                  <small>{money(setup?.outstandingCustomerCredit)} already committed across customer wallets</small>
                 </div>
                 <div className="ptdt-voip-review-equation">
                   <div><span>Current wallet</span><strong>{money(accountBalance, accountCurrency)}</strong></div><span>+</span>
@@ -179,6 +184,8 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
                   <div className="is-result"><span>Projected wallet</span><strong>{money(projectedCustomerBalance, accountCurrency)}</strong></div>
                 </div>
                 <div className="ptdt-voip-review-list">
+                  <div><Check size={15} /><span>Carrier wallet</span><strong>{money(setup?.provider.availableBalance)}</strong></div>
+                  <div><Check size={15} /><span>Committed credit</span><strong>{money(setup?.outstandingCustomerCredit)}</strong></div>
                   <div><Check size={15} /><span>Included minutes</span><strong>{enteredMinutes.toLocaleString()} min</strong></div>
                   <div><Check size={15} /><span>Provider reserve</span><strong>{money(setup?.provider.reserveBalance)}</strong></div>
                   <div><Check size={15} /><span>Ledger reference</span><strong>{allowanceForm.reference || 'Auto-generated'}</strong></div>
@@ -191,7 +198,7 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
             <form className="ptdt-voip-provider-form" onSubmit={saveProvider}>
               <div className="ptdt-voip-provider-overview">
                 <div className="ptdt-voip-section-heading"><span className="ptdt-voip-section-icon is-green"><RadioTower size={20} /></span><div><span>Upstream voice carrier</span><h2>{providerForm.displayName || providerForm.provider}</h2><p>Provider identity, capacity, connection and credential references.</p></div></div>
-                <div className="ptdt-voip-provider-stats"><div><span>Available</span><strong>{money(providerForm.availableBalance, providerForm.currency)}</strong></div><div><span>Reserve</span><strong>{money(providerForm.reserveBalance, providerForm.currency)}</strong></div><div><span>Trunk</span><strong>{providerForm.trunkName || 'Not set'}</strong></div></div>
+                <div className="ptdt-voip-provider-stats"><div><span>Carrier wallet</span><strong>{money(providerForm.availableBalance, providerForm.currency)}</strong></div><div><span>Reserve</span><strong>{money(providerForm.reserveBalance, providerForm.currency)}</strong></div><div><span>Free to allocate</span><strong>{money(setup?.allocatableCustomerCredit, providerForm.currency)}</strong></div><div><span>Trunk</span><strong>{providerForm.trunkName || 'Not set'}</strong></div></div>
               </div>
 
               <div className="ptdt-voip-provider-section">
@@ -212,11 +219,19 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
                   <Field label="FreePBX trunk"><input className="ptdt-input" value={providerForm.trunkName} onChange={event => setProviderForm({ ...providerForm, trunkName: event.target.value })} /></Field>
                   <Field label="Currency"><input className="ptdt-input" value={providerForm.currency} onChange={event => setProviderForm({ ...providerForm, currency: event.target.value.toUpperCase() })} /></Field>
                   <Field label="API name"><input className="ptdt-input" value={providerForm.apiName} onChange={event => setProviderForm({ ...providerForm, apiName: event.target.value })} /></Field>
-                  <Field label="Available balance"><input className="ptdt-input" inputMode="decimal" value={providerForm.availableBalance} onChange={event => setProviderForm({ ...providerForm, availableBalance: event.target.value })} /></Field>
-                  <Field label="Reserve balance"><input className="ptdt-input" inputMode="decimal" value={providerForm.reserveBalance} onChange={event => setProviderForm({ ...providerForm, reserveBalance: event.target.value })} /></Field>
+                  <Field label="Carrier wallet balance" hint="Manual/live balance currently available at the upstream provider. Customer allocations are tracked separately."><input className="ptdt-input" inputMode="decimal" value={providerForm.availableBalance} onChange={event => setProviderForm({ ...providerForm, availableBalance: event.target.value })} /></Field>
+                  <Field label="Reserve balance" hint="Protected provider balance kept aside before allocating customer credit."><input className="ptdt-input" inputMode="decimal" value={providerForm.reserveBalance} onChange={event => setProviderForm({ ...providerForm, reserveBalance: event.target.value })} /></Field>
                   <Field label="API base URL"><input className="ptdt-input" value={providerForm.apiBaseUrl} onChange={event => setProviderForm({ ...providerForm, apiBaseUrl: event.target.value })} placeholder="https://api.provider.com" /></Field>
                   <Field label="API username"><input className="ptdt-input" value={providerForm.apiUsername} onChange={event => setProviderForm({ ...providerForm, apiUsername: event.target.value })} /></Field>
                 </div>
+              </div>
+
+              <div className={`ptdt-voip-capacity-summary ${providerCapacityShortfall > 0 ? 'is-warning' : ''}`}>
+                <div><span>Carrier wallet</span><strong>{money(providerForm.availableBalance, providerForm.currency)}</strong></div>
+                <div><span>Reserve</span><strong>{money(providerForm.reserveBalance, providerForm.currency)}</strong></div>
+                <div><span>Committed customer credit</span><strong>{money(setup?.outstandingCustomerCredit, providerForm.currency)}</strong></div>
+                <div><span>Free to allocate</span><strong>{money(setup?.allocatableCustomerCredit, providerForm.currency)}</strong></div>
+                {providerCapacityShortfall > 0 && <p>Carrier wallet is {money(providerCapacityShortfall, providerForm.currency)} below the committed customer credit plus reserve.</p>}
               </div>
 
               <div className="ptdt-voip-provider-section">

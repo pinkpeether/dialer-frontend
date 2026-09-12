@@ -206,10 +206,17 @@
 .ptdt-voip-provider-form { padding: 0 30px 28px; }
 .ptdt-voip-provider-overview { display: flex; align-items: center; justify-content: space-between; gap: 25px; padding: 27px 0 24px; border-bottom: 1px solid var(--voip-line); }
 .ptdt-voip-provider-stats { display: flex; align-items: stretch; border: 1px solid var(--voip-line); border-radius: 7px; overflow: hidden; }
-.ptdt-voip-provider-stats > div { min-width: 125px; display: grid; padding: 11px 14px; border-left: 1px solid var(--voip-line); }
+.ptdt-voip-provider-stats > div { min-width: 118px; display: grid; padding: 11px 14px; border-left: 1px solid var(--voip-line); }
 .ptdt-voip-provider-stats > div:first-child { border-left: 0; }
 .ptdt-voip-provider-stats span { color: var(--text-3); font-size: 11px; font-weight: 800; text-transform: uppercase; }
 .ptdt-voip-provider-stats strong { color: var(--text); font-family: var(--font-mono); font-size: 13px; font-weight: 800; }
+.ptdt-voip-capacity-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 18px 0 2px; border: 1px solid var(--voip-line); border-radius: 7px; overflow: hidden; background: #fff; }
+.ptdt-voip-capacity-summary > div { min-height: 64px; display: grid; align-content: center; gap: 5px; padding: 12px 14px; border-left: 1px solid var(--voip-line); }
+.ptdt-voip-capacity-summary > div:first-child { border-left: 0; }
+.ptdt-voip-capacity-summary span { color: var(--text-3); font-size: 11px; font-weight: 850; text-transform: uppercase; }
+.ptdt-voip-capacity-summary strong { color: var(--text); font-family: var(--font-mono); font-size: 15px; font-weight: 900; }
+.ptdt-voip-capacity-summary p { grid-column: 1 / -1; margin: 0; padding: 12px 14px; color: #8a5b00; background: #fff7dd; border-top: 1px solid #f3dd9c; font-size: 13px; font-weight: 800; }
+.ptdt-voip-capacity-summary.is-warning { border-color: #f3dd9c; box-shadow: 0 8px 20px rgba(184,119,0,.08); }
 .ptdt-voip-provider-section { padding: 22px 0; border-bottom: 1px solid var(--voip-line); }
 .ptdt-voip-provider-section-title { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; color: var(--text-2); }
 .ptdt-voip-provider-section-title > svg { color: var(--pink-2); }
@@ -289,6 +296,9 @@
   .ptdt-voip-allowance-layout { grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr); }
   .ptdt-voip-provider-grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ptdt-voip-provider-overview { align-items: flex-start; flex-direction: column; }
+  .ptdt-voip-capacity-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ptdt-voip-capacity-summary > div:nth-child(3) { border-left: 0; border-top: 1px solid var(--voip-line); }
+  .ptdt-voip-capacity-summary > div:nth-child(4) { border-top: 1px solid var(--voip-line); }
 }
 
 @media (max-width: 900px) {
@@ -330,6 +340,9 @@
   .ptdt-voip-provider-stats { display: grid; }
   .ptdt-voip-provider-stats > div { border-top: 1px solid var(--voip-line); border-left: 0; }
   .ptdt-voip-provider-stats > div:first-child { border-top: 0; }
+  .ptdt-voip-capacity-summary { grid-template-columns: minmax(0, 1fr); }
+  .ptdt-voip-capacity-summary > div { border-top: 1px solid var(--voip-line); border-left: 0; }
+  .ptdt-voip-capacity-summary > div:first-child { border-top: 0; }
   .ptdt-voip-rates-heading { align-items: flex-start; flex-direction: column; }
   .ptdt-voip-enforcement-toggle { align-items: flex-start; }
 }
