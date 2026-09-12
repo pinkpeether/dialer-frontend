@@ -49,6 +49,8 @@ const writeCache = (cache: Omit<CustomerBillingCache, 'savedAt'>) => {
   }
 }
 
+const freshRequestOptions = (silent: boolean) => ({ silent, maxAgeMs: 0 })
+
 const planName = (account?: AdminCommercialAccount | null) => account?.subscriptions?.[0]?.plan?.name || 'No active plan'
 const planStatus = (account?: AdminCommercialAccount | null) => account?.subscriptions?.[0]?.status || 'INACTIVE'
 
@@ -336,13 +338,14 @@ export default function CustomerBillingPortal() {
     setWarning('')
 
     try {
-      const me = await administrationApi.getMe({ silent: Boolean(options.silent || hasVisibleDataRef.current) })
+      const silent = Boolean(options.silent || hasVisibleDataRef.current)
+      const me = await administrationApi.getMe(freshRequestOptions(silent))
       setPlatformAccess(Boolean(me.platformAccess))
       setMemberships(me.memberships)
 
       let accounts: AdminCommercialAccount[] = []
       if (me.platformAccess) {
-        const overview = await administrationApi.getPlatformOverview({ silent: true })
+        const overview = await administrationApi.getPlatformOverview(freshRequestOptions(true))
         accounts = overview.accounts
         setPlatformAccounts(accounts)
       } else {

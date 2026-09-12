@@ -155,7 +155,7 @@ const administrationGetConfig = (silent: boolean, config = {}) => {
   const nextConfig = { ...administrationRequestConfig, ...config }
   return silent ? silentOverlayConfig(nextConfig) : nextConfig
 }
-type AdministrationSwrOptions = { silent?: boolean; signal?: AbortSignal }
+type AdministrationSwrOptions = { silent?: boolean; signal?: AbortSignal; maxAgeMs?: number }
 
 const isArchivedAccount = (account?: { status?: string | null }) => String(account?.status || '').toUpperCase() === 'ARCHIVED'
 const withoutArchivedAccounts = (overview: PlatformAdministrationOverview): PlatformAdministrationOverview => {

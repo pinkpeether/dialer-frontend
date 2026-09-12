@@ -1,5 +1,5 @@
 import api from './axios'
-import { silentOverlayConfig } from './swrCache'
+import { clearSwrByPrefix, silentOverlayConfig } from './swrCache'
 
 export type CommercialPlanCode = 'BASIC' | 'STANDARD' | 'PREMIUM' | 'ELITE' | 'ENTERPRISE'
 export type CommercialAddonCode = 'DYNAMIC_CALLER_ID' | 'SMS' | 'AI_TRANSCRIPTS' | 'AI_INSIGHTS' | 'RECORDINGS' | 'ADVANCED_ANALYTICS' | 'CRM_CONNECTORS'
@@ -89,11 +89,15 @@ const removeSwr = (key: string) => {
 export const clearCommercialControlCache = (accountId?: number) => {
   removeSwr('accounts')
   removeSwr('catalog')
+  clearSwrByPrefix('administration-platform')
+  clearSwrByPrefix('administration-me')
   if (accountId) {
     removeSwr(`summary:${accountId}`)
     removeSwr(`payments:${accountId}`)
   }
   if (typeof window !== 'undefined') {
+    window.localStorage.removeItem('ptdt-customer-billing:last-good')
+    window.localStorage.removeItem('ptdt-platform-administration:last-good')
     Object.keys(window.localStorage).forEach(key => {
       if (key.startsWith('ptdt-commercial-control-api-swr:')) {
         window.localStorage.removeItem(key)
