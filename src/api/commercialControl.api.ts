@@ -166,6 +166,11 @@ export const commercialControlApi = {
     clearCommercialControlCache(accountId)
     return res.data.data as { wallet: CommercialWallet; transaction: WalletTransaction }
   },
+  alignWalletCurrency: async (accountId: number, payload: { currency: string; reference?: string; description?: string }) => {
+    const res = await api.patch(`/commercial-control/admin/accounts/${accountId}/wallet-currency`, payload, commercialRequestConfig)
+    clearCommercialControlCache(accountId)
+    return res.data.data as { wallet: CommercialWallet; transaction: WalletTransaction | null; changed: boolean }
+  },
   setAddonStatus: async (accountId: number, addonCode: CommercialAddonCode, payload: { status: CommercialStatus; priceOverride?: string; notes?: string }) => {
     const res = await api.patch(`/commercial-control/admin/accounts/${accountId}/addons/${addonCode}`, payload, commercialRequestConfig)
     clearCommercialControlCache(accountId)

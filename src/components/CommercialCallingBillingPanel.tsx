@@ -59,6 +59,8 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
   const allocatableCredit = Number(setup?.allocatableCustomerCredit || 0)
   const projectedCustomerBalance = Number(accountBalance || 0) + enteredCredit
   const allocationValid = enteredCredit > 0 || enteredMinutes > 0
+  const providerCurrency = setup?.provider.currency || 'EUR'
+  const needsCurrencyAlignment = Boolean(accountId && accountCurrency && accountCurrency !== providerCurrency)
 
   const load = async () => {
     const next = await commercialControlApi.getCallingBillingSetup()
@@ -90,6 +92,18 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
       setAllowanceForm({ credit: '', includedMinutes: '', reference: '', description: '' })
       onAllowanceApplied?.()
     }, `Voice allowance allocated to ${accountName || 'customer'}.`)
+  }
+
+  const alignWalletCurrency = () => {
+    if (!accountId || !needsCurrencyAlignment) return
+    void save(async () => {
+      await commercialControlApi.alignWalletCurrency(accountId, {
+        currency: providerCurrency,
+        reference: `provider:${setup?.provider.provider || 'ILLYVOIP'}`,
+        description: `Aligned voice wallet to ${providerCurrency} provider billing`,
+      })
+      onAllowanceApplied?.()
+    }, `${accountName || 'Customer'} wallet aligned to ${providerCurrency}.`)
   }
 
   return (
@@ -126,7 +140,7 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
                 </div>
                 <div className="ptdt-voip-allocation-fields">
                   <Field label="Calling credit" icon={CircleDollarSign} hint="Adds directly to the customer's voice wallet.">
-                    <div className="ptdt-voip-money-input"><span>EUR</span><input className="ptdt-input" inputMode="decimal" value={allowanceForm.credit} onChange={event => setAllowanceForm({ ...allowanceForm, credit: event.target.value })} placeholder="0.00" /></div>
+                    <div className="ptdt-voip-money-input"><span>{providerCurrency}</span><input className="ptdt-input" inputMode="decimal" value={allowanceForm.credit} onChange={event => setAllowanceForm({ ...allowanceForm, credit: event.target.value })} placeholder="0.00" /></div>
                   </Field>
                   <Field label="Included minutes" icon={Clock3} hint="Consumed before monetary credit where eligible.">
                     <div className="ptdt-voip-money-input"><span>MIN</span><input className="ptdt-input" inputMode="numeric" value={allowanceForm.includedMinutes} onChange={event => setAllowanceForm({ ...allowanceForm, includedMinutes: event.target.value })} placeholder="0" /></div>
@@ -140,8 +154,13 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
                     <input className="ptdt-input" style={inputStyle} value={allowanceForm.description} onChange={event => setAllowanceForm({ ...allowanceForm, description: event.target.value })} placeholder="Reason for allocation" />
                   </Field>
                 </div>
-                {accountCurrency !== 'EUR' && <div className="ptdt-voip-currency-warning">Allowance funding currently requires an EUR customer wallet.</div>}
-                <button className="ptdt-voip-allocate-action" disabled={disabled || saving || !accountId || accountCurrency !== 'EUR' || !allocationValid}>
+                {needsCurrencyAlignment && (
+                  <div className="ptdt-voip-currency-warning">
+                    <span>Allowance funding requires a {providerCurrency} customer wallet. Current wallet is {accountCurrency}.</span>
+                    <button type="button" onClick={alignWalletCurrency} disabled={disabled || saving}>Align to {providerCurrency}</button>
+                  </div>
+                )}
+                <button className="ptdt-voip-allocate-action" disabled={disabled || saving || !accountId || needsCurrencyAlignment || !allocationValid}>
                   <span className="ptdt-voip-allocate-action-icon"><WalletCards size={20} /></span>
                   <span><strong>{saving ? 'Processing allocation...' : 'Allocate to customer wallet'}</strong><small>Creates an auditable billing ledger entry</small></span><ArrowRight size={19} />
                 </button>
