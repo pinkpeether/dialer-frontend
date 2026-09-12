@@ -112,19 +112,19 @@
 .ptdt-voip-finance-metric small { color: var(--text-3); font-size: 11px; }
 
 .ptdt-voip-workspace { margin-bottom: 30px; background: var(--surface); border: 1px solid var(--voip-line); border-radius: 8px; box-shadow: 0 18px 50px rgba(28, 23, 33, .08); overflow: hidden; }
-.ptdt-voip-workspace-nav { min-height: 88px; display: grid; grid-template-columns: 185px 1fr 150px; align-items: stretch; background: linear-gradient(105deg, #756c78 0%, #6f6070 34%, #705b75 58%, #655f72 78%, #666a70 100%); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.12); }
-.ptdt-voip-workspace-nav-copy { display: grid; align-content: center; padding: 0 22px; border-right: 1px solid rgba(255,255,255,.1); }
-.ptdt-voip-workspace-nav-copy span { color: rgba(255,255,255,.48); font-size: 9px; font-weight: 800; text-transform: uppercase; }
-.ptdt-voip-workspace-nav-copy strong { margin-top: 2px; font-size: 13px; font-weight: 850; }
-.ptdt-voip-workspace-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.ptdt-voip-workspace-tabs button { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; padding: 12px 16px; color: rgba(255,255,255,.72); border-right: 1px solid rgba(255,255,255,.07); transition: color .18s ease, background .18s ease; }
-.ptdt-voip-workspace-tabs button:hover, .ptdt-voip-workspace-tabs button.is-active { color: #fff; background: rgba(255,255,255,.1); }
+.ptdt-voip-workspace-header { min-height: 70px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 22px; background: linear-gradient(105deg, #766d7a 0%, #6f6070 44%, #666a70 100%); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.12); }
+.ptdt-voip-workspace-nav-copy { display: grid; align-content: center; min-width: 0; }
+.ptdt-voip-workspace-nav-copy span { color: rgba(255,255,255,.52); font-size: 10px; font-weight: 850; text-transform: uppercase; }
+.ptdt-voip-workspace-nav-copy strong { margin-top: 2px; font-size: 17px; font-weight: 900; }
+.ptdt-voip-workspace-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: #f7f5f8; border-bottom: 1px solid var(--voip-line); }
+.ptdt-voip-workspace-tabs button { min-width: 0; min-height: 76px; display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; padding: 12px 16px; color: var(--text-3); border-right: 1px solid var(--voip-line); transition: color .18s ease, background .18s ease; }
+.ptdt-voip-workspace-tabs button:hover, .ptdt-voip-workspace-tabs button.is-active { color: var(--text); background: #fff; }
 .ptdt-voip-workspace-tabs button > span { min-width: 0; display: grid; text-align: left; }
-.ptdt-voip-workspace-tabs strong { font-size: 13px; font-weight: 850; }
-.ptdt-voip-workspace-tabs small { color: rgba(255,255,255,.58); font-size: 11px; }
-.ptdt-voip-workspace-tabs button.is-active small { color: rgba(255,255,255,.78); }
+.ptdt-voip-workspace-tabs strong { font-size: 14px; font-weight: 900; }
+.ptdt-voip-workspace-tabs small { color: var(--text-3); font-size: 12px; }
+.ptdt-voip-workspace-tabs button.is-active small { color: var(--text-2); }
 .ptdt-voip-workspace-tabs button > i { position: absolute; left: 18px; right: 18px; bottom: 0; height: 3px; background: var(--pink); border-radius: 3px 3px 0 0; box-shadow: 0 0 15px rgba(251,11,140,.55); }
-.ptdt-voip-enforcement { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 0 16px; }
+.ptdt-voip-enforcement { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 9px 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(255,255,255,.06); }
 .ptdt-voip-enforcement > span { width: 8px; height: 8px; border-radius: 50%; }
 .ptdt-voip-enforcement > div { display: grid; }
 .ptdt-voip-enforcement small { color: rgba(255,255,255,.48); font-size: 10px; text-transform: uppercase; }
@@ -228,6 +228,9 @@
 .ptdt-voip-provider-grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .ptdt-voip-provider-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ptdt-voip-provider-footer { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-top: 24px; }
+.ptdt-voip-api-form { padding-bottom: 30px; }
+.ptdt-voip-notes-input { min-height: 96px !important; padding-top: 12px; resize: vertical; line-height: 1.5; }
+.ptdt-voip-api-footnote { color: var(--text-3); font-size: 12px; font-weight: 750; }
 .ptdt-voip-enforcement-toggle { display: flex; align-items: center; gap: 12px; cursor: pointer; }
 .ptdt-voip-enforcement-toggle > input, .ptdt-voip-route-toggle > input { position: absolute; opacity: 0; pointer-events: none; }
 .ptdt-voip-enforcement-toggle > span { width: 50px; height: 30px; position: relative; display: flex; align-items: center; justify-content: flex-end; padding: 0 7px; color: var(--text-3); background: #ded9df; border-radius: 7px; transition: background .18s ease, color .18s ease; }
@@ -274,7 +277,9 @@
 [data-theme="dark"] .ptdt-voip-billing-page { --voip-line: rgba(255,255,255,.1); --voip-soft: #17141b; --voip-pink-soft: rgba(251,11,140,.1); --voip-green-soft: rgba(0,167,71,.12); --voip-purple-soft: rgba(128,87,215,.12); }
 [data-theme="dark"] .ptdt-voip-account-bar, [data-theme="dark"] .ptdt-voip-financial-strip, [data-theme="dark"] .ptdt-voip-workspace { background: var(--surface); }
 [data-theme="dark"] .ptdt-voip-account-avatar { background: linear-gradient(145deg, #d70a7a, #7b3cae); }
-[data-theme="dark"] .ptdt-voip-workspace-nav { background: linear-gradient(105deg, #514b55 0%, #564657 40%, #504458 66%, #494d53 100%); }
+[data-theme="dark"] .ptdt-voip-workspace-header { background: linear-gradient(105deg, #514b55 0%, #564657 55%, #494d53 100%); }
+[data-theme="dark"] .ptdt-voip-workspace-tabs { background: #151219; }
+[data-theme="dark"] .ptdt-voip-workspace-tabs button:hover, [data-theme="dark"] .ptdt-voip-workspace-tabs button.is-active { background: var(--surface); }
 [data-theme="dark"] .ptdt-voip-balance-feature { background: linear-gradient(135deg, #245f42, #34744f 62%, #436f59); }
 [data-theme="dark"] .ptdt-voip-allocation-review, [data-theme="dark"] .ptdt-voip-rate-table th { background: #121016; }
 [data-theme="dark"] .ptdt-voip-allocation-recipient { background: rgba(251,11,140,.06); }
@@ -291,7 +296,6 @@
   .ptdt-voip-financial-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ptdt-voip-finance-metric:nth-child(3) { border-left: 0; border-top: 1px solid var(--voip-line); }
   .ptdt-voip-finance-metric:nth-child(4) { border-top: 1px solid var(--voip-line); }
-  .ptdt-voip-workspace-nav { grid-template-columns: 150px 1fr 130px; }
   .ptdt-voip-workspace-nav-copy { padding: 0 15px; }
   .ptdt-voip-allowance-layout { grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr); }
   .ptdt-voip-provider-grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -308,10 +312,9 @@
   .ptdt-voip-account-identity, .ptdt-voip-customer-picker { grid-column: 1 / -1; }
   .ptdt-voip-financial-strip { grid-template-columns: minmax(0, 1fr); }
   .ptdt-voip-finance-metric { border-left: 0; border-top: 1px solid var(--voip-line); }
-  .ptdt-voip-workspace-nav { grid-template-columns: 1fr; }
-  .ptdt-voip-workspace-nav-copy { display: none; }
-  .ptdt-voip-workspace-tabs { order: 2; }
-  .ptdt-voip-enforcement { min-height: 48px; justify-content: flex-start; padding: 0 18px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .ptdt-voip-workspace-header { align-items: flex-start; flex-direction: column; }
+  .ptdt-voip-workspace-nav-copy { padding: 0; }
+  .ptdt-voip-enforcement { justify-content: flex-start; }
   .ptdt-voip-workspace-tabs button { min-height: 70px; padding: 10px 8px; }
   .ptdt-voip-workspace-tabs button > svg { display: none; }
   .ptdt-voip-workspace-tabs button > span { text-align: center; }

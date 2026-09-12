@@ -114,15 +114,15 @@ export default function VoipBilling() {
       <motion.section className="ptdt-voip-financial-strip" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }}>
         <div className={`ptdt-voip-balance-feature is-${walletTone}`}>
           <span className="ptdt-voip-finance-icon"><WalletCards size={20} /></span>
-          <div><span>Available voice balance</span><strong>{money(summary?.wallet?.availableBalance, selectedCurrency)}</strong><small>{cleanDisplayText(summary?.balanceState || 'Awaiting wallet')}</small></div>
+          <div><span>Customer wallet</span><strong>{money(summary?.wallet?.availableBalance, selectedCurrency)}</strong><small>{cleanDisplayText(summary?.balanceState || 'Awaiting wallet')}</small></div>
         </div>
         <div className="ptdt-voip-finance-metric">
-          <span><Clock3 size={14} /> Included allowance</span>
+          <span><Clock3 size={14} /> Minutes left</span>
           <strong>{minutes(summary?.wallet?.includedSeconds)}</strong>
           <small>{minutes(summary?.wallet?.heldIncludedSeconds)} currently held</small>
         </div>
         <div className="ptdt-voip-finance-metric">
-          <span><Activity size={14} /> Funds on hold</span>
+          <span><Activity size={14} /> Held for calls</span>
           <strong>{money(summary?.wallet?.heldBalance, selectedCurrency)}</strong>
           <small>Reserved by active calls</small>
         </div>

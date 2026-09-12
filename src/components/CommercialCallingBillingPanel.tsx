@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 're
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight, BadgeEuro, Check, CheckCircle2, CircleDollarSign, Clock3, FileKey2,
-  Gauge, Globe2, KeyRound, Link2, LockKeyhole, Network, RadioTower, Save,
+  Gauge, Globe2, LockKeyhole, Network, RadioTower, Save,
   ServerCog, Settings2, ShieldCheck, SlidersHorizontal, WalletCards,
 } from 'lucide-react'
 import { commercialControlApi, type CommercialCallingBillingSetup, type CommercialCallingRate, type CommercialProviderWallet } from '../api/commercialControl.api'
@@ -113,18 +113,18 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
 
   return (
     <section className="ptdt-voip-workspace">
-      <div className="ptdt-voip-workspace-nav" role="tablist" aria-label="VoIP billing controls">
+      <div className="ptdt-voip-workspace-header">
         <div className="ptdt-voip-workspace-nav-copy"><span>Billing workspace</span><strong>Configure & allocate</strong></div>
-        <div className="ptdt-voip-workspace-tabs">
+        <div className={`ptdt-voip-enforcement ${setup?.provider.enforcementEnabled ? 'is-on' : 'is-off'}`}>
+          <span /><div><small>Call enforcement</small><strong>{setup?.provider.enforcementEnabled ? 'Protected' : 'Disabled'}</strong></div>
+        </div>
+      </div>
+      <div className="ptdt-voip-workspace-tabs" role="tablist" aria-label="VoIP billing controls">
           {tabItems.map(({ id, label, detail, icon: Icon }) => (
             <button key={id} type="button" role="tab" aria-selected={activeTab === id} className={activeTab === id ? 'is-active' : ''} onClick={() => { setActiveTab(id); setMessage(''); setError('') }}>
               <Icon size={17} /><span><strong>{label}</strong><small>{detail}</small></span>{activeTab === id && <motion.i layoutId="voip-tab-marker" />}
             </button>
           ))}
-        </div>
-        <div className={`ptdt-voip-enforcement ${setup?.provider.enforcementEnabled ? 'is-on' : 'is-off'}`}>
-          <span /><div><small>Call enforcement</small><strong>{setup?.provider.enforcementEnabled ? 'Protected' : 'Disabled'}</strong></div>
-        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -184,10 +184,8 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
                   <div className="is-result"><span>Projected wallet</span><strong>{money(projectedCustomerBalance, accountCurrency)}</strong></div>
                 </div>
                 <div className="ptdt-voip-review-list">
-                  <div><Check size={15} /><span>Carrier wallet</span><strong>{money(setup?.provider.availableBalance)}</strong></div>
-                  <div><Check size={15} /><span>Committed credit</span><strong>{money(setup?.outstandingCustomerCredit)}</strong></div>
                   <div><Check size={15} /><span>Included minutes</span><strong>{enteredMinutes.toLocaleString()} min</strong></div>
-                  <div><Check size={15} /><span>Provider reserve</span><strong>{money(setup?.provider.reserveBalance)}</strong></div>
+                  <div><Check size={15} /><span>Wallet currency</span><strong>{accountCurrency || providerCurrency}</strong></div>
                   <div><Check size={15} /><span>Ledger reference</span><strong>{allowanceForm.reference || 'Auto-generated'}</strong></div>
                 </div>
               </aside>
@@ -197,32 +195,20 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
           {activeTab === 'provider' && (
             <form className="ptdt-voip-provider-form" onSubmit={saveProvider}>
               <div className="ptdt-voip-provider-overview">
-                <div className="ptdt-voip-section-heading"><span className="ptdt-voip-section-icon is-green"><RadioTower size={20} /></span><div><span>Upstream voice carrier</span><h2>{providerForm.displayName || providerForm.provider}</h2><p>Provider identity, capacity, connection and credential references.</p></div></div>
-                <div className="ptdt-voip-provider-stats"><div><span>Carrier wallet</span><strong>{money(providerForm.availableBalance, providerForm.currency)}</strong></div><div><span>Reserve</span><strong>{money(providerForm.reserveBalance, providerForm.currency)}</strong></div><div><span>Free to allocate</span><strong>{money(setup?.allocatableCustomerCredit, providerForm.currency)}</strong></div><div><span>Trunk</span><strong>{providerForm.trunkName || 'Not set'}</strong></div></div>
+                <div className="ptdt-voip-section-heading"><span className="ptdt-voip-section-icon is-green"><RadioTower size={20} /></span><div><span>Upstream voice carrier</span><h2>{providerForm.displayName || providerForm.provider}</h2><p>Set the carrier wallet, protected reserve, trunk name, and call enforcement for customer calls.</p></div></div>
               </div>
 
               <div className="ptdt-voip-provider-section">
-                <div className="ptdt-voip-provider-section-title"><ServerCog size={17} /><div><strong>Provider identity</strong><span>Choose an existing profile or define a new carrier.</span></div></div>
-                {Boolean(setup?.providers?.length) && <Field label="Saved provider profile"><select className="ptdt-select" style={inputStyle} value={providerForm.provider} onChange={event => { const nextProvider = setup?.providers?.find(provider => provider.provider === event.target.value); setProviderForm(providerToForm(nextProvider || null)) }}>{setup?.providers?.map(provider => <option key={provider.provider} value={provider.provider}>{provider.displayName || provider.provider} ({provider.provider})</option>)}</select></Field>}
+                <div className="ptdt-voip-provider-section-title"><Network size={17} /><div><strong>Carrier capacity</strong><span>This controls how much voice credit can be allocated to customers.</span></div></div>
                 <div className="ptdt-voip-provider-grid cols-4">
-                  <Field label="Provider code"><input className="ptdt-input" value={providerForm.provider} onChange={event => setProviderForm({ ...providerForm, provider: event.target.value })} /></Field>
+                  {Boolean(setup?.providers?.length) && <Field label="Saved provider"><select className="ptdt-select" style={inputStyle} value={providerForm.provider} onChange={event => { const nextProvider = setup?.providers?.find(provider => provider.provider === event.target.value); setProviderForm(providerToForm(nextProvider || null)) }}>{setup?.providers?.map(provider => <option key={provider.provider} value={provider.provider}>{provider.displayName || provider.provider} ({provider.provider})</option>)}</select></Field>}
                   <Field label="Display name"><input className="ptdt-input" value={providerForm.displayName} onChange={event => setProviderForm({ ...providerForm, displayName: event.target.value })} /></Field>
-                  <Field label="Connection type"><select className="ptdt-select" value={providerForm.providerType} onChange={event => setProviderForm({ ...providerForm, providerType: event.target.value })}><option value="SIP_TRUNK">SIP Trunk</option><option value="REST_API">REST API</option><option value="HYBRID">Hybrid</option><option value="CUSTOM">Custom</option></select></Field>
                   <Field label="Provider status"><select className="ptdt-select" value={providerForm.status} onChange={event => setProviderForm({ ...providerForm, status: event.target.value })}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option><option value="TESTING">Testing</option></select></Field>
-                </div>
-              </div>
-
-              <div className="ptdt-voip-provider-section">
-                <div className="ptdt-voip-provider-section-title"><Network size={17} /><div><strong>Connection & balance</strong><span>Map this profile to FreePBX and define available carrier funds.</span></div></div>
-                <div className="ptdt-voip-provider-grid cols-4">
                   <Field label="Balance mode"><select className="ptdt-select" value={providerForm.balanceMode} onChange={event => setProviderForm({ ...providerForm, balanceMode: event.target.value })}><option value="MANUAL">Manual</option><option value="LIVE_API">Live API</option><option value="WEBHOOK">Webhook</option></select></Field>
                   <Field label="FreePBX trunk"><input className="ptdt-input" value={providerForm.trunkName} onChange={event => setProviderForm({ ...providerForm, trunkName: event.target.value })} /></Field>
                   <Field label="Currency"><input className="ptdt-input" value={providerForm.currency} onChange={event => setProviderForm({ ...providerForm, currency: event.target.value.toUpperCase() })} /></Field>
-                  <Field label="API name"><input className="ptdt-input" value={providerForm.apiName} onChange={event => setProviderForm({ ...providerForm, apiName: event.target.value })} /></Field>
                   <Field label="Carrier wallet balance" hint="Manual/live balance currently available at the upstream provider. Customer allocations are tracked separately."><input className="ptdt-input" inputMode="decimal" value={providerForm.availableBalance} onChange={event => setProviderForm({ ...providerForm, availableBalance: event.target.value })} /></Field>
                   <Field label="Reserve balance" hint="Protected provider balance kept aside before allocating customer credit."><input className="ptdt-input" inputMode="decimal" value={providerForm.reserveBalance} onChange={event => setProviderForm({ ...providerForm, reserveBalance: event.target.value })} /></Field>
-                  <Field label="API base URL"><input className="ptdt-input" value={providerForm.apiBaseUrl} onChange={event => setProviderForm({ ...providerForm, apiBaseUrl: event.target.value })} placeholder="https://api.provider.com" /></Field>
-                  <Field label="API username"><input className="ptdt-input" value={providerForm.apiUsername} onChange={event => setProviderForm({ ...providerForm, apiUsername: event.target.value })} /></Field>
                 </div>
               </div>
 
@@ -232,17 +218,6 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
                 <div><span>Committed customer credit</span><strong>{money(setup?.outstandingCustomerCredit, providerForm.currency)}</strong></div>
                 <div><span>Free to allocate</span><strong>{money(setup?.allocatableCustomerCredit, providerForm.currency)}</strong></div>
                 {providerCapacityShortfall > 0 && <p>Carrier wallet is {money(providerCapacityShortfall, providerForm.currency)} below the committed customer credit plus reserve.</p>}
-              </div>
-
-              <div className="ptdt-voip-provider-section">
-                <div className="ptdt-voip-provider-section-title"><KeyRound size={17} /><div><strong>Credential references</strong><span>Store masked labels or secret-manager references only.</span></div><span className="ptdt-voip-secure-badge"><ShieldCheck size={13} /> Secret safe</span></div>
-                <div className="ptdt-voip-provider-grid cols-3">
-                  <Field label="Password reference" icon={LockKeyhole}><input className="ptdt-input" value={providerForm.passwordLabel} onChange={event => setProviderForm({ ...providerForm, passwordLabel: event.target.value })} placeholder="Masked/reference only" /></Field>
-                  <Field label="API key reference" icon={FileKey2}><input className="ptdt-input" value={providerForm.apiKeyLabel} onChange={event => setProviderForm({ ...providerForm, apiKeyLabel: event.target.value })} placeholder="Masked/reference only" /></Field>
-                  <Field label="API secret reference" icon={KeyRound}><input className="ptdt-input" value={providerForm.apiSecretLabel} onChange={event => setProviderForm({ ...providerForm, apiSecretLabel: event.target.value })} placeholder="Masked/reference only" /></Field>
-                  <Field label="Documentation URL" icon={Link2}><input className="ptdt-input" value={providerForm.docsUrl} onChange={event => setProviderForm({ ...providerForm, docsUrl: event.target.value })} /></Field>
-                  <Field label="Provider notes"><input className="ptdt-input" value={providerForm.notes} onChange={event => setProviderForm({ ...providerForm, notes: event.target.value })} /></Field>
-                </div>
               </div>
 
               <div className="ptdt-voip-provider-footer">

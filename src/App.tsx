@@ -46,6 +46,7 @@ import ReportsAnalyticsPro    from './pages/ReportsAnalyticsPro'
 import SmsConsole             from './pages/SmsConsole'
 import CommercialControl      from './pages/CommercialControl'
 import VoipBilling            from './pages/VoipBilling'
+import VoipApiInfo            from './pages/VoipApiInfo'
 import CustomerOnboarding     from './pages/CustomerOnboarding'
 import PlatformAdministration from './pages/PlatformAdministration'
 import CustomerBillingPortal  from './pages/CustomerBillingPortal'
@@ -130,6 +131,7 @@ export default function App() {
             <Route path="/admin/spoofing"     element={<RoleRoute roles={customerAdminRoles}><SpoofingManagement /></RoleRoute>} />
             <Route path="/commercial-control" element={<RoleRoute roles={superAdminRoles}><CommercialControl /></RoleRoute>} />
             <Route path="/voip-billing" element={<RoleRoute roles={superAdminRoles}><VoipBilling /></RoleRoute>} />
+            <Route path="/voip-api-info" element={<RoleRoute roles={superAdminRoles}><VoipApiInfo /></RoleRoute>} />
             <Route path="/customer-onboarding" element={<RoleRoute roles={superAdminRoles}><CustomerOnboarding /></RoleRoute>} />
             <Route path="/platform/administration" element={<RoleRoute roles={superAdminRoles}><PlatformAdministration /></RoleRoute>} />
             <Route path="/attendance-integrity" element={<RoleRoute roles={customerSupervisorRoles}><AttendanceIntegrity /></RoleRoute>} />
