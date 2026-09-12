@@ -42,6 +42,16 @@ export type CommercialProviderWallet = {
 }
 export type CommercialCallingRate = { id: number; destinationCode: string; destinationName: string; dialPrefix: string; carrierRatePerMinute: string | number; customerRatePerMinute: string | number; minimumSeconds: number; incrementSeconds: number; isActive: boolean }
 export type CommercialCallingBillingSetup = { provider: CommercialProviderWallet; providers?: CommercialProviderWallet[]; outstandingCustomerCredit: string | number; allocatableCustomerCredit: string | number; rates: CommercialCallingRate[] }
+export type CommercialStaleHoldCleanupResult = {
+  dryRun: boolean
+  cutoff: string
+  olderThanMinutes: number
+  scanned: number
+  settled: number
+  released: number
+  skipped: number
+  items: Array<{ authorizationId: string; callId: number; action: 'SETTLE' | 'RELEASE'; statusBefore: string; durationSeconds: number; resultStatus?: string; skipped?: boolean }>
+}
 
 const commercialRequestConfig = { timeout: 45000 }
 const commercialGetConfig = (silent: boolean, config = {}) => {
@@ -201,6 +211,11 @@ export const commercialControlApi = {
   saveCallingRate: async (payload: Omit<CommercialCallingRate, 'id'>) => {
     const res = await api.put('/commercial-control/admin/calling-billing/rates', payload, commercialRequestConfig)
     return res.data.data as CommercialCallingRate
+  },
+  releaseStaleCallingHolds: async (payload: { olderThanMinutes?: number; limit?: number; dryRun?: boolean } = {}) => {
+    const res = await api.post('/commercial-control/admin/calling-billing/release-stale-holds', payload, commercialRequestConfig)
+    clearCommercialControlCache()
+    return res.data.data as CommercialStaleHoldCleanupResult
   },
   grantCallingAllowance: async (accountId: number, payload: { credit?: string; includedMinutes?: string; reference?: string; description?: string }) => {
     const res = await api.post(`/commercial-control/admin/accounts/${accountId}/calling-allowance`, payload, commercialRequestConfig)

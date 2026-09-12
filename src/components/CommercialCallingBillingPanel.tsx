@@ -127,6 +127,20 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
     }, `${accountName || 'Customer'} voice wallet reset to zero.`)
   }
 
+  const releaseStaleHolds = () => {
+    const confirmed = window.confirm('Release or settle commercial call holds older than 120 minutes? Use this only after confirming there are no long-running active calls that still need final CDR settlement.')
+    if (!confirmed) return
+    setSaving(true); setError(''); setMessage('')
+    void commercialControlApi.releaseStaleCallingHolds({ olderThanMinutes: 120, limit: 50 })
+      .then(async result => {
+        await load()
+        onAllowanceApplied?.()
+        setMessage(`Stale hold cleanup completed: ${result.settled} settled, ${result.released} released, ${result.skipped} skipped.`)
+      })
+      .catch(err => setError(err instanceof Error ? err.message : 'Stale hold cleanup failed'))
+      .finally(() => setSaving(false))
+  }
+
   return (
     <section className="ptdt-voip-workspace">
       <div className="ptdt-voip-workspace-header">
@@ -247,7 +261,10 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
 
               <div className="ptdt-voip-provider-footer">
                 <label className="ptdt-voip-enforcement-toggle"><input type="checkbox" checked={providerForm.enforcementEnabled} onChange={event => setProviderForm({ ...providerForm, enforcementEnabled: event.target.checked })} /><span><i /><ShieldCheck size={17} /></span><div><strong>Enforce customer wallet before AMI calls</strong><small>Blocks outbound initiation when customer funds are insufficient.</small></div></label>
-                <button className="ptdt-voip-save-provider" disabled={disabled || saving}><Save size={16} /> {saving ? 'Saving profile...' : 'Save provider profile'}</button>
+                <div className="ptdt-voip-provider-actions">
+                  <button type="button" className="ptdt-voip-maintenance-button" onClick={releaseStaleHolds} disabled={disabled || saving}><RotateCcw size={15} /> Release stale holds</button>
+                  <button className="ptdt-voip-save-provider" disabled={disabled || saving}><Save size={16} /> {saving ? 'Saving profile...' : 'Save provider profile'}</button>
+                </div>
               </div>
             </form>
           )}
