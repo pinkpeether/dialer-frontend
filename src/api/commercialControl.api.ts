@@ -175,6 +175,11 @@ export const commercialControlApi = {
     clearCommercialControlCache(accountId)
     return res.data.data as { wallet: CommercialWallet; transaction: WalletTransaction | null; changed: boolean }
   },
+  resetWalletAllowance: async (accountId: number, payload: { reference?: string; description?: string }) => {
+    const res = await api.post(`/commercial-control/admin/accounts/${accountId}/wallet-reset`, payload, commercialRequestConfig)
+    clearCommercialControlCache(accountId)
+    return res.data.data as { wallet: CommercialWallet; transaction: WalletTransaction; previousBalance: number; previousIncludedSeconds: number }
+  },
   setAddonStatus: async (accountId: number, addonCode: CommercialAddonCode, payload: { status: CommercialStatus; priceOverride?: string; notes?: string }) => {
     const res = await api.patch(`/commercial-control/admin/accounts/${accountId}/addons/${addonCode}`, payload, commercialRequestConfig)
     clearCommercialControlCache(accountId)

@@ -139,6 +139,7 @@ export default function VoipBilling() {
         accountCode={selectedAccount?.code}
         accountCurrency={selectedCurrency}
         accountBalance={summary?.wallet?.availableBalance}
+        accountIncludedSeconds={summary?.wallet?.includedSeconds}
         disabled={loading || refreshing || !selectedAccountId}
         onAllowanceApplied={() => { void loadData(selectedAccountId, { silent: true }) }}
       />

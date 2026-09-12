@@ -23,6 +23,12 @@ const stateColor = (state: string) => {
   return 'var(--text-3)'
 }
 
+const summaryTitleStyle = { margin: '10px 0 4px', fontSize: 22, lineHeight: 1.15, fontWeight: 950 } as const
+const summaryTextStyle = { margin: 0, fontSize: 13, lineHeight: 1.35 } as const
+const tableHeaderStyle = { padding: '11px 14px', textAlign: 'left' as const, fontSize: 10, fontWeight: 900, color: 'var(--text-3)', textTransform: 'uppercase' as const, letterSpacing: .4, borderBottom: '1px solid var(--border)' }
+const tableCellStyle = { padding: '11px 14px', color: 'var(--text-2)', fontSize: 12.5, lineHeight: 1.35 }
+const tableMonoCellStyle = { ...tableCellStyle, color: 'var(--text)', fontFamily: 'var(--font-mono)' }
+
 type CustomerBillingCache = {
   savedAt: string
   memberships: AccountMembership[]
@@ -72,7 +78,7 @@ function AccountHealthTable({ accounts }: { accounts: AdminCommercialAccount[] }
       <div style={{ padding: 18, borderBottom: '1px solid var(--border)' }}>
         <div className="eyebrow pink"><Building2 size={12} /> Commercial Account Overview</div>
         <p style={{ margin: '8px 0 0', color: 'var(--text-3)', fontSize: 13 }}>
-          Read-only customer account billing and plan health summary.
+          Account billing and plan health summary.
         </p>
       </div>
 
@@ -81,7 +87,7 @@ function AccountHealthTable({ accounts }: { accounts: AdminCommercialAccount[] }
           <thead>
             <tr>
               {['Customer Account', 'Current Plan', 'Status', 'Calling Wallet', 'Balance Health', 'Users', 'Dynamic CID Users', 'Add-ons'].map(header => (
-                <th key={header} className="mono" style={{ padding: '13px 16px', textAlign: 'left', fontSize: 10.5, fontWeight: 900, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid var(--border)' }}>
+                <th key={header} className="mono" style={tableHeaderStyle}>
                   {header}
                 </th>
               ))}
@@ -103,25 +109,25 @@ function AccountHealthTable({ accounts }: { accounts: AdminCommercialAccount[] }
 
               return (
                 <tr key={account.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ fontWeight: 950, color: 'var(--text)' }}>{cleanDisplayText(account.name)}</div>
+                  <td style={tableCellStyle}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text)' }}>{cleanDisplayText(account.name)}</div>
                     <div className="mono" style={{ color: 'var(--text-3)', fontSize: 11, marginTop: 3 }}>{cleanDisplayText(account.code)}</div>
                   </td>
-                  <td style={{ padding: '14px 16px', color: 'var(--text-2)', fontWeight: 800 }}>{planName(account)}</td>
-                  <td style={{ padding: '14px 16px' }}>
+                  <td style={{ ...tableCellStyle, fontWeight: 800 }}>{planName(account)}</td>
+                  <td style={tableCellStyle}>
                     <span className="badge" style={{ color: stateColor(subscriptionState), background: 'var(--bg-2)', border: `1px solid ${stateColor(subscriptionState)}` }}>
                       {cleanDisplayText(subscriptionState)}
                     </span>
                   </td>
-                  <td className="mono" style={{ padding: '14px 16px', color: 'var(--text)' }}>{money(account.wallet?.availableBalance, account.currency)}</td>
-                  <td style={{ padding: '14px 16px' }}>
+                  <td className="mono" style={tableMonoCellStyle}>{money(account.wallet?.availableBalance, account.currency)}</td>
+                  <td style={tableCellStyle}>
                     <span className="badge" style={{ color: stateColor(info.state), background: 'var(--bg-2)', border: `1px solid ${stateColor(info.state)}` }}>
                       {info.state.replaceAll('_', ' ')}
                     </span>
                   </td>
-                  <td className="mono" style={{ padding: '14px 16px', color: 'var(--text-2)' }}>{activeMembers.length}</td>
-                  <td className="mono" style={{ padding: '14px 16px', color: 'var(--text-2)' }}>{cidUsers}</td>
-                  <td style={{ padding: '14px 16px', color: 'var(--text-3)' }}>
+                  <td className="mono" style={tableMonoCellStyle}>{activeMembers.length}</td>
+                  <td className="mono" style={tableMonoCellStyle}>{cidUsers}</td>
+                  <td style={{ ...tableCellStyle, color: 'var(--text-3)' }}>
                     {activeAddons.length ? activeAddons.map(item => cleanDisplayText(item.addon?.name || item.addon?.code)).join(', ') : '—'}
                   </td>
                 </tr>
@@ -183,23 +189,23 @@ function SelectedAccountDetails({ account, selectedMembership }: { account: Admi
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginTop: 18, marginBottom: 18 }}>
         <div className="glass" style={card}>
           <div className="eyebrow pink"><CreditCard size={12} /> Current Plan</div>
-          <h2 style={{ margin: '10px 0 4px', fontSize: 26, fontWeight: 950 }}>{subscription?.plan?.name || 'No active plan'}</h2>
-          <p style={{ margin: 0, color: stateColor(subscription?.status || 'INACTIVE'), fontWeight: 900 }}>{cleanDisplayText(subscription?.status || 'INACTIVE')}</p>
+          <h2 style={summaryTitleStyle}>{subscription?.plan?.name || 'No active plan'}</h2>
+          <p style={{ ...summaryTextStyle, color: stateColor(subscription?.status || 'INACTIVE'), fontWeight: 900 }}>{cleanDisplayText(subscription?.status || 'INACTIVE')}</p>
         </div>
         <div className="glass" style={card}>
           <div className="eyebrow green"><WalletCards size={12} /> Calling Balance</div>
-          <h2 style={{ margin: '10px 0 4px', fontSize: 26, fontWeight: 950 }}>{money(account.wallet?.availableBalance, account.currency)}</h2>
-          <p style={{ margin: 0, color: stateColor(info.state), fontWeight: 900 }}>{info.state.replaceAll('_', ' ')}</p>
+          <h2 style={summaryTitleStyle}>{money(account.wallet?.availableBalance, account.currency)}</h2>
+          <p style={{ ...summaryTextStyle, color: stateColor(info.state), fontWeight: 900 }}>{info.state.replaceAll('_', ' ')}</p>
         </div>
         <div className="glass" style={card}>
           <div className="eyebrow pink"><BadgeDollarSign size={12} /> Thresholds</div>
-          <p style={{ margin: '10px 0 4px', color: 'var(--text-2)' }}>Low: <strong>{money(account.lowBalanceThreshold, account.currency)}</strong></p>
-          <p style={{ margin: 0, color: 'var(--text-2)' }}>Critical: <strong>{money(account.criticalBalanceThreshold, account.currency)}</strong></p>
+          <p style={{ ...summaryTextStyle, margin: '10px 0 4px', color: 'var(--text-2)' }}>Low: <strong>{money(account.lowBalanceThreshold, account.currency)}</strong></p>
+          <p style={{ ...summaryTextStyle, color: 'var(--text-2)' }}>Critical: <strong>{money(account.criticalBalanceThreshold, account.currency)}</strong></p>
         </div>
         <div className="glass" style={card}>
           <div className="eyebrow green"><BadgeDollarSign size={12} /> Usage</div>
-          <p style={{ margin: '10px 0 4px', color: 'var(--text-2)' }}>Funded: <strong>{money(funded, account.currency)}</strong></p>
-          <p style={{ margin: 0, color: 'var(--text-2)' }}>Used: <strong>{money(used, account.currency)}</strong></p>
+          <p style={{ ...summaryTextStyle, margin: '10px 0 4px', color: 'var(--text-2)' }}>Funded: <strong>{money(funded, account.currency)}</strong></p>
+          <p style={{ ...summaryTextStyle, color: 'var(--text-2)' }}>Used: <strong>{money(used, account.currency)}</strong></p>
         </div>
       </div>
 
@@ -215,7 +221,7 @@ function SelectedAccountDetails({ account, selectedMembership }: { account: Admi
           ].map(([label, value, color]) => (
             <div key={label} style={{ padding: 14, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
               <div style={{ color: 'var(--text-3)', fontSize: 12, fontWeight: 850 }}>{label}</div>
-              <div style={{ color, marginTop: 7, fontWeight: 950, fontSize: 18 }}>{value}</div>
+              <div style={{ color, marginTop: 7, fontWeight: 900, fontSize: 16 }}>{value}</div>
             </div>
           ))}
         </div>
@@ -225,8 +231,8 @@ function SelectedAccountDetails({ account, selectedMembership }: { account: Admi
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div>
             <div className="eyebrow green"><Users size={12} /> Account Access</div>
-            <h2 style={{ margin: '8px 0 4px', fontSize: 22, fontWeight: 950 }}>{account.name}</h2>
-            <p style={{ margin: 0, color: 'var(--text-3)' }}>Your account role: <strong>{cleanDisplayText(selectedMembership?.accountRole)}</strong></p>
+            <h2 style={{ margin: '8px 0 4px', fontSize: 20, fontWeight: 950 }}>{account.name}</h2>
+            <p style={{ ...summaryTextStyle, color: 'var(--text-3)' }}>Your account role: <strong>{cleanDisplayText(selectedMembership?.accountRole)}</strong></p>
           </div>
           <span className="ptdt-chip">{cleanDisplayText(account.code)}</span>
         </div>
@@ -264,17 +270,17 @@ function SelectedAccountDetails({ account, selectedMembership }: { account: Admi
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse' }}>
-            <thead><tr>{['Date', 'Type', 'Direction', 'Amount', 'Balance After', 'Description'].map(header => <th key={header} className="mono" style={{ padding: '13px 16px', textAlign: 'left', fontSize: 10.5, color: 'var(--text-3)', borderBottom: '1px solid var(--border)' }}>{header}</th>)}</tr></thead>
+            <thead><tr>{['Date', 'Type', 'Direction', 'Amount', 'Balance After', 'Description'].map(header => <th key={header} className="mono" style={tableHeaderStyle}>{header}</th>)}</tr></thead>
             <tbody>{transactions.length === 0 ? (
               <tr><td colSpan={6} style={{ padding: 24, color: 'var(--text-3)' }}>No wallet ledger activity yet.</td></tr>
             ) : transactions.map(item => (
               <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '13px 16px' }}>{new Date(item.createdAt).toLocaleString()}</td>
-                <td style={{ padding: '13px 16px' }}>{cleanDisplayText(item.type)}</td>
-                <td style={{ padding: '13px 16px', color: item.direction === 'CREDIT' ? 'var(--green-2)' : item.direction === 'DEBIT' ? 'var(--danger)' : 'var(--orange)', fontWeight: 900 }}>{cleanDisplayText(item.direction)}</td>
-                <td style={{ padding: '13px 16px', fontWeight: 900 }}>{money(item.amount, account.currency)}</td>
-                <td style={{ padding: '13px 16px' }}>{money(item.balanceAfter, account.currency)}</td>
-                <td style={{ padding: '13px 16px', color: 'var(--text-2)' }}>{cleanDisplayText(item.description || '—')}</td>
+                <td style={tableCellStyle}>{new Date(item.createdAt).toLocaleString()}</td>
+                <td style={tableCellStyle}>{cleanDisplayText(item.type)}</td>
+                <td style={{ ...tableCellStyle, color: item.direction === 'CREDIT' ? 'var(--green-2)' : item.direction === 'DEBIT' ? 'var(--danger)' : 'var(--orange)', fontWeight: 900 }}>{cleanDisplayText(item.direction)}</td>
+                <td style={{ ...tableMonoCellStyle, fontWeight: 900 }}>{money(item.amount, account.currency)}</td>
+                <td style={tableMonoCellStyle}>{money(item.balanceAfter, account.currency)}</td>
+                <td style={tableCellStyle}>{cleanDisplayText(item.description || '—')}</td>
               </tr>
             ))}</tbody>
           </table>
@@ -287,19 +293,19 @@ function SelectedAccountDetails({ account, selectedMembership }: { account: Admi
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', minWidth: 940, borderCollapse: 'collapse' }}>
-            <thead><tr>{['Date', 'Destination', 'Agent', 'Call Status', 'Duration', 'Billing Status', 'Held Amount', 'Rate'].map(header => <th key={header} className="mono" style={{ padding: '13px 16px', textAlign: 'left', fontSize: 10.5, color: 'var(--text-3)', borderBottom: '1px solid var(--border)' }}>{header}</th>)}</tr></thead>
+            <thead><tr>{['Date', 'Destination', 'Agent', 'Call Status', 'Duration', 'Billing Status', 'Held Amount', 'Rate'].map(header => <th key={header} className="mono" style={tableHeaderStyle}>{header}</th>)}</tr></thead>
             <tbody>{callAuthorizations.length === 0 ? (
               <tr><td colSpan={8} style={{ padding: 24, color: 'var(--text-3)' }}>No billed outbound calls yet.</td></tr>
             ) : callAuthorizations.map(item => (
               <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '13px 16px' }}>{new Date(item.createdAt).toLocaleString()}</td>
-                <td className="mono" style={{ padding: '13px 16px' }}>{item.destination || item.call?.remoteNumber || '—'}</td>
-                <td style={{ padding: '13px 16px' }}>{item.call?.agent?.name || item.call?.agent?.email || '—'}</td>
-                <td style={{ padding: '13px 16px' }}>{cleanDisplayText(item.call?.status || '—')}</td>
-                <td style={{ padding: '13px 16px' }}>{item.call?.duration ? `${item.call.duration}s` : '—'}</td>
-                <td style={{ padding: '13px 16px', fontWeight: 900, color: item.status === 'SETTLED' ? 'var(--green-2)' : item.status === 'RELEASED' ? 'var(--text-3)' : 'var(--orange)' }}>{cleanDisplayText(item.status)}</td>
-                <td style={{ padding: '13px 16px' }}>{money(item.heldAmount, account.currency)}</td>
-                <td style={{ padding: '13px 16px' }}>{item.rate ? `${item.rate.destinationName} / ${money(item.rate.customerRatePerMinute, account.currency)} per min` : '—'}</td>
+                <td style={tableCellStyle}>{new Date(item.createdAt).toLocaleString()}</td>
+                <td className="mono" style={tableMonoCellStyle}>{item.destination || item.call?.remoteNumber || '—'}</td>
+                <td style={tableCellStyle}>{item.call?.agent?.name || item.call?.agent?.email || '—'}</td>
+                <td style={tableCellStyle}>{cleanDisplayText(item.call?.status || '—')}</td>
+                <td style={tableCellStyle}>{item.call?.duration ? `${item.call.duration}s` : '—'}</td>
+                <td style={{ ...tableCellStyle, fontWeight: 900, color: item.status === 'SETTLED' ? 'var(--green-2)' : item.status === 'RELEASED' ? 'var(--text-3)' : 'var(--orange)' }}>{cleanDisplayText(item.status)}</td>
+                <td style={tableMonoCellStyle}>{money(item.heldAmount, account.currency)}</td>
+                <td style={tableCellStyle}>{item.rate ? `${item.rate.destinationName} / ${money(item.rate.customerRatePerMinute, account.currency)} per min` : '—'}</td>
               </tr>
             ))}</tbody>
           </table>
@@ -381,7 +387,7 @@ export default function CustomerBillingPortal() {
         <div>
           <div className="eyebrow green" style={{ marginBottom: 12 }}><WalletCards size={12} /> Customer Account</div>
           <h1 className="ptdt-page-title">Billing & <span className="gradient-brand-text">Plan</span></h1>
-          <p className="ptdt-page-desc">Read-only commercial account plan, wallet, balance health, and access summary. Payments are still approved manually by PTDT.</p>
+          <p className="ptdt-page-desc">Read-only plan, wallet, balance health, and access summary.</p>
         </div>
         <div className="ptdt-toolbar">
           {refreshing && <span className="ptdt-chip">Refreshing...</span>}

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 're
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight, BadgeEuro, Check, CheckCircle2, CircleDollarSign, Clock3, FileKey2,
-  Gauge, Globe2, LockKeyhole, Network, RadioTower, Save,
+  Gauge, Globe2, LockKeyhole, Network, RadioTower, RotateCcw, Save,
   ServerCog, Settings2, ShieldCheck, SlidersHorizontal, WalletCards,
 } from 'lucide-react'
 import { commercialControlApi, type CommercialCallingBillingSetup, type CommercialCallingRate, type CommercialProviderWallet } from '../api/commercialControl.api'
@@ -13,6 +13,7 @@ type Props = {
   accountCode?: string
   accountCurrency?: string
   accountBalance?: string | number | null
+  accountIncludedSeconds?: number | null
   disabled?: boolean
   onAllowanceApplied?: () => void
 }
@@ -43,7 +44,7 @@ function Field({ label, icon: Icon, children, hint }: FieldProps) {
   return <label className="ptdt-voip-field"><span className="ptdt-voip-field-label">{Icon && <Icon size={13} />}{label}</span>{children}{hint && <small>{hint}</small>}</label>
 }
 
-export default function CommercialCallingBillingPanel({ accountId, accountName, accountCode, accountCurrency, accountBalance, disabled, onAllowanceApplied }: Props) {
+export default function CommercialCallingBillingPanel({ accountId, accountName, accountCode, accountCurrency, accountBalance, accountIncludedSeconds, disabled, onAllowanceApplied }: Props) {
   const [setup, setSetup] = useState<CommercialCallingBillingSetup | null>(null)
   const [providerForm, setProviderForm] = useState(providerToForm(null))
   const [allowanceForm, setAllowanceForm] = useState({ credit: '', includedMinutes: '', reference: '', description: '' })
@@ -66,6 +67,8 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
   const allocationValid = enteredCredit > 0 || enteredMinutes > 0
   const providerCurrency = setup?.provider.currency || 'EUR'
   const needsCurrencyAlignment = Boolean(accountId && accountCurrency && accountCurrency !== providerCurrency)
+  const currentIncludedMinutes = Math.floor(Number(accountIncludedSeconds || 0) / 60)
+  const hasWalletAllowance = Number(accountBalance || 0) > 0 || currentIncludedMinutes > 0
 
   const load = async () => {
     const next = await commercialControlApi.getCallingBillingSetup()
@@ -109,6 +112,19 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
       })
       onAllowanceApplied?.()
     }, `${accountName || 'Customer'} wallet aligned to ${providerCurrency}.`)
+  }
+
+  const resetWalletAllowance = () => {
+    if (!accountId) return
+    const confirmed = window.confirm(`Reset ${accountName || 'this customer'} voice wallet balance and included minutes to zero? This creates an audit ledger entry.`)
+    if (!confirmed) return
+    void save(async () => {
+      await commercialControlApi.resetWalletAllowance(accountId, {
+        reference: `reset:${Date.now()}`,
+        description: 'Voice wallet balance and included minutes reset by PTDT Admin',
+      })
+      onAllowanceApplied?.()
+    }, `${accountName || 'Customer'} voice wallet reset to zero.`)
   }
 
   return (
@@ -165,6 +181,15 @@ export default function CommercialCallingBillingPanel({ accountId, accountName, 
                     <button type="button" onClick={alignWalletCurrency} disabled={disabled || saving}>Align to {providerCurrency}</button>
                   </div>
                 )}
+                <div className="ptdt-voip-reset-panel">
+                  <div>
+                    <strong>Reset customer wallet</strong>
+                    <span>Sets wallet balance and included minutes to zero. Active call holds block this action.</span>
+                  </div>
+                  <button type="button" onClick={resetWalletAllowance} disabled={disabled || saving || !accountId || !hasWalletAllowance}>
+                    <RotateCcw size={15} /> Reset to zero
+                  </button>
+                </div>
                 <button className="ptdt-voip-allocate-action" disabled={disabled || saving || !accountId || needsCurrencyAlignment || !allocationValid}>
                   <span className="ptdt-voip-allocate-action-icon"><WalletCards size={20} /></span>
                   <span><strong>{saving ? 'Processing allocation...' : 'Allocate to customer wallet'}</strong><small>Creates an auditable billing ledger entry</small></span><ArrowRight size={19} />
