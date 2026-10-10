@@ -92,12 +92,38 @@ function clearPendingBackendOriginate() {
   pendingBackendOriginateStartedAt = 0
 }
 
+function apiPath(path: string) {
+  const base = String(api.defaults.baseURL || '').replace(/\/+$/, '')
+  return `${base}${path}`
+}
+
 async function hangupBackendDynamicCallerIdCall(ref: BackendOriginatedCallRef): Promise<void> {
   if (backendHangupInFlight) return backendHangupInFlight
 
-  backendHangupInFlight = api
-    .post('/dialer/call/backend-hangup', ref, { timeout: 15000 })
-    .then(() => undefined)
+  backendHangupInFlight = (async () => {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 15000)
+    const token = localStorage.getItem('jd_token')
+
+    try {
+      const response = await fetch(apiPath('/dialer/call/backend-hangup'), {
+        method: 'POST',
+        keepalive: true,
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(ref),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Backend Dynamic Caller ID hangup failed with HTTP ${response.status}`)
+      }
+    } finally {
+      window.clearTimeout(timeout)
+    }
+  })()
     .finally(() => {
       backendHangupInFlight = null
     })
