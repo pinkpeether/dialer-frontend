@@ -518,15 +518,20 @@ export const useSipStore = create<SipStore>((set, get) => ({
     const backendRef = get().backendOriginatedCall
 
     /*
-      Keep the browser/SIP leg responsive. Backend/PSTN hangup is best-effort
-      and must not block the user's reject action.
+      Keep the browser/SIP leg responsive, but keep the backend/PSTN hangup
+      request alive so the browser does not cancel the network call.
     */
+    const backendHangupPromise = backendRef
+      ? hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
+      : Promise.resolve()
     if (backendRef) {
       lastBackendOriginatedCallForDisposition = backendRef
-      void hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
     }
 
-    await sipClient.reject().catch(() => undefined)
+    await Promise.allSettled([
+      backendHangupPromise,
+      sipClient.reject().catch(() => undefined),
+    ])
     set({ incomingCall: null, onHold: false, backendOriginatedCall: null, status: get().isConfigured ? 'registered' : 'idle' })
   },
 
@@ -535,15 +540,20 @@ export const useSipStore = create<SipStore>((set, get) => ({
     const backendRef = get().backendOriginatedCall
 
     /*
-      Hang up the browser/agent SIP leg immediately. The AMI/PSTN cleanup runs
-      in the background and is protected against repeated-click spam.
+      Hang up the browser/agent SIP leg while preserving the AMI/PSTN cleanup
+      request. Otherwise Chrome can show /backend-hangup as cancelled.
     */
+    const backendHangupPromise = backendRef
+      ? hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
+      : Promise.resolve()
     if (backendRef) {
       lastBackendOriginatedCallForDisposition = backendRef
-      void hangupBackendDynamicCallerIdCall(backendRef).catch(() => undefined)
     }
 
-    await sipClient.hangup().catch(() => undefined)
+    await Promise.allSettled([
+      backendHangupPromise,
+      sipClient.hangup().catch(() => undefined),
+    ])
     set({
       activeCall: null,
       incomingCall: null,
